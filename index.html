@@ -297,6 +297,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .btn-subscribe:active{opacity:.8}
 .access-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(71,255,140,.1);color:var(--green)}
 
+/* LOCKED PROG */
+.locked-screen{margin:20px;background:var(--card);border-radius:16px;border:1.5px solid var(--border2);padding:28px 20px;text-align:center;animation:fadeUp .3s ease}
+.locked-icon{font-size:40px;margin-bottom:12px}
+.locked-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;margin-bottom:8px}
+.locked-desc{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:20px}
+.btn-unlock{display:inline-block;padding:14px 28px;background:var(--accent);color:#000;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn-unlock:active{opacity:.8}
+.prog-tab-locked{opacity:.5}
+
 /* TOAST */
 .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--accent);color:#000;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;z-index:500;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -567,7 +576,7 @@ const STRIPE_PK='pk_live_51TTgoeGfW5FegIxCCDUZQvm2EakuXj3rC2UFYiRDXfvuaE42WwX3Hj
 const stripe=Stripe(STRIPE_PK);
 
 // STATE
-let currentUser=null,currentProfile=null,programmes=[],movements=[],benchmarks=[],myPRs={},myAccess=new Set();
+let currentUser=null,currentProfile=null,programmes=[],movements=[],benchmarks=[],myPRs={},myAccess=new Set(),myAccessIds=new Set();
 let currentProg=null,currentWeekOffset=0,selectedDate=new Date().toISOString().split('T')[0];
 let currentModalMovement=null,currentBenchmark=null,currentBLevel='rx';
 let selectedColor='#e8ff47',selectedIcon='🏟';
@@ -638,7 +647,9 @@ function initApp(){
       nav.appendChild(btn);
     }
   }
-  loadProgrammes();loadMovements();loadBenchmarks();
+  loadMovements();loadBenchmarks();
+  await loadMyAccess();
+  loadProgrammes();
   const d=new Date();
   document.getElementById('prog-topbar-date').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
   handleStripeReturn();
@@ -669,7 +680,10 @@ function renderProgTabs(){
   const tabs=document.getElementById('prog-tabs');
   const sel=document.getElementById('f-prog');
   const sel2=document.getElementById('admin-filter-prog');
-  tabs.innerHTML=programmes.map(p=>`<button class="prog-tab" data-id="${p.id}" onclick="selectProg('${p.id}')">${p.icon||'💪'} ${p.name}</button>`).join('');
+  tabs.innerHTML=programmes.map(p=>{
+    const locked=!hasAccess(p);
+    return`<button class="prog-tab ${locked?'prog-tab-locked':''}" data-id="${p.id}" onclick="selectProg('${p.id}')">${p.icon||'💪'} ${p.name}${locked?' 🔒':''}</button>`;
+  }).join('');
   sel.innerHTML=programmes.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   sel2.innerHTML='<option value="">Tous</option>'+programmes.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   if(programmes.length>0)activateProgTab(programmes[0].id);
@@ -703,7 +717,7 @@ async function renderDayStrip(){
   document.getElementById('week-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
   const isos=dates.map(d=>d.toISOString().split('T')[0]);
   const {data}=await sb.from('sessions').select('date').eq('programme_id',currentProg.id).in('date',isos);
-  const withContent=new Set((data||[]).map(s=>s.date));
+  const withContent=hasAccess(currentProg)?new Set((data||[]).map(s=>s.date)):new Set();
   document.getElementById('day-strip').innerHTML=dates.map(d=>{
     const iso=d.toISOString().split('T')[0];
     return `<div class="day-pill ${iso===selectedDate?'active':''} ${withContent.has(iso)?'has-content':''}" onclick="selectDate('${iso}')">
@@ -715,9 +729,27 @@ function selectDate(iso){selectedDate=iso;renderDayStrip();renderSessions();}
 function changeWeek(dir){currentWeekOffset+=dir;renderDayStrip();renderSessions();}
 
 // SESSIONS
+function hasAccess(prog){
+  if(!prog)return false;
+  if(currentProfile?.role==='admin')return true;
+  return myAccessIds.has(prog.id)||myAccess.has(prog.slug);
+}
+
 async function renderSessions(){
   if(!currentProg)return;
   const area=document.getElementById('sessions-area');
+
+  // Vérifier l'accès
+  if(!hasAccess(currentProg)){
+    area.innerHTML=`<div class="locked-screen">
+      <div class="locked-icon">🔒</div>
+      <div class="locked-title">${currentProg.name}</div>
+      <div class="locked-desc">Abonne-toi pour accéder à ce programme et voir la programmation complète.</div>
+      <button class="btn-unlock" onclick="goPage('abos')">Voir les abonnements</button>
+    </div>`;
+    return;
+  }
+
   area.innerHTML='<div class="spinner"></div>';
   const {data:sessions}=await sb.from('sessions').select('*').eq('programme_id',currentProg.id).eq('date',selectedDate).order('type');
   if(!sessions||sessions.length===0){area.innerHTML='<div class="empty fade-up"><div class="empty-icon">🗓</div><p>Pas de séance<br>programmée ce jour.</p></div>';return;}
@@ -1180,6 +1212,7 @@ async function loadMyAccess(){
   if(!currentUser)return;
   const {data}=await sb.from('programme_access').select('programme_id,programmes(slug)').eq('athlete_id',currentUser.id);
   myAccess=new Set((data||[]).map(a=>a.programmes?.slug).filter(Boolean));
+  myAccessIds=new Set((data||[]).map(a=>a.programme_id).filter(Boolean));
 }
 async function renderPlans(){
   await loadMyAccess();
@@ -1208,6 +1241,9 @@ async function handleStripeReturn(){
       const programme=programmes.find(p=>p.slug===prog);
       if(programme)await sb.from('programme_access').upsert({athlete_id:currentUser.id,programme_id:programme.id},{onConflict:'athlete_id,programme_id'});
     }
+    await loadMyAccess();
+    renderProgTabs();
+    renderSessions();
     window.history.replaceState({},'','/');
   }
   if(params.get('canceled')==='1'){showToast('Paiement annulé.');window.history.replaceState({},'','/');}
