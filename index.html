@@ -1141,6 +1141,7 @@ const stripe = Stripe(STRIPE_PK);
 const STRIPE_PLANS = {
   'affiliate': {
     priceId: 'price_1TThBIGfW5FegIxCy3Bd5zmi',
+    paymentLink: 'https://buy.stripe.com/eVqaEX5X37FN2fheZx5AQ01',
     name: 'Affiliate',
     icon: '🏟',
     price: '120€',
@@ -1152,6 +1153,7 @@ const STRIPE_PLANS = {
   },
   'training': {
     priceId: 'price_1TThDzGfW5FegIxCGRb4q1tN',
+    paymentLink: 'https://buy.stripe.com/4gM9ATfxDaRZ1bd9Fd5AQ00',
     name: 'Training',
     icon: '💪',
     price: '45€',
@@ -1205,21 +1207,7 @@ async function subscribeTo(slug) {
   const plan = STRIPE_PLANS[slug];
   if (!plan) return;
   if (!currentUser) { showToast('⚠️ Connecte-toi d\'abord'); return; }
-
-  showToast('⏳ Redirection vers le paiement...');
-
-  try {
-    const { error } = await stripe.redirectToCheckout({
-      lineItems: [{ price: plan.priceId, quantity: 1 }],
-      mode: plan.type === 'subscription' ? 'subscription' : 'payment',
-      customerEmail: currentUser.email,
-      successUrl: `https://upside-down-training.netlify.app?success=1&prog=${slug}`,
-      cancelUrl: `https://upside-down-training.netlify.app?canceled=1`,
-    });
-    if (error) showToast('❌ ' + error.message);
-  } catch (e) {
-    showToast('❌ Erreur paiement: ' + e.message);
-  }
+  window.location.href = plan.paymentLink + '?prefilled_email=' + encodeURIComponent(currentUser.email);
 }
 
 // Gérer retour après paiement Stripe
