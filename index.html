@@ -652,7 +652,6 @@ async function initApp(){
   await loadProgrammes();
   const d=new Date();
   document.getElementById('prog-topbar-date').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
-  handleStripeReturn();
 }
 
 // NAVIGATION
@@ -673,6 +672,29 @@ function goPage(page){
 async function loadProgrammes(){
   const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
   programmes=data||[];
+
+  // Gérer retour Stripe ici, après chargement des programmes
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('success')==='1'){
+    const progSlug=params.get('prog');
+    if(progSlug&&currentUser){
+      const programme=programmes.find(p=>p.slug===progSlug);
+      if(programme){
+        await sb.from('programme_access').upsert({
+          athlete_id:currentUser.id,
+          programme_id:programme.id
+        },{onConflict:'athlete_id,programme_id'});
+        await loadMyAccess();
+        showToast('🎉 Accès activé !');
+      }
+    }
+    window.history.replaceState({},'','/');
+  }
+  if(params.get('canceled')==='1'){
+    showToast('Paiement annulé.');
+    window.history.replaceState({},'','/');
+  }
+
   renderProgTabs();
   if(programmes.length>0){currentProg=programmes[0];activateProgTab(programmes[0].id);renderDayStrip();renderSessions();}
 }
@@ -1232,23 +1254,6 @@ function subscribeTo(slug){
   if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
   window.location.href=plan.paymentLink+'?prefilled_email='+encodeURIComponent(currentUser.email);
 }
-async function handleStripeReturn(){
-  const params=new URLSearchParams(window.location.search);
-  if(params.get('success')==='1'){
-    const prog=params.get('prog');
-    showToast('🎉 Paiement réussi !');
-    if(prog&&currentUser){
-      const programme=programmes.find(p=>p.slug===prog);
-      if(programme)await sb.from('programme_access').upsert({athlete_id:currentUser.id,programme_id:programme.id},{onConflict:'athlete_id,programme_id'});
-    }
-    await loadMyAccess();
-    renderProgTabs();
-    renderSessions();
-    window.history.replaceState({},'','/');
-  }
-  if(params.get('canceled')==='1'){showToast('Paiement annulé.');window.history.replaceState({},'','/');}
-}
-
 // UTILS
 function getScorePlaceholder(type){return{time:'14:32',reps:'87',rounds:'12 + 5',weight:'85',calories:'42'}[type]||'—';}
 function extractYTId(url){const m=url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null;}
