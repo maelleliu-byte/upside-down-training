@@ -31,7 +31,7 @@ html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);max-width:430px;margin:0 auto;position:relative}
 
 /* SCROLLABLE PAGES */
-.page{position:absolute;inset:0;overflow-y:auto;display:none;padding-bottom:calc(72px + var(--safe-bottom))}
+.page{position:fixed;inset:0;overflow-y:auto;display:none;padding-bottom:calc(72px + var(--safe-bottom));background:var(--black);z-index:10}
 .page.active{display:block}
 
 /* ===== AUTH ===== */
