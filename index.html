@@ -10,65 +10,45 @@
 <script src="https://js.stripe.com/v3/"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
-:root {
-  --black: #080808;
-  --dark: #101010;
-  --card: #161616;
-  --card2: #1e1e1e;
-  --border: #252525;
-  --border2: #333;
-  --accent: #e8ff47;
-  --red: #ff4444;
-  --blue: #47c8ff;
-  --orange: #ff8c47;
-  --purple: #c847ff;
-  --text: #f0f0f0;
-  --text2: #aaa;
-  --muted: #666;
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-}
+:root{--black:#080808;--dark:#101010;--card:#161616;--card2:#1e1e1e;--border:#252525;--border2:#333;--accent:#e8ff47;--red:#ff4444;--blue:#47c8ff;--orange:#ff8c47;--purple:#c847ff;--green:#47ff8c;--text:#f0f0f0;--text2:#aaa;--muted:#666;--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);max-width:430px;margin:0 auto;position:relative}
 
-/* SCROLLABLE PAGES */
-.page{position:fixed;inset:0;overflow-y:auto;display:none;padding-bottom:calc(72px + var(--safe-bottom));background:var(--black);z-index:10}
+.page{position:fixed;inset:0;overflow-y:auto;display:none;padding-bottom:calc(76px + var(--safe-bottom));background:var(--black);z-index:10}
 .page.active{display:block}
 
-/* ===== AUTH ===== */
+/* AUTH */
 #auth-screen{position:fixed;inset:0;z-index:200;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px}
 #auth-screen.hidden{display:none}
 .auth-logo{font-family:'Bebas Neue',sans-serif;font-size:48px;letter-spacing:4px;text-align:center;line-height:1}
 .auth-logo small{display:block;font-size:11px;letter-spacing:6px;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400;margin-top:4px}
 .auth-bar{width:48px;height:3px;background:var(--accent);margin:20px auto 32px}
-.auth-tabs{display:flex;gap:0;margin-bottom:24px;border:1px solid var(--border2);border-radius:10px;overflow:hidden;width:100%}
+.auth-tabs{display:flex;margin-bottom:24px;border:1px solid var(--border2);border-radius:10px;overflow:hidden;width:100%}
 .auth-tab{flex:1;padding:12px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;background:transparent;border:none;color:var(--muted);cursor:pointer;transition:all .2s}
 .auth-tab.active{background:var(--card2);color:var(--text)}
 .auth-form{width:100%;display:flex;flex-direction:column;gap:12px}
 .auth-input{background:var(--card);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:14px 16px;outline:none;width:100%;transition:border-color .2s}
 .auth-input:focus{border-color:var(--accent)}
 .auth-input::placeholder{color:var(--muted)}
-.btn-auth{width:100%;padding:16px;background:var(--accent);color:#000;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-top:4px;transition:opacity .2s}
+.btn-auth{width:100%;padding:16px;background:var(--accent);color:#000;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s}
 .btn-auth:active{opacity:.8}
 .auth-error{font-size:13px;color:var(--red);text-align:center;min-height:18px}
 
-/* ===== TOPBAR ===== */
+/* TOPBAR */
 .topbar{position:sticky;top:0;z-index:50;background:var(--black);padding:14px 20px 10px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .topbar-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px}
 .topbar-sub{font-size:11px;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-top:1px}
 .avatar-btn{width:36px;height:36px;border-radius:50%;background:var(--card2);border:1.5px solid var(--border2);color:var(--text);font-size:14px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
-/* ===== BOTTOM NAV ===== */
+/* BOTTOM NAV */
 .bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:var(--dark);border-top:1px solid var(--border);display:flex;z-index:100;padding-bottom:var(--safe-bottom)}
 .nav-btn{flex:1;padding:10px 4px;display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:none;color:var(--muted);cursor:pointer;transition:color .2s}
 .nav-btn.active{color:var(--accent)}
 .nav-icon{font-size:20px;line-height:1}
-.nav-label{font-size:10px;font-weight:600;letter-spacing:.3px}
+.nav-label{font-size:9px;font-weight:600;letter-spacing:.3px}
 
-/* ===== COMMON ===== */
-.section-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;padding:16px 20px 8px}
-.card{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin:0 20px 12px}
-.card-body{padding:16px}
+/* COMMON */
 .badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
 .badge-wod{background:rgba(232,255,71,.12);color:var(--accent)}
 .badge-strength{background:rgba(255,68,68,.12);color:var(--red)}
@@ -77,32 +57,45 @@ body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);
 .badge-mobility{background:rgba(200,71,255,.12);color:var(--purple)}
 .empty{text-align:center;padding:48px 24px;color:var(--muted)}
 .empty-icon{font-size:36px;margin-bottom:12px}
-.empty p{font-size:14px;line-height:1.6}
-.spinner{width:24px;height:24px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:40px auto}
+.spinner{width:24px;height:24px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:32px auto}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
 .fade-up{animation:fadeUp .3s ease}
 
-/* ===== PAGE PROG ===== */
+/* FORMS */
+.form-group{margin-bottom:14px}
+.form-label{display:block;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px}
+.form-input,.form-select,.form-textarea{width:100%;background:var(--dark);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 14px;outline:none;transition:border-color .2s}
+.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--orange)}
+.form-textarea{min-height:110px;resize:vertical;line-height:1.6}
+.form-select option{background:var(--dark)}
+.form-row{display:flex;gap:10px}
+.form-row .form-group{flex:1}
+.btn-primary{width:100%;padding:15px;background:var(--orange);color:#000;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s}
+.btn-primary:active{opacity:.8}
+.btn-secondary{width:100%;padding:12px;background:transparent;color:var(--muted);border:1px solid var(--border2);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;margin-top:8px}
+input[type=range]{-webkit-appearance:none;width:100%;height:5px;background:var(--border2);border-radius:3px;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--orange);cursor:pointer;border:2px solid var(--black)}
+
+/* PROG PAGE */
 .prog-tabs{display:flex;overflow-x:auto;gap:8px;padding:12px 20px;scrollbar-width:none}
 .prog-tabs::-webkit-scrollbar{display:none}
 .prog-tab{flex-shrink:0;padding:7px 16px;border-radius:20px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;transition:all .2s}
-
 .week-nav{display:flex;align-items:center;justify-content:space-between;padding:4px 20px 8px}
 .week-label{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px}
 .week-arrows{display:flex;gap:6px}
-.arrow-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--card);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.arrow-btn{width:32px;height:32px;border-radius:8px;border:1px solid var(--border2);background:var(--card);color:var(--text);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .arrow-btn:active{background:var(--border2)}
-
 .day-strip{display:flex;overflow-x:auto;gap:6px;padding:4px 20px 8px;scrollbar-width:none}
 .day-strip::-webkit-scrollbar{display:none}
-.day-pill{flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);cursor:pointer;transition:all .2s;min-width:46px;position:relative}
+.day-pill{flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);cursor:pointer;transition:all .2s;min-width:46px}
 .day-pill.has-content::after{content:'';width:4px;height:4px;border-radius:50%;background:var(--accent);margin-top:3px;display:block}
 .day-pill.active{border-color:var(--accent);background:rgba(232,255,71,.08)}
 .day-name{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .day-num{font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1.1;margin-top:1px}
 .day-pill.active .day-name,.day-pill.active .day-num{color:var(--accent)}
 
+/* SESSION CARD */
 .session-card{background:var(--card);border-radius:14px;border:1px solid var(--border);margin:0 20px 12px;overflow:hidden;animation:fadeUp .3s ease}
 .session-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
 .session-body{padding:16px}
@@ -124,129 +117,152 @@ body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);
 /* SCORE SECTION */
 .score-section{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
 .score-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+
+/* LEVEL SELECTOR */
+.level-selector{display:flex;gap:6px;margin-bottom:12px}
+.level-btn{flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;letter-spacing:.5px}
+.level-btn.rx.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,.08)}
+.level-btn.inter.active{border-color:var(--blue);color:var(--blue);background:rgba(71,200,255,.08)}
+.level-btn.found.active{border-color:var(--orange);color:var(--orange);background:rgba(255,140,71,.08)}
+
+/* SETS INPUT */
+.sets-inputs{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
+.set-row{display:flex;align-items:center;gap:8px}
+.set-label{font-size:11px;font-weight:700;color:var(--muted);width:40px;flex-shrink:0;text-transform:uppercase}
+.set-input{flex:1;background:var(--dark);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;padding:9px 12px;outline:none;text-align:center;transition:border-color .2s}
+.set-input:focus{border-color:var(--accent)}
+
+/* SINGLE SCORE INPUT */
 .score-input-row{display:flex;gap:8px;align-items:flex-end;margin-bottom:10px}
 .score-input{flex:1;background:var(--dark);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:10px 12px;outline:none;transition:border-color .2s}
 .score-input:focus{border-color:var(--accent)}
 .score-input::placeholder{color:var(--muted);font-size:13px}
-.btn-score{padding:10px 16px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;transition:opacity .2s}
-.btn-score:active{opacity:.8}
-.rx-toggle{display:flex;align-items:center;gap:8px;margin-bottom:10px}
-.rx-toggle label{font-size:13px;color:var(--text2);cursor:pointer}
-.toggle-cb{width:40px;height:22px;background:var(--border2);border-radius:11px;position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;border:none}
-.toggle-cb.on{background:var(--accent)}
-.toggle-cb::after{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#000;transition:left .2s}
-.toggle-cb.on::after{left:21px}
+.btn-score{padding:10px 16px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
+.btn-score:active{opacity:.8;transform:scale(.98)}
 
-.scores-list{display:flex;flex-direction:column;gap:6px}
-.score-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--dark);border-radius:8px}
+/* LEADERBOARD */
+.scores-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
+.score-row{display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--dark);border-radius:8px}
 .score-rank{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--muted);width:24px;flex-shrink:0;text-align:center}
 .score-rank.gold{color:#ffd700}
 .score-rank.silver{color:#c0c0c0}
 .score-rank.bronze{color:#cd7f32}
 .score-name{flex:1;font-size:13px;font-weight:600}
-.score-val{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px}
-.score-rx{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px}
-.rx-yes{background:rgba(232,255,71,.15);color:var(--accent)}
-.rx-no{background:rgba(255,140,71,.15);color:var(--orange)}
+.score-val{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px}
+.level-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px}
+.lbadge-rx{background:rgba(232,255,71,.15);color:var(--accent)}
+.lbadge-intermediate{background:rgba(71,200,255,.12);color:var(--blue)}
+.lbadge-foundation{background:rgba(255,140,71,.12);color:var(--orange)}
+.score-sets-detail{font-size:11px;color:var(--muted);margin-top:2px}
 
-/* ===== PAGE PR ===== */
+/* REACTIONS */
+.score-actions{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05)}
+.react-btn{display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .2s;font-family:'DM Sans',sans-serif}
+.react-btn.liked{color:var(--red)}
+.react-btn:active{transform:scale(.9)}
+.comment-btn{flex:1;text-align:left;font-size:12px}
+.comments-area{margin-top:8px;display:none}
+.comments-area.open{display:block}
+.comment-item{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
+.comment-item:last-child{border-bottom:none}
+.comment-author{font-weight:600;color:var(--text2);font-size:11px;margin-bottom:2px}
+.comment-text{color:#ccc;line-height:1.5}
+.comment-input-row{display:flex;gap:6px;margin-top:8px}
+.comment-input{flex:1;background:var(--dark);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 10px;outline:none}
+.comment-input:focus{border-color:var(--accent)}
+.btn-comment-send{padding:8px 12px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer}
+
+/* PR PAGE */
 .pr-search{margin:8px 20px 0;position:relative}
 .pr-search input{width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 16px 11px 40px;outline:none}
 .pr-search input:focus{border-color:var(--accent)}
 .pr-search::before{content:'🔍';position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:14px}
 .pr-cats{display:flex;overflow-x:auto;gap:6px;padding:10px 20px 4px;scrollbar-width:none}
 .pr-cats::-webkit-scrollbar{display:none}
-.cat-btn{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.cat-btn{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
 .cat-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,.08)}
-
 .movement-item{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .15s}
 .movement-item:active{background:var(--card)}
-.mv-info{}
 .mv-name{font-size:14px;font-weight:600}
 .mv-cat{font-size:11px;color:var(--muted);margin-top:2px;text-transform:uppercase;letter-spacing:.5px}
-.mv-pr{text-align:right}
-.mv-pr-val{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--accent)}
-.mv-pr-unit{font-size:11px;color:var(--muted)}
-.mv-pr-date{font-size:10px;color:var(--muted);margin-top:1px}
+.mv-pr-val{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--accent);text-align:right}
+.mv-pr-unit{font-size:11px;color:var(--muted);text-align:right}
+.mv-pr-date{font-size:10px;color:var(--muted);margin-top:1px;text-align:right}
 .mv-no-pr{font-size:12px;color:var(--muted)}
 
-/* PR MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:300;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+/* BENCHMARK PAGE */
+.bench-cats{display:flex;overflow-x:auto;gap:6px;padding:10px 20px 4px;scrollbar-width:none}
+.bench-cats::-webkit-scrollbar{display:none}
+.bench-item{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .15s}
+.bench-item:active{background:var(--card)}
+.bench-name{font-size:15px;font-weight:700}
+.bench-desc{font-size:11px;color:var(--muted);margin-top:2px}
+.bench-score{text-align:right}
+.bench-score-val{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--accent)}
+.bench-score-lbl{font-size:10px;color:var(--muted)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:300;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
 .modal-overlay.open{opacity:1;pointer-events:all}
-.modal{background:var(--dark);border-radius:20px 20px 0 0;border-top:1px solid var(--border2);width:100%;max-width:430px;padding:24px 24px calc(24px + var(--safe-bottom));transform:translateY(20px);transition:transform .3s}
+.modal{background:var(--dark);border-radius:20px 20px 0 0;border-top:1px solid var(--border2);width:100%;max-width:430px;padding:24px 24px calc(24px + var(--safe-bottom));transform:translateY(20px);transition:transform .3s;max-height:90vh;overflow-y:auto}
 .modal-overlay.open .modal{transform:translateY(0)}
 .modal-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;margin-bottom:4px}
 .modal-sub{font-size:12px;color:var(--muted);margin-bottom:20px}
-.modal-input{width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:22px;font-weight:700;padding:14px 16px;outline:none;text-align:center;margin-bottom:12px;transition:border-color .2s}
+.modal-input{width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:22px;font-weight:700;padding:14px 16px;outline:none;text-align:center;margin-bottom:12px}
 .modal-input:focus{border-color:var(--accent)}
 .modal-date{width:100%;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 16px;outline:none;margin-bottom:16px}
 .btn-modal-save{width:100%;padding:15px;background:var(--accent);color:#000;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;margin-bottom:8px}
 .btn-modal-cancel{width:100%;padding:12px;background:transparent;color:var(--muted);border:1px solid var(--border2);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer}
-
-/* PR HISTORY */
-.pr-history{margin-top:16px}
 .pr-hist-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
 .pr-hist-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)}
 .pr-hist-val{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px}
 .pr-hist-date{font-size:11px;color:var(--muted)}
 .pr-hist-new{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(232,255,71,.15);color:var(--accent)}
-
-/* MINI CHART */
-.mini-chart{width:100%;height:80px;margin-top:12px;position:relative}
+.mini-chart{width:100%;height:80px;margin-top:12px}
 .mini-chart svg{width:100%;height:100%}
 
-/* ===== PAGE ADMIN ===== */
-.admin-tabs{display:flex;border-bottom:1px solid var(--border);background:var(--dark)}
-.admin-tab-btn{flex:1;padding:13px 4px;font-size:12px;font-weight:600;color:var(--muted);background:transparent;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;text-align:center}
+/* ADMIN */
+.admin-tabs{display:flex;overflow-x:auto;border-bottom:1px solid var(--border);background:var(--dark);scrollbar-width:none}
+.admin-tabs::-webkit-scrollbar{display:none}
+.admin-tab-btn{flex-shrink:0;padding:13px 14px;font-size:12px;font-weight:600;color:var(--muted);background:transparent;border:none;cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap}
 .admin-tab-btn.active{color:var(--orange);border-bottom-color:var(--orange)}
 .admin-panel{display:none;padding:16px 20px}
 .admin-panel.active{display:block}
 
-.form-group{margin-bottom:14px}
-.form-label{display:block;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:7px}
-.form-input,.form-select,.form-textarea{width:100%;background:var(--dark);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;padding:11px 14px;outline:none;transition:border-color .2s}
-.form-input:focus,.form-select:focus,.form-textarea:focus{border-color:var(--orange)}
-.form-textarea{min-height:120px;resize:vertical;line-height:1.6}
-.form-select option{background:var(--dark)}
-.form-row{display:flex;gap:10px}
-.form-row .form-group{flex:1}
-.btn-primary{width:100%;padding:15px;background:var(--orange);color:#000;border:none;border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s}
-.btn-primary:active{opacity:.8}
-.btn-secondary{width:100%;padding:12px;background:transparent;color:var(--muted);border:1px solid var(--border2);border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;cursor:pointer;margin-top:8px}
-
-input[type=range]{-webkit-appearance:none;width:100%;height:5px;background:var(--border2);border-radius:3px;outline:none;cursor:pointer}
-input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:var(--orange);cursor:pointer;border:2px solid var(--black)}
-
 /* PROGRAMMES GRID */
 .prog-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
-.prog-card{background:var(--card);border-radius:12px;border:1.5px solid var(--border);padding:16px;cursor:pointer;transition:all .2s;position:relative}
-.prog-card:active{transform:scale(.97)}
+.prog-card-admin{background:var(--card);border-radius:12px;border:1.5px solid var(--border);padding:16px;position:relative}
 .prog-card-icon{font-size:28px;margin-bottom:8px}
 .prog-card-name{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px}
 .prog-card-desc{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4}
-.prog-card-count{font-size:10px;font-weight:700;margin-top:8px;letter-spacing:.5px}
-.prog-card-edit{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.06);border:none;border-radius:6px;padding:4px 8px;font-size:12px;color:var(--muted);cursor:pointer}
+.prog-card-count{font-size:11px;font-weight:700;margin-top:8px}
+
+/* NEW PROG FORM */
+.new-prog-form{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:16px;margin-bottom:16px}
+.new-prog-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:14px}
+.color-picker{display:flex;gap:8px;flex-wrap:wrap}
+.color-swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s}
+.color-swatch.selected{border-color:#fff;transform:scale(1.15)}
+.icon-picker{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+.icon-btn{width:36px;height:36px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .2s}
+.icon-btn.selected{border-color:var(--orange);background:rgba(255,140,71,.1)}
 
 /* SESSIONS LIST */
 .sessions-list-item{background:var(--card);border-radius:10px;border:1px solid var(--border);padding:12px 14px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;animation:fadeUp .2s ease}
-.sli-info{}
 .sli-title{font-size:14px;font-weight:600;margin-bottom:3px}
 .sli-meta{font-size:12px;color:var(--muted)}
-.sli-actions{display:flex;gap:6px}
 .btn-delete{width:30px;height:30px;border-radius:7px;border:1px solid rgba(255,68,68,.25);background:rgba(255,68,68,.08);color:var(--red);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 
-/* ATHLETES ADMIN */
-.athlete-row{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .15s}
-.athlete-row:active{background:var(--card)}
+/* ATHLETES */
+.athlete-row{display:flex;align-items:center;gap:12px;padding:12px 20px;border-bottom:1px solid rgba(255,255,255,.04)}
 .athlete-avatar{width:40px;height:40px;border-radius:50%;background:var(--card2);border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex-shrink:0}
-.athlete-info{flex:1}
 .athlete-name{font-size:14px;font-weight:600}
 .athlete-email{font-size:12px;color:var(--muted);margin-top:1px}
 .athlete-role{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px}
 .role-admin{background:rgba(255,140,71,.15);color:var(--orange)}
 .role-athlete{background:rgba(232,255,71,.1);color:var(--accent)}
 
-/* ===== PAGE PROFIL ===== */
+/* PROFIL */
 .profil-header{padding:24px 20px 16px;display:flex;align-items:center;gap:16px}
 .profil-avatar{width:64px;height:64px;border-radius:50%;background:var(--card2);border:2px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700}
 .profil-name{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px}
@@ -257,46 +273,36 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .stat-lbl{font-size:10px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-top:2px}
 .menu-item{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer}
 .menu-item-label{font-size:14px;font-weight:500}
-.menu-item-icon{font-size:16px;color:var(--muted)}
 .btn-logout{width:calc(100% - 40px);margin:16px 20px;padding:14px;background:transparent;color:var(--red);border:1px solid rgba(255,68,68,.3);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer}
 
-/* STRIPE / ABONNEMENTS */
-.prog-card-locked{position:relative}
-.prog-card-locked::after{content:'🔒';position:absolute;top:10px;right:10px;font-size:16px}
-.btn-subscribe{width:100%;padding:13px;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
-.btn-subscribe.active{background:rgba(232,255,71,.1);color:var(--accent);border:1.5px solid var(--accent)}
-.btn-subscribe.locked{background:var(--accent);color:#000}
-.btn-subscribe:active{opacity:.8;transform:scale(.98)}
-.access-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:8px}
-.access-ok{background:rgba(232,255,71,.12);color:var(--accent)}
-.access-no{background:rgba(255,68,68,.1);color:var(--red)}
-
-/* PAGE ABONNEMENTS */
+/* ABONNEMENTS */
 .sub-hero{padding:24px 20px 16px;text-align:center}
 .sub-hero-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px}
 .sub-hero-sub{font-size:13px;color:var(--muted);margin-top:4px}
-.plan-card{background:var(--card);border-radius:16px;border:1.5px solid var(--border);margin:0 20px 14px;padding:20px;transition:border-color .2s}
+.plan-card{background:var(--card);border-radius:16px;border:1.5px solid var(--border);margin:0 20px 14px;padding:20px}
 .plan-card.featured{border-color:var(--accent)}
 .plan-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
 .plan-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px}
-.plan-price{text-align:right}
 .plan-price-val{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px}
-.plan-price-period{font-size:11px;color:var(--muted)}
+.plan-price-period{font-size:11px;color:var(--muted);text-align:right}
 .plan-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px}
 .plan-features{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
 .plan-feature{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px}
 .plan-feature::before{content:'✓';color:var(--accent);font-weight:700;flex-shrink:0}
+.btn-subscribe{width:100%;padding:14px;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
+.btn-subscribe.locked{background:var(--accent);color:#000}
+.btn-subscribe.active{background:rgba(232,255,71,.1);color:var(--accent);border:1.5px solid var(--accent)}
+.btn-subscribe:active{opacity:.8}
+.access-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(71,255,140,.1);color:var(--green)}
 
-/* STRIPE LOADING */
-.stripe-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;color:var(--muted);font-size:13px}
-
+/* TOAST */
 .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--accent);color:#000;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;z-index:500;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
 </head>
 <body>
 
-<!-- AUTH SCREEN -->
+<!-- AUTH -->
 <div id="auth-screen">
   <div class="auth-logo">UPSIDE DOWN<small>TRAINING</small></div>
   <div class="auth-bar"></div>
@@ -313,15 +319,14 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   </div>
 </div>
 
-<!-- MAIN APP -->
 <div id="main-app" style="display:none">
 
-  <!-- PAGE: PROG -->
+  <!-- PAGE PROG -->
   <div class="page active" id="page-prog">
     <div class="topbar">
       <div>
         <div class="topbar-title" id="prog-topbar-title">UPSIDE DOWN</div>
-        <div class="topbar-sub" id="prog-topbar-date">Chargement...</div>
+        <div class="topbar-sub" id="prog-topbar-date">—</div>
       </div>
       <button class="avatar-btn" id="avatar-btn" onclick="goPage('profil')">?</button>
     </div>
@@ -337,15 +342,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div id="sessions-area"></div>
   </div>
 
-  <!-- PAGE: PR -->
-  <div class="page" id="page-pr">
+  <!-- PAGE PR -->
+  <div class="page" id="page-pr" style="display:none">
     <div class="topbar">
-      <div>
-        <div class="topbar-title">MES PR</div>
-        <div class="topbar-sub">Records personnels</div>
-      </div>
+      <div><div class="topbar-title">MES PR</div><div class="topbar-sub">Records personnels</div></div>
     </div>
-    <div class="pr-search"><input type="text" placeholder="Rechercher un mouvement..." id="pr-search-input" oninput="filterMovements()"></div>
+    <div class="pr-search"><input type="text" placeholder="Rechercher..." id="pr-search-input" oninput="filterMovements()"></div>
     <div class="pr-cats" id="pr-cats">
       <button class="cat-btn active" data-cat="all" onclick="filterCat('all',this)">Tous</button>
       <button class="cat-btn" data-cat="haltero" onclick="filterCat('haltero',this)">Haltéro</button>
@@ -356,41 +358,74 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div id="movements-list"></div>
   </div>
 
-  <!-- PAGE: ADMIN -->
+  <!-- PAGE BENCHMARKS -->
+  <div class="page" id="page-bench" style="display:none">
+    <div class="topbar">
+      <div><div class="topbar-title">BENCHMARKS</div><div class="topbar-sub">Tests & références</div></div>
+    </div>
+    <div class="bench-cats" id="bench-cats">
+      <button class="cat-btn active" data-bcat="all" onclick="filterBench('all',this)">Tous</button>
+      <button class="cat-btn" data-bcat="girl" onclick="filterBench('girl',this)">Girls WODs</button>
+      <button class="cat-btn" data-bcat="test" onclick="filterBench('test',this)">Tests Force</button>
+      <button class="cat-btn" data-bcat="custom" onclick="filterBench('custom',this)">Custom</button>
+    </div>
+    <div id="bench-list"></div>
+  </div>
+
+  <!-- PAGE ADMIN -->
   <div class="page" id="page-admin" style="display:none">
     <div class="topbar">
-      <div>
-        <div class="topbar-title">ADMIN</div>
-        <div class="topbar-sub">Gestion programmation</div>
-      </div>
+      <div><div class="topbar-title">ADMIN</div><div class="topbar-sub">Gestion</div></div>
     </div>
     <div class="admin-tabs">
       <button class="admin-tab-btn active" onclick="adminTab('progs',this)">Programmes</button>
       <button class="admin-tab-btn" onclick="adminTab('new-session',this)">+ Séance</button>
       <button class="admin-tab-btn" onclick="adminTab('sessions',this)">Séances</button>
+      <button class="admin-tab-btn" onclick="adminTab('benchmarks',this)">Benchmarks</button>
       <button class="admin-tab-btn" onclick="adminTab('athletes',this)">Athlètes</button>
     </div>
 
     <!-- PROGRAMMES -->
     <div class="admin-panel active" id="admin-progs">
       <div class="prog-grid" id="admin-prog-grid"></div>
-      <button class="btn-primary" onclick="showNewProgModal()">+ Nouveau programme</button>
+      <div class="new-prog-form" id="new-prog-form" style="display:none">
+        <div class="new-prog-title">Nouveau programme</div>
+        <div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="np-name" placeholder="Ex: Strength & Conditioning"></div>
+        <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="np-desc" placeholder="Description courte"></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Prix/mois (€)</label><input type="number" class="form-input" id="np-price" placeholder="0"></div>
+          <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="np-type"><option value="subscription">Abonnement</option><option value="oneshot">One-shot</option></select></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Couleur</label>
+          <div class="color-picker" id="np-colors">
+            <div class="color-swatch selected" data-color="#e8ff47" style="background:#e8ff47" onclick="selectColor('#e8ff47',this)"></div>
+            <div class="color-swatch" data-color="#47c8ff" style="background:#47c8ff" onclick="selectColor('#47c8ff',this)"></div>
+            <div class="color-swatch" data-color="#ff8c47" style="background:#ff8c47" onclick="selectColor('#ff8c47',this)"></div>
+            <div class="color-swatch" data-color="#c847ff" style="background:#c847ff" onclick="selectColor('#c847ff',this)"></div>
+            <div class="color-swatch" data-color="#47ff8c" style="background:#47ff8c" onclick="selectColor('#47ff8c',this)"></div>
+            <div class="color-swatch" data-color="#ff4747" style="background:#ff4747" onclick="selectColor('#ff4747',this)"></div>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Icône</label>
+          <div class="icon-picker" id="np-icons">
+            ${['🏟','💪','🧒','⚡','🏋️','🤸','🎯','🔥','⭐','🦁'].map(ic=>`<button class="icon-btn ${ic==='🏟'?'selected':''}" data-icon="${ic}" onclick="selectIcon('${ic}',this)">${ic}</button>`).join('')}
+          </div>
+        </div>
+        <button class="btn-primary" onclick="saveNewProg()">Créer le programme</button>
+        <button class="btn-secondary" onclick="document.getElementById('new-prog-form').style.display='none'">Annuler</button>
+      </div>
+      <button class="btn-primary" id="btn-show-new-prog" onclick="document.getElementById('new-prog-form').style.display='block';this.style.display='none'">+ Nouveau programme</button>
     </div>
 
     <!-- NOUVELLE SÉANCE -->
     <div class="admin-panel" id="admin-new-session">
-      <div class="form-group">
-        <label class="form-label">Programme</label>
-        <select class="form-select" id="f-prog"></select>
-      </div>
+      <div class="form-group"><label class="form-label">Programme</label><select class="form-select" id="f-prog"></select></div>
       <div class="form-row">
-        <div class="form-group">
-          <label class="form-label">Date</label>
-          <input type="date" class="form-input" id="f-date">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Type</label>
-          <select class="form-select" id="f-type">
+        <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="f-date"></div>
+        <div class="form-group"><label class="form-label">Type</label>
+          <select class="form-select" id="f-type" onchange="toggleSetsField()">
             <option value="wod">WOD</option>
             <option value="strength">Force</option>
             <option value="skill">Skill</option>
@@ -399,28 +434,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
           </select>
         </div>
       </div>
-      <div class="form-group">
-        <label class="form-label">Titre</label>
-        <input type="text" class="form-input" id="f-title" placeholder="Ex: AMRAP 20 — Push/Pull">
+      <div class="form-group" id="sets-field" style="display:none">
+        <label class="form-label">Nombre de séries</label>
+        <input type="number" class="form-input" id="f-sets" min="1" max="10" placeholder="Ex: 5">
       </div>
-      <div class="form-group">
-        <label class="form-label">Contenu</label>
-        <textarea class="form-textarea" id="f-content" placeholder="5 rounds:&#10;- 10 Pull-ups&#10;- 15 Push-ups&#10;- 20 Air Squats"></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Intensité — <span id="f-int-val">7</span>/10</label>
-        <input type="range" min="1" max="10" value="7" id="f-intensity" oninput="document.getElementById('f-int-val').textContent=this.value">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Target</label>
-        <textarea class="form-textarea" id="f-target" style="min-height:80px" placeholder="Objectif par niveau..."></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Coaching Tips</label>
-        <textarea class="form-textarea" id="f-tips" style="min-height:90px" placeholder="Points techniques clés..."></textarea>
-      </div>
-      <div class="form-group">
-        <label class="form-label">Type de score</label>
+      <div class="form-group"><label class="form-label">Titre</label><input type="text" class="form-input" id="f-title" placeholder="Ex: Back Squat 5x5"></div>
+      <div class="form-group"><label class="form-label">Contenu</label><textarea class="form-textarea" id="f-content" placeholder="Détails de la séance..."></textarea></div>
+      <div class="form-group"><label class="form-label">Intensité — <span id="f-int-val">7</span>/10</label><input type="range" min="1" max="10" value="7" id="f-intensity" oninput="document.getElementById('f-int-val').textContent=this.value"></div>
+      <div class="form-group"><label class="form-label">Target</label><textarea class="form-textarea" id="f-target" style="min-height:80px" placeholder="Objectif par niveau..."></textarea></div>
+      <div class="form-group"><label class="form-label">Coaching Tips</label><textarea class="form-textarea" id="f-tips" style="min-height:90px" placeholder="Points techniques clés..."></textarea></div>
+      <div class="form-group"><label class="form-label">Type de score</label>
         <select class="form-select" id="f-score-type">
           <option value="time">Temps (mm:ss)</option>
           <option value="reps">Reps</option>
@@ -429,25 +452,41 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
           <option value="calories">Calories</option>
         </select>
       </div>
-      <div class="form-group">
-        <label class="form-label">YouTube (optionnel)</label>
-        <input type="text" class="form-input" id="f-youtube" placeholder="https://youtube.com/watch?v=...">
-      </div>
-      <div class="form-group">
-        <label class="form-label">Libellé vidéo</label>
-        <input type="text" class="form-input" id="f-ytlabel" placeholder="Ex: Démo technique">
-      </div>
+      <div class="form-group"><label class="form-label">YouTube (optionnel)</label><input type="text" class="form-input" id="f-youtube" placeholder="https://youtube.com/watch?v=..."></div>
+      <div class="form-group"><label class="form-label">Libellé vidéo</label><input type="text" class="form-input" id="f-ytlabel" placeholder="Ex: Démo technique"></div>
       <button class="btn-primary" onclick="saveSession()">Publier la séance</button>
     </div>
 
     <!-- LISTE SÉANCES -->
     <div class="admin-panel" id="admin-sessions">
-      <div class="form-group" style="margin-bottom:12px">
-        <select class="form-select" id="admin-filter-prog" onchange="loadAdminSessions()">
-          <option value="">Tous les programmes</option>
-        </select>
-      </div>
+      <div class="form-group" style="margin-bottom:12px"><select class="form-select" id="admin-filter-prog" onchange="loadAdminSessions()"><option value="">Tous les programmes</option></select></div>
       <div id="admin-sessions-list"></div>
+    </div>
+
+    <!-- BENCHMARKS ADMIN -->
+    <div class="admin-panel" id="admin-benchmarks">
+      <div id="admin-bench-list" style="margin-bottom:16px"></div>
+      <div class="new-prog-form">
+        <div class="new-prog-title">+ Nouveau benchmark</div>
+        <div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="b-name" placeholder="Ex: Mon WOD Custom"></div>
+        <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="b-desc" placeholder="Description courte"></div>
+        <div class="form-group"><label class="form-label">Contenu</label><textarea class="form-textarea" id="b-content" style="min-height:80px" placeholder="Détails du benchmark..."></textarea></div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Type score</label>
+            <select class="form-select" id="b-score-type">
+              <option value="time">Temps</option><option value="reps">Reps</option>
+              <option value="rounds">Rounds</option><option value="weight">Charge</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Catégorie</label>
+            <select class="form-select" id="b-category">
+              <option value="custom">Custom</option><option value="girl">Girl WOD</option>
+              <option value="hero">Hero WOD</option><option value="test">Test</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn-primary" onclick="saveBenchmark()">Créer le benchmark</button>
+      </div>
     </div>
 
     <!-- ATHLÈTES -->
@@ -456,68 +495,40 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     </div>
   </div>
 
-  <!-- PAGE: PROFIL -->
-  <div class="page" id="page-profil">
-    <div class="topbar">
-      <div>
-        <div class="topbar-title">PROFIL</div>
-      </div>
-    </div>
+  <!-- PAGE PROFIL -->
+  <div class="page" id="page-profil" style="display:none">
+    <div class="topbar"><div><div class="topbar-title">PROFIL</div></div></div>
     <div class="profil-header">
       <div class="profil-avatar" id="profil-avatar">?</div>
-      <div>
-        <div class="profil-name" id="profil-name">—</div>
-        <div class="profil-email" id="profil-email">—</div>
-      </div>
+      <div><div class="profil-name" id="profil-name">—</div><div class="profil-email" id="profil-email">—</div></div>
     </div>
     <div class="profil-stats">
-      <div class="stat-box"><div class="stat-val" id="stat-pr">—</div><div class="stat-lbl">PR enregistrés</div></div>
-      <div class="stat-box"><div class="stat-val" id="stat-wod">—</div><div class="stat-lbl">WODs scorés</div></div>
-      <div class="stat-box"><div class="stat-val" id="stat-days">—</div><div class="stat-lbl">Jours actifs</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-pr">—</div><div class="stat-lbl">PR</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-wod">—</div><div class="stat-lbl">WODs</div></div>
+      <div class="stat-box"><div class="stat-val" id="stat-bench">—</div><div class="stat-lbl">Benchmarks</div></div>
     </div>
-    <div class="menu-item" onclick="goPage('pr')">
-      <span class="menu-item-label">📊 Mes records (PR)</span>
-      <span class="menu-item-icon">›</span>
-    </div>
-    <div class="menu-item" id="admin-menu-item" style="display:none" onclick="goPage('admin')">
-      <span class="menu-item-label">⚙️ Administration</span>
-      <span class="menu-item-icon">›</span>
-    </div>
+    <div class="menu-item" onclick="goPage('pr')"><span class="menu-item-label">📊 Mes records (PR)</span><span>›</span></div>
+    <div class="menu-item" onclick="goPage('bench')"><span class="menu-item-label">🏆 Mes benchmarks</span><span>›</span></div>
+    <div class="menu-item" onclick="goPage('abos')"><span class="menu-item-label">💳 Mes abonnements</span><span>›</span></div>
+    <div class="menu-item" id="admin-menu-item" style="display:none" onclick="goPage('admin')"><span class="menu-item-label">⚙️ Administration</span><span>›</span></div>
     <button class="btn-logout" onclick="doLogout()">Se déconnecter</button>
   </div>
 
-  <!-- PAGE: ABONNEMENTS -->
+  <!-- PAGE ABOS -->
   <div class="page" id="page-abos" style="display:none">
-    <div class="topbar">
-      <div>
-        <div class="topbar-title">PROGRAMMES</div>
-        <div class="topbar-sub">Accès & abonnements</div>
-      </div>
-    </div>
-    <div class="sub-hero">
-      <div class="sub-hero-title">Choisis ton programme</div>
-      <div class="sub-hero-sub">Accès immédiat après paiement</div>
-    </div>
+    <div class="topbar"><div><div class="topbar-title">PROGRAMMES</div><div class="topbar-sub">Accès & abonnements</div></div></div>
+    <div class="sub-hero"><div class="sub-hero-title">Choisis ton programme</div><div class="sub-hero-sub">Accès immédiat après paiement</div></div>
     <div id="plans-list"></div>
-    <div style="padding:8px 20px 16px;text-align:center">
-      <div style="font-size:11px;color:var(--muted)">🔒 Paiement sécurisé par Stripe · Résiliation à tout moment</div>
-    </div>
+    <div style="padding:8px 20px 16px;text-align:center"><div style="font-size:11px;color:var(--muted)">🔒 Paiement sécurisé par Stripe · Résiliation à tout moment</div></div>
   </div>
 
   <!-- BOTTOM NAV -->
   <div class="bottom-nav" id="bottom-nav">
-    <button class="nav-btn active" data-page="prog" onclick="goPage('prog')">
-      <span class="nav-icon">🏋️</span><span class="nav-label">Prog</span>
-    </button>
-    <button class="nav-btn" data-page="pr" onclick="goPage('pr')">
-      <span class="nav-icon">📈</span><span class="nav-label">PR</span>
-    </button>
-    <button class="nav-btn" data-page="abos" onclick="goPage('abos')">
-      <span class="nav-icon">💳</span><span class="nav-label">Abos</span>
-    </button>
-    <button class="nav-btn" data-page="profil" onclick="goPage('profil')">
-      <span class="nav-icon">👤</span><span class="nav-label">Profil</span>
-    </button>
+    <button class="nav-btn active" data-page="prog" onclick="goPage('prog')"><span class="nav-icon">🏋️</span><span class="nav-label">Prog</span></button>
+    <button class="nav-btn" data-page="bench" onclick="goPage('bench')"><span class="nav-icon">🏆</span><span class="nav-label">Bench</span></button>
+    <button class="nav-btn" data-page="pr" onclick="goPage('pr')"><span class="nav-icon">📈</span><span class="nav-label">PR</span></button>
+    <button class="nav-btn" data-page="abos" onclick="goPage('abos')"><span class="nav-icon">💳</span><span class="nav-label">Abos</span></button>
+    <button class="nav-btn" data-page="profil" onclick="goPage('profil')"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
   </div>
 </div>
 
@@ -525,291 +536,226 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 <div class="modal-overlay" id="pr-modal">
   <div class="modal">
     <div class="modal-title" id="modal-mv-name">—</div>
-    <div class="modal-sub" id="modal-mv-unit">Entrer la valeur</div>
+    <div class="modal-sub" id="modal-mv-unit">Valeur</div>
     <input class="modal-input" id="modal-pr-val" type="number" step="0.5" min="0" placeholder="0">
     <input class="modal-date" id="modal-pr-date" type="date">
-    <div class="pr-history" id="modal-history"></div>
-    <button class="btn-modal-save" onclick="savePR()">Enregistrer le PR</button>
+    <div id="modal-history"></div>
+    <button class="btn-modal-save" onclick="savePR()">Enregistrer</button>
     <button class="btn-modal-cancel" onclick="closePRModal()">Annuler</button>
   </div>
 </div>
 
-<!-- TOAST -->
+<!-- BENCHMARK MODAL -->
+<div class="modal-overlay" id="bench-modal">
+  <div class="modal">
+    <div class="modal-title" id="bmodal-name">—</div>
+    <div class="modal-sub" id="bmodal-desc">—</div>
+    <div style="background:var(--card);border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.7;color:#ccc;white-space:pre-wrap" id="bmodal-content"></div>
+    <div class="level-selector">
+      <button class="level-btn rx active" onclick="selectBLevel('rx',this)">RX</button>
+      <button class="level-btn inter" onclick="selectBLevel('intermediate',this)">INTER</button>
+      <button class="level-btn found" onclick="selectBLevel('foundation',this)">FOUND</button>
+    </div>
+    <input class="modal-input" id="bmodal-score-val" type="text" placeholder="—">
+    <div class="modal-sub" id="bmodal-score-hint" style="margin-top:-8px;margin-bottom:12px">—</div>
+    <input class="modal-date" id="bmodal-date" type="date">
+    <div id="bmodal-history"></div>
+    <div id="bmodal-leaderboard" style="margin-top:12px"></div>
+    <button class="btn-modal-save" onclick="saveBenchScore()">Enregistrer</button>
+    <button class="btn-modal-cancel" onclick="closeBenchModal()">Fermer</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-const SUPABASE_URL = 'https://tltqtpbaaxiwwpvuzszt.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDA5NTQsImV4cCI6MjA5MzUxNjk1NH0.5LVedQ-ktLcTC6z2X0XIoqY-mqP9_tw-gzrt-KNfuuY';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const SUPABASE_URL='https://tltqtpbaaxiwwpvuzszt.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDA5NTQsImV4cCI6MjA5MzUxNjk1NH0.5LVedQ-ktLcTC6z2X0XIoqY-mqP9_tw-gzrt-KNfuuY';
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const STRIPE_PK='pk_live_51TTgoeGfW5FegIxCCDUZQvm2EakuXj3rC2UFYiRDXfvuaE42WwX3Hjys4734FK0p9Dqe5ngaCNKpR35ssPKRUVSH004VamRL0F';
+const stripe=Stripe(STRIPE_PK);
 
 // STATE
-let currentUser = null;
-let currentProfile = null;
-let programmes = [];
-let movements = [];
-let myPRs = {};
-let currentProg = null;
-let currentWeekOffset = 0;
-let selectedDate = new Date().toISOString().split('T')[0];
-let currentModalMovement = null;
-let isRx = true;
+let currentUser=null,currentProfile=null,programmes=[],movements=[],benchmarks=[],myPRs={},myAccess=new Set();
+let currentProg=null,currentWeekOffset=0,selectedDate=new Date().toISOString().split('T')[0];
+let currentModalMovement=null,currentBenchmark=null,currentBLevel='rx';
+let selectedColor='#e8ff47',selectedIcon='🏟';
+let currentCat='all',searchQuery='',currentBcat='all';
 
-const DAYS = ['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-const MONTHS_SHORT = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-const MONTHS_FULL = ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
-const CAT_LABELS = {haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio',autre:'Autre'};
-const TYPE_LABELS = {wod:'WOD',strength:'Force',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité'};
-
-// ===== INIT =====
-window.onload = async () => {
-  const { data: { session } } = await sb.auth.getSession();
-  if (session) {
-    currentUser = session.user;
-    await loadProfile();
-    initApp();
-  }
+const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+const TYPE_LABELS={wod:'WOD',strength:'Force',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité'};
+const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio',autre:'Autre'};
+const LEVEL_LABELS={rx:'RX',intermediate:'Inter',foundation:'Fond.'};
+const LEVEL_COLORS={rx:'var(--accent)',intermediate:'var(--blue)',foundation:'var(--orange)'};
+const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétitions',rounds:'Ex: 12 + 5',weight:'Charge en kg (ex: 85)',calories:'Nombre de calories'};
+const STRIPE_PLANS={
+  affiliate:{paymentLink:'https://buy.stripe.com/eVqaEX5X37FN2fheZx5AQ01',name:'Affiliate',icon:'🏟',price:'120€',period:'/mois',desc:'Programmation salle complète — CrossFit Sandglass.',features:['WOD quotidien','Séances force & skill','Coaching tips & targets','Suivi des scores','PR tracking'],color:'#e8ff47'},
+  training:{paymentLink:'https://buy.stripe.com/4gM9ATfxDaRZ1bd9Fd5AQ00',name:'Training',icon:'💪',price:'45€',period:'/mois',desc:'Préparation compétition Upside Down.',features:['Programmation compétition','Haltérophilie avancée','Périodisation structurée','Suivi performances','Accès coach direct'],color:'#ff8c47'}
 };
 
-// ===== AUTH =====
-let authMode = 'login';
-function authTab(mode) {
-  authMode = mode;
-  document.querySelectorAll('.auth-tab').forEach((t,i) => t.classList.toggle('active', (i===0&&mode==='login')||(i===1&&mode==='signup')));
-  document.getElementById('auth-name').style.display = mode === 'signup' ? 'block' : 'none';
-  document.querySelector('.btn-auth').textContent = mode === 'login' ? 'Se connecter' : 'Créer mon compte';
-  document.getElementById('auth-error').textContent = '';
+// INIT
+window.onload=async()=>{
+  const {data:{session}}=await sb.auth.getSession();
+  if(session){currentUser=session.user;await loadProfile();initApp();}
+};
+
+// AUTH
+let authMode='login';
+function authTab(mode){
+  authMode=mode;
+  document.querySelectorAll('.auth-tab').forEach((t,i)=>t.classList.toggle('active',(i===0&&mode==='login')||(i===1&&mode==='signup')));
+  document.getElementById('auth-name').style.display=mode==='signup'?'block':'none';
+  document.querySelector('.btn-auth').textContent=mode==='login'?'Se connecter':'Créer mon compte';
+  document.getElementById('auth-error').textContent='';
 }
-
-async function doAuth() {
-  const email = document.getElementById('auth-email').value.trim();
-  const pwd = document.getElementById('auth-pwd').value;
-  const name = document.getElementById('auth-name').value.trim();
-  const errEl = document.getElementById('auth-error');
-  errEl.textContent = '';
-
-  if (!email || !pwd) { errEl.textContent = 'Email et mot de passe requis'; return; }
-
+async function doAuth(){
+  const email=document.getElementById('auth-email').value.trim();
+  const pwd=document.getElementById('auth-pwd').value;
+  const name=document.getElementById('auth-name').value.trim();
+  const errEl=document.getElementById('auth-error');
+  errEl.textContent='';
+  if(!email||!pwd){errEl.textContent='Email et mot de passe requis';return;}
   let res;
-  if (authMode === 'login') {
-    res = await sb.auth.signInWithPassword({ email, password: pwd });
-  } else {
-    if (!name) { errEl.textContent = 'Prénom et nom requis'; return; }
-    res = await sb.auth.signUp({ email, password: pwd, options: { data: { full_name: name } } });
-  }
-
-  if (res.error) { errEl.textContent = res.error.message; return; }
-  currentUser = res.data.user;
-  await loadProfile();
-  initApp();
+  if(authMode==='login'){res=await sb.auth.signInWithPassword({email,password:pwd});}
+  else{if(!name){errEl.textContent='Prénom et nom requis';return;}res=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:name}}});}
+  if(res.error){errEl.textContent=res.error.message;return;}
+  currentUser=res.data.user;await loadProfile();initApp();
+}
+async function doLogout(){await sb.auth.signOut();currentUser=null;currentProfile=null;location.reload();}
+async function loadProfile(){
+  const {data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  currentProfile=data;
 }
 
-async function doLogout() {
-  await sb.auth.signOut();
-  currentUser = null; currentProfile = null;
-  document.getElementById('main-app').style.display = 'none';
-  document.getElementById('auth-screen').classList.remove('hidden');
-}
-
-async function loadProfile() {
-  const { data } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
-  currentProfile = data;
-}
-
-function initApp() {
+function initApp(){
   document.getElementById('auth-screen').classList.add('hidden');
-  document.getElementById('main-app').style.display = 'block';
-
-  // Update UI with user info
-  const initials = (currentProfile?.full_name || currentUser.email || '?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  document.getElementById('avatar-btn').textContent = initials;
-  document.getElementById('profil-avatar').textContent = initials;
-  document.getElementById('profil-name').textContent = currentProfile?.full_name || 'Athlète';
-  document.getElementById('profil-email').textContent = currentUser.email;
-
-  if (currentProfile?.role === 'admin') {
-    document.getElementById('admin-menu-item').style.display = 'flex';
-    // Add admin nav btn
-    const nav = document.getElementById('bottom-nav');
-    if (!document.querySelector('[data-page="admin"]')) {
-      const btn = document.createElement('button');
-      btn.className = 'nav-btn'; btn.dataset.page = 'admin';
-      btn.innerHTML = '<span class="nav-icon">⚙️</span><span class="nav-label">Admin</span>';
-      btn.onclick = () => goPage('admin');
-      nav.insertBefore(btn, nav.lastElementChild);
+  document.getElementById('main-app').style.display='block';
+  const init=(currentProfile?.full_name||currentUser.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('avatar-btn').textContent=init;
+  document.getElementById('profil-avatar').textContent=init;
+  document.getElementById('profil-name').textContent=currentProfile?.full_name||'Athlète';
+  document.getElementById('profil-email').textContent=currentUser.email;
+  if(currentProfile?.role==='admin'){
+    document.getElementById('admin-menu-item').style.display='flex';
+    if(!document.querySelector('[data-page="admin"]')){
+      const nav=document.getElementById('bottom-nav');
+      const btn=document.createElement('button');
+      btn.className='nav-btn';btn.dataset.page='admin';
+      btn.innerHTML='<span class="nav-icon">⚙️</span><span class="nav-label">Admin</span>';
+      btn.onclick=()=>goPage('admin');
+      nav.appendChild(btn);
     }
-    // page-admin visible via goPage uniquement
   }
-
-  loadProgrammes();
-  loadMovements();
-  updateDateLabel();
+  loadProgrammes();loadMovements();loadBenchmarks();
+  const d=new Date();
+  document.getElementById('prog-topbar-date').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
   handleStripeReturn();
 }
 
-// ===== NAVIGATION =====
-function goPage(page) {
-  document.querySelectorAll('.page').forEach(p => {
-    p.classList.remove('active');
-    p.style.display = 'none';
-  });
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-  const pg = document.getElementById(`page-${page}`);
-  if (pg) { pg.style.display = 'block'; pg.classList.add('active'); pg.scrollTop = 0; }
-  const btn = document.querySelector(`[data-page="${page}"]`);
-  if (btn) btn.classList.add('active');
-
-  if (page === 'pr') { loadMyPRs(); renderMovements(); }
-  if (page === 'profil') loadProfilStats();
-  if (page === 'admin') { loadAdminProgs(); loadAdminSessions(); loadAdminAthletes(); }
-  if (page === 'abos') renderPlans();
+// NAVIGATION
+function goPage(page){
+  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const pg=document.getElementById(`page-${page}`);
+  if(pg){pg.style.display='block';pg.classList.add('active');pg.scrollTop=0;}
+  const btn=document.querySelector(`[data-page="${page}"]`);
+  if(btn)btn.classList.add('active');
+  if(page==='pr'){loadMyPRs();renderMovements();}
+  if(page==='profil')loadProfilStats();
+  if(page==='admin'){loadAdminProgs();loadAdminSessions();loadAdminAthletes();loadAdminBenchmarks();}
+  if(page==='abos')renderPlans();
+  if(page==='bench'){loadMyBenchScores();renderBenchmarks();}
 }
 
-// ===== PROGRAMMES =====
-async function loadProgrammes() {
-  const { data } = await sb.from('programmes').select('*').eq('is_active', true).order('name');
-  programmes = data || [];
+// PROGRAMMES
+async function loadProgrammes(){
+  const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
+  programmes=data||[];
   renderProgTabs();
-  if (programmes.length > 0) {
-    currentProg = programmes[0];
-    activateProgTab(programmes[0].id);
-    renderDayStrip();
-    renderSessions();
-  }
+  if(programmes.length>0){currentProg=programmes[0];activateProgTab(programmes[0].id);renderDayStrip();renderSessions();}
 }
-
-function renderProgTabs() {
-  const tabs = document.getElementById('prog-tabs');
-  const sel = document.getElementById('f-prog');
-  const sel2 = document.getElementById('admin-filter-prog');
-
-  tabs.innerHTML = programmes.map((p,i) =>
-    `<button class="prog-tab ${i===0?`active`:'`'}" data-id="${p.id}" style="${i===0?`border-color:${p.color};color:${p.color};background:${p.color}18`:''}" onclick="selectProg('${p.id}')">${p.icon} ${p.name}</button>`
-  ).join('');
-
-  sel.innerHTML = programmes.map(p => `<option value="${p.id}">${p.icon} ${p.name}</option>`).join('');
-  sel2.innerHTML = '<option value="">Tous</option>' + programmes.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+function renderProgTabs(){
+  const tabs=document.getElementById('prog-tabs');
+  const sel=document.getElementById('f-prog');
+  const sel2=document.getElementById('admin-filter-prog');
+  tabs.innerHTML=programmes.map(p=>`<button class="prog-tab" data-id="${p.id}" onclick="selectProg('${p.id}')">${p.icon||'💪'} ${p.name}</button>`).join('');
+  sel.innerHTML=programmes.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  sel2.innerHTML='<option value="">Tous</option>'+programmes.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+  if(programmes.length>0)activateProgTab(programmes[0].id);
 }
-
-function selectProg(id) {
-  currentProg = programmes.find(p => p.id === id);
-  activateProgTab(id);
-  renderDayStrip();
-  renderSessions();
-}
-
-function activateProgTab(id) {
-  document.querySelectorAll('.prog-tab').forEach(t => {
-    const p = programmes.find(p => p.id === t.dataset.id);
-    if (!p) return;
-    if (t.dataset.id === id) {
-      t.style.borderColor = p.color; t.style.color = p.color; t.style.background = p.color+'18';
-    } else {
-      t.style.borderColor = ''; t.style.color = ''; t.style.background = '';
-      t.className = 'prog-tab';
-    }
+function selectProg(id){currentProg=programmes.find(p=>p.id===id);activateProgTab(id);renderDayStrip();renderSessions();}
+function activateProgTab(id){
+  document.querySelectorAll('.prog-tab').forEach(t=>{
+    const p=programmes.find(p=>p.id===t.dataset.id);if(!p)return;
+    if(t.dataset.id===id){t.style.borderColor=p.color;t.style.color=p.color;t.style.background=p.color+'18';}
+    else{t.style.cssText='';}
   });
-  if (currentProg) {
-    document.getElementById('prog-topbar-title').textContent = currentProg.name.toUpperCase();
-  }
+  if(currentProg)document.getElementById('prog-topbar-title').textContent=currentProg.name.toUpperCase();
 }
 
-// ===== WEEK / DAY =====
-function getWeekDates(offset = 0) {
-  const now = new Date();
-  const day = now.getDay();
-  const mon = new Date(now);
-  mon.setDate(now.getDate() - (day === 0 ? 6 : day - 1) + offset * 7);
-  return Array.from({length:7}, (_,i) => { const d = new Date(mon); d.setDate(mon.getDate()+i); return d; });
+// WEEK / DAY
+function getWeekDates(off=0){
+  const now=new Date(),day=now.getDay(),mon=new Date(now);
+  mon.setDate(now.getDate()-(day===0?6:day-1)+off*7);
+  return Array.from({length:7},(_,i)=>{const d=new Date(mon);d.setDate(mon.getDate()+i);return d;});
 }
-
-function getWeekNum(d) {
-  const dt = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  dt.setUTCDate(dt.getUTCDate() + 4 - (dt.getUTCDay()||7));
-  const y = new Date(Date.UTC(dt.getUTCFullYear(),0,1));
+function getWeekNum(d){
+  const dt=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));
+  dt.setUTCDate(dt.getUTCDate()+4-(dt.getUTCDay()||7));
+  const y=new Date(Date.UTC(dt.getUTCFullYear(),0,1));
   return Math.ceil((((dt-y)/86400000)+1)/7);
 }
-
-function updateDateLabel() {
-  const d = new Date();
-  document.getElementById('prog-topbar-date').textContent = `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
-}
-
-async function renderDayStrip() {
-  if (!currentProg) return;
-  const dates = getWeekDates(currentWeekOffset);
-  const wk = getWeekNum(dates[0]);
-  document.getElementById('week-label').textContent = `Sem. ${wk} — ${MONTHS_SHORT[dates[0].getMonth()]}`;
-
-  // Fetch which dates have sessions
-  const isos = dates.map(d => d.toISOString().split('T')[0]);
-  const { data } = await sb.from('sessions').select('date').eq('programme_id', currentProg.id).in('date', isos);
-  const withContent = new Set((data||[]).map(s => s.date));
-
-  const strip = document.getElementById('day-strip');
-  strip.innerHTML = dates.map(d => {
-    const iso = d.toISOString().split('T')[0];
-    const active = iso === selectedDate;
-    const has = withContent.has(iso);
-    return `<div class="day-pill ${active?'active':''} ${has?'has-content':''}" onclick="selectDate('${iso}')">
-      <div class="day-name">${DAYS[d.getDay()]}</div>
-      <div class="day-num">${d.getDate()}</div>
+async function renderDayStrip(){
+  if(!currentProg)return;
+  const dates=getWeekDates(currentWeekOffset);
+  const wk=getWeekNum(dates[0]);
+  document.getElementById('week-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
+  const isos=dates.map(d=>d.toISOString().split('T')[0]);
+  const {data}=await sb.from('sessions').select('date').eq('programme_id',currentProg.id).in('date',isos);
+  const withContent=new Set((data||[]).map(s=>s.date));
+  document.getElementById('day-strip').innerHTML=dates.map(d=>{
+    const iso=d.toISOString().split('T')[0];
+    return `<div class="day-pill ${iso===selectedDate?'active':''} ${withContent.has(iso)?'has-content':''}" onclick="selectDate('${iso}')">
+      <div class="day-name">${DAYS[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>
     </div>`;
   }).join('');
 }
+function selectDate(iso){selectedDate=iso;renderDayStrip();renderSessions();}
+function changeWeek(dir){currentWeekOffset+=dir;renderDayStrip();renderSessions();}
 
-function selectDate(iso) {
-  selectedDate = iso;
-  renderDayStrip();
-  renderSessions();
+// SESSIONS
+async function renderSessions(){
+  if(!currentProg)return;
+  const area=document.getElementById('sessions-area');
+  area.innerHTML='<div class="spinner"></div>';
+  const {data:sessions}=await sb.from('sessions').select('*').eq('programme_id',currentProg.id).eq('date',selectedDate).order('type');
+  if(!sessions||sessions.length===0){area.innerHTML='<div class="empty fade-up"><div class="empty-icon">🗓</div><p>Pas de séance<br>programmée ce jour.</p></div>';return;}
+  area.innerHTML='';
+  for(const s of sessions){area.insertAdjacentHTML('beforeend',await buildSessionCard(s));}
+  for(const s of sessions){loadScores(s.id,s.score_type,s.sets);}
 }
 
-function changeWeek(dir) {
-  currentWeekOffset += dir;
-  renderDayStrip();
-  renderSessions();
-}
+async function buildSessionCard(s){
+  const ytId=s.youtube_url?extractYTId(s.youtube_url):null;
+  const videoHtml=ytId?`<div style="margin-top:14px"><div class="video-lbl">${s.youtube_label||'Vidéo'}</div><div class="video-box"><iframe src="https://www.youtube.com/embed/${ytId}" allowfullscreen loading="lazy"></iframe></div></div>`:'';
+  const intensity=s.intensity;
+  let intHtml='';
+  if(intensity){const pct=intensity*10;const col=intensity<=4?'var(--blue)':intensity<=7?'var(--accent)':'var(--red)';intHtml=`<div class="intensity-bar"><div class="int-row"><span class="int-label">Intensité</span><span class="int-val" style="color:${col}">${intensity}/10</span></div><div class="int-track"><div class="int-fill" style="width:${pct}%;background:${col}"></div></div></div>`;}
+  const targetHtml=s.target?`<div class="info-block"><div class="info-block-title"><span>🎯</span> Target</div><div class="info-block-text">${s.target}</div></div>`:'';
+  const tipsHtml=s.tips?`<div class="info-block"><div class="info-block-title"><span>💡</span> Coaching Tips</div><div class="info-block-text">${s.tips}</div></div>`:'';
+  const content=(s.content||'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
+  const scoreTypeLabel={time:'Temps',reps:'Reps',rounds:'Rounds',weight:'Charge (kg)',calories:'Calories'}[s.score_type]||'Score';
+  const isStrength=s.type==='strength'&&s.sets>0;
 
-async function renderSessions() {
-  if (!currentProg) return;
-  const area = document.getElementById('sessions-area');
-  area.innerHTML = '<div class="spinner"></div>';
-
-  const { data: sessions } = await sb.from('sessions').select('*').eq('programme_id', currentProg.id).eq('date', selectedDate).order('type');
-
-  if (!sessions || sessions.length === 0) {
-    area.innerHTML = `<div class="empty fade-up"><div class="empty-icon">🗓</div><p>Pas de séance<br>programmée ce jour.</p></div>`;
-    return;
+  // Score input area
+  let scoreInputHtml='';
+  if(isStrength){
+    const setsArr=Array.from({length:s.sets},(_,i)=>`<div class="set-row"><div class="set-label">Série ${i+1}</div><input class="set-input" id="set-${s.id}-${i}" type="number" step="0.5" min="0" placeholder="kg"></div>`).join('');
+    scoreInputHtml=`<div class="sets-inputs" id="sets-${s.id}">${setsArr}</div>`;
+  } else {
+    scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>`;
   }
-
-  area.innerHTML = '';
-  for (const s of sessions) {
-    const card = await buildSessionCard(s);
-    area.insertAdjacentHTML('beforeend', card);
-  }
-
-  // Load scores for each session
-  for (const s of sessions) {
-    loadScores(s.id);
-  }
-}
-
-async function buildSessionCard(s) {
-  const ytId = s.youtube_url ? extractYTId(s.youtube_url) : null;
-  const videoHtml = ytId ? `<div style="margin-top:14px"><div class="video-lbl">${s.youtube_label||'Vidéo'}</div><div class="video-box"><iframe src="https://www.youtube.com/embed/${ytId}" allowfullscreen loading="lazy"></iframe></div></div>` : '';
-
-  const intensity = s.intensity;
-  let intHtml = '';
-  if (intensity) {
-    const pct = intensity * 10;
-    const col = intensity <= 4 ? 'var(--blue)' : intensity <= 7 ? 'var(--accent)' : 'var(--red)';
-    intHtml = `<div class="intensity-bar"><div class="int-row"><span class="int-label">Intensité</span><span class="int-val" style="color:${col}">${intensity}/10</span></div><div class="int-track"><div class="int-fill" style="width:${pct}%;background:${col}"></div></div></div>`;
-  }
-
-  const targetHtml = s.target ? `<div class="info-block"><div class="info-block-title"><span>🎯</span> Target</div><div class="info-block-text">${s.target}</div></div>` : '';
-  const tipsHtml = s.tips ? `<div class="info-block"><div class="info-block-title"><span>💡</span> Coaching Tips</div><div class="info-block-text">${s.tips}</div></div>` : '';
-
-  const content = (s.content||'').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>');
-  const scoreTypeLabel = {time:'Temps',reps:'Reps',rounds:'Rounds',weight:'Charge (kg)',calories:'Calories'}[s.score_type]||'Score';
 
   return `<div class="session-card fade-up" id="sc-${s.id}">
     <div class="session-header">
@@ -822,437 +768,444 @@ async function buildSessionCard(s) {
       ${intHtml}${targetHtml}${tipsHtml}${videoHtml}
       <div class="score-section">
         <div class="score-title">📊 ${scoreTypeLabel} — Mon résultat</div>
-        <div class="rx-toggle">
-          <button class="toggle-cb on" id="rx-${s.id}" onclick="toggleRx('${s.id}')"></button>
-          <label onclick="toggleRx('${s.id}')">RX</label>
+        <div class="level-selector">
+          <button class="level-btn rx active" onclick="selectLevel('${s.id}','rx',this)">RX</button>
+          <button class="level-btn inter" onclick="selectLevel('${s.id}','intermediate',this)">INTER</button>
+          <button class="level-btn found" onclick="selectLevel('${s.id}','foundation',this)">FOND.</button>
         </div>
-        <div class="score-input-row">
-          <input class="score-input" id="score-input-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}">
-          <button class="btn-score" onclick="submitScore('${s.id}','${s.score_type}')">Valider</button>
-        </div>
+        ${scoreInputHtml}
+        <button class="btn-score" style="width:100%" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0})">✓ Valider mon score</button>
         <div class="scores-list" id="scores-${s.id}"><div class="spinner" style="width:16px;height:16px;margin:8px auto"></div></div>
       </div>
     </div>
   </div>`;
 }
 
-function getScorePlaceholder(type) {
-  return {time:'14:32',reps:'87',rounds:'12 + 5',weight:'85',calories:'42'}[type]||'—';
+function selectLevel(sessionId,level,btn){
+  const card=document.getElementById(`sc-${sessionId}`);
+  card.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  btn.dataset.level=level;
+}
+function getSelectedLevel(sessionId){
+  const card=document.getElementById(`sc-${sessionId}`);
+  const active=card?.querySelector('.level-btn.active');
+  if(!active)return'rx';
+  if(active.classList.contains('rx'))return'rx';
+  if(active.classList.contains('inter'))return'intermediate';
+  return'foundation';
 }
 
-function toggleRx(sessionId) {
-  const btn = document.getElementById(`rx-${sessionId}`);
-  btn.classList.toggle('on');
-}
+async function loadScores(sessionId,scoreType,sets){
+  const {data}=await sb.from('wod_scores').select('*,profiles(full_name)').eq('session_id',sessionId);
+  const el=document.getElementById(`scores-${sessionId}`);
+  if(!el)return;
+  if(!data||data.length===0){el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">Sois le premier à scorer !</div>';return;}
 
-async function loadScores(sessionId) {
-  const { data } = await sb.from('wod_scores').select('*, profiles(full_name)').eq('session_id', sessionId).order('score_value', { ascending: false });
-  const el = document.getElementById(`scores-${sessionId}`);
-  if (!el) return;
-  if (!data || data.length === 0) { el.innerHTML = '<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">Sois le premier à scorer !</div>'; return; }
+  // Sort: RX first, then intermediate, then foundation, then by score
+  const levelOrder={rx:0,intermediate:1,foundation:2};
+  const sorted=[...data].sort((a,b)=>{
+    if(levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
+    return(b.score_value||0)-(a.score_value||0);
+  });
 
-  const rankIcons = ['gold','silver','bronze'];
-  el.innerHTML = data.map((sc, i) => {
-    const isMe = sc.athlete_id === currentUser?.id;
-    return `<div class="score-row" style="${isMe?'border:1px solid rgba(232,255,71,.2)':''}">
+  const rankIcons=['gold','silver','bronze'];
+  el.innerHTML=sorted.map((sc,i)=>{
+    const isMe=sc.athlete_id===currentUser?.id;
+    const setsDetail=sc.sets_data?JSON.parse(typeof sc.sets_data==='string'?sc.sets_data:JSON.stringify(sc.sets_data)):null;
+    const setsHtml=setsDetail?`<div class="score-sets-detail">${setsDetail.map(s=>`S${s.set}: ${s.value}kg`).join(' · ')}</div>`:'';
+    return `<div class="score-row" style="${isMe?'border:1px solid rgba(232,255,71,.2)':''}" id="sr-${sc.id}">
       <div class="score-rank ${rankIcons[i]||''}">${i+1}</div>
-      <div class="score-name">${sc.profiles?.full_name||'Athlète'}${isMe?' 👈':''}</div>
-      <div>
-        <span class="score-val">${sc.score_text||sc.score_value}</span>
-        <span class="score-rx ${sc.rx?'rx-yes':'rx-no'}">${sc.rx?'RX':'SCALED'}</span>
+      <div style="flex:1">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="score-name">${sc.profiles?.full_name||'Athlète'}${isMe?' 👈':''}</span>
+          <span class="level-badge lbadge-${sc.level}">${LEVEL_LABELS[sc.level]||sc.level}</span>
+        </div>
+        ${setsHtml}
+      </div>
+      <div style="text-align:right">
+        <div class="score-val">${sc.score_text||sc.score_value||'—'}</div>
+      </div>
+    </div>
+    <div class="score-actions">
+      <button class="react-btn" id="react-${sc.id}" onclick="toggleReaction('${sc.id}')">❤️ <span id="react-count-${sc.id}">0</span></button>
+      <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
+    </div>
+    <div class="comments-area" id="comments-${sc.id}">
+      <div id="comments-list-${sc.id}"></div>
+      <div class="comment-input-row">
+        <input class="comment-input" id="comment-input-${sc.id}" placeholder="Écris un commentaire...">
+        <button class="btn-comment-send" onclick="sendComment('${sc.id}')">↑</button>
       </div>
     </div>`;
   }).join('');
+
+  // Load reactions & comments
+  for(const sc of sorted){
+    loadReactions(sc.id);
+    loadComments(sc.id);
+  }
 }
 
-async function submitScore(sessionId, scoreType) {
-  const input = document.getElementById(`score-input-${sessionId}`);
-  const rxBtn = document.getElementById(`rx-${sessionId}`);
-  const val = input.value.trim();
-  if (!val) { showToast('⚠️ Entre ton score'); return; }
+async function submitScore(sessionId,scoreType,isStrength,sets){
+  let scoreText='',scoreValue=0,setsData=null;
+  const level=getSelectedLevel(sessionId);
 
-  const rx = rxBtn.classList.contains('on');
-  const numVal = parseFloat(val.replace(':','').replace('+','')) || 0;
+  if(isStrength&&sets>0){
+    const setValues=[];
+    for(let i=0;i<sets;i++){
+      const v=parseFloat(document.getElementById(`set-${sessionId}-${i}`)?.value||0);
+      setValues.push({set:i+1,value:v});
+    }
+    const maxVal=Math.max(...setValues.map(s=>s.value));
+    scoreValue=maxVal;
+    scoreText=setValues.map(s=>`S${s.set}:${s.value}kg`).join(' / ');
+    setsData=setValues;
+  } else {
+    const input=document.getElementById(`score-input-${sessionId}`);
+    scoreText=input?.value.trim();
+    if(!scoreText){showToast('⚠️ Entre ton score');return;}
+    scoreValue=parseFloat(scoreText.replace(':','').replace('+',''))||0;
+  }
 
-  const { error } = await sb.from('wod_scores').upsert({
-    session_id: sessionId,
-    athlete_id: currentUser.id,
-    score_type: scoreType,
-    score_value: numVal,
-    score_text: val,
-    rx
-  }, { onConflict: 'session_id,athlete_id' });
+  const {error}=await sb.from('wod_scores').upsert({
+    session_id:sessionId,athlete_id:currentUser.id,
+    score_type:scoreType,score_value:scoreValue,score_text:scoreText,
+    level,sets_data:setsData?JSON.stringify(setsData):null
+  },{onConflict:'session_id,athlete_id'});
 
-  if (error) { showToast('❌ Erreur: ' + error.message); return; }
-  input.value = '';
+  if(error){showToast('❌ '+error.message);return;}
   showToast('✅ Score enregistré !');
-  loadScores(sessionId);
+  loadScores(sessionId,scoreType,sets);
 }
 
-// ===== PR =====
-async function loadMovements() {
-  const { data } = await sb.from('movements').select('*').eq('is_active', true).order('name');
-  movements = data || [];
+// REACTIONS
+async function loadReactions(scoreId){
+  const {data,count}=await sb.from('score_reactions').select('athlete_id',{count:'exact'}).eq('score_id',scoreId);
+  const countEl=document.getElementById(`react-count-${scoreId}`);
+  const btn=document.getElementById(`react-${scoreId}`);
+  if(countEl)countEl.textContent=count||0;
+  if(btn&&currentUser){
+    const liked=(data||[]).some(r=>r.athlete_id===currentUser.id);
+    btn.classList.toggle('liked',liked);
+  }
+}
+async function toggleReaction(scoreId){
+  const btn=document.getElementById(`react-${scoreId}`);
+  const liked=btn?.classList.contains('liked');
+  if(liked){await sb.from('score_reactions').delete().eq('score_id',scoreId).eq('athlete_id',currentUser.id);}
+  else{await sb.from('score_reactions').insert({score_id:scoreId,athlete_id:currentUser.id});}
+  loadReactions(scoreId);
 }
 
-async function loadMyPRs() {
-  if (!currentUser) return;
-  const { data } = await sb.from('athlete_prs').select('*').eq('athlete_id', currentUser.id).order('recorded_at', { ascending: false });
-  myPRs = {};
-  (data||[]).forEach(pr => {
-    if (!myPRs[pr.movement_id]) myPRs[pr.movement_id] = [];
-    myPRs[pr.movement_id].push(pr);
-  });
+// COMMENTS
+function toggleComments(scoreId){
+  const area=document.getElementById(`comments-${scoreId}`);
+  area?.classList.toggle('open');
+  if(area?.classList.contains('open'))loadComments(scoreId);
+}
+async function loadComments(scoreId){
+  const {data}=await sb.from('score_comments').select('*,profiles(full_name)').eq('score_id',scoreId).order('created_at');
+  const listEl=document.getElementById(`comments-list-${scoreId}`);
+  if(!listEl)return;
+  if(!data||data.length===0){listEl.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0">Pas encore de commentaire.</div>';return;}
+  listEl.innerHTML=data.map(c=>`<div class="comment-item">
+    <div class="comment-author">${c.profiles?.full_name||'Athlète'}</div>
+    <div class="comment-text">${c.content}</div>
+  </div>`).join('');
+}
+async function sendComment(scoreId){
+  const input=document.getElementById(`comment-input-${scoreId}`);
+  const content=input?.value.trim();
+  if(!content)return;
+  await sb.from('score_comments').insert({score_id:scoreId,athlete_id:currentUser.id,content});
+  input.value='';
+  loadComments(scoreId);
+  const area=document.getElementById(`comments-${scoreId}`);
+  if(!area?.classList.contains('open'))area?.classList.add('open');
+}
+
+// PR
+async function loadMovements(){const {data}=await sb.from('movements').select('*').eq('is_active',true).order('name');movements=data||[];}
+async function loadMyPRs(){
+  if(!currentUser)return;
+  const {data}=await sb.from('athlete_prs').select('*').eq('athlete_id',currentUser.id).order('recorded_at',{ascending:false});
+  myPRs={};
+  (data||[]).forEach(pr=>{if(!myPRs[pr.movement_id])myPRs[pr.movement_id]=[];myPRs[pr.movement_id].push(pr);});
   renderMovements();
 }
-
-let currentCat = 'all';
-let searchQuery = '';
-
-function filterCat(cat, btn) {
-  currentCat = cat;
-  document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderMovements();
-}
-
-function filterMovements() {
-  searchQuery = document.getElementById('pr-search-input').value.toLowerCase();
-  renderMovements();
-}
-
-function renderMovements() {
-  const list = document.getElementById('movements-list');
-  let filtered = movements;
-  if (currentCat !== 'all') filtered = filtered.filter(m => m.category === currentCat);
-  if (searchQuery) filtered = filtered.filter(m => m.name.toLowerCase().includes(searchQuery));
-
-  if (filtered.length === 0) { list.innerHTML = '<div class="empty"><div class="empty-icon">🔍</div><p>Aucun mouvement trouvé</p></div>'; return; }
-
-  list.innerHTML = filtered.map(m => {
-    const prs = myPRs[m.id] || [];
-    const best = prs[0];
-    const prHtml = best
-      ? `<div class="mv-pr"><div class="mv-pr-val">${best.value}</div><div class="mv-pr-unit">${m.unit}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`
-      : `<div class="mv-no-pr">+ Ajouter</div>`;
+function filterCat(cat,btn){currentCat=cat;document.querySelectorAll('.cat-btn[data-cat]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderMovements();}
+function filterMovements(){searchQuery=document.getElementById('pr-search-input').value.toLowerCase();renderMovements();}
+function renderMovements(){
+  let filtered=movements;
+  if(currentCat!=='all')filtered=filtered.filter(m=>m.category===currentCat);
+  if(searchQuery)filtered=filtered.filter(m=>m.name.toLowerCase().includes(searchQuery));
+  const list=document.getElementById('movements-list');
+  if(!filtered.length){list.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><p>Aucun mouvement</p></div>';return;}
+  list.innerHTML=filtered.map(m=>{
+    const prs=myPRs[m.id]||[];const best=prs[0];
+    const prHtml=best?`<div><div class="mv-pr-val">${best.value}</div><div class="mv-pr-unit">${m.unit}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`:`<div class="mv-no-pr">+ Ajouter</div>`;
     return `<div class="movement-item" onclick="openPRModal('${m.id}')">
-      <div class="mv-info"><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>
-      ${prHtml}
+      <div><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>${prHtml}
     </div>`;
   }).join('');
 }
-
-function openPRModal(movementId) {
-  currentModalMovement = movements.find(m => m.id === movementId);
-  if (!currentModalMovement) return;
-  document.getElementById('modal-mv-name').textContent = currentModalMovement.name;
-  document.getElementById('modal-mv-unit').textContent = `Valeur en ${currentModalMovement.unit}`;
-  document.getElementById('modal-pr-val').value = '';
-  document.getElementById('modal-pr-date').value = new Date().toISOString().split('T')[0];
-
-  // History
-  const prs = myPRs[movementId] || [];
-  const histEl = document.getElementById('modal-history');
-  if (prs.length > 0) {
-    const max = Math.max(...prs.map(p=>p.value));
-    histEl.innerHTML = `<div class="pr-hist-title">Historique</div>` +
-      prs.slice(0,5).map((p,i) => `<div class="pr-hist-item">
-        <div><span class="pr-hist-val">${p.value} ${currentModalMovement.unit}</span>${p.value===max?'<span class="pr-hist-new">PR</span>':''}</div>
-        <div class="pr-hist-date">${formatDate(p.recorded_at)}</div>
-      </div>`).join('');
-    // Mini chart
-    if (prs.length >= 2) histEl.insertAdjacentHTML('beforeend', buildMiniChart(prs.slice(0,8).reverse()));
-  } else {
-    histEl.innerHTML = '';
-  }
-
+function openPRModal(movementId){
+  currentModalMovement=movements.find(m=>m.id===movementId);if(!currentModalMovement)return;
+  document.getElementById('modal-mv-name').textContent=currentModalMovement.name;
+  document.getElementById('modal-mv-unit').textContent=`Valeur en ${currentModalMovement.unit}`;
+  document.getElementById('modal-pr-val').value='';
+  document.getElementById('modal-pr-date').value=new Date().toISOString().split('T')[0];
+  const prs=myPRs[movementId]||[];
+  const histEl=document.getElementById('modal-history');
+  if(prs.length>0){
+    const max=Math.max(...prs.map(p=>p.value));
+    histEl.innerHTML=`<div class="pr-hist-title">Historique</div>`+prs.slice(0,5).map(p=>`<div class="pr-hist-item"><div><span class="pr-hist-val">${p.value} ${currentModalMovement.unit}</span>${p.value===max?'<span class="pr-hist-new">PR</span>':''}</div><div class="pr-hist-date">${formatDate(p.recorded_at)}</div></div>`).join('');
+    if(prs.length>=2)histEl.insertAdjacentHTML('beforeend',buildMiniChart(prs.slice(0,8).reverse()));
+  } else {histEl.innerHTML='';}
   document.getElementById('pr-modal').classList.add('open');
 }
-
-function closePRModal() {
-  document.getElementById('pr-modal').classList.remove('open');
-  currentModalMovement = null;
+function closePRModal(){document.getElementById('pr-modal').classList.remove('open');currentModalMovement=null;}
+async function savePR(){
+  if(!currentModalMovement)return;
+  const val=parseFloat(document.getElementById('modal-pr-val').value);
+  const date=document.getElementById('modal-pr-date').value;
+  if(!val||val<=0){showToast('⚠️ Entre une valeur valide');return;}
+  const {error}=await sb.from('athlete_prs').insert({athlete_id:currentUser.id,movement_id:currentModalMovement.id,value:val,recorded_at:date});
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('🏆 PR enregistré !');closePRModal();await loadMyPRs();
+}
+function buildMiniChart(prs){
+  if(prs.length<2)return'';
+  const vals=prs.map(p=>p.value);const min=Math.min(...vals);const max=Math.max(...vals);const range=max-min||1;
+  const w=280,h=60,pad=8;
+  const pts=vals.map((v,i)=>`${pad+(i/(vals.length-1))*(w-pad*2)},${h-pad-((v-min)/range)*(h-pad*2)}`).join(' ');
+  return`<div class="mini-chart"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>${vals.map((v,i)=>{const x=pad+(i/(vals.length-1))*(w-pad*2);const y=h-pad-((v-min)/range)*(h-pad*2);return`<circle cx="${x}" cy="${y}" r="3" fill="var(--accent)"/>`;}).join('')}</svg></div>`;
 }
 
-async function savePR() {
-  if (!currentModalMovement) return;
-  const val = parseFloat(document.getElementById('modal-pr-val').value);
-  const date = document.getElementById('modal-pr-date').value;
-  if (!val || val <= 0) { showToast('⚠️ Entre une valeur valide'); return; }
-
-  const { error } = await sb.from('athlete_prs').insert({
-    athlete_id: currentUser.id,
-    movement_id: currentModalMovement.id,
-    value: val,
-    recorded_at: date
-  });
-
-  if (error) { showToast('❌ ' + error.message); return; }
-  showToast('🏆 PR enregistré !');
-  closePRModal();
-  await loadMyPRs();
+// BENCHMARKS
+async function loadBenchmarks(){const {data}=await sb.from('benchmarks').select('*').order('category,name');benchmarks=data||[];}
+let myBenchScores={};
+async function loadMyBenchScores(){
+  if(!currentUser)return;
+  const {data}=await sb.from('benchmark_scores').select('*').eq('athlete_id',currentUser.id).order('recorded_at',{ascending:false});
+  myBenchScores={};
+  (data||[]).forEach(s=>{if(!myBenchScores[s.benchmark_id])myBenchScores[s.benchmark_id]=[];myBenchScores[s.benchmark_id].push(s);});
+  renderBenchmarks();
 }
-
-function buildMiniChart(prs) {
-  if (prs.length < 2) return '';
-  const vals = prs.map(p => p.value);
-  const min = Math.min(...vals);
-  const max = Math.max(...vals);
-  const range = max - min || 1;
-  const w = 280; const h = 60; const pad = 8;
-  const pts = vals.map((v, i) => {
-    const x = pad + (i / (vals.length-1)) * (w - pad*2);
-    const y = h - pad - ((v-min)/range) * (h - pad*2);
-    return `${x},${y}`;
-  }).join(' ');
-  return `<div class="mini-chart"><svg viewBox="0 0 ${w} ${h}" preserveAspectRatio="none">
-    <polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-    ${vals.map((v,i) => {
-      const x = pad + (i/(vals.length-1))*(w-pad*2);
-      const y = h - pad - ((v-min)/range)*(h-pad*2);
-      return `<circle cx="${x}" cy="${y}" r="3" fill="var(--accent)"/>`;
-    }).join('')}
-  </svg></div>`;
-}
-
-// ===== PROFIL STATS =====
-async function loadProfilStats() {
-  if (!currentUser) return;
-  const [prs, scores] = await Promise.all([
-    sb.from('athlete_prs').select('id', {count:'exact'}).eq('athlete_id', currentUser.id),
-    sb.from('wod_scores').select('id', {count:'exact'}).eq('athlete_id', currentUser.id)
-  ]);
-  document.getElementById('stat-pr').textContent = prs.count || 0;
-  document.getElementById('stat-wod').textContent = scores.count || 0;
-  document.getElementById('stat-days').textContent = '—';
-}
-
-// ===== ADMIN =====
-async function loadAdminProgs() {
-  const grid = document.getElementById('admin-prog-grid');
-  const counts = {};
-  for (const p of programmes) {
-    const { count } = await sb.from('sessions').select('id', {count:'exact'}).eq('programme_id', p.id);
-    counts[p.id] = count || 0;
-  }
-  grid.innerHTML = programmes.map(p => `
-    <div class="prog-card" style="border-color:${p.color}22">
-      <div class="prog-card-icon">${p.icon}</div>
-      <div class="prog-card-name" style="color:${p.color}">${p.name}</div>
-      <div class="prog-card-desc">${p.description||''}</div>
-      <div class="prog-card-count" style="color:${p.color}">${counts[p.id]} séances</div>
-    </div>`).join('');
-}
-
-async function saveSession() {
-  const progId = document.getElementById('f-prog').value;
-  const date = document.getElementById('f-date').value;
-  const type = document.getElementById('f-type').value;
-  const title = document.getElementById('f-title').value.trim();
-  const content = document.getElementById('f-content').value.trim();
-  const intensity = parseInt(document.getElementById('f-intensity').value);
-  const target = document.getElementById('f-target').value.trim();
-  const tips = document.getElementById('f-tips').value.trim();
-  const scoreType = document.getElementById('f-score-type').value;
-  const youtube = document.getElementById('f-youtube').value.trim();
-  const ytlabel = document.getElementById('f-ytlabel').value.trim();
-
-  if (!progId || !date || !title || !content) { showToast('⚠️ Remplis les champs obligatoires'); return; }
-
-  const { error } = await sb.from('sessions').insert({
-    programme_id: progId, date, type, title, content,
-    intensity, target: target||null, tips: tips||null,
-    score_type: scoreType,
-    youtube_url: youtube||null, youtube_label: ytlabel||null,
-    created_by: currentUser.id
-  });
-
-  if (error) { showToast('❌ ' + error.message); return; }
-
-  // Reset
-  ['f-title','f-content','f-target','f-tips','f-youtube','f-ytlabel'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('f-intensity').value = 7;
-  document.getElementById('f-int-val').textContent = '7';
-  showToast('✅ Séance publiée !');
-  loadAdminSessions();
-}
-
-async function loadAdminSessions() {
-  const progId = document.getElementById('admin-filter-prog').value;
-  let q = sb.from('sessions').select('*, programmes(name,icon)').order('date', {ascending: false}).limit(50);
-  if (progId) q = q.eq('programme_id', progId);
-  const { data } = await q;
-  const list = document.getElementById('admin-sessions-list');
-  if (!data || data.length === 0) { list.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>Aucune séance.</p></div>'; return; }
-  list.innerHTML = data.map(s => `
-    <div class="sessions-list-item">
-      <div class="sli-info">
-        <div class="sli-title">${s.title}</div>
-        <div class="sli-meta">${formatDate(s.date)} · ${s.programmes?.icon||''} ${s.programmes?.name||''} · ${TYPE_LABELS[s.type]||s.type}</div>
-      </div>
-      <div class="sli-actions">
-        <button class="btn-delete" onclick="deleteSession('${s.id}')">✕</button>
-      </div>
-    </div>`).join('');
-}
-
-async function deleteSession(id) {
-  const { error } = await sb.from('sessions').delete().eq('id', id);
-  if (error) { showToast('❌ ' + error.message); return; }
-  showToast('🗑 Supprimée');
-  loadAdminSessions();
-}
-
-async function loadAdminAthletes() {
-  const { data } = await sb.from('profiles').select('*').order('full_name');
-  const list = document.getElementById('admin-athletes-list');
-  if (!data || data.length === 0) { list.innerHTML = '<div class="empty"><p>Aucun athlète inscrit.</p></div>'; return; }
-  list.innerHTML = data.map(p => {
-    const init = (p.full_name||p.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-    return `<div class="athlete-row">
-      <div class="athlete-avatar">${init}</div>
-      <div class="athlete-info">
-        <div class="athlete-name">${p.full_name||'—'}</div>
-        <div class="athlete-email">${p.email||''}</div>
-      </div>
-      <span class="athlete-role ${p.role==='admin'?'role-admin':'role-athlete'}">${p.role==='admin'?'Admin':'Athlète'}</span>
+function filterBench(cat,btn){currentBcat=cat;document.querySelectorAll('.cat-btn[data-bcat]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderBenchmarks();}
+function renderBenchmarks(){
+  let filtered=benchmarks;
+  if(currentBcat!=='all')filtered=filtered.filter(b=>b.category===currentBcat);
+  const list=document.getElementById('bench-list');
+  if(!filtered.length){list.innerHTML='<div class="empty"><div class="empty-icon">🏆</div><p>Aucun benchmark</p></div>';return;}
+  list.innerHTML=filtered.map(b=>{
+    const scores=myBenchScores[b.id]||[];const best=scores[0];
+    const scoreHtml=best?`<div class="bench-score"><div class="bench-score-val">${best.score_text||best.score_value}</div><div class="bench-score-lbl">${LEVEL_LABELS[best.level]||best.level}</div></div>`:`<div style="font-size:12px;color:var(--muted)">+ Score</div>`;
+    return`<div class="bench-item" onclick="openBenchModal('${b.id}')">
+      <div><div class="bench-name">${b.name}</div><div class="bench-desc">${b.description||''}</div></div>${scoreHtml}
     </div>`;
   }).join('');
 }
-
-function adminTab(tab, btn) {
-  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+function openBenchModal(benchmarkId){
+  currentBenchmark=benchmarks.find(b=>b.id===benchmarkId);if(!currentBenchmark)return;
+  document.getElementById('bmodal-name').textContent=currentBenchmark.name;
+  document.getElementById('bmodal-desc').textContent=currentBenchmark.description||'';
+  document.getElementById('bmodal-content').textContent=currentBenchmark.content||'';
+  document.getElementById('bmodal-score-val').value='';
+  document.getElementById('bmodal-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('bmodal-score-hint').textContent=SCORE_HINTS[currentBenchmark.score_type]||'';
+  document.querySelector('#bench-modal .level-btn.active')?.classList.remove('active');
+  document.querySelector('#bench-modal .level-btn.rx')?.classList.add('active');
+  currentBLevel='rx';
+  const scores=myBenchScores[benchmarkId]||[];
+  const histEl=document.getElementById('bmodal-history');
+  if(scores.length>0){histEl.innerHTML=`<div class="pr-hist-title">Mon historique</div>`+scores.slice(0,3).map(s=>`<div class="pr-hist-item"><span class="pr-hist-val">${s.score_text||s.score_value}</span> <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span><span class="pr-hist-date">${formatDate(s.recorded_at)}</span></div>`).join('');}
+  else{histEl.innerHTML='';}
+  loadBenchLeaderboard(benchmarkId);
+  document.getElementById('bench-modal').classList.add('open');
+}
+function closeBenchModal(){document.getElementById('bench-modal').classList.remove('open');currentBenchmark=null;}
+function selectBLevel(level,btn){
+  currentBLevel=level;
+  document.querySelectorAll('#bench-modal .level-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.querySelectorAll('.admin-panel').forEach(p => p.classList.remove('active'));
+}
+async function saveBenchScore(){
+  if(!currentBenchmark)return;
+  const val=document.getElementById('bmodal-score-val').value.trim();
+  const date=document.getElementById('bmodal-date').value;
+  if(!val){showToast('⚠️ Entre ton score');return;}
+  const numVal=parseFloat(val.replace(':',''))||0;
+  const {error}=await sb.from('benchmark_scores').insert({benchmark_id:currentBenchmark.id,athlete_id:currentUser.id,level:currentBLevel,score_value:numVal,score_text:val,recorded_at:date});
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('🏆 Score enregistré !');closeBenchModal();await loadMyBenchScores();
+}
+async function loadBenchLeaderboard(benchmarkId){
+  const {data}=await sb.from('benchmark_scores').select('*,profiles(full_name)').eq('benchmark_id',benchmarkId).order('level').order('score_value',{ascending:false});
+  const el=document.getElementById('bmodal-leaderboard');
+  if(!data||data.length===0){el.innerHTML='';return;}
+  const levelOrder={rx:0,intermediate:1,foundation:2};
+  const sorted=[...data].sort((a,b)=>levelOrder[a.level]-levelOrder[b.level]||(b.score_value-a.score_value));
+  el.innerHTML=`<div class="pr-hist-title">Leaderboard</div>`+sorted.slice(0,10).map((s,i)=>`<div class="pr-hist-item">
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Bebas Neue';font-size:16px;color:var(--muted)">${i+1}</span><span style="font-size:13px;font-weight:600">${s.profiles?.full_name||'Athlète'}</span><span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span></div>
+    <span class="pr-hist-val" style="font-size:16px">${s.score_text||s.score_value}</span>
+  </div>`).join('');
+}
+
+// PROFIL STATS
+async function loadProfilStats(){
+  if(!currentUser)return;
+  const [prs,scores,bench]=await Promise.all([
+    sb.from('athlete_prs').select('id',{count:'exact'}).eq('athlete_id',currentUser.id),
+    sb.from('wod_scores').select('id',{count:'exact'}).eq('athlete_id',currentUser.id),
+    sb.from('benchmark_scores').select('id',{count:'exact'}).eq('athlete_id',currentUser.id)
+  ]);
+  document.getElementById('stat-pr').textContent=prs.count||0;
+  document.getElementById('stat-wod').textContent=scores.count||0;
+  document.getElementById('stat-bench').textContent=bench.count||0;
+}
+
+// ADMIN
+async function loadAdminProgs(){
+  const grid=document.getElementById('admin-prog-grid');
+  const counts={};
+  for(const p of programmes){const {count}=await sb.from('sessions').select('id',{count:'exact'}).eq('programme_id',p.id);counts[p.id]=count||0;}
+  grid.innerHTML=programmes.map(p=>`<div class="prog-card-admin" style="border-color:${p.color}33"><div class="prog-card-icon">${p.icon||'💪'}</div><div class="prog-card-name" style="color:${p.color}">${p.name}</div><div class="prog-card-desc">${p.description||''}</div><div class="prog-card-count" style="color:${p.color}">${counts[p.id]} séances</div></div>`).join('');
+}
+function selectColor(color,el){selectedColor=color;document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));el.classList.add('selected');}
+function selectIcon(icon,el){selectedIcon=icon;document.querySelectorAll('.icon-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');}
+async function saveNewProg(){
+  const name=document.getElementById('np-name').value.trim();
+  const desc=document.getElementById('np-desc').value.trim();
+  const price=parseFloat(document.getElementById('np-price').value)||null;
+  const type=document.getElementById('np-type').value;
+  if(!name){showToast('⚠️ Nom requis');return;}
+  const slug=name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
+  const {error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,created_by:currentUser.id});
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Programme créé !');
+  document.getElementById('new-prog-form').style.display='none';
+  document.getElementById('btn-show-new-prog').style.display='block';
+  document.getElementById('np-name').value='';document.getElementById('np-desc').value='';
+  await loadProgrammes();loadAdminProgs();
+}
+function toggleSetsField(){
+  const type=document.getElementById('f-type').value;
+  document.getElementById('sets-field').style.display=type==='strength'?'block':'none';
+}
+async function saveSession(){
+  const progId=document.getElementById('f-prog').value;
+  const date=document.getElementById('f-date').value;
+  const type=document.getElementById('f-type').value;
+  const title=document.getElementById('f-title').value.trim();
+  const content=document.getElementById('f-content').value.trim();
+  const intensity=parseInt(document.getElementById('f-intensity').value);
+  const target=document.getElementById('f-target').value.trim();
+  const tips=document.getElementById('f-tips').value.trim();
+  const scoreType=document.getElementById('f-score-type').value;
+  const youtube=document.getElementById('f-youtube').value.trim();
+  const ytlabel=document.getElementById('f-ytlabel').value.trim();
+  const sets=type==='strength'?parseInt(document.getElementById('f-sets').value)||null:null;
+  if(!progId||!date||!title||!content){showToast('⚠️ Remplis les champs obligatoires');return;}
+  const {error}=await sb.from('sessions').insert({programme_id:progId,date,type,title,content,intensity,target:target||null,tips:tips||null,score_type:scoreType,youtube_url:youtube||null,youtube_label:ytlabel||null,sets,created_by:currentUser.id});
+  if(error){showToast('❌ '+error.message);return;}
+  ['f-title','f-content','f-target','f-tips','f-youtube','f-ytlabel'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
+  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  showToast('✅ Séance publiée !');loadAdminSessions();
+}
+async function loadAdminSessions(){
+  const progId=document.getElementById('admin-filter-prog').value;
+  let q=sb.from('sessions').select('*,programmes(name,icon)').order('date',{ascending:false}).limit(50);
+  if(progId)q=q.eq('programme_id',progId);
+  const {data}=await q;
+  const list=document.getElementById('admin-sessions-list');
+  if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucune séance.</p></div>';return;}
+  list.innerHTML=data.map(s=>`<div class="sessions-list-item"><div><div class="sli-title">${s.title}</div><div class="sli-meta">${formatDate(s.date)} · ${s.programmes?.icon||''} ${s.programmes?.name||''} · ${TYPE_LABELS[s.type]||s.type}</div></div><button class="btn-delete" onclick="deleteSession('${s.id}')">✕</button></div>`).join('');
+}
+async function deleteSession(id){const {error}=await sb.from('sessions').delete().eq('id',id);if(error){showToast('❌ '+error.message);return;}showToast('🗑 Supprimée');loadAdminSessions();}
+async function loadAdminBenchmarks(){
+  const {data}=await sb.from('benchmarks').select('*').order('category,name');
+  const el=document.getElementById('admin-bench-list');
+  if(!data||data.length===0){el.innerHTML='';return;}
+  el.innerHTML=`<div class="pr-hist-title">${data.length} benchmarks actifs</div>`+data.map(b=>`<div class="sessions-list-item"><div><div class="sli-title">${b.name}</div><div class="sli-meta">${b.category} · ${b.score_type}</div></div></div>`).join('');
+}
+async function saveBenchmark(){
+  const name=document.getElementById('b-name').value.trim();
+  const desc=document.getElementById('b-desc').value.trim();
+  const content=document.getElementById('b-content').value.trim();
+  const scoreType=document.getElementById('b-score-type').value;
+  const category=document.getElementById('b-category').value;
+  if(!name){showToast('⚠️ Nom requis');return;}
+  const {error}=await sb.from('benchmarks').insert({name,description:desc,content,score_type:scoreType,category,created_by:currentUser.id});
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Benchmark créé !');
+  ['b-name','b-desc','b-content'].forEach(id=>document.getElementById(id).value='');
+  await loadBenchmarks();loadAdminBenchmarks();
+}
+async function loadAdminAthletes(){
+  const {data}=await sb.from('profiles').select('*').order('full_name');
+  const list=document.getElementById('admin-athletes-list');
+  if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
+  list.innerHTML=data.map(p=>{
+    const init=(p.full_name||p.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    return`<div class="athlete-row"><div class="athlete-avatar">${init}</div><div style="flex:1"><div class="athlete-name">${p.full_name||'—'}</div><div class="athlete-email">${p.email||''}</div></div><span class="athlete-role ${p.role==='admin'?'role-admin':'role-athlete'}">${p.role==='admin'?'Admin':'Athlète'}</span></div>`;
+  }).join('');
+}
+function adminTab(tab,btn){
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
+  document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById(`admin-${tab}`).classList.add('active');
-  if (tab === 'sessions') loadAdminSessions();
-  if (tab === 'athletes') loadAdminAthletes();
-  if (tab === 'progs') loadAdminProgs();
+  if(tab==='sessions')loadAdminSessions();
+  if(tab==='athletes')loadAdminAthletes();
+  if(tab==='progs')loadAdminProgs();
+  if(tab==='benchmarks')loadAdminBenchmarks();
 }
 
-function showNewProgModal() {
-  showToast('💡 Crée le programme directement dans Supabase pour l\'instant');
+// STRIPE / ABOS
+async function loadMyAccess(){
+  if(!currentUser)return;
+  const {data}=await sb.from('programme_access').select('programme_id,programmes(slug)').eq('athlete_id',currentUser.id);
+  myAccess=new Set((data||[]).map(a=>a.programmes?.slug).filter(Boolean));
 }
-
-// ===== STRIPE =====
-const STRIPE_PK = 'pk_live_51TTgoeGfW5FegIxCCDUZQvm2EakuXj3rC2UFYiRDXfvuaE42WwX3Hjys4734FK0p9Dqe5ngaCNKpR35ssPKRUVSH004VamRL0F';
-const stripe = Stripe(STRIPE_PK);
-
-const STRIPE_PLANS = {
-  'affiliate': {
-    priceId: 'price_1TThBIGfW5FegIxCy3Bd5zmi',
-    paymentLink: 'https://buy.stripe.com/eVqaEX5X37FN2fheZx5AQ01',
-    name: 'Affiliate',
-    icon: '🏟',
-    price: '120€',
-    period: '/mois',
-    desc: 'Programmation salle complète — CrossFit Sandglass. Accès à tous les WODs, séances de force et skills.',
-    features: ['WOD quotidien', 'Séances force & skill', 'Coaching tips & targets', 'Suivi des scores', 'PR tracking'],
-    type: 'subscription',
-    color: '#e8ff47'
-  },
-  'training': {
-    priceId: 'price_1TThDzGfW5FegIxCGRb4q1tN',
-    paymentLink: 'https://buy.stripe.com/4gM9ATfxDaRZ1bd9Fd5AQ00',
-    name: 'Training',
-    icon: '💪',
-    price: '45€',
-    period: '/mois',
-    desc: 'Préparation compétition Upside Down. Programmation avancée pour athlètes en compétition.',
-    features: ['Programmation compétition', 'Haltérophilie avancée', 'Périodisation structurée', 'Suivi performances', 'Accès coach direct'],
-    type: 'subscription',
-    color: '#ff8c47'
-  }
-};
-
-let myAccess = new Set();
-
-async function loadMyAccess() {
-  if (!currentUser) return;
-  const { data } = await sb.from('programme_access').select('programme_id, programmes(slug)').eq('athlete_id', currentUser.id);
-  myAccess = new Set((data||[]).map(a => a.programmes?.slug).filter(Boolean));
-}
-
-async function renderPlans() {
+async function renderPlans(){
   await loadMyAccess();
-  const list = document.getElementById('plans-list');
-  list.innerHTML = Object.entries(STRIPE_PLANS).map(([slug, plan]) => {
-    const hasAccess = myAccess.has(slug) || currentProfile?.role === 'admin';
-    return `<div class="plan-card ${slug === 'affiliate' ? 'featured' : ''}">
-      <div class="plan-header">
-        <div>
-          <div style="font-size:28px;margin-bottom:4px">${plan.icon}</div>
-          <div class="plan-name" style="color:${plan.color}">${plan.name}</div>
-        </div>
-        <div class="plan-price">
-          <div class="plan-price-val">${plan.price}</div>
-          <div class="plan-price-period">${plan.period}</div>
-        </div>
-      </div>
+  const list=document.getElementById('plans-list');
+  list.innerHTML=Object.entries(STRIPE_PLANS).map(([slug,plan])=>{
+    const hasAccess=myAccess.has(slug)||currentProfile?.role==='admin';
+    return`<div class="plan-card ${slug==='affiliate'?'featured':''}">
+      <div class="plan-header"><div><div style="font-size:28px;margin-bottom:4px">${plan.icon}</div><div class="plan-name" style="color:${plan.color}">${plan.name}</div></div><div><div class="plan-price-val">${plan.price}</div><div class="plan-price-period">${plan.period}</div></div></div>
       <div class="plan-desc">${plan.desc}</div>
-      <div class="plan-features">
-        ${plan.features.map(f => `<div class="plan-feature">${f}</div>`).join('')}
-      </div>
-      ${hasAccess
-        ? `<div class="access-badge access-ok">✓ Accès actif</div>`
-        : `<button class="btn-subscribe locked" onclick="subscribeTo('${slug}')">
-            💳 S'abonner — ${plan.price}${plan.period}
-          </button>`
-      }
+      <div class="plan-features">${plan.features.map(f=>`<div class="plan-feature">${f}</div>`).join('')}</div>
+      ${hasAccess?`<div class="access-badge">✓ Accès actif</div>`:`<button class="btn-subscribe locked" onclick="subscribeTo('${slug}')">💳 S'abonner — ${plan.price}${plan.period}</button>`}
     </div>`;
   }).join('');
 }
-
-async function subscribeTo(slug) {
-  const plan = STRIPE_PLANS[slug];
-  if (!plan) return;
-  if (!currentUser) { showToast('⚠️ Connecte-toi d\'abord'); return; }
-  window.location.href = plan.paymentLink + '?prefilled_email=' + encodeURIComponent(currentUser.email);
+function subscribeTo(slug){
+  const plan=STRIPE_PLANS[slug];if(!plan)return;
+  if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
+  window.location.href=plan.paymentLink+'?prefilled_email='+encodeURIComponent(currentUser.email);
 }
-
-// Gérer retour après paiement Stripe
-async function handleStripeReturn() {
-  const params = new URLSearchParams(window.location.search);
-  if (params.get('success') === '1') {
-    const prog = params.get('prog');
-    showToast('🎉 Paiement réussi ! Accès activé.');
-    // Donner accès au programme
-    if (prog && currentUser) {
-      const programme = programmes.find(p => p.slug === prog);
-      if (programme) {
-        await sb.from('programme_access').upsert({
-          athlete_id: currentUser.id,
-          programme_id: programme.id
-        }, { onConflict: 'athlete_id,programme_id' });
-      }
+async function handleStripeReturn(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('success')==='1'){
+    const prog=params.get('prog');
+    showToast('🎉 Paiement réussi !');
+    if(prog&&currentUser){
+      const programme=programmes.find(p=>p.slug===prog);
+      if(programme)await sb.from('programme_access').upsert({athlete_id:currentUser.id,programme_id:programme.id},{onConflict:'athlete_id,programme_id'});
     }
-    window.history.replaceState({}, '', '/');
-    goPage('prog');
+    window.history.replaceState({},'','/');
   }
-  if (params.get('canceled') === '1') {
-    showToast('Paiement annulé.');
-    window.history.replaceState({}, '', '/');
-  }
+  if(params.get('canceled')==='1'){showToast('Paiement annulé.');window.history.replaceState({},'','/');}
 }
 
-// ===== UTILS =====
-function extractYTId(url) {
-  const m = url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);
-  return m ? m[1] : null;
-}
-
-function formatDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso + 'T12:00:00');
-  return `${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS_SHORT[d.getMonth()]}`;
-}
-
-function showToast(msg) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2800);
-}
+// UTILS
+function getScorePlaceholder(type){return{time:'14:32',reps:'87',rounds:'12 + 5',weight:'85',calories:'42'}[type]||'—';}
+function extractYTId(url){const m=url.match(/(?:v=|youtu\.be\/|embed\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null;}
+function formatDate(iso){if(!iso)return'—';const d=new Date(iso+'T12:00:00');return`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;}
+function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 </script>
 </body>
 </html>
