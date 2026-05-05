@@ -123,7 +123,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .level-btn{flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;letter-spacing:.5px}
 .level-btn.rx.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,.08)}
 .level-btn.inter.active{border-color:var(--blue);color:var(--blue);background:rgba(71,200,255,.08)}
-.level-btn.found.active{border-color:var(--orange);color:var(--orange);background:rgba(255,140,71,.08)}
+.level-btn.scaled.active{border-color:var(--orange);color:var(--orange);background:rgba(255,140,71,.08)}
+.level-btn.found.active{border-color:var(--purple);color:var(--purple);background:rgba(200,71,255,.08)}
 
 /* SETS INPUT */
 .sets-inputs{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
@@ -152,7 +153,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .level-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px}
 .lbadge-rx{background:rgba(232,255,71,.15);color:var(--accent)}
 .lbadge-intermediate{background:rgba(71,200,255,.12);color:var(--blue)}
-.lbadge-foundation{background:rgba(255,140,71,.12);color:var(--orange)}
+.lbadge-scaled{background:rgba(255,140,71,.12);color:var(--orange)}
+.lbadge-foundation{background:rgba(200,71,255,.12);color:var(--purple)}
 .score-sets-detail{font-size:11px;color:var(--muted);margin-top:2px}
 
 /* REACTIONS */
@@ -342,34 +344,23 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div id="sessions-area"></div>
   </div>
 
-  <!-- PAGE PR -->
+  <!-- PAGE PR + BENCHMARKS -->
   <div class="page" id="page-pr" style="display:none">
     <div class="topbar">
-      <div><div class="topbar-title">MES PR</div><div class="topbar-sub">Records personnels</div></div>
+      <div><div class="topbar-title">PERFS</div><div class="topbar-sub">PR & Benchmarks</div></div>
     </div>
-    <div class="pr-search"><input type="text" placeholder="Rechercher..." id="pr-search-input" oninput="filterMovements()"></div>
+    <div class="pr-search"><input type="text" placeholder="Rechercher..." id="pr-search-input" oninput="filterAll()"></div>
     <div class="pr-cats" id="pr-cats">
       <button class="cat-btn active" data-cat="all" onclick="filterCat('all',this)">Tous</button>
       <button class="cat-btn" data-cat="haltero" onclick="filterCat('haltero',this)">Haltéro</button>
       <button class="cat-btn" data-cat="force" onclick="filterCat('force',this)">Force</button>
       <button class="cat-btn" data-cat="gymnastic" onclick="filterCat('gymnastic',this)">Gym</button>
       <button class="cat-btn" data-cat="cardio" onclick="filterCat('cardio',this)">Cardio</button>
+      <button class="cat-btn" data-cat="girl" onclick="filterCat('girl',this)">Girls WODs</button>
+      <button class="cat-btn" data-cat="test" onclick="filterCat('test',this)">Tests</button>
+      <button class="cat-btn" data-cat="custom" onclick="filterCat('custom',this)">Custom</button>
     </div>
     <div id="movements-list"></div>
-  </div>
-
-  <!-- PAGE BENCHMARKS -->
-  <div class="page" id="page-bench" style="display:none">
-    <div class="topbar">
-      <div><div class="topbar-title">BENCHMARKS</div><div class="topbar-sub">Tests & références</div></div>
-    </div>
-    <div class="bench-cats" id="bench-cats">
-      <button class="cat-btn active" data-bcat="all" onclick="filterBench('all',this)">Tous</button>
-      <button class="cat-btn" data-bcat="girl" onclick="filterBench('girl',this)">Girls WODs</button>
-      <button class="cat-btn" data-bcat="test" onclick="filterBench('test',this)">Tests Force</button>
-      <button class="cat-btn" data-bcat="custom" onclick="filterBench('custom',this)">Custom</button>
-    </div>
-    <div id="bench-list"></div>
   </div>
 
   <!-- PAGE ADMIN -->
@@ -525,8 +516,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <!-- BOTTOM NAV -->
   <div class="bottom-nav" id="bottom-nav">
     <button class="nav-btn active" data-page="prog" onclick="goPage('prog')"><span class="nav-icon">🏋️</span><span class="nav-label">Prog</span></button>
-    <button class="nav-btn" data-page="bench" onclick="goPage('bench')"><span class="nav-icon">🏆</span><span class="nav-label">Bench</span></button>
-    <button class="nav-btn" data-page="pr" onclick="goPage('pr')"><span class="nav-icon">📈</span><span class="nav-label">PR</span></button>
+    <button class="nav-btn" data-page="pr" onclick="goPage('pr')"><span class="nav-icon">📈</span><span class="nav-label">PR & Bench</span></button>
     <button class="nav-btn" data-page="abos" onclick="goPage('abos')"><span class="nav-icon">💳</span><span class="nav-label">Abos</span></button>
     <button class="nav-btn" data-page="profil" onclick="goPage('profil')"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
   </div>
@@ -554,7 +544,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="level-selector">
       <button class="level-btn rx active" onclick="selectBLevel('rx',this)">RX</button>
       <button class="level-btn inter" onclick="selectBLevel('intermediate',this)">INTER</button>
-      <button class="level-btn found" onclick="selectBLevel('foundation',this)">FOUND</button>
+      <button class="level-btn scaled" onclick="selectBLevel('scaled',this)">SCALED</button>
+      <button class="level-btn found" onclick="selectBLevel('foundation',this)">FOND.</button>
     </div>
     <input class="modal-input" id="bmodal-score-val" type="text" placeholder="—">
     <div class="modal-sub" id="bmodal-score-hint" style="margin-top:-8px;margin-bottom:12px">—</div>
@@ -586,8 +577,8 @@ const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
 const TYPE_LABELS={wod:'WOD',strength:'Force',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité'};
 const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio',autre:'Autre'};
-const LEVEL_LABELS={rx:'RX',intermediate:'Inter',foundation:'Fond.'};
-const LEVEL_COLORS={rx:'var(--accent)',intermediate:'var(--blue)',foundation:'var(--orange)'};
+const LEVEL_LABELS={rx:'RX',intermediate:'Inter',scaled:'Scaled',foundation:'Fond.'};
+const LEVEL_COLORS={rx:'var(--accent)',intermediate:'var(--blue)',scaled:'var(--orange)',foundation:'var(--purple)'};
 const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétitions',rounds:'Ex: 12 + 5',weight:'Charge en kg (ex: 85)',calories:'Nombre de calories'};
 const STRIPE_PLANS={
   affiliate:{paymentLink:'https://buy.stripe.com/eVqaEX5X37FN2fheZx5AQ01',name:'Affiliate',icon:'🏟',price:'120€',period:'/mois',desc:'Programmation salle complète — CrossFit Sandglass.',features:['WOD quotidien','Séances force & skill','Coaching tips & targets','Suivi des scores','PR tracking'],color:'#e8ff47'},
@@ -661,11 +652,10 @@ function goPage(page){
   if(pg){pg.style.display='block';pg.classList.add('active');pg.scrollTop=0;}
   const btn=document.querySelector(`[data-page="${page}"]`);
   if(btn)btn.classList.add('active');
-  if(page==='pr'){loadMyPRs();renderMovements();}
+  if(page==='pr'){loadMyPRs();loadMyBenchScores();}
   if(page==='profil')loadProfilStats();
   if(page==='admin'){loadAdminProgs();loadAdminSessions();loadAdminAthletes();loadAdminBenchmarks();}
   if(page==='abos')renderPlans();
-  if(page==='bench'){loadMyBenchScores();renderBenchmarks();}
 }
 
 // PROGRAMMES
@@ -771,6 +761,7 @@ async function buildSessionCard(s){
         <div class="level-selector">
           <button class="level-btn rx active" onclick="selectLevel('${s.id}','rx',this)">RX</button>
           <button class="level-btn inter" onclick="selectLevel('${s.id}','intermediate',this)">INTER</button>
+          <button class="level-btn scaled" onclick="selectLevel('${s.id}','scaled',this)">SCALED</button>
           <button class="level-btn found" onclick="selectLevel('${s.id}','foundation',this)">FOND.</button>
         </div>
         ${scoreInputHtml}
@@ -793,6 +784,7 @@ function getSelectedLevel(sessionId){
   if(!active)return'rx';
   if(active.classList.contains('rx'))return'rx';
   if(active.classList.contains('inter'))return'intermediate';
+  if(active.classList.contains('scaled'))return'scaled';
   return'foundation';
 }
 
@@ -802,8 +794,8 @@ async function loadScores(sessionId,scoreType,sets){
   if(!el)return;
   if(!data||data.length===0){el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">Sois le premier à scorer !</div>';return;}
 
-  // Sort: RX first, then intermediate, then foundation, then by score
-  const levelOrder={rx:0,intermediate:1,foundation:2};
+  // Sort: RX first, then intermediate, scaled, foundation, then by score
+  const levelOrder={rx:0,intermediate:1,scaled:2,foundation:3};
   const sorted=[...data].sort((a,b)=>{
     if(levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
     return(b.score_value||0)-(a.score_value||0);
@@ -932,23 +924,57 @@ async function loadMyPRs(){
   const {data}=await sb.from('athlete_prs').select('*').eq('athlete_id',currentUser.id).order('recorded_at',{ascending:false});
   myPRs={};
   (data||[]).forEach(pr=>{if(!myPRs[pr.movement_id])myPRs[pr.movement_id]=[];myPRs[pr.movement_id].push(pr);});
-  renderMovements();
+  renderAll();
 }
-function filterCat(cat,btn){currentCat=cat;document.querySelectorAll('.cat-btn[data-cat]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderMovements();}
-function filterMovements(){searchQuery=document.getElementById('pr-search-input').value.toLowerCase();renderMovements();}
-function renderMovements(){
-  let filtered=movements;
-  if(currentCat!=='all')filtered=filtered.filter(m=>m.category===currentCat);
-  if(searchQuery)filtered=filtered.filter(m=>m.name.toLowerCase().includes(searchQuery));
+function filterCat(cat,btn){currentCat=cat;document.querySelectorAll('.cat-btn[data-cat]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAll();}
+function filterAll(){searchQuery=document.getElementById('pr-search-input').value.toLowerCase();renderAll();}
+function filterMovements(){renderAll();}
+
+const BENCH_CATS=['girl','test','hero','custom'];
+
+function renderAll(){
   const list=document.getElementById('movements-list');
-  if(!filtered.length){list.innerHTML='<div class="empty"><div class="empty-icon">🔍</div><p>Aucun mouvement</p></div>';return;}
-  list.innerHTML=filtered.map(m=>{
-    const prs=myPRs[m.id]||[];const best=prs[0];
-    const prHtml=best?`<div><div class="mv-pr-val">${best.value}</div><div class="mv-pr-unit">${m.unit}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`:`<div class="mv-no-pr">+ Ajouter</div>`;
-    return `<div class="movement-item" onclick="openPRModal('${m.id}')">
-      <div><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>${prHtml}
-    </div>`;
-  }).join('');
+  const isBenchCat=BENCH_CATS.includes(currentCat);
+  const isAll=currentCat==='all';
+
+  let html='';
+
+  // --- MOUVEMENTS ---
+  if(isAll||!isBenchCat){
+    let filtered=movements;
+    if(!isAll)filtered=filtered.filter(m=>m.category===currentCat);
+    if(searchQuery)filtered=filtered.filter(m=>m.name.toLowerCase().includes(searchQuery));
+    if(filtered.length>0){
+      if(isAll)html+=`<div style="padding:12px 20px 4px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted)">RECORDS PERSONNELS</div>`;
+      html+=filtered.map(m=>{
+        const prs=myPRs[m.id]||[];const best=prs[0];
+        const prHtml=best?`<div><div class="mv-pr-val">${best.value}</div><div class="mv-pr-unit">${m.unit}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`:`<div class="mv-no-pr">+ Ajouter</div>`;
+        return`<div class="movement-item" onclick="openPRModal('${m.id}')">
+          <div><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>${prHtml}
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // --- BENCHMARKS ---
+  if(isAll||isBenchCat){
+    let filteredB=benchmarks;
+    if(isBenchCat)filteredB=filteredB.filter(b=>b.category===currentCat);
+    if(searchQuery)filteredB=filteredB.filter(b=>b.name.toLowerCase().includes(searchQuery));
+    if(filteredB.length>0){
+      if(isAll)html+=`<div style="padding:16px 20px 4px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted);border-top:1px solid var(--border);margin-top:8px">BENCHMARKS</div>`;
+      html+=filteredB.map(b=>{
+        const scores=myBenchScores[b.id]||[];const best=scores[0];
+        const scoreHtml=best?`<div><div class="mv-pr-val">${best.score_text||best.score_value}</div><div class="mv-pr-unit">${LEVEL_LABELS[best.level]||best.level}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`:`<div class="mv-no-pr">+ Score</div>`;
+        return`<div class="movement-item" onclick="openBenchModal('${b.id}')">
+          <div><div class="mv-name">${b.name}</div><div class="mv-cat">${b.category==='girl'?'Girl WOD':b.category==='test'?'Test force':b.category==='hero'?'Hero WOD':'Custom'}</div></div>${scoreHtml}
+        </div>`;
+      }).join('');
+    }
+  }
+
+  if(!html)html='<div class="empty"><div class="empty-icon">🔍</div><p>Aucun résultat</p></div>';
+  list.innerHTML=html;
 }
 function openPRModal(movementId){
   currentModalMovement=movements.find(m=>m.id===movementId);if(!currentModalMovement)return;
@@ -991,21 +1017,7 @@ async function loadMyBenchScores(){
   const {data}=await sb.from('benchmark_scores').select('*').eq('athlete_id',currentUser.id).order('recorded_at',{ascending:false});
   myBenchScores={};
   (data||[]).forEach(s=>{if(!myBenchScores[s.benchmark_id])myBenchScores[s.benchmark_id]=[];myBenchScores[s.benchmark_id].push(s);});
-  renderBenchmarks();
-}
-function filterBench(cat,btn){currentBcat=cat;document.querySelectorAll('.cat-btn[data-bcat]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderBenchmarks();}
-function renderBenchmarks(){
-  let filtered=benchmarks;
-  if(currentBcat!=='all')filtered=filtered.filter(b=>b.category===currentBcat);
-  const list=document.getElementById('bench-list');
-  if(!filtered.length){list.innerHTML='<div class="empty"><div class="empty-icon">🏆</div><p>Aucun benchmark</p></div>';return;}
-  list.innerHTML=filtered.map(b=>{
-    const scores=myBenchScores[b.id]||[];const best=scores[0];
-    const scoreHtml=best?`<div class="bench-score"><div class="bench-score-val">${best.score_text||best.score_value}</div><div class="bench-score-lbl">${LEVEL_LABELS[best.level]||best.level}</div></div>`:`<div style="font-size:12px;color:var(--muted)">+ Score</div>`;
-    return`<div class="bench-item" onclick="openBenchModal('${b.id}')">
-      <div><div class="bench-name">${b.name}</div><div class="bench-desc">${b.description||''}</div></div>${scoreHtml}
-    </div>`;
-  }).join('');
+  renderAll();
 }
 function openBenchModal(benchmarkId){
   currentBenchmark=benchmarks.find(b=>b.id===benchmarkId);if(!currentBenchmark)return;
@@ -1045,7 +1057,7 @@ async function loadBenchLeaderboard(benchmarkId){
   const {data}=await sb.from('benchmark_scores').select('*,profiles(full_name)').eq('benchmark_id',benchmarkId).order('level').order('score_value',{ascending:false});
   const el=document.getElementById('bmodal-leaderboard');
   if(!data||data.length===0){el.innerHTML='';return;}
-  const levelOrder={rx:0,intermediate:1,foundation:2};
+  const levelOrder={rx:0,intermediate:1,scaled:2,foundation:3};
   const sorted=[...data].sort((a,b)=>levelOrder[a.level]-levelOrder[b.level]||(b.score_value-a.score_value));
   el.innerHTML=`<div class="pr-hist-title">Leaderboard</div>`+sorted.slice(0,10).map((s,i)=>`<div class="pr-hist-item">
     <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Bebas Neue';font-size:16px;color:var(--muted)">${i+1}</span><span style="font-size:13px;font-weight:600">${s.profiles?.full_name||'Athlète'}</span><span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span></div>
