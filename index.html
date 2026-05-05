@@ -597,7 +597,7 @@ const STRIPE_PLANS={
 // INIT
 window.onload=async()=>{
   const {data:{session}}=await sb.auth.getSession();
-  if(session){currentUser=session.user;await loadProfile();initApp();}
+  if(session){currentUser=session.user;await loadProfile();await initApp();}
 };
 
 // AUTH
@@ -620,7 +620,7 @@ async function doAuth(){
   if(authMode==='login'){res=await sb.auth.signInWithPassword({email,password:pwd});}
   else{if(!name){errEl.textContent='Prénom et nom requis';return;}res=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:name}}});}
   if(res.error){errEl.textContent=res.error.message;return;}
-  currentUser=res.data.user;await loadProfile();initApp();
+  currentUser=res.data.user;await loadProfile();await initApp();
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;currentProfile=null;location.reload();}
 async function loadProfile(){
@@ -628,7 +628,7 @@ async function loadProfile(){
   currentProfile=data;
 }
 
-function initApp(){
+async function initApp(){
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('main-app').style.display='block';
   const init=(currentProfile?.full_name||currentUser.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
@@ -649,7 +649,7 @@ function initApp(){
   }
   loadMovements();loadBenchmarks();
   await loadMyAccess();
-  loadProgrammes();
+  await loadProgrammes();
   const d=new Date();
   document.getElementById('prog-topbar-date').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
   handleStripeReturn();
