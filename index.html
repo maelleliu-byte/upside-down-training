@@ -586,7 +586,7 @@ function initApp() {
       btn.onclick = () => goPage('admin');
       nav.insertBefore(btn, nav.lastElementChild);
     }
-    document.getElementById('page-admin').style.display = 'block';
+    // page-admin visible via goPage uniquement
   }
 
   loadProgrammes();
@@ -596,10 +596,13 @@ function initApp() {
 
 // ===== NAVIGATION =====
 function goPage(page) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => {
+    p.classList.remove('active');
+    p.style.display = 'none';
+  });
   document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
   const pg = document.getElementById(`page-${page}`);
-  if (pg) { pg.classList.add('active'); pg.scrollTop = 0; }
+  if (pg) { pg.style.display = 'block'; pg.classList.add('active'); pg.scrollTop = 0; }
   const btn = document.querySelector(`[data-page="${page}"]`);
   if (btn) btn.classList.add('active');
 
