@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Upside Down Training</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://js.stripe.com/v3/"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -259,7 +260,36 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .menu-item-icon{font-size:16px;color:var(--muted)}
 .btn-logout{width:calc(100% - 40px);margin:16px 20px;padding:14px;background:transparent;color:var(--red);border:1px solid rgba(255,68,68,.3);border-radius:12px;font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;cursor:pointer}
 
-/* TOAST */
+/* STRIPE / ABONNEMENTS */
+.prog-card-locked{position:relative}
+.prog-card-locked::after{content:'🔒';position:absolute;top:10px;right:10px;font-size:16px}
+.btn-subscribe{width:100%;padding:13px;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;margin-top:12px;transition:all .2s;display:flex;align-items:center;justify-content:center;gap:8px}
+.btn-subscribe.active{background:rgba(232,255,71,.1);color:var(--accent);border:1.5px solid var(--accent)}
+.btn-subscribe.locked{background:var(--accent);color:#000}
+.btn-subscribe:active{opacity:.8;transform:scale(.98)}
+.access-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:8px}
+.access-ok{background:rgba(232,255,71,.12);color:var(--accent)}
+.access-no{background:rgba(255,68,68,.1);color:var(--red)}
+
+/* PAGE ABONNEMENTS */
+.sub-hero{padding:24px 20px 16px;text-align:center}
+.sub-hero-title{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px}
+.sub-hero-sub{font-size:13px;color:var(--muted);margin-top:4px}
+.plan-card{background:var(--card);border-radius:16px;border:1.5px solid var(--border);margin:0 20px 14px;padding:20px;transition:border-color .2s}
+.plan-card.featured{border-color:var(--accent)}
+.plan-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.plan-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px}
+.plan-price{text-align:right}
+.plan-price-val{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px}
+.plan-price-period{font-size:11px;color:var(--muted)}
+.plan-desc{font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:14px}
+.plan-features{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.plan-feature{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px}
+.plan-feature::before{content:'✓';color:var(--accent);font-weight:700;flex-shrink:0}
+
+/* STRIPE LOADING */
+.stripe-loading{display:flex;align-items:center;justify-content:center;gap:10px;padding:14px;color:var(--muted);font-size:13px}
+
 .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--accent);color:#000;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;z-index:500;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 </style>
@@ -456,6 +486,24 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <button class="btn-logout" onclick="doLogout()">Se déconnecter</button>
   </div>
 
+  <!-- PAGE: ABONNEMENTS -->
+  <div class="page" id="page-abos" style="display:none">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">PROGRAMMES</div>
+        <div class="topbar-sub">Accès & abonnements</div>
+      </div>
+    </div>
+    <div class="sub-hero">
+      <div class="sub-hero-title">Choisis ton programme</div>
+      <div class="sub-hero-sub">Accès immédiat après paiement</div>
+    </div>
+    <div id="plans-list"></div>
+    <div style="padding:8px 20px 16px;text-align:center">
+      <div style="font-size:11px;color:var(--muted)">🔒 Paiement sécurisé par Stripe · Résiliation à tout moment</div>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <div class="bottom-nav" id="bottom-nav">
     <button class="nav-btn active" data-page="prog" onclick="goPage('prog')">
@@ -463,6 +511,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     </button>
     <button class="nav-btn" data-page="pr" onclick="goPage('pr')">
       <span class="nav-icon">📈</span><span class="nav-label">PR</span>
+    </button>
+    <button class="nav-btn" data-page="abos" onclick="goPage('abos')">
+      <span class="nav-icon">💳</span><span class="nav-label">Abos</span>
     </button>
     <button class="nav-btn" data-page="profil" onclick="goPage('profil')">
       <span class="nav-icon">👤</span><span class="nav-label">Profil</span>
@@ -592,6 +643,7 @@ function initApp() {
   loadProgrammes();
   loadMovements();
   updateDateLabel();
+  handleStripeReturn();
 }
 
 // ===== NAVIGATION =====
@@ -609,6 +661,7 @@ function goPage(page) {
   if (page === 'pr') { loadMyPRs(); renderMovements(); }
   if (page === 'profil') loadProfilStats();
   if (page === 'admin') { loadAdminProgs(); loadAdminSessions(); loadAdminAthletes(); }
+  if (page === 'abos') renderPlans();
 }
 
 // ===== PROGRAMMES =====
@@ -1079,6 +1132,119 @@ function adminTab(tab, btn) {
 
 function showNewProgModal() {
   showToast('💡 Crée le programme directement dans Supabase pour l\'instant');
+}
+
+// ===== STRIPE =====
+const STRIPE_PK = 'pk_live_51TTgoeGfW5FegIxCCDUZQvm2EakuXj3rC2UFYiRDXfvuaE42WwX3Hjys4734FK0p9Dqe5ngaCNKpR35ssPKRUVSH004VamRL0F';
+const stripe = Stripe(STRIPE_PK);
+
+const STRIPE_PLANS = {
+  'affiliate': {
+    priceId: 'price_1TThBIGfW5FegIxCy3Bd5zmi',
+    name: 'Affiliate',
+    icon: '🏟',
+    price: '29,90€',
+    period: '/mois',
+    desc: 'Programmation salle complète — CrossFit Sandglass. Accès à tous les WODs, séances de force et skills.',
+    features: ['WOD quotidien', 'Séances force & skill', 'Coaching tips & targets', 'Suivi des scores', 'PR tracking'],
+    type: 'subscription',
+    color: '#e8ff47'
+  },
+  'training': {
+    priceId: 'price_1TThDzGfW5FegIxCGRb4q1tN',
+    name: 'Training',
+    icon: '💪',
+    price: '39,90€',
+    period: '/mois',
+    desc: 'Préparation compétition Upside Down. Programmation avancée pour athlètes en compétition.',
+    features: ['Programmation compétition', 'Haltérophilie avancée', 'Périodisation structurée', 'Suivi performances', 'Accès coach direct'],
+    type: 'subscription',
+    color: '#ff8c47'
+  }
+};
+
+let myAccess = new Set();
+
+async function loadMyAccess() {
+  if (!currentUser) return;
+  const { data } = await sb.from('programme_access').select('programme_id, programmes(slug)').eq('athlete_id', currentUser.id);
+  myAccess = new Set((data||[]).map(a => a.programmes?.slug).filter(Boolean));
+}
+
+async function renderPlans() {
+  await loadMyAccess();
+  const list = document.getElementById('plans-list');
+  list.innerHTML = Object.entries(STRIPE_PLANS).map(([slug, plan]) => {
+    const hasAccess = myAccess.has(slug) || currentProfile?.role === 'admin';
+    return `<div class="plan-card ${slug === 'affiliate' ? 'featured' : ''}">
+      <div class="plan-header">
+        <div>
+          <div style="font-size:28px;margin-bottom:4px">${plan.icon}</div>
+          <div class="plan-name" style="color:${plan.color}">${plan.name}</div>
+        </div>
+        <div class="plan-price">
+          <div class="plan-price-val">${plan.price}</div>
+          <div class="plan-price-period">${plan.period}</div>
+        </div>
+      </div>
+      <div class="plan-desc">${plan.desc}</div>
+      <div class="plan-features">
+        ${plan.features.map(f => `<div class="plan-feature">${f}</div>`).join('')}
+      </div>
+      ${hasAccess
+        ? `<div class="access-badge access-ok">✓ Accès actif</div>`
+        : `<button class="btn-subscribe locked" onclick="subscribeTo('${slug}')">
+            💳 S'abonner — ${plan.price}${plan.period}
+          </button>`
+      }
+    </div>`;
+  }).join('');
+}
+
+async function subscribeTo(slug) {
+  const plan = STRIPE_PLANS[slug];
+  if (!plan) return;
+  if (!currentUser) { showToast('⚠️ Connecte-toi d\'abord'); return; }
+
+  showToast('⏳ Redirection vers le paiement...');
+
+  try {
+    const { error } = await stripe.redirectToCheckout({
+      lineItems: [{ price: plan.priceId, quantity: 1 }],
+      mode: plan.type === 'subscription' ? 'subscription' : 'payment',
+      customerEmail: currentUser.email,
+      successUrl: `https://upside-down-training.netlify.app?success=1&prog=${slug}`,
+      cancelUrl: `https://upside-down-training.netlify.app?canceled=1`,
+    });
+    if (error) showToast('❌ ' + error.message);
+  } catch (e) {
+    showToast('❌ Erreur paiement: ' + e.message);
+  }
+}
+
+// Gérer retour après paiement Stripe
+async function handleStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('success') === '1') {
+    const prog = params.get('prog');
+    showToast('🎉 Paiement réussi ! Accès activé.');
+    // Donner accès au programme
+    if (prog && currentUser) {
+      const programme = programmes.find(p => p.slug === prog);
+      if (programme) {
+        await sb.from('programme_access').upsert({
+          athlete_id: currentUser.id,
+          programme_id: programme.id
+        }, { onConflict: 'athlete_id,programme_id' });
+      }
+    }
+    window.history.replaceState({}, '', '/');
+    goPage('prog');
+  }
+  if (params.get('canceled') === '1') {
+    showToast('Paiement annulé.');
+    window.history.replaceState({}, '', '/');
+  }
 }
 
 // ===== UTILS =====
