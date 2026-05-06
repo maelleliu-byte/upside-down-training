@@ -666,7 +666,8 @@ async function initApp(){
       nav.appendChild(btn);
     }
   }
-  loadMovements();loadBenchmarks();
+  await loadMovements();
+  await loadBenchmarks();
   await loadProgrammes();
   await loadMyPRs();
   const d=new Date();
@@ -868,6 +869,7 @@ function renderContentWithCharges(content){
 }
 
 function findPRByName(name){
+  if(!movements||movements.length===0)return null;
   const mv=movements.find(m=>m.name.toLowerCase()===name.toLowerCase()||m.name.toLowerCase().includes(name.toLowerCase()));
   if(!mv)return null;
   const prs=myPRs[mv.id]||[];
