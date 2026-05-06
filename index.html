@@ -694,10 +694,16 @@ async function loadProgrammes(){
     window.history.replaceState({},'','/');
   }
 
-  renderProgTabs();
   await loadMyAccess();
   renderProgTabs();
-  if(programmes.length>0){currentProg=programmes[0];activateProgTab(programmes[0].id);renderDayStrip();renderSessions();}
+  if(programmes.length>0){
+    // Sélectionner le premier programme accessible, sinon le premier tout court
+    const firstAccessible=programmes.find(p=>hasAccess(p))||programmes[0];
+    currentProg=firstAccessible;
+    activateProgTab(firstAccessible.id);
+    await renderDayStrip();
+    await renderSessions();
+  }
 }
 function renderProgTabs(){
   const tabs=document.getElementById('prog-tabs');
