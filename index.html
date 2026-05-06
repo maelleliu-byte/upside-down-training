@@ -648,7 +648,6 @@ async function initApp(){
     }
   }
   loadMovements();loadBenchmarks();
-  await loadMyAccess();
   await loadProgrammes();
   const d=new Date();
   document.getElementById('prog-topbar-date').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
@@ -695,6 +694,8 @@ async function loadProgrammes(){
     window.history.replaceState({},'','/');
   }
 
+  renderProgTabs();
+  await loadMyAccess();
   renderProgTabs();
   if(programmes.length>0){currentProg=programmes[0];activateProgTab(programmes[0].id);renderDayStrip();renderSessions();}
 }
@@ -1232,15 +1233,15 @@ function adminTab(tab,btn){
 // STRIPE / ABOS
 async function loadMyAccess(){
   if(!currentUser)return;
-  const {data,error}=await sb.from('programme_access').select('programme_id,programmes(slug,id)').eq('athlete_id',currentUser.id);
+  const {data,error}=await sb.from('programme_access').select('programme_id').eq('athlete_id',currentUser.id);
   console.log('Access data:', data, error);
+  myAccessIds=new Set((data||[]).map(a=>a.programme_id).filter(Boolean));
+  // Construire myAccess depuis les programmes déjà chargés
   myAccess=new Set();
-  myAccessIds=new Set();
-  (data||[]).forEach(a=>{
-    if(a.programmes?.slug)myAccess.add(a.programmes.slug);
-    if(a.programme_id)myAccessIds.add(a.programme_id);
+  programmes.forEach(p=>{
+    if(myAccessIds.has(p.id))myAccess.add(p.slug);
   });
-  console.log('Slugs:', [...myAccess], 'IDs:', [...myAccessIds]);
+  console.log('myAccessIds:', [...myAccessIds], 'myAccess:', [...myAccess]);
 }
 
 function hasAccess(prog){
