@@ -382,6 +382,33 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .multi-score-input:focus{border-color:var(--accent)}
 .score-note-input{width:100%;background:var(--dark);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 12px;outline:none;margin-top:6px}
 
+/* CYCLE PLANNER */
+.cycle-grid-table{border-collapse:collapse;min-width:100%;font-size:12px}
+.cycle-grid-table th{background:var(--card2);padding:8px 10px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border:1px solid var(--border2);white-space:nowrap;position:sticky;top:0;z-index:5}
+.cycle-grid-table th.week-header{background:var(--dark);color:var(--text2);min-width:70px;position:sticky;left:0;z-index:6}
+.cycle-col-header{display:flex;align-items:center;justify-content:center;gap:6px}
+.cycle-col-header input{background:transparent;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;text-align:center;width:80px;outline:none;cursor:pointer}
+.cycle-col-header input:focus{color:var(--text);border-bottom:1px solid var(--orange)}
+.cycle-col-del{background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;line-height:1;opacity:.5}
+.cycle-col-del:hover{opacity:1;color:var(--red)}
+.cycle-week-cell{background:var(--dark);padding:6px 8px;border:1px solid var(--border2);vertical-align:top;min-width:90px;max-width:130px;position:sticky;left:0;z-index:4}
+.cycle-week-label{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;color:var(--text2)}
+.cycle-week-dates{font-size:10px;color:var(--muted);margin-top:2px}
+.cycle-cell{border:1px solid var(--border2);padding:4px;vertical-align:top;min-width:90px;max-width:130px;cursor:pointer;transition:background .15s;position:relative}
+.cycle-cell:hover{background:var(--card2)}
+.cycle-cell-content{min-height:50px;display:flex;flex-direction:column;gap:3px}
+.cycle-chip{border-radius:5px;padding:3px 6px;font-size:11px;font-weight:600;line-height:1.3;cursor:pointer;position:relative;word-break:break-word}
+.cycle-chip-del{position:absolute;top:2px;right:3px;background:none;border:none;font-size:10px;cursor:pointer;opacity:0;color:rgba(0,0,0,.6);line-height:1;padding:0}
+.cycle-chip:hover .cycle-chip-del{opacity:1}
+.cycle-add-btn{width:100%;padding:3px;background:transparent;border:1px dashed var(--border2);border-radius:5px;color:var(--muted);font-size:11px;cursor:pointer;text-align:center;margin-top:2px;transition:all .2s}
+.cycle-add-btn:hover{border-color:var(--orange);color:var(--orange)}
+
+/* MODAL CELLULE CYCLE */
+.cycle-cell-modal{background:var(--dark);border-radius:16px 16px 0 0;border-top:1px solid var(--border2);width:100%;max-width:430px;padding:20px 20px calc(20px + var(--safe-bottom));transform:translateY(20px);transition:transform .3s;max-height:85vh;overflow-y:auto}
+.chip-colors{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.chip-color-btn{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s;flex-shrink:0}
+.chip-color-btn.selected{border-color:#fff;transform:scale(1.2)}
+
 /* DASHBOARD */
 .dash-stat-box{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:14px;text-align:center}
 .dash-stat-val{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:var(--accent)}
@@ -492,6 +519,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <button class="admin-tab-btn active" onclick="adminTab('progs',this)">Programmes</button>
       <button class="admin-tab-btn" onclick="adminTab('new-session',this)">+ Séance</button>
       <button class="admin-tab-btn" onclick="adminTab('sessions',this)">Séances</button>
+      <button class="admin-tab-btn" onclick="adminTab('cycle',this)">🗓 Cycle</button>
       <button class="admin-tab-btn" onclick="adminTab('benchmarks',this)">Benchmarks</button>
       <button class="admin-tab-btn" onclick="adminTab('videos',this)">Vidéos</button>
       <button class="admin-tab-btn" onclick="adminTab('dashboard',this)">📊 Dashboard</button>
@@ -695,6 +723,43 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       </div>
     </div>
 
+    <!-- CYCLE PLANNER -->
+    <div class="admin-panel" id="admin-cycle">
+      <!-- Header cycle -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <div style="flex:1">
+          <input type="text" class="form-input" id="cycle-name" placeholder="Nom du cycle (ex: Bloc Force Printemps 2026)" style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px">
+        </div>
+        <button onclick="saveCycle()" style="padding:10px 16px;background:var(--orange);color:#000;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">💾 Sauver</button>
+        <button onclick="newCycle()" style="padding:10px 16px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:10px;font-size:13px;cursor:pointer;white-space:nowrap">+ Nouveau</button>
+      </div>
+
+      <!-- Sélecteur de cycles sauvegardés -->
+      <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+        <select class="form-select" id="cycle-selector" onchange="loadCycle(this.value)" style="flex:1">
+          <option value="">— Sélectionner un cycle —</option>
+        </select>
+        <button onclick="deleteCycle()" style="padding:10px 12px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:10px;font-size:13px;cursor:pointer">🗑</button>
+      </div>
+
+      <!-- Config colonnes et semaines -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px">
+          <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Semaines</span>
+          <select class="form-select" id="cycle-weeks" onchange="renderCycleGrid()" style="width:70px">
+            <option value="4">4</option><option value="6">6</option><option value="8" selected>8</option>
+            <option value="10">10</option><option value="12">12</option><option value="16">16</option>
+          </select>
+        </div>
+        <button onclick="addCycleColumn()" style="padding:8px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:8px;font-size:12px;cursor:pointer">+ Colonne</button>
+      </div>
+
+      <!-- Grille cycle -->
+      <div style="overflow-x:auto;margin:0 -20px;padding:0 20px">
+        <div id="cycle-grid"></div>
+      </div>
+    </div>
+
     <!-- ATHLÈTES -->
     <div class="admin-panel" id="admin-athletes">
       <div id="admin-athletes-list"></div>
@@ -793,6 +858,33 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <button class="nav-btn" data-page="videos" onclick="goPage('videos')"><span class="nav-icon">🎬</span><span class="nav-label">Vidéos</span></button>
     <button class="nav-btn" data-page="abos" onclick="goPage('abos')"><span class="nav-icon">💳</span><span class="nav-label">Abos</span></button>
     <button class="nav-btn" data-page="profil" onclick="goPage('profil')"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
+  </div>
+</div>
+
+<!-- MODAL CELLULE CYCLE -->
+<div class="modal-overlay" id="cycle-cell-modal">
+  <div class="cycle-cell-modal">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:4px" id="cycle-cell-title">Ajouter</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:16px" id="cycle-cell-subtitle">—</div>
+    <div class="form-group">
+      <label class="form-label">Contenu</label>
+      <textarea class="form-textarea" id="cycle-cell-input" style="min-height:80px" placeholder="Ex: Back Squat lourd, 5x3 @ 85%..."></textarea>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Couleur</label>
+      <div class="chip-colors" id="cycle-chip-colors">
+        <div class="chip-color-btn selected" data-color="#e8ff47" style="background:#e8ff47" onclick="selectChipColor('#e8ff47',this)"></div>
+        <div class="chip-color-btn" data-color="#ff4747" style="background:#ff4747" onclick="selectChipColor('#ff4747',this)"></div>
+        <div class="chip-color-btn" data-color="#47c8ff" style="background:#47c8ff" onclick="selectChipColor('#47c8ff',this)"></div>
+        <div class="chip-color-btn" data-color="#ff8c47" style="background:#ff8c47" onclick="selectChipColor('#ff8c47',this)"></div>
+        <div class="chip-color-btn" data-color="#c847ff" style="background:#c847ff" onclick="selectChipColor('#c847ff',this)"></div>
+        <div class="chip-color-btn" data-color="#47ff8c" style="background:#47ff8c" onclick="selectChipColor('#47ff8c',this)"></div>
+        <div class="chip-color-btn" data-color="#ffffff" style="background:#fff" onclick="selectChipColor('#ffffff',this)"></div>
+        <div class="chip-color-btn" data-color="#ff69b4" style="background:#ff69b4" onclick="selectChipColor('#ff69b4',this)"></div>
+      </div>
+    </div>
+    <button class="btn-modal-save" onclick="saveCycleChip()">Ajouter</button>
+    <button class="btn-modal-cancel" onclick="closeCycleCellModal()">Annuler</button>
   </div>
 </div>
 
@@ -2270,6 +2362,191 @@ function setEditorContent(html){
 function clearEditor(){
   const editor=document.getElementById('f-content-editor');
   if(editor)editor.innerHTML='';
+}
+
+// ===== CYCLE PLANNER =====
+let cycleData = {
+  id: null,
+  name: '',
+  weeks: 8,
+  columns: ['WOD', 'Force', 'Skill', 'Hyrox', 'Team WOD'],
+  cells: {} // key: "week-col", value: [{text, color}]
+};
+let cycleCellTarget = null; // {week, col}
+let selectedChipColor = '#e8ff47';
+let allCycles = [];
+
+
+async function initCyclePlanner(){
+  await loadAllCycles();
+  renderCycleGrid();
+}
+
+async function loadAllCycles(){
+  const {data}=await sb.from('cycle_plans').select('id,name').order('created_at',{ascending:false});
+  allCycles=data||[];
+  const sel=document.getElementById('cycle-selector');
+  sel.innerHTML='<option value="">— Sélectionner un cycle —</option>'+allCycles.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+}
+
+async function loadCycle(id){
+  if(!id){newCycle();return;}
+  const {data}=await sb.from('cycle_plans').select('*').eq('id',id).single();
+  if(!data)return;
+  cycleData={
+    id:data.id,name:data.name,
+    weeks:data.weeks||8,
+    columns:data.columns||['WOD','Force','Skill'],
+    cells:data.cells||{}
+  };
+  document.getElementById('cycle-name').value=cycleData.name;
+  document.getElementById('cycle-weeks').value=cycleData.weeks;
+  renderCycleGrid();
+}
+
+function newCycle(){
+  cycleData={id:null,name:'',weeks:8,columns:['WOD','Force','Skill','Hyrox','Team WOD'],cells:{}};
+  document.getElementById('cycle-name').value='';
+  document.getElementById('cycle-weeks').value='8';
+  document.getElementById('cycle-selector').value='';
+  renderCycleGrid();
+}
+
+async function saveCycle(){
+  const name=document.getElementById('cycle-name').value.trim()||'Cycle sans nom';
+  const weeks=parseInt(document.getElementById('cycle-weeks').value)||8;
+  cycleData.name=name;cycleData.weeks=weeks;
+
+  const payload={name,weeks,columns:cycleData.columns,cells:cycleData.cells,created_by:currentUser.id};
+
+  let error;
+  if(cycleData.id){
+    ({error}=await sb.from('cycle_plans').update(payload).eq('id',cycleData.id));
+  } else {
+    const {data,error:e}=await sb.from('cycle_plans').insert(payload).select('id').single();
+    error=e;
+    if(data)cycleData.id=data.id;
+  }
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Cycle sauvegardé !');
+  await loadAllCycles();
+  if(cycleData.id)document.getElementById('cycle-selector').value=cycleData.id;
+}
+
+async function deleteCycle(){
+  const id=document.getElementById('cycle-selector').value;
+  if(!id){showToast('⚠️ Sélectionne un cycle');return;}
+  await sb.from('cycle_plans').delete().eq('id',id);
+  showToast('🗑 Cycle supprimé');
+  newCycle();
+  await loadAllCycles();
+}
+
+function addCycleColumn(){
+  const name=prompt('Nom de la colonne ?')||'Nouveau';
+  cycleData.columns.push(name);
+  renderCycleGrid();
+}
+
+function renderCycleGrid(){
+  const weeks=parseInt(document.getElementById('cycle-weeks').value)||cycleData.weeks||8;
+  const cols=cycleData.columns;
+  const grid=document.getElementById('cycle-grid');
+
+  // Calculer la date de début (lundi prochain ou aujourd'hui)
+  const startDate=new Date();
+  const day=startDate.getDay();
+  startDate.setDate(startDate.getDate()-(day===0?6:day-1));
+
+  let html=`<table class="cycle-grid-table"><thead><tr>
+    <th class="week-header">Semaine</th>
+    ${cols.map((c,ci)=>`<th>
+      <div class="cycle-col-header">
+        <input type="text" value="${c}" onchange="renameColumn(${ci},this.value)" onclick="event.stopPropagation()">
+        ${cols.length>1?`<button class="cycle-col-del" onclick="removeColumn(${ci})">✕</button>`:''}
+      </div>
+    </th>`).join('')}
+  </tr></thead><tbody>`;
+
+  for(let w=0;w<weeks;w++){
+    const wStart=new Date(startDate);wStart.setDate(startDate.getDate()+w*7);
+    const wEnd=new Date(wStart);wEnd.setDate(wStart.getDate()+6);
+    const wLabel=`${wStart.getDate()}/${wStart.getMonth()+1}`;
+    const wEndLabel=`${wEnd.getDate()}/${wEnd.getMonth()+1}`;
+
+    html+=`<tr>
+      <td class="cycle-week-cell">
+        <div class="cycle-week-label">Sem. ${w+1}</div>
+        <div class="cycle-week-dates">${wLabel} → ${wEndLabel}</div>
+      </td>
+      ${cols.map((c,ci)=>{
+        const key=`${w}-${ci}`;
+        const chips=(cycleData.cells[key]||[]);
+        const chipsHtml=chips.map((chip,chi)=>`
+          <div class="cycle-chip" style="background:${chip.color}22;border:1px solid ${chip.color}55;color:${isLightColor(chip.color)?'#000':chip.color}">
+            ${chip.text}
+            <button class="cycle-chip-del" onclick="event.stopPropagation();removeChip('${key}',${chi})">✕</button>
+          </div>`).join('');
+        return`<td class="cycle-cell" onclick="openCycleCellModal(${w},${ci})">
+          <div class="cycle-cell-content">
+            ${chipsHtml}
+            <button class="cycle-add-btn">+</button>
+          </div>
+        </td>`;
+      }).join('')}
+    </tr>`;
+  }
+  html+='</tbody></table>';
+  grid.innerHTML=html;
+}
+
+function renameColumn(ci,name){cycleData.columns[ci]=name;}
+function removeColumn(ci){
+  cycleData.columns.splice(ci,1);
+  // Nettoyer les cellules de cette colonne
+  Object.keys(cycleData.cells).forEach(k=>{
+    const [w,c]=k.split('-').map(Number);
+    if(c===ci)delete cycleData.cells[k];
+  });
+  renderCycleGrid();
+}
+function removeChip(key,chi){
+  if(cycleData.cells[key])cycleData.cells[key].splice(chi,1);
+  renderCycleGrid();
+}
+
+function openCycleCellModal(week,col){
+  cycleCellTarget={week,col};
+  const colName=cycleData.columns[col]||'—';
+  document.getElementById('cycle-cell-title').textContent=`Sem. ${week+1} — ${colName}`;
+  document.getElementById('cycle-cell-subtitle').textContent='Ajoute une idée de séance';
+  document.getElementById('cycle-cell-input').value='';
+  selectedChipColor='#e8ff47';
+  document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color==='#e8ff47'));
+  document.getElementById('cycle-cell-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('cycle-cell-input').focus(),300);
+}
+
+function closeCycleCellModal(){
+  document.getElementById('cycle-cell-modal').classList.remove('open');
+  cycleCellTarget=null;
+}
+
+function selectChipColor(color,el){
+  selectedChipColor=color;
+  document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+function saveCycleChip(){
+  if(!cycleCellTarget)return;
+  const text=document.getElementById('cycle-cell-input').value.trim();
+  if(!text){showToast('⚠️ Entre du contenu');return;}
+  const key=`${cycleCellTarget.week}-${cycleCellTarget.col}`;
+  if(!cycleData.cells[key])cycleData.cells[key]=[];
+  cycleData.cells[key].push({text,color:selectedChipColor});
+  closeCycleCellModal();
+  renderCycleGrid();
 }
 
 // ===== VIDEO PICKER =====
