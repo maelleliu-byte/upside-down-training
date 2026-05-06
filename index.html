@@ -1539,6 +1539,8 @@ function isLightColor(hex){
 
 async function loadAdminSessions(){loadAdminCalendar();}
 
+let editingSessionId=null;
+
 async function editSession(id){
   const {data}=await sb.from('sessions').select('*').eq('id',id).single();
   if(!data)return;
@@ -1607,13 +1609,14 @@ async function saveSession(){
   if(error){showToast('❌ '+error.message);return;}
 
   // Reset
+  const wasEditing=!!editingSessionId;
   editingSessionId=null;
   ['f-title','f-content','f-target','f-tips','f-youtube','f-ytlabel'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
   document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
   const btn=document.querySelector('#admin-new-session .btn-primary');
   btn.textContent='Publier la séance';btn.style.background='';
-  showToast(editingSessionId?'✅ Séance modifiée !':'✅ Séance publiée !');
+  showToast(wasEditing?'✅ Séance modifiée !':'✅ Séance publiée !');
   loadAdminSessions();
 }
 
