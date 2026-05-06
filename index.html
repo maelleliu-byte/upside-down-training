@@ -508,6 +508,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
           <select class="form-select" id="f-type" onchange="toggleSetsField()">
             <option value="wod">WOD</option>
             <option value="strength">Force</option>
+            <option value="weightlifting">Weightlifting</option>
+            <option value="gymnastics">Gymnastics</option>
+            <option value="renforcement">Renforcement</option>
+            <option value="bodybuilding">Bodybuilding</option>
             <option value="skill">Skill</option>
             <option value="warmup">Échauffement</option>
             <option value="mobility">Mobilité</option>
@@ -817,7 +821,7 @@ let currentCat='all',searchQuery='',currentBcat='all';
 
 const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-const TYPE_LABELS={wod:'WOD',strength:'Force',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité'};
+const TYPE_LABELS={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymnastics:'Gymnastics',renforcement:'Renforcement',bodybuilding:'Bodybuilding',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité',separator:'Séparateur'};
 const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio',autre:'Autre'};
 const LEVEL_LABELS={rx:'RX',intermediate:'Inter',scaled:'Scaled',foundation:'Fond.'};
 const LEVEL_COLORS={rx:'var(--accent)',intermediate:'var(--blue)',scaled:'var(--orange)',foundation:'var(--purple)'};
@@ -1027,7 +1031,19 @@ async function renderSessions(){
 
 async function buildSessionCard(s){
   const ytId=s.youtube_url?extractYTId(s.youtube_url):null;
-  const videoHtml=ytId?`<div style="margin-top:14px"><div class="video-lbl">${s.youtube_label||'Vidéo démo'}</div><div class="video-box"><iframe src="https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>`:'';
+  const videoHtml=ytId?`<a href="https://www.youtube.com/watch?v=${ytId}" target="_blank" rel="noopener" style="display:block;margin-top:14px;text-decoration:none">
+    <div style="background:var(--card2);border:1px solid var(--border2);border-radius:10px;overflow:hidden;position:relative">
+      <img src="https://img.youtube.com/vi/${ytId}/mqdefault.jpg" style="width:100%;display:block;border-radius:10px 10px 0 0" alt="${s.youtube_label||'Vidéo'}">
+      <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center">
+        <div style="width:52px;height:52px;background:rgba(0,0,0,.7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px">▶️</div>
+      </div>
+      <div style="padding:10px 14px;display:flex;align-items:center;gap:8px">
+        <span style="font-size:18px">🎬</span>
+        <span style="font-size:13px;font-weight:600;color:var(--text)">${s.youtube_label||'Voir la vidéo démo'}</span>
+        <span style="margin-left:auto;font-size:11px;color:var(--muted)">YouTube ↗</span>
+      </div>
+    </div>
+  </a>`:'';
   const intensity=s.intensity;
   let intHtml='';
   if(intensity){const pct=intensity*10;const col=intensity<=4?'var(--blue)':intensity<=7?'var(--accent)':'var(--red)';intHtml=`<div class="intensity-bar"><div class="int-row"><span class="int-label">Intensité</span><span class="int-val" style="color:${col}">${intensity}/10</span></div><div class="int-track"><div class="int-fill" style="width:${pct}%;background:${col}"></div></div></div>`;}
