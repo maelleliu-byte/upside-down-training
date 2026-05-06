@@ -769,10 +769,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <!-- Config Vue Cycle -->
       <div id="cycle-config-cycle" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
         <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Semaines</span>
-        <select class="form-select" id="cycle-weeks" onchange="renderCycleGrid()" style="width:70px">
-          <option value="4">4</option><option value="6">6</option><option value="8" selected>8</option>
-          <option value="10">10</option><option value="12">12</option><option value="16">16</option>
-        </select>
+        <input type="number" class="form-input" id="cycle-weeks" min="1" max="52" value="8" onchange="renderCycleGrid()" style="width:70px;padding:8px 10px">
         <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Début</span>
         <input type="date" class="form-input" id="cycle-start-date" onchange="renderCycleGrid()" style="width:140px;padding:8px 10px">
         <button onclick="addCycleColumn()" style="padding:7px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:8px;font-size:12px;cursor:pointer">+ Colonne</button>
