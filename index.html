@@ -315,6 +315,34 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .scores-modal-sub{font-size:12px;color:var(--muted);margin-bottom:16px}
 .scores-modal-input{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:14px;margin-bottom:14px}
 
+/* DASHBOARD */
+.dash-stat-box{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:14px;text-align:center}
+.dash-stat-val{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:var(--accent)}
+.dash-stat-lbl{font-size:11px;color:var(--muted);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-top:2px}
+.inactive-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.inactive-name{font-size:14px;font-weight:600}
+.inactive-days{font-size:12px;color:var(--red);font-weight:700}
+.recent-score-row{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.recent-score-info{flex:1}
+.recent-score-name{font-size:13px;font-weight:600}
+.recent-score-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.recent-score-val{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px}
+
+/* VIDÉOS */
+.video-card{background:var(--card);border-radius:12px;border:1px solid var(--border);overflow:hidden;margin-bottom:14px;animation:fadeUp .3s ease}
+.video-card-thumb{position:relative;padding-bottom:56.25%;height:0;background:#000}
+.video-card-thumb iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
+.video-card-body{padding:12px 14px}
+.video-card-title{font-size:14px;font-weight:700;margin-bottom:4px}
+.video-card-meta{font-size:11px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.video-card-desc{font-size:13px;color:#bbb;line-height:1.5;margin-top:8px}
+.video-level-badge{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(71,200,255,.12);color:var(--blue);text-transform:uppercase;letter-spacing:1px}
+
+/* NOTES */
+.note-item{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.note-author{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;justify-content:space-between}
+.note-text{font-size:13px;color:#ccc;line-height:1.6;white-space:pre-wrap}
+
 /* TOAST */
 .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--accent);color:#000;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;z-index:500;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
@@ -391,6 +419,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <button class="admin-tab-btn" onclick="adminTab('new-session',this)">+ Séance</button>
       <button class="admin-tab-btn" onclick="adminTab('sessions',this)">Séances</button>
       <button class="admin-tab-btn" onclick="adminTab('benchmarks',this)">Benchmarks</button>
+      <button class="admin-tab-btn" onclick="adminTab('videos',this)">Vidéos</button>
+      <button class="admin-tab-btn" onclick="adminTab('dashboard',this)">📊 Dashboard</button>
       <button class="admin-tab-btn" onclick="adminTab('athletes',this)">Athlètes</button>
     </div>
 
@@ -502,6 +532,50 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="admin-panel" id="admin-athletes">
       <div id="admin-athletes-list"></div>
     </div>
+
+    <!-- DASHBOARD COACH -->
+    <div class="admin-panel" id="admin-dashboard">
+      <div style="margin-bottom:16px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px">Vue d'ensemble</div>
+        <div style="font-size:12px;color:var(--muted)">Stats des 30 derniers jours</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px" id="dash-stats"></div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px">Athlètes inactifs <span style="font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400">(pas scoré depuis 7j+)</span></div>
+      <div id="dash-inactive"></div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin:16px 0 10px">Top performers</div>
+      <div id="dash-top"></div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin:16px 0 10px">Derniers scores</div>
+      <div id="dash-recent"></div>
+    </div>
+
+    <!-- BIBLIOTHÈQUE VIDÉOS -->
+    <div class="admin-panel" id="admin-videos">
+      <div id="videos-list" style="margin-bottom:16px"></div>
+      <div class="new-prog-form">
+        <div class="new-prog-title">+ Ajouter une vidéo</div>
+        <div class="form-group"><label class="form-label">Mouvement</label>
+          <select class="form-select" id="v-movement"></select>
+        </div>
+        <div class="form-group"><label class="form-label">Titre</label>
+          <input type="text" class="form-input" id="v-title" placeholder="Ex: Technique Back Squat — Positionnement des pieds">
+        </div>
+        <div class="form-group"><label class="form-label">Lien YouTube</label>
+          <input type="text" class="form-input" id="v-youtube" placeholder="https://youtube.com/watch?v=...">
+        </div>
+        <div class="form-group"><label class="form-label">Description</label>
+          <textarea class="form-textarea" id="v-desc" style="min-height:70px" placeholder="Points clés de la vidéo..."></textarea>
+        </div>
+        <div class="form-group"><label class="form-label">Niveau</label>
+          <select class="form-select" id="v-level">
+            <option value="all">Tous niveaux</option>
+            <option value="beginner">Débutant</option>
+            <option value="intermediate">Intermédiaire</option>
+            <option value="advanced">Avancé</option>
+          </select>
+        </div>
+        <button class="btn-primary" onclick="saveVideo()">Ajouter la vidéo</button>
+      </div>
+    </div>
   </div>
 
   <!-- PAGE PROFIL -->
@@ -531,10 +605,25 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div style="padding:8px 20px 16px;text-align:center"><div style="font-size:11px;color:var(--muted)">🔒 Paiement sécurisé par Stripe · Résiliation à tout moment</div></div>
   </div>
 
+  <!-- PAGE VIDÉOS -->
+  <div class="page" id="page-videos" style="display:none">
+    <div class="topbar"><div><div class="topbar-title">VIDÉOS</div><div class="topbar-sub">Bibliothèque technique</div></div></div>
+    <div class="pr-search" style="margin-top:12px"><input type="text" placeholder="Rechercher une vidéo..." id="video-search-input" oninput="filterVideos()"></div>
+    <div class="pr-cats" id="video-cats">
+      <button class="cat-btn active" data-vcat="all" onclick="filterVideoCat('all',this)">Toutes</button>
+      <button class="cat-btn" data-vcat="haltero" onclick="filterVideoCat('haltero',this)">Haltéro</button>
+      <button class="cat-btn" data-vcat="force" onclick="filterVideoCat('force',this)">Force</button>
+      <button class="cat-btn" data-vcat="gymnastic" onclick="filterVideoCat('gymnastic',this)">Gym</button>
+      <button class="cat-btn" data-vcat="cardio" onclick="filterVideoCat('cardio',this)">Cardio</button>
+    </div>
+    <div id="videos-athlete-list" style="padding:0 20px"></div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <div class="bottom-nav" id="bottom-nav">
     <button class="nav-btn active" data-page="prog" onclick="goPage('prog')"><span class="nav-icon">🏋️</span><span class="nav-label">Prog</span></button>
     <button class="nav-btn" data-page="pr" onclick="goPage('pr')"><span class="nav-icon">📈</span><span class="nav-label">PR & Bench</span></button>
+    <button class="nav-btn" data-page="videos" onclick="goPage('videos')"><span class="nav-icon">🎬</span><span class="nav-label">Vidéos</span></button>
     <button class="nav-btn" data-page="abos" onclick="goPage('abos')"><span class="nav-icon">💳</span><span class="nav-label">Abos</span></button>
     <button class="nav-btn" data-page="profil" onclick="goPage('profil')"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
   </div>
@@ -545,6 +634,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <div class="modal">
     <div class="scores-modal-title" id="smodal-title">Classement</div>
     <div class="scores-modal-sub" id="smodal-sub">—</div>
+    <div class="scores-modal-input">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📝 Ma note de séance</div>
+      <textarea id="session-note-input" style="width:100%;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;resize:none;outline:none;min-height:60px" placeholder="Comment s'est passée la séance ? Sensations, difficultés..."></textarea>
+      <button onclick="saveSessionNote()" style="margin-top:6px;padding:6px 14px;background:var(--accent);color:#000;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">Sauvegarder</button>
+      <div id="session-notes-list" style="margin-top:12px"></div>
+    </div>
     <div id="smodal-leaderboard"></div>
     <button class="btn-modal-cancel" style="margin-top:12px" onclick="closeScoresModal()">Fermer</button>
   </div>
@@ -686,6 +781,7 @@ async function goPage(page){
   if(page==='profil')loadProfilStats();
   if(page==='admin'){loadAdminProgs();loadAdminSessions();loadAdminAthletes();loadAdminBenchmarks();}
   if(page==='abos')renderPlans();
+  if(page==='videos'){await loadVideos();renderVideosAthlete();}
 }
 
 // PROGRAMMES
@@ -984,8 +1080,10 @@ async function openScoresModal(sessionId, scoreType, sets){
   currentScoresSession={sessionId, scoreType, sets};
   document.getElementById('smodal-title').textContent='🏆 Classement';
   document.getElementById('smodal-sub').textContent='Résultats de la séance';
+  document.getElementById('session-note-input').value='';
   document.getElementById('scores-modal').classList.add('open');
   await renderScoresModal(sessionId, scoreType, sets);
+  loadSessionNotes(sessionId);
 }
 
 function closeScoresModal(){
@@ -1352,6 +1450,159 @@ function adminTab(tab,btn){
   if(tab==='athletes')loadAdminAthletes();
   if(tab==='progs')loadAdminProgs();
   if(tab==='benchmarks')loadAdminBenchmarks();
+  if(tab==='dashboard')loadDashboard();
+  if(tab==='videos'){loadAdminVideos();populateVideoMovementSelect();}
+}
+
+// ===== DASHBOARD COACH =====
+async function loadDashboard(){
+  const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
+  const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
+
+  const [athletesRes,scoresRes,prsRes,activeRes]=await Promise.all([
+    sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete'),
+    sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
+    sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
+    sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo)
+  ]);
+
+  const activeIds=new Set((activeRes.data||[]).map(s=>s.athlete_id));
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="dash-stat-box"><div class="dash-stat-val">${athletesRes.count||0}</div><div class="dash-stat-lbl">Athlètes</div></div>
+    <div class="dash-stat-box"><div class="dash-stat-val">${activeIds.size}</div><div class="dash-stat-lbl">Actifs 7j</div></div>
+    <div class="dash-stat-box"><div class="dash-stat-val">${scoresRes.count||0}</div><div class="dash-stat-lbl">Scores 30j</div></div>
+    <div class="dash-stat-box"><div class="dash-stat-val">${prsRes.count||0}</div><div class="dash-stat-lbl">PR 30j</div></div>`;
+
+  // Athlètes inactifs
+  const {data:allAthletes}=await sb.from('profiles').select('id,full_name,email').eq('role','athlete');
+  const inactiveAthletes=(allAthletes||[]).filter(a=>!activeIds.has(a.id));
+  const inactiveEl=document.getElementById('dash-inactive');
+  if(inactiveAthletes.length===0){inactiveEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Tous les athlètes sont actifs 💪</div>';}
+  else{
+    // Chercher la dernière activité de chaque athlète inactif
+    const inactiveWithDays=await Promise.all(inactiveAthletes.slice(0,5).map(async a=>{
+      const {data}=await sb.from('wod_scores').select('created_at').eq('athlete_id',a.id).order('created_at',{ascending:false}).limit(1);
+      const lastDate=data?.[0]?.created_at;
+      const days=lastDate?Math.floor((Date.now()-new Date(lastDate))/(24*60*60*1000)):999;
+      return{...a,days};
+    }));
+    inactiveEl.innerHTML=inactiveWithDays.map(a=>`<div class="inactive-row">
+      <div><div class="inactive-name">${a.full_name||a.email||'—'}</div></div>
+      <div class="inactive-days">${a.days===999?'Jamais scoré':`${a.days}j sans score`}</div>
+    </div>`).join('');
+  }
+
+  // Top performers (plus de PR ce mois)
+  const {data:topPRs}=await sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
+  const prCount={};
+  (topPRs||[]).forEach(p=>{prCount[p.athlete_id]=(prCount[p.athlete_id]||{count:0,name:p.profiles?.full_name||'—'});prCount[p.athlete_id].count++;});
+  const topList=Object.values(prCount).sort((a,b)=>b.count-a.count).slice(0,5);
+  document.getElementById('dash-top').innerHTML=topList.length===0
+    ?'<div style="font-size:13px;color:var(--muted);padding:8px 0">Pas encore de PR ce mois</div>'
+    :topList.map((t,i)=>`<div class="inactive-row"><div class="inactive-name">${i===0?'🥇':i===1?'🥈':'🥉'} ${t.name}</div><div style="font-size:12px;color:var(--accent);font-weight:700">${t.count} PR</div></div>`).join('');
+
+  // Derniers scores
+  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name),sessions(title)').order('created_at',{ascending:false}).limit(8);
+  document.getElementById('dash-recent').innerHTML=(recentScores||[]).map(s=>`<div class="recent-score-row">
+    <div class="recent-score-info">
+      <div class="recent-score-name">${s.profiles?.full_name||'—'}</div>
+      <div class="recent-score-meta">${s.sessions?.title||'—'} · <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]||s.level}</span></div>
+    </div>
+    <div class="recent-score-val">${s.score_text||s.score_value||'—'}</div>
+  </div>`).join('');
+}
+
+// ===== VIDÉOS =====
+let allVideos=[];let currentVCat='all';let videoSearch='';
+
+async function loadVideos(){
+  const {data}=await sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
+  allVideos=data||[];
+}
+
+function filterVideoCat(cat,btn){
+  currentVCat=cat;
+  document.querySelectorAll('.cat-btn[data-vcat]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderVideosAthlete();
+}
+function filterVideos(){videoSearch=document.getElementById('video-search-input').value.toLowerCase();renderVideosAthlete();}
+
+function renderVideosAthlete(){
+  let filtered=allVideos;
+  if(currentVCat!=='all')filtered=filtered.filter(v=>v.movements?.category===currentVCat);
+  if(videoSearch)filtered=filtered.filter(v=>v.title.toLowerCase().includes(videoSearch)||v.movements?.name.toLowerCase().includes(videoSearch));
+  const el=document.getElementById('videos-athlete-list');
+  if(!filtered.length){el.innerHTML='<div class="empty"><div class="empty-icon">🎬</div><p>Aucune vidéo disponible.</p></div>';return;}
+  el.innerHTML=filtered.map(v=>{
+    const ytId=extractYTId(v.youtube_url||'');
+    const thumbHtml=ytId?`<div class="video-card-thumb"><iframe src="https://www.youtube.com/embed/${ytId}" allowfullscreen loading="lazy"></iframe></div>`:'';
+    return`<div class="video-card">${thumbHtml}<div class="video-card-body">
+      <div class="video-card-title">${v.title}</div>
+      <div class="video-card-meta"><span>${v.movements?.name||'—'}</span>${v.level&&v.level!=='all'?`<span class="video-level-badge">${v.level}</span>`:''}</div>
+      ${v.description?`<div class="video-card-desc">${v.description}</div>`:''}
+    </div></div>`;
+  }).join('');
+}
+
+async function loadAdminVideos(){
+  await loadVideos();
+  const el=document.getElementById('videos-list');
+  if(!allVideos.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">Aucune vidéo ajoutée.</div>';return;}
+  el.innerHTML=`<div class="pr-hist-title">${allVideos.length} vidéos</div>`+allVideos.slice(0,10).map(v=>`<div class="sessions-list-item">
+    <div><div class="sli-title">${v.title}</div><div class="sli-meta">${v.movements?.name||'—'} · ${v.level||'Tous niveaux'}</div></div>
+    <button class="btn-delete" onclick="deleteVideo('${v.id}')">✕</button>
+  </div>`).join('');
+}
+
+function populateVideoMovementSelect(){
+  const sel=document.getElementById('v-movement');
+  if(!sel||movements.length===0)return;
+  sel.innerHTML=movements.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+}
+
+async function saveVideo(){
+  const movementId=document.getElementById('v-movement').value;
+  const title=document.getElementById('v-title').value.trim();
+  const youtube=document.getElementById('v-youtube').value.trim();
+  const desc=document.getElementById('v-desc').value.trim();
+  const level=document.getElementById('v-level').value;
+  if(!title||!youtube){showToast('⚠️ Titre et lien YouTube requis');return;}
+  const {error}=await sb.from('movement_videos').insert({movement_id:movementId,title,youtube_url:youtube,description:desc||null,level,created_by:currentUser.id});
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Vidéo ajoutée !');
+  ['v-title','v-youtube','v-desc'].forEach(id=>document.getElementById(id).value='');
+  await loadAdminVideos();
+}
+
+async function deleteVideo(id){
+  await sb.from('movement_videos').delete().eq('id',id);
+  showToast('🗑 Vidéo supprimée');
+  loadAdminVideos();
+}
+
+// ===== NOTES DE SÉANCE =====
+let currentNoteSession=null;
+
+async function saveSessionNote(){
+  const content=document.getElementById('session-note-input')?.value.trim();
+  if(!content||!currentScoresSession){showToast('⚠️ Écris une note');return;}
+  const {error}=await sb.from('session_notes').insert({session_id:currentScoresSession.sessionId,athlete_id:currentUser.id,content});
+  if(error){showToast('❌ '+error.message);return;}
+  document.getElementById('session-note-input').value='';
+  showToast('📝 Note sauvegardée !');
+  loadSessionNotes(currentScoresSession.sessionId);
+}
+
+async function loadSessionNotes(sessionId){
+  const {data}=await sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false});
+  const el=document.getElementById('session-notes-list');
+  if(!el)return;
+  if(!data||data.length===0){el.innerHTML='';return;}
+  el.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:8px 0 6px">Notes partagées</div>`+data.map(n=>`<div class="note-item">
+    <div class="note-author"><span>${n.profiles?.full_name||'Athlète'}</span><span>${formatDate(n.created_at?.split('T')[0])}</span></div>
+    <div class="note-text">${n.content}</div>
+  </div>`).join('');
 }
 
 // STRIPE / ABOS
