@@ -540,28 +540,32 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <!-- SCORES MULTIPLES -->
       <div class="form-group">
         <label class="form-label">Type de score</label>
-        <select class="form-select" id="f-score-type" onchange="toggleMultiScore()">
+        <select class="form-select" id="f-score-type" onchange="onScoreTypeChange()">
           <option value="time">Temps (mm:ss)</option>
           <option value="reps">Reps</option>
           <option value="rounds">Rounds + reps</option>
           <option value="weight">Charge (kg)</option>
           <option value="calories">Calories</option>
+          <option value="text">Retour textuel</option>
         </select>
       </div>
       <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
         <button class="toggle-cb" id="multi-score-toggle" onclick="toggleMultiScore()" style="flex-shrink:0"></button>
-        <label style="font-size:13px;color:var(--text2);cursor:pointer" onclick="document.getElementById('multi-score-toggle').click()">Score multiple (2 valeurs différentes)</label>
+        <label style="font-size:13px;color:var(--text2);cursor:pointer" onclick="document.getElementById('multi-score-toggle').click()">Scores multiples</label>
       </div>
       <div id="multi-score-fields" style="display:none;background:var(--card);border-radius:10px;border:1px solid var(--border);padding:14px;margin-bottom:14px">
-        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Labels des 2 scores</div>
-        <div class="form-row">
-          <div class="form-group"><label class="form-label">Label score 1</label><input type="text" class="form-input" id="f-score-label1" placeholder="Ex: Charge barre"></div>
-          <div class="form-group"><label class="form-label">Label score 2</label><input type="text" class="form-input" id="f-score-label2" placeholder="Ex: Kettlebell"></div>
+        <div class="form-row" style="margin-bottom:10px">
+          <div class="form-group" style="margin-bottom:0">
+            <label class="form-label">Nombre de scores</label>
+            <select class="form-select" id="f-score-count" onchange="renderScoreLabels()">
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
+          </div>
         </div>
-        <div class="form-group" style="margin-bottom:0">
-          <label class="form-label">Note texte (optionnel)</label>
-          <input type="text" class="form-input" id="f-score-note" placeholder="Ex: Temps total ou commentaire">
-        </div>
+        <div id="score-labels-container"></div>
       </div>
       <div class="form-group">
         <label class="form-label">Couleur du bloc</label>
@@ -1011,7 +1015,8 @@ async function renderSessions(){
 
 async function buildSessionCard(s){
   const ytId=s.youtube_url?extractYTId(s.youtube_url):null;
-  const videoHtml=ytId?`<div style="margin-top:14px"><div class="video-lbl">${s.youtube_label||'Vidéo'}</div><div class="video-box"><iframe src="https://www.youtube.com/embed/${ytId}" allowfullscreen loading="lazy"></iframe></div></div>`:'';
+  // FIX: vérifier que l'URL est valide avant d'afficher
+  const videoHtml=ytId?`<div style="margin-top:14px"><div class="video-lbl">${s.youtube_label||'Vidéo démo'}</div><div class="video-box"><iframe src="https://www.youtube.com/embed/${ytId}?rel=0" allowfullscreen loading="lazy"></iframe></div></div>`:'';
   const intensity=s.intensity;
   let intHtml='';
   if(intensity){const pct=intensity*10;const col=intensity<=4?'var(--blue)':intensity<=7?'var(--accent)':'var(--red)';intHtml=`<div class="intensity-bar"><div class="int-row"><span class="int-label">Intensité</span><span class="int-val" style="color:${col}">${intensity}/10</span></div><div class="int-track"><div class="int-fill" style="width:${pct}%;background:${col}"></div></div></div>`;}
@@ -1027,18 +1032,25 @@ async function buildSessionCard(s){
 
   const contentWithCharges=renderContentWithCharges(s.content||'');
   const isStrength=s.type==='strength'&&s.sets>0;
-  const isMulti=s.multi_score&&s.score_label1&&s.score_label2;
+  const isMulti=s.multi_score&&s.score_count>0;
+  const isText=s.score_type==='text';
+  const scoreLabels=s.score_labels?JSON.parse(s.score_labels):(s.score_label1?[s.score_label1,s.score_label2].filter(Boolean):[]);
 
   // Score input
   let scoreInputHtml='';
-  if(isStrength){
+  if(isText){
+    scoreInputHtml=`<div class="score-input-row"><textarea class="score-input" id="score-input-${s.id}" style="height:60px;resize:none;line-height:1.5;font-size:13px" placeholder="Décris ta séance, tes sensations..."></textarea></div>`;
+  } else if(isStrength){
     const setsArr=Array.from({length:s.sets},(_,i)=>`<div class="set-row"><div class="set-label">Série ${i+1}</div><input class="set-input" id="set-${s.id}-${i}" type="number" step="0.5" min="0" placeholder="kg"></div>`).join('');
     scoreInputHtml=`<div class="sets-inputs">${setsArr}</div>`;
   } else if(isMulti){
+    const count=s.score_count||scoreLabels.length||2;
     scoreInputHtml=`<div class="multi-score-inputs">
-      <div class="multi-score-row"><div class="multi-score-lbl">${s.score_label1}</div><input class="multi-score-input" id="score-1-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>
-      <div class="multi-score-row"><div class="multi-score-lbl">${s.score_label2}</div><input class="multi-score-input" id="score-2-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>
-      ${s.score_note_label?`<input class="score-note-input" id="score-note-${s.id}" placeholder="${s.score_note_label}">`:''}
+      ${Array.from({length:count},(_,i)=>`
+        <div class="multi-score-row">
+          <div class="multi-score-lbl">${scoreLabels[i]||`Score ${i+1}`}</div>
+          <input class="multi-score-input" id="score-${i}-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}">
+        </div>`).join('')}
     </div>`;
   } else {
     scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>`;
@@ -1066,7 +1078,7 @@ async function buildSessionCard(s){
           <button class="level-btn found" onclick="selectLevel('${s.id}','foundation',this)">FOND.</button>
         </div>
         ${scoreInputHtml}
-        <button class="btn-score" style="width:100%;margin-top:6px" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0},${!!isMulti})">✓ Valider</button>
+        <button class="btn-score" style="width:100%;margin-top:6px" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0},${!!isMulti},${isText?'true':'false'},${s.score_count||0})">✓ Valider</button>
       </div>
       <button class="btn-open-scores" onclick="openScoresModal('${s.id}','${s.score_type||'reps'}',${s.sets||0})">
         🏆 Voir le classement
@@ -1163,11 +1175,16 @@ async function loadScores(sessionId,scoreType,sets){
   }
 }
 
-async function submitScore(sessionId,scoreType,isStrength,sets,isMulti){
+async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,scoreCount){
   let scoreText='',scoreValue=0,setsData=null;
   const level=getSelectedLevel(sessionId);
 
-  if(isStrength&&sets>0){
+  if(isText){
+    const input=document.getElementById(`score-input-${sessionId}`);
+    scoreText=input?.value.trim();
+    if(!scoreText){showToast('⚠️ Entre ton retour');return;}
+    scoreValue=0;
+  } else if(isStrength&&sets>0){
     const setValues=[];
     for(let i=0;i<sets;i++){
       const v=parseFloat(document.getElementById(`set-${sessionId}-${i}`)?.value||0);
@@ -1177,13 +1194,15 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti){
     scoreValue=maxVal;
     scoreText=setValues.map(s=>`S${s.set}:${s.value}kg`).join(' / ');
     setsData=setValues;
-  } else if(isMulti){
-    const v1=document.getElementById(`score-1-${sessionId}`)?.value.trim();
-    const v2=document.getElementById(`score-2-${sessionId}`)?.value.trim();
-    const note=document.getElementById(`score-note-${sessionId}`)?.value.trim();
-    if(!v1&&!v2){showToast('⚠️ Entre au moins un score');return;}
-    scoreText=[v1,v2,note].filter(Boolean).join(' | ');
-    scoreValue=parseFloat(v1)||parseFloat(v2)||0;
+  } else if(isMulti&&scoreCount>0){
+    const values=[];
+    for(let i=0;i<scoreCount;i++){
+      const v=document.getElementById(`score-${i}-${sessionId}`)?.value.trim();
+      if(v)values.push(v);
+    }
+    if(!values.length){showToast('⚠️ Entre au moins un score');return;}
+    scoreText=values.join(' | ');
+    scoreValue=parseFloat(values[0])||0;
   } else {
     const input=document.getElementById(`score-input-${sessionId}`);
     scoreText=input?.value.trim();
@@ -1557,11 +1576,32 @@ async function loadAdminSessions(){
 async function deleteSession(id){const {error}=await sb.from('sessions').delete().eq('id',id);if(error){showToast('❌ '+error.message);return;}showToast('🗑 Supprimée');loadAdminSessions();}
 
 let multiScoreEnabled=false;
+function onScoreTypeChange(){
+  const type=document.getElementById('f-score-type').value;
+  if(type==='text'&&multiScoreEnabled){
+    multiScoreEnabled=false;
+    document.getElementById('multi-score-toggle').classList.remove('on');
+    document.getElementById('multi-score-fields').style.display='none';
+  }
+}
 function toggleMultiScore(){
+  const type=document.getElementById('f-score-type')?.value;
+  if(type==='text'){showToast('⚠️ Pas de multi-score en mode textuel');return;}
   multiScoreEnabled=!multiScoreEnabled;
   const btn=document.getElementById('multi-score-toggle');
   btn.classList.toggle('on',multiScoreEnabled);
   document.getElementById('multi-score-fields').style.display=multiScoreEnabled?'block':'none';
+  if(multiScoreEnabled)renderScoreLabels();
+}
+function renderScoreLabels(){
+  const count=parseInt(document.getElementById('f-score-count')?.value)||2;
+  const container=document.getElementById('score-labels-container');
+  if(!container)return;
+  container.innerHTML=Array.from({length:count},(_,i)=>`
+    <div class="form-group" style="margin-bottom:8px">
+      <label class="form-label">Label score ${i+1}</label>
+      <input type="text" class="form-input score-label-input" data-idx="${i}" id="f-score-label-${i}" placeholder="Ex: Score ${i+1}">
+    </div>`).join('');
 }
 
 let selectedSessionColor='#e8ff47';
@@ -1734,9 +1774,8 @@ async function saveSession(){
   const scalingScaled=document.getElementById('f-scaling-scaled').value.trim();
   const scalingFoundation=document.getElementById('f-scaling-foundation').value.trim();
   const multiScore=multiScoreEnabled;
-  const scoreLabel1=multiScore?document.getElementById('f-score-label1').value.trim():null;
-  const scoreLabel2=multiScore?document.getElementById('f-score-label2').value.trim():null;
-  const scoreNoteLabel=multiScore?document.getElementById('f-score-note').value.trim():null;
+  const scoreCount=multiScore?parseInt(document.getElementById('f-score-count')?.value)||2:0;
+  const scoreLabels=multiScore?Array.from({length:scoreCount},(_,i)=>document.getElementById(`f-score-label-${i}`)?.value.trim()||`Score ${i+1}`):[];
   if(!progId||!date||!title||!content){showToast('⚠️ Remplis les champs obligatoires');return;}
 
   const payload={
@@ -1744,7 +1783,9 @@ async function saveSession(){
     target:target||null,tips:tips||null,score_type:scoreType,
     youtube_url:youtube||null,youtube_label:ytlabel||null,sets,color,
     scaling_inter:scalingInter||null,scaling_scaled:scalingScaled||null,scaling_foundation:scalingFoundation||null,
-    multi_score:multiScore,score_label1:scoreLabel1||null,score_label2:scoreLabel2||null,score_note_label:scoreNoteLabel||null
+    multi_score:multiScore,score_count:scoreCount||null,
+    score_labels:scoreLabels.length?JSON.stringify(scoreLabels):null,
+    score_label1:scoreLabels[0]||null,score_label2:scoreLabels[1]||null,score_note_label:scoreLabels[scoreLabels.length-1]||null
   };
 
   let error;
@@ -1759,9 +1800,11 @@ async function saveSession(){
   // Reset
   const wasEditing=!!editingSessionId;
   editingSessionId=null;
-  ['f-title','f-content','f-target','f-tips','f-youtube','f-ytlabel','f-scaling-inter','f-scaling-scaled','f-scaling-foundation','f-score-label1','f-score-label2','f-score-note'].forEach(id=>document.getElementById(id).value='');
+  ['f-title','f-content','f-target','f-tips','f-youtube','f-ytlabel','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('score-labels-container').innerHTML='';
   document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
   document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-score-type').value='time';
   multiScoreEnabled=false;
   document.getElementById('multi-score-toggle').classList.remove('on');
   document.getElementById('multi-score-fields').style.display='none';
