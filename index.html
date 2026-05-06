@@ -1233,15 +1233,30 @@ function adminTab(tab,btn){
 // STRIPE / ABOS
 async function loadMyAccess(){
   if(!currentUser)return;
+  
+  // DEBUG - afficher un toast avec les infos
   const {data,error}=await sb.from('programme_access').select('programme_id').eq('athlete_id',currentUser.id);
-  console.log('Access data:', data, error);
-  myAccessIds=new Set((data||[]).map(a=>a.programme_id).filter(Boolean));
-  // Construire myAccess depuis les programmes déjà chargés
+  
+  const accessIds=(data||[]).map(a=>a.programme_id).filter(Boolean);
+  const progIds=programmes.map(p=>p.id);
+  
+  // Toast de debug
+  showToast(`Accès trouvés: ${accessIds.length} | Progs: ${progIds.length}`);
+  setTimeout(()=>{
+    if(accessIds.length>0){
+      showToast(`ID accès: ${accessIds[0].slice(0,8)}...`);
+      setTimeout(()=>{
+        const match=progIds.find(id=>id===accessIds[0]);
+        showToast(`Match: ${match?'OUI ✅':'NON ❌'} | ProgID0: ${progIds[0]?.slice(0,8)}`);
+      },3000);
+    }
+  },3000);
+
+  myAccessIds=new Set(accessIds);
   myAccess=new Set();
   programmes.forEach(p=>{
     if(myAccessIds.has(p.id))myAccess.add(p.slug);
   });
-  console.log('myAccessIds:', [...myAccessIds], 'myAccess:', [...myAccess]);
 }
 
 function hasAccess(prog){
