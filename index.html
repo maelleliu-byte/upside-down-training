@@ -1823,7 +1823,7 @@ async function saveSession(){
   const multiScore=multiScoreEnabled;
   const scoreCount=multiScore?parseInt(document.getElementById('f-score-count')?.value)||2:0;
   const scoreLabels=multiScore?Array.from({length:scoreCount},(_,i)=>document.getElementById(`f-score-label-${i}`)?.value.trim()||`Score ${i+1}`):[];
-  if(!progId||!date||!title||!content){showToast('⚠️ Remplis les champs obligatoires');return;}
+  if(!progId||!date){showToast('⚠️ Programme et date requis');return;}
 
   const payload={
     programme_id:progId,date,type,title,content,intensity,
