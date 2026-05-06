@@ -1044,13 +1044,26 @@ function hideSplash(){
   const splash=document.getElementById('splash-screen');
   if(splash){splash.style.opacity='0';setTimeout(()=>splash.style.display='none',600);}
 }
-// Masquer après 2.5s max quoi qu'il arrive
-setTimeout(hideSplash, 2500);
+function showAuthScreen(){
+  hideSplash();
+  const auth=document.getElementById('auth-screen');
+  if(auth)auth.classList.remove('hidden');
+}
 
 // INIT
 window.onload=async()=>{
-  const {data:{session}}=await sb.auth.getSession();
-  if(session){currentUser=session.user;await loadProfile();await initApp();}
+  try{
+    const timeout=new Promise((_,reject)=>setTimeout(()=>reject(new Error('timeout')),5000));
+    const sessionPromise=sb.auth.getSession();
+    const {data:{session}}=await Promise.race([sessionPromise,timeout]);
+    if(session){currentUser=session.user;await loadProfile();await initApp();}
+    else{showAuthScreen();}
+  }catch(e){
+    console.warn('Supabase init error:',e);
+    showAuthScreen();
+    const errEl=document.getElementById('auth-error');
+    if(errEl)errEl.textContent='Problème de connexion. Vérifie ta connexion internet.';
+  }
 };
 
 // AUTH
