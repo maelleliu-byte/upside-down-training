@@ -369,7 +369,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 /* SCALING */
 .scaling-block{border-radius:10px;padding:12px 14px;margin-top:10px}
 .scaling-block-inter{background:rgba(71,200,255,.06);border:1px solid rgba(71,200,255,.2)}
-.scaling-block-scaled{background:rgba(255,140,71,.06);border:1px solid rgba(255,140,71,.2)}
+.scaling-block-scaled{background:rgba(255,68,68,.06);border:1px solid rgba(255,68,68,.2)}
 .scaling-block-found{background:rgba(200,71,255,.06);border:1px solid rgba(200,71,255,.2)}
 .scaling-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px}
 .scaling-text{font-size:13px;line-height:1.7;color:#bbb;white-space:pre-wrap}
@@ -1057,7 +1057,7 @@ function renderProgTabs(){
 
   tabs.innerHTML=sorted.map(p=>{
     const locked=!hasAccess(p);
-    return`<button class="prog-tab ${locked?'prog-tab-locked':''}" data-id="${p.id}" onclick="selectProg('${p.id}')">${p.icon||'💪'} ${p.name}${locked?' 🔒':''}</button>`;
+    return`<button class="prog-tab ${locked?'prog-tab-locked':''}" data-id="${p.id}" onclick="selectProg('${p.id}')">${p.name}${locked?' 🔒':''}</button>`;
   }).join('');
   sel.innerHTML=programmes.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   sel2.innerHTML='<option value="">Tous</option>'+programmes.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
@@ -1153,9 +1153,9 @@ async function buildSessionCard(s){
 
   // Scaling par niveau
   const scalingHtml=[
-    s.scaling_inter?`<div class="scaling-block scaling-block-inter"><div class="scaling-label" style="color:var(--blue)"><span>💙</span> Intermédiaire</div><div class="scaling-text">${s.scaling_inter}</div></div>`:'',
-    s.scaling_scaled?`<div class="scaling-block scaling-block-scaled"><div class="scaling-label" style="color:var(--orange)"><span>🧡</span> Scaled</div><div class="scaling-text">${s.scaling_scaled}</div></div>`:'',
-    s.scaling_foundation?`<div class="scaling-block scaling-block-found"><div class="scaling-label" style="color:var(--purple)"><span>💜</span> Fondation</div><div class="scaling-text">${s.scaling_foundation}</div></div>`:''
+    s.scaling_inter?`<div class="scaling-block scaling-block-inter"><div class="scaling-label" style="color:var(--blue)">Intermédiaire</div><div class="scaling-text">${s.scaling_inter}</div></div>`:'',
+    s.scaling_scaled?`<div class="scaling-block scaling-block-scaled"><div class="scaling-label" style="color:var(--red)">Scaled</div><div class="scaling-text">${s.scaling_scaled}</div></div>`:'',
+    s.scaling_foundation?`<div class="scaling-block scaling-block-found"><div class="scaling-label" style="color:var(--purple)">Fondation</div><div class="scaling-text">${s.scaling_foundation}</div></div>`:''
   ].join('');
 
   const contentWithCharges=renderContentWithCharges(s.content||'');
@@ -1228,14 +1228,13 @@ function buildSeparatorCard(s){
 
 // CALCUL AUTOMATIQUE DES CHARGES
 function renderContentWithCharges(content){
-  // Détecte patterns: "5x5 @ 80% [Back Squat]" ou "3x3 @85% [Snatch]"
   return content.replace(/(@\s*(\d+(?:\.\d+)?)%\s*\[([^\]]+)\])/gi, (match, full, pct, mvtName)=>{
     const pr=findPRByName(mvtName.trim());
     if(pr){
-      const charge=Math.round((parseFloat(pct)/100)*pr.value*2)/2; // arrondi au 0.5
-      return `<span style="color:var(--muted)">@ ${pct}%</span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}kg</span> <span style="color:var(--muted);font-size:11px">[${mvtName} PR: ${pr.value}kg]</span>`;
+      const charge=Math.round((parseFloat(pct)/100)*pr.value*2)/2;
+      return `<span style="color:var(--muted)">@ ${pct}%</span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}kg</span>`;
     }
-    return `<span style="color:var(--muted)">@ ${pct}% [${mvtName}]</span> <span style="color:var(--muted);font-size:11px">— Ajoute ton PR pour calculer</span>`;
+    return `@ ${pct}%`;
   });
 }
 
@@ -1320,7 +1319,7 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
 
   if(isText){
     const input=document.getElementById(`score-input-${sessionId}`);
-    scoreText=input?.value.trim();
+    scoreText=input?.value?.trim()||input?.innerText?.trim()||'';
     if(!scoreText){showToast('⚠️ Entre ton retour');return;}
     scoreValue=0;
   } else if(isStrength&&sets>0){
@@ -1855,7 +1854,13 @@ function selectSessionColor(color,el){
 
 let adminWeekOffset=0;
 async function loadAdminCalendar(){
-  const progId=document.getElementById('admin-filter-prog').value;
+  let progId=document.getElementById('admin-filter-prog').value;
+  // Forcer un programme si "Tous" sélectionné
+  if(!progId&&programmes.length>0){
+    progId=programmes[0].id;
+    document.getElementById('admin-filter-prog').value=progId;
+  }
+  if(!progId)return;
   const dates=getWeekDates(adminWeekOffset);
   const wk=getWeekNum(dates[0]);
   document.getElementById('admin-cal-week-label').textContent=`Semaine ${wk} — ${MONTHS[dates[0].getMonth()]} ${dates[0].getFullYear()}`;
