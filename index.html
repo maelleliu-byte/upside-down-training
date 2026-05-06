@@ -207,7 +207,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .bench-score-lbl{font-size:10px;color:var(--muted)}
 
 /* MODAL */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:300;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:400;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s}
 .modal-overlay.open{opacity:1;pointer-events:all}
 .modal{background:var(--dark);border-radius:20px 20px 0 0;border-top:1px solid var(--border2);width:100%;max-width:430px;padding:24px 24px calc(24px + var(--safe-bottom));transform:translateY(20px);transition:transform .3s;max-height:90vh;overflow-y:auto}
 .modal-overlay.open .modal{transform:translateY(0)}
@@ -401,6 +401,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .session-chip{border-radius:5px;padding:4px 6px;font-size:11px;font-weight:700;text-align:center;cursor:pointer;position:relative;word-break:break-word;letter-spacing:.3px}
 .session-chip-del{position:absolute;top:1px;right:2px;background:none;border:none;font-size:9px;cursor:pointer;opacity:0;color:rgba(0,0,0,.5);line-height:1;padding:0}
 .session-chip:hover .session-chip-del{opacity:1}
+
+/* COMPTEUR CYCLE */
+.cycle-counter{margin-top:20px;padding:16px;background:var(--card);border-radius:12px;border:1px solid var(--border)}
+.cycle-counter-title{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted);margin-bottom:12px}
+.counter-row{margin-bottom:10px}
+.counter-row-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px}
+.counter-chips{display:flex;flex-wrap:wrap;gap:5px}
+.counter-chip{display:flex;align-items:center;gap:5px;padding:4px 10px;border-radius:6px;font-size:11px;font-weight:700}
+.counter-chip-count{background:rgba(0,0,0,.3);border-radius:4px;padding:1px 5px;font-size:10px;font-weight:800}
 
 /* CYCLE PLANNER */
 .cycle-grid-table{border-collapse:collapse;min-width:100%;font-size:12px}
@@ -2626,7 +2635,32 @@ function renderSessionGrid(){
     </tr>`;
   });
   html+='</tbody></table>';
+
+  // COMPTEUR
+  const counts={};
+  Object.entries(cycleData.sessionCells).forEach(([key,chips])=>{
+    const ri=parseInt(key.split('-')[0]);
+    const rowName=cycleData.rows[ri]||'—';
+    if(!counts[rowName])counts[rowName]={};
+    chips.forEach(chip=>{
+      if(!counts[rowName][chip.text])counts[rowName][chip.text]={count:0,color:chip.color};
+      counts[rowName][chip.text].count++;
+    });
+  });
+  if(Object.keys(counts).length>0){
+    html+='<div class="cycle-counter"><div class="cycle-counter-title">Compteur du cycle</div>';
+    Object.entries(counts).forEach(([rowName,items])=>{
+      html+='<div class="counter-row"><div class="counter-row-label">'+rowName+'</div><div class="counter-chips">';
+      Object.entries(items).sort((a,b)=>b[1].count-a[1].count).forEach(([text,{count,color}])=>{
+        const tc=isLightColor(color)?'#111':'#fff';
+        html+='<div class="counter-chip" style="background:'+color+';color:'+tc+'">'+text+'<span class="counter-chip-count">'+count+'</span></div>';
+      });
+      html+='</div></div>';
+    });
+    html+='</div>';
+  }
   grid.innerHTML=html;
+}
 }
 
 function removeSessionChip(key,chi){
