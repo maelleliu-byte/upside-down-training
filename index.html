@@ -102,7 +102,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .session-header{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)}
 .session-body{padding:16px}
 .session-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;margin-bottom:10px}
-.session-content{font-size:14px;line-height:1.75;color:#ccc;white-space:pre-wrap}
+.session-content{font-size:14px;line-height:1.75;color:#ccc;white-space:pre-wrap;word-break:break-word}
+.session-content br{display:block;content:'';margin:2px 0}
 .intensity-bar{margin-top:14px}
 .int-track{height:5px;border-radius:3px;background:var(--border2);position:relative;overflow:hidden;margin-top:6px}
 .int-fill{height:100%;border-radius:3px}
@@ -1158,8 +1159,9 @@ async function buildSessionCard(s){
   ].join('');
 
   const contentWithCharges=renderContentWithCharges(s.content||'');
-  // Afficher comme HTML si contient des balises, sinon texte simple
-  const contentHtml=contentWithCharges.includes('<')?contentWithCharges:contentWithCharges.replace(/\n/g,'<br>');
+  // Si contient du HTML (éditeur riche) afficher tel quel, sinon convertir les \n en <br>
+  const isHtml=/<[a-z][\s\S]*>/i.test(contentWithCharges);
+  const contentHtml=isHtml?contentWithCharges:contentWithCharges.replace(/\n/g,'<br>');
   const isStrength=s.type==='strength'&&s.sets>0;
   const isMulti=s.multi_score&&s.score_count>0;
   const isText=s.score_type==='text';
@@ -1195,7 +1197,7 @@ async function buildSessionCard(s){
     </div>
     <div class="session-body">
       <div class="session-title">${s.title}</div>
-      <div class="session-content" style="white-space:normal">${contentHtml}</div>
+      <div class="session-content">${contentHtml}</div>
       ${scalingHtml}
       ${intHtml}${targetHtml}${tipsHtml}${videoHtml}
       <div style="margin-top:16px">
@@ -2017,11 +2019,29 @@ async function editSession(id){
   const btn=document.querySelector('#admin-new-session .btn-primary');
   btn.textContent='💾 Sauvegarder les modifications';
   btn.style.background='var(--blue)';
+  // Ajouter bouton retour si pas déjà là
+  let cancelBtn=document.getElementById('edit-cancel-btn');
+  if(!cancelBtn){
+    cancelBtn=document.createElement('button');
+    cancelBtn.id='edit-cancel-btn';
+    cancelBtn.className='btn-secondary';
+    cancelBtn.textContent='← Retour au calendrier';
+    cancelBtn.onclick=()=>{
+      editingSessionId=null;
+      btn.textContent='Publier la séance';
+      btn.style.background='';
+      cancelBtn.remove();
+      adminTab('sessions',document.querySelector('.admin-tab-btn:nth-child(3)'));
+    };
+    btn.insertAdjacentElement('afterend',cancelBtn);
+  }
   document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('admin-new-session').classList.add('active');
   document.querySelector('.admin-tab-btn:nth-child(2)').classList.add('active');
-  showToast('✏️ Mode édition activé');
+  // Scroll en haut du formulaire
+  document.getElementById('page-admin').scrollTop=0;
+  showToast('✏️ Mode édition — modifie et sauvegarde');
 }
 
 async function saveSession(){
@@ -2068,6 +2088,8 @@ async function saveSession(){
   // Reset
   const wasEditing=!!editingSessionId;
   editingSessionId=null;
+  const cancelBtn=document.getElementById('edit-cancel-btn');
+  if(cancelBtn)cancelBtn.remove();
   ['f-title','f-target','f-tips','f-youtube','f-ytlabel','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>document.getElementById(id).value='');
   clearEditor();
   document.getElementById('score-labels-container').innerHTML='';
