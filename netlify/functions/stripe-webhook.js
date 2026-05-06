@@ -34,13 +34,34 @@ exports.handler = async (event) => {
   if (stripeEvent.type === 'checkout.session.completed' ||
       stripeEvent.type === 'invoice.payment_succeeded') {
 
-    const session = stripeEvent.data.object;
-    const customerEmail = session.customer_email || session.customer_details?.email;
-    const priceId = session.lines?.data?.[0]?.price?.id ||
-                    stripeEvent.data.object.lines?.data?.[0]?.pricing?.price_id;
+    const obj = stripeEvent.data.object;
+    const customerEmail = obj.customer_email ||
+                          obj.customer_details?.email ||
+                          obj.customer_email;
 
-    if (!customerEmail) {
-      console.log('No email found in event');
+    // Récupérer le priceId selon le type d'événement
+    let priceId = null;
+    if (stripeEvent.type === 'invoice.payment_succeeded') {
+      priceId = obj.lines?.data?.[0]?.price?.id;
+    } else {
+      priceId = obj.lines?.data?.[0]?.price?.id;
+    }
+
+    // Si pas d'email direct, récupérer via customer Stripe
+    let email = customerEmail;
+    if (!email && obj.customer) {
+      try {
+        const customer = await stripe.customers.retrieve(obj.customer);
+        email = customer.email;
+      } catch(e) {
+        console.log('Could not retrieve customer:', e.message);
+      }
+    }
+
+    console.log('Email:', email, 'PriceId:', priceId);
+
+    if (!email) {
+      console.log('No email found');
       return { statusCode: 200, body: 'OK' };
     }
 
@@ -50,19 +71,17 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'OK' };
     }
 
-    // Trouver l'athlète par email
     const { data: profile } = await supabase
       .from('profiles')
       .select('id')
-      .eq('email', customerEmail)
+      .eq('email', email)
       .single();
 
     if (!profile) {
-      console.log('No profile found for email:', customerEmail);
+      console.log('No profile for email:', email);
       return { statusCode: 200, body: 'OK' };
     }
 
-    // Trouver le programme par slug
     const { data: programme } = await supabase
       .from('programmes')
       .select('id')
@@ -70,11 +89,10 @@ exports.handler = async (event) => {
       .single();
 
     if (!programme) {
-      console.log('No programme found for slug:', progSlug);
+      console.log('No programme for slug:', progSlug);
       return { statusCode: 200, body: 'OK' };
     }
 
-    // Donner l'accès
     const { error } = await supabase
       .from('programme_access')
       .upsert({
@@ -84,10 +102,10 @@ exports.handler = async (event) => {
 
     if (error) {
       console.error('Error granting access:', error);
-      return { statusCode: 500, body: 'Error granting access' };
+      return { statusCode: 500, body: 'Error' };
     }
 
-    console.log(`Access granted to ${customerEmail} for ${progSlug}`);
+    console.log(`Access granted: ${email} → ${progSlug}`);
   }
 
   // Gérer les résiliations
