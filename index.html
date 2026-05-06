@@ -767,9 +767,11 @@ function hasAccess(prog){
 async function renderSessions(){
   if(!currentProg)return;
   const area=document.getElementById('sessions-area');
+  const access=hasAccess(currentProg);
+  showToast(`${currentProg.name}: accès=${access} | ids=${[...myAccessIds].length}`);
 
   // Vérifier l'accès
-  if(!hasAccess(currentProg)){
+  if(!access){
     area.innerHTML=`<div class="locked-screen">
       <div class="locked-icon">🔒</div>
       <div class="locked-title">${currentProg.name}</div>
