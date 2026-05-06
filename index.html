@@ -629,6 +629,24 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   </div>
 </div>
 
+<!-- MODAL DUPLICATION -->
+<div class="modal-overlay" id="dup-modal">
+  <div class="modal">
+    <div class="modal-title">📋 Dupliquer</div>
+    <div class="modal-sub" id="dup-session-name">—</div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">Programme destination</label>
+      <select class="form-select" id="dup-prog"></select>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Nouvelle date</label>
+      <input type="date" class="modal-date" id="dup-date">
+    </div>
+    <button class="btn-modal-save" onclick="confirmDuplicate()">📋 Dupliquer</button>
+    <button class="btn-modal-cancel" onclick="closeDupModal()">Annuler</button>
+  </div>
+</div>
+
 <!-- SCORES MODAL -->
 <div class="modal-overlay" id="scores-modal">
   <div class="modal">
@@ -1411,9 +1429,119 @@ async function loadAdminSessions(){
   const {data}=await q;
   const list=document.getElementById('admin-sessions-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucune séance.</p></div>';return;}
-  list.innerHTML=data.map(s=>`<div class="sessions-list-item"><div><div class="sli-title">${s.title}</div><div class="sli-meta">${formatDate(s.date)} · ${s.programmes?.icon||''} ${s.programmes?.name||''} · ${TYPE_LABELS[s.type]||s.type}</div></div><button class="btn-delete" onclick="deleteSession('${s.id}')">✕</button></div>`).join('');
+  list.innerHTML=data.map(s=>`<div class="sessions-list-item">
+    <div style="flex:1">
+      <div class="sli-title">${s.title}</div>
+      <div class="sli-meta">${formatDate(s.date)} · ${s.programmes?.icon||''} ${s.programmes?.name||''} · ${TYPE_LABELS[s.type]||s.type}</div>
+    </div>
+    <div style="display:flex;gap:6px">
+      <button class="btn-delete" style="background:rgba(71,200,255,.1);border-color:rgba(71,200,255,.3);color:var(--blue)" onclick="editSession('${s.id}')">✏️</button>
+      <button class="btn-delete" style="background:rgba(232,255,71,.1);border-color:rgba(232,255,71,.3);color:var(--accent)" onclick="duplicateSession('${s.id}')">📋</button>
+      <button class="btn-delete" onclick="deleteSession('${s.id}')">✕</button>
+    </div>
+  </div>`).join('');
 }
 async function deleteSession(id){const {error}=await sb.from('sessions').delete().eq('id',id);if(error){showToast('❌ '+error.message);return;}showToast('🗑 Supprimée');loadAdminSessions();}
+
+let editingSessionId=null;
+
+async function editSession(id){
+  const {data}=await sb.from('sessions').select('*').eq('id',id).single();
+  if(!data)return;
+  editingSessionId=id;
+  // Remplir le formulaire
+  document.getElementById('f-prog').value=data.programme_id;
+  document.getElementById('f-date').value=data.date;
+  document.getElementById('f-type').value=data.type;
+  document.getElementById('f-title').value=data.title||'';
+  document.getElementById('f-content').value=data.content||'';
+  document.getElementById('f-intensity').value=data.intensity||7;
+  document.getElementById('f-int-val').textContent=data.intensity||7;
+  document.getElementById('f-target').value=data.target||'';
+  document.getElementById('f-tips').value=data.tips||'';
+  document.getElementById('f-score-type').value=data.score_type||'reps';
+  document.getElementById('f-youtube').value=data.youtube_url||'';
+  document.getElementById('f-ytlabel').value=data.youtube_label||'';
+  if(data.type==='strength'){
+    document.getElementById('sets-field').style.display='block';
+    document.getElementById('f-sets').value=data.sets||'';
+  }
+  // Changer le bouton en "Modifier"
+  const btn=document.querySelector('#admin-new-session .btn-primary');
+  btn.textContent='💾 Sauvegarder les modifications';
+  btn.style.background='var(--blue)';
+  // Aller sur l'onglet
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('admin-new-session').classList.add('active');
+  document.querySelector('.admin-tab-btn:nth-child(2)').classList.add('active');
+  showToast('✏️ Mode édition activé');
+}
+
+async function saveSession(){
+  const progId=document.getElementById('f-prog').value;
+  const date=document.getElementById('f-date').value;
+  const type=document.getElementById('f-type').value;
+  const title=document.getElementById('f-title').value.trim();
+  const content=document.getElementById('f-content').value.trim();
+  const intensity=parseInt(document.getElementById('f-intensity').value);
+  const target=document.getElementById('f-target').value.trim();
+  const tips=document.getElementById('f-tips').value.trim();
+  const scoreType=document.getElementById('f-score-type').value;
+  const youtube=document.getElementById('f-youtube').value.trim();
+  const ytlabel=document.getElementById('f-ytlabel').value.trim();
+  const sets=type==='strength'?parseInt(document.getElementById('f-sets').value)||null:null;
+  if(!progId||!date||!title||!content){showToast('⚠️ Remplis les champs obligatoires');return;}
+
+  const payload={programme_id:progId,date,type,title,content,intensity,target:target||null,tips:tips||null,score_type:scoreType,youtube_url:youtube||null,youtube_label:ytlabel||null,sets};
+
+  let error;
+  if(editingSessionId){
+    ({error}=await sb.from('sessions').update(payload).eq('id',editingSessionId));
+  } else {
+    ({error}=await sb.from('sessions').insert({...payload,created_by:currentUser.id}));
+  }
+
+  if(error){showToast('❌ '+error.message);return;}
+
+  // Reset
+  editingSessionId=null;
+  ['f-title','f-content','f-target','f-tips','f-youtube','f-ytlabel'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
+  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  const btn=document.querySelector('#admin-new-session .btn-primary');
+  btn.textContent='Publier la séance';btn.style.background='';
+  showToast(editingSessionId?'✅ Séance modifiée !':'✅ Séance publiée !');
+  loadAdminSessions();
+}
+
+async function duplicateSession(id){
+  const {data}=await sb.from('sessions').select('*').eq('id',id).single();
+  if(!data)return;
+  openDuplicateModal(data);
+}
+
+let sessionToDuplicate=null;
+function openDuplicateModal(session){
+  sessionToDuplicate=session;
+  document.getElementById('dup-session-name').textContent=session.title;
+  document.getElementById('dup-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('dup-prog').innerHTML=programmes.map(p=>`<option value="${p.id}" ${p.id===session.programme_id?'selected':''}>${p.icon||'💪'} ${p.name}</option>`).join('');
+  document.getElementById('dup-modal').classList.add('open');
+}
+function closeDupModal(){document.getElementById('dup-modal').classList.remove('open');sessionToDuplicate=null;}
+async function confirmDuplicate(){
+  if(!sessionToDuplicate)return;
+  const progId=document.getElementById('dup-prog').value;
+  const date=document.getElementById('dup-date').value;
+  if(!date){showToast('⚠️ Choisis une date');return;}
+  const {id,created_at,...rest}=sessionToDuplicate;
+  const {error}=await sb.from('sessions').insert({...rest,programme_id:progId,date,created_by:currentUser.id});
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Séance dupliquée !');
+  closeDupModal();
+  loadAdminSessions();
+}
 async function loadAdminBenchmarks(){
   const {data}=await sb.from('benchmarks').select('*').order('category,name');
   const el=document.getElementById('admin-bench-list');
