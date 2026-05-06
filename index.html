@@ -1232,9 +1232,21 @@ function adminTab(tab,btn){
 // STRIPE / ABOS
 async function loadMyAccess(){
   if(!currentUser)return;
-  const {data}=await sb.from('programme_access').select('programme_id,programmes(slug)').eq('athlete_id',currentUser.id);
-  myAccess=new Set((data||[]).map(a=>a.programmes?.slug).filter(Boolean));
-  myAccessIds=new Set((data||[]).map(a=>a.programme_id).filter(Boolean));
+  const {data,error}=await sb.from('programme_access').select('programme_id,programmes(slug,id)').eq('athlete_id',currentUser.id);
+  console.log('Access data:', data, error);
+  myAccess=new Set();
+  myAccessIds=new Set();
+  (data||[]).forEach(a=>{
+    if(a.programmes?.slug)myAccess.add(a.programmes.slug);
+    if(a.programme_id)myAccessIds.add(a.programme_id);
+  });
+  console.log('Slugs:', [...myAccess], 'IDs:', [...myAccessIds]);
+}
+
+function hasAccess(prog){
+  if(!prog)return false;
+  if(currentProfile?.role==='admin')return true;
+  return myAccessIds.has(prog.id)||myAccess.has(prog.slug);
 }
 async function renderPlans(){
   await loadMyAccess();
