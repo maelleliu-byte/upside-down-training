@@ -675,7 +675,7 @@ async function initApp(){
 }
 
 // NAVIGATION
-function goPage(page){
+async function goPage(page){
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   const pg=document.getElementById(`page-${page}`);
