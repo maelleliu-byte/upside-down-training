@@ -39,12 +39,13 @@ exports.handler = async (event) => {
                           obj.customer_details?.email ||
                           obj.customer_email;
 
-    // Récupérer le priceId selon le type d'événement
+    // Récupérer le priceId — deux chemins possibles selon la version API Stripe
     let priceId = null;
-    if (stripeEvent.type === 'invoice.payment_succeeded') {
-      priceId = obj.lines?.data?.[0]?.price?.id;
-    } else {
-      priceId = obj.lines?.data?.[0]?.price?.id;
+    const lineItem = obj.lines?.data?.[0];
+    if (lineItem) {
+      priceId = lineItem.price?.id ||
+                lineItem.pricing?.price_details?.price ||
+                lineItem.plan?.id;
     }
 
     // Si pas d'email direct, récupérer via customer Stripe
