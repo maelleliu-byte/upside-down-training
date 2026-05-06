@@ -773,6 +773,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
           <option value="4">4</option><option value="6">6</option><option value="8" selected>8</option>
           <option value="10">10</option><option value="12">12</option><option value="16">16</option>
         </select>
+        <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Début</span>
+        <input type="date" class="form-input" id="cycle-start-date" onchange="renderCycleGrid()" style="width:140px;padding:8px 10px">
         <button onclick="addCycleColumn()" style="padding:7px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:8px;font-size:12px;cursor:pointer">+ Colonne</button>
       </div>
 
@@ -895,26 +897,29 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 <!-- MODAL CELLULE CYCLE -->
 <div class="modal-overlay" id="cycle-cell-modal">
   <div class="cycle-cell-modal">
-    <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px;margin-bottom:4px" id="cycle-cell-title">Ajouter</div>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:16px" id="cycle-cell-subtitle">—</div>
-    <div class="form-group">
-      <label class="form-label">Contenu</label>
-      <textarea class="form-textarea" id="cycle-cell-input" style="min-height:80px" placeholder="Ex: Back Squat lourd, 5x3 @ 85%..."></textarea>
-    </div>
-    <div class="form-group">
-      <label class="form-label">Couleur</label>
-      <div class="chip-colors" id="cycle-chip-colors">
-        <div class="chip-color-btn selected" data-color="#e8ff47" style="background:#e8ff47" onclick="selectChipColor('#e8ff47',this)"></div>
-        <div class="chip-color-btn" data-color="#ff4747" style="background:#ff4747" onclick="selectChipColor('#ff4747',this)"></div>
-        <div class="chip-color-btn" data-color="#47c8ff" style="background:#47c8ff" onclick="selectChipColor('#47c8ff',this)"></div>
-        <div class="chip-color-btn" data-color="#ff8c47" style="background:#ff8c47" onclick="selectChipColor('#ff8c47',this)"></div>
-        <div class="chip-color-btn" data-color="#c847ff" style="background:#c847ff" onclick="selectChipColor('#c847ff',this)"></div>
-        <div class="chip-color-btn" data-color="#47ff8c" style="background:#47ff8c" onclick="selectChipColor('#47ff8c',this)"></div>
-        <div class="chip-color-btn" data-color="#ffffff" style="background:#fff" onclick="selectChipColor('#ffffff',this)"></div>
-        <div class="chip-color-btn" data-color="#ff69b4" style="background:#ff69b4" onclick="selectChipColor('#ff69b4',this)"></div>
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px" id="cycle-cell-title">Ajouter</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="cycle-cell-subtitle">—</div>
+    <div id="cycle-cell-presets" style="display:none"></div>
+    <div id="cycle-cell-input-area">
+      <div class="form-group">
+        <label class="form-label">Texte libre</label>
+        <textarea class="form-textarea" id="cycle-cell-input" style="min-height:60px" placeholder="Ou tape librement..."></textarea>
       </div>
+      <div class="form-group">
+        <label class="form-label">Couleur</label>
+        <div class="chip-colors" id="cycle-chip-colors">
+          <div class="chip-color-btn selected" data-color="#e8ff47" style="background:#e8ff47" onclick="selectChipColor('#e8ff47',this)"></div>
+          <div class="chip-color-btn" data-color="#ff4747" style="background:#ff4747" onclick="selectChipColor('#ff4747',this)"></div>
+          <div class="chip-color-btn" data-color="#47c8ff" style="background:#47c8ff" onclick="selectChipColor('#47c8ff',this)"></div>
+          <div class="chip-color-btn" data-color="#ff8c47" style="background:#ff8c47" onclick="selectChipColor('#ff8c47',this)"></div>
+          <div class="chip-color-btn" data-color="#c847ff" style="background:#c847ff" onclick="selectChipColor('#c847ff',this)"></div>
+          <div class="chip-color-btn" data-color="#47ff8c" style="background:#47ff8c" onclick="selectChipColor('#47ff8c',this)"></div>
+          <div class="chip-color-btn" data-color="#ffffff" style="background:#fff" onclick="selectChipColor('#ffffff',this)"></div>
+          <div class="chip-color-btn" data-color="#ff69b4" style="background:#ff69b4" onclick="selectChipColor('#ff69b4',this)"></div>
+        </div>
+      </div>
+      <button class="btn-modal-save" onclick="saveCycleChip()">Ajouter</button>
     </div>
-    <button class="btn-modal-save" onclick="saveCycleChip()">Ajouter</button>
     <button class="btn-modal-cancel" onclick="closeCycleCellModal()">Annuler</button>
   </div>
 </div>
@@ -2472,6 +2477,7 @@ async function loadCycle(id){
   cycleMode=cycleData.mode;
   document.getElementById('cycle-name').value=cycleData.name;
   document.getElementById('cycle-weeks').value=cycleData.weeks;
+  if(data.start_date)document.getElementById('cycle-start-date').value=data.start_date;
   setCycleMode(cycleMode);
 }
 
@@ -2489,7 +2495,8 @@ async function saveCycle(){
   const weeks=parseInt(document.getElementById('cycle-weeks').value)||8;
   cycleData.name=name;cycleData.weeks=weeks;
 
-  const payload={name,weeks,mode:cycleMode,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id};
+  const startDate=document.getElementById('cycle-start-date')?.value||null;
+  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id};
 
   let error;
   if(cycleData.id){
@@ -2526,10 +2533,13 @@ function renderCycleGrid(){
   const cols=cycleData.columns;
   const grid=document.getElementById('cycle-grid');
 
-  // Calculer la date de début (lundi prochain ou aujourd'hui)
-  const startDate=new Date();
-  const day=startDate.getDay();
-  startDate.setDate(startDate.getDate()-(day===0?6:day-1));
+  // Date de début — choisie ou lundi actuel
+  const startInput=document.getElementById('cycle-start-date')?.value;
+  const startDate=startInput?new Date(startInput+'T12:00:00'):new Date();
+  if(!startInput){
+    const day=startDate.getDay();
+    startDate.setDate(startDate.getDate()-(day===0?6:day-1));
+  }
 
   let html=`<table class="cycle-grid-table"><thead><tr>
     <th class="week-header">Semaine</th>
@@ -2627,16 +2637,84 @@ function removeSessionChip(key,chi){
   renderSessionGrid();
 }
 
+// Options prédéfinies par catégorie de ligne
+const SESSION_ROW_OPTIONS = {
+  'Priorité': [
+    {text:'TIME',color:'#47c8ff'},{text:'TASK',color:'#e8ff47'},{text:'INTERVALLES',color:'#ff8c47'}
+  ],
+  'Modalités': [
+    {text:'H',color:'#ff4747'},{text:'G',color:'#47c8ff'},{text:'M',color:'#47ff8c'},
+    {text:'GH',color:'#c847ff'},{text:'HM',color:'#ff8c47'},{text:'GM',color:'#e8ff47'},{text:'GHM',color:'#ffffff'}
+  ],
+  'Schéma': [
+    {text:'SINGLE',color:'#e8ff47'},{text:'COUPLET',color:'#47c8ff'},{text:'TRIPLET',color:'#ff8c47'},
+    {text:'CHIPPER',color:'#c847ff'},{text:'AMRAP',color:'#ff4747'},{text:'FOR TIME',color:'#47ff8c'}
+  ],
+  'Durée': [
+    {text:'SPRINT',color:'#ff4747'},{text:'SHORT',color:'#ff8c47'},{text:'MEDIUM',color:'#e8ff47'},{text:'LONG',color:'#47ff8c'}
+  ],
+  'Charge': [
+    {text:'BODYWEIGHT',color:'#47c8ff'},{text:'LIGHT',color:'#47ff8c'},{text:'MODERATE',color:'#e8ff47'},{text:'HEAVY',color:'#ff4747'}
+  ],
+  'Répétitions': [
+    {text:'LOW REP',color:'#47c8ff'},{text:'MODERATE REP',color:'#e8ff47'},{text:'HIGH REP',color:'#ff4747'}
+  ],
+  'Mouvement': [
+    {text:'SQUAT',color:'#e8ff47'},{text:'HINGE',color:'#ff8c47'},{text:'PRESS',color:'#47c8ff'},
+    {text:'PULL',color:'#c847ff'},{text:'JUMP',color:'#ff4747'},{text:'TRUNK FLEXION',color:'#47ff8c'},
+    {text:'ERGO',color:'#ffffff'},{text:'RUN',color:'#ff69b4'},{text:'CARRY',color:'#ffd700'}
+  ]
+};
+
+function getRowOptions(rowName){
+  // Cherche une correspondance exacte ou partielle
+  const key=Object.keys(SESSION_ROW_OPTIONS).find(k=>rowName.toLowerCase().includes(k.toLowerCase())||k.toLowerCase().includes(rowName.toLowerCase()));
+  return key?SESSION_ROW_OPTIONS[key]:null;
+}
+
 function openCycleCellModal(a,b,mode){
   cycleCellTarget={a,b,mode:mode||'cycle'};
   const label=mode==='session'?`${cycleData.rows[a]||'—'} — ${DAYS_SESSION[b]}`:`Sem. ${a+1} — ${cycleData.columns[b]||'—'}`;
   document.getElementById('cycle-cell-title').textContent=label;
-  document.getElementById('cycle-cell-subtitle').textContent='Ajoute une idée';
+  document.getElementById('cycle-cell-modal').classList.add('open');
+
+  // En mode session, chercher des options prédéfinies
+  const rowName=mode==='session'?cycleData.rows[a]:'';
+  const options=mode==='session'?getRowOptions(rowName):null;
+
+  const subtitleEl=document.getElementById('cycle-cell-subtitle');
+  const inputArea=document.getElementById('cycle-cell-input-area');
+  const presetsArea=document.getElementById('cycle-cell-presets');
+
+  if(options&&options.length){
+    subtitleEl.textContent='Sélectionne ou tape librement';
+    presetsArea.style.display='block';
+    presetsArea.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Prédéfini</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
+        ${options.map(o=>`<button class="preset-option-btn" onclick="selectPreset(${JSON.stringify(o.text)},${JSON.stringify(o.color)})" style="background:${o.color};color:${isLightColor(o.color)?'#111':'#fff'};padding:6px 12px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px">${o.text}</button>`).join('')}
+      </div>`;
+  } else {
+    subtitleEl.textContent='Ajoute une idée';
+    presetsArea.style.display='none';
+  }
+
   document.getElementById('cycle-cell-input').value='';
   selectedChipColor='#e8ff47';
   document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color==='#e8ff47'));
-  document.getElementById('cycle-cell-modal').classList.add('open');
-  setTimeout(()=>document.getElementById('cycle-cell-input').focus(),300);
+  if(!options)setTimeout(()=>document.getElementById('cycle-cell-input').focus(),300);
+}
+
+function selectPreset(text,color){
+  // Sauvegarder directement sans passer par le formulaire
+  if(!cycleCellTarget)return;
+  const key=`${cycleCellTarget.a}-${cycleCellTarget.b}`;
+  if(cycleCellTarget.mode==='session'){
+    if(!cycleData.sessionCells[key])cycleData.sessionCells[key]=[];
+    // Remplacer si déjà une valeur (une seule chip par cellule en mode preset)
+    cycleData.sessionCells[key]=[{text,color}];
+    closeCycleCellModal();
+    renderSessionGrid();
+  }
 }
 
 function closeCycleCellModal(){
