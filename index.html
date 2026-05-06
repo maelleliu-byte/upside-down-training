@@ -330,6 +330,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cal-action-btn{width:16px;height:16px;border-radius:3px;border:none;background:rgba(0,0,0,.4);color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .cal-empty-day{height:40px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--border2)}
 
+/* SÉPARATEUR */
+.separator-block{margin:4px 20px 8px;display:flex;align-items:center;gap:12px;animation:fadeUp .3s ease}
+.separator-line{flex:1;height:1px;background:var(--border2)}
+.separator-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;color:var(--muted);white-space:nowrap;text-transform:uppercase}
+
 /* DRAG & DROP CALENDRIER */
 .cal-session-block{cursor:grab}
 .cal-session-block.dragging{opacity:.4;cursor:grabbing}
@@ -506,6 +511,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
             <option value="skill">Skill</option>
             <option value="warmup">Échauffement</option>
             <option value="mobility">Mobilité</option>
+            <option value="separator">— Séparateur</option>
           </select>
         </div>
       </div>
@@ -1007,16 +1013,21 @@ async function renderSessions(){
   }
 
   area.innerHTML='<div class="spinner"></div>';
-  const {data:sessions}=await sb.from('sessions').select('*').eq('programme_id',currentProg.id).eq('date',selectedDate).order('type');
+  const {data:sessions}=await sb.from('sessions').select('*').eq('programme_id',currentProg.id).eq('date',selectedDate).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
   if(!sessions||sessions.length===0){area.innerHTML='<div class="empty fade-up"><div class="empty-icon">🗓</div><p>Pas de séance<br>programmée ce jour.</p></div>';return;}
   area.innerHTML='';
-  for(const s of sessions){area.insertAdjacentHTML('beforeend',await buildSessionCard(s));}
+  for(const s of sessions){
+    if(s.type==='separator'){
+      area.insertAdjacentHTML('beforeend',buildSeparatorCard(s));
+    } else {
+      area.insertAdjacentHTML('beforeend',await buildSessionCard(s));
+    }
+  }
 }
 
 async function buildSessionCard(s){
   const ytId=s.youtube_url?extractYTId(s.youtube_url):null;
-  // FIX: vérifier que l'URL est valide avant d'afficher
-  const videoHtml=ytId?`<div style="margin-top:14px"><div class="video-lbl">${s.youtube_label||'Vidéo démo'}</div><div class="video-box"><iframe src="https://www.youtube.com/embed/${ytId}?rel=0" allowfullscreen loading="lazy"></iframe></div></div>`:'';
+  const videoHtml=ytId?`<div style="margin-top:14px"><div class="video-lbl">${s.youtube_label||'Vidéo démo'}</div><div class="video-box"><iframe src="https://www.youtube.com/embed/${ytId}?rel=0&modestbranding=1" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div></div>`:'';
   const intensity=s.intensity;
   let intHtml='';
   if(intensity){const pct=intensity*10;const col=intensity<=4?'var(--blue)':intensity<=7?'var(--accent)':'var(--red)';intHtml=`<div class="intensity-bar"><div class="int-row"><span class="int-label">Intensité</span><span class="int-val" style="color:${col}">${intensity}/10</span></div><div class="int-track"><div class="int-fill" style="width:${pct}%;background:${col}"></div></div></div>`;}
@@ -1078,12 +1089,20 @@ async function buildSessionCard(s){
           <button class="level-btn found" onclick="selectLevel('${s.id}','foundation',this)">FOND.</button>
         </div>
         ${scoreInputHtml}
-        <button class="btn-score" style="width:100%;margin-top:6px" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0},${!!isMulti},${isText?'true':'false'},${s.score_count||0})">✓ Valider</button>
+        <button class="btn-score" style="width:100%;margin-top:6px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'}" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0},${!!isMulti},${isText?'true':'false'},${s.score_count||0})">✓ Valider</button>
       </div>
       <button class="btn-open-scores" onclick="openScoresModal('${s.id}','${s.score_type||'reps'}',${s.sets||0})">
         🏆 Voir le classement
       </button>
     </div>
+  </div>`;
+}
+
+function buildSeparatorCard(s){
+  return`<div class="separator-block">
+    <div class="separator-line"></div>
+    <div class="separator-title">${s.title||'—'}</div>
+    <div class="separator-line"></div>
   </div>`;
 }
 
@@ -1618,7 +1637,7 @@ async function loadAdminCalendar(){
   const wk=getWeekNum(dates[0]);
   document.getElementById('admin-cal-week-label').textContent=`Semaine ${wk} — ${MONTHS[dates[0].getMonth()]} ${dates[0].getFullYear()}`;
   const isos=dates.map(d=>d.toISOString().split('T')[0]);
-  let q=sb.from('sessions').select('*,programmes(name,color,icon)').in('date',isos).order('type');
+  let q=sb.from('sessions').select('*,programmes(name,color,icon)').in('date',isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
   if(progId)q=q.eq('programme_id',progId);
   const {data}=await q;
   const byDate={};
@@ -1648,9 +1667,11 @@ async function loadAdminCalendar(){
           onclick="editSession('${s.id}')"
           ondragstart="onSessionDragStart(event,'${s.id}')"
           ondragend="onSessionDragEnd(event)">
-          <div class="cal-session-title" style="color:${color}">${s.title}</div>
-          <div class="cal-session-type">${TYPE_LABELS[s.type]||s.type}</div>
+          <div class="cal-session-title" style="color:${color}">${s.type==='separator'?'— '+s.title:s.title}</div>
+          <div class="cal-session-type">${s.type==='separator'?'Séparateur':TYPE_LABELS[s.type]||s.type}</div>
           <div class="cal-session-actions">
+            <button class="cal-action-btn" onclick="event.stopPropagation();moveSession('${s.id}','up','${iso}')">↑</button>
+            <button class="cal-action-btn" onclick="event.stopPropagation();moveSession('${s.id}','down','${iso}')">↓</button>
             <button class="cal-action-btn" onclick="event.stopPropagation();duplicateSession('${s.id}')">📋</button>
             <button class="cal-action-btn" onclick="event.stopPropagation();deleteSession('${s.id}')">✕</button>
           </div>
@@ -1665,6 +1686,32 @@ async function loadAdminCalendar(){
   }).join('');
 
   cal.innerHTML=`<div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div>`;
+}
+
+async function moveSession(sessionId, direction, date){
+  // Charger toutes les sessions de ce jour dans l'ordre actuel
+  const progId=document.getElementById('admin-filter-prog').value;
+  let q=sb.from('sessions').select('id,sort_order').eq('date',date).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+  if(progId)q=q.eq('programme_id',progId);
+  const {data:sessions}=await q;
+  if(!sessions||sessions.length<2)return;
+
+  const idx=sessions.findIndex(s=>s.id===sessionId);
+  if(idx===-1)return;
+  const targetIdx=direction==='up'?idx-1:idx+1;
+  if(targetIdx<0||targetIdx>=sessions.length)return;
+
+  // Échanger les sort_order
+  const aId=sessions[idx].id;
+  const bId=sessions[targetIdx].id;
+  const aOrder=idx*10;
+  const bOrder=targetIdx*10;
+
+  await Promise.all([
+    sb.from('sessions').update({sort_order:bOrder}).eq('id',aId),
+    sb.from('sessions').update({sort_order:aOrder}).eq('id',bId)
+  ]);
+  loadAdminCalendar();
 }
 
 // DRAG & DROP CALENDRIER
