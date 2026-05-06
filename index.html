@@ -592,7 +592,13 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
           <div class="color-swatch" data-color="#ffffff" style="background:#fff" onclick="selectSessionColor('#ffffff',this)"></div>
         </div>
       </div>
-      <div class="form-group"><label class="form-label">YouTube (optionnel)</label><input type="text" class="form-input" id="f-youtube" placeholder="https://youtube.com/watch?v=..."></div>
+      <div class="form-group">
+        <label class="form-label">YouTube (optionnel)</label>
+        <div style="display:flex;gap:8px">
+          <input type="text" class="form-input" id="f-youtube" placeholder="https://youtube.com/...">
+          <button onclick="openVideoPicker()" style="flex-shrink:0;padding:10px 12px;background:var(--card2);border:1.5px solid var(--border2);border-radius:10px;color:var(--text2);font-size:13px;cursor:pointer;white-space:nowrap">📚 Biblio</button>
+        </div>
+      </div>
       <div class="form-group"><label class="form-label">Libellé vidéo</label><input type="text" class="form-input" id="f-ytlabel" placeholder="Ex: Démo technique"></div>
       <button class="btn-primary" onclick="saveSession()">Publier la séance</button>
     </div>
@@ -734,6 +740,17 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <button class="nav-btn" data-page="videos" onclick="goPage('videos')"><span class="nav-icon">🎬</span><span class="nav-label">Vidéos</span></button>
     <button class="nav-btn" data-page="abos" onclick="goPage('abos')"><span class="nav-icon">💳</span><span class="nav-label">Abos</span></button>
     <button class="nav-btn" data-page="profil" onclick="goPage('profil')"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
+  </div>
+</div>
+
+<!-- MODAL BIBLIOTHÈQUE VIDÉOS -->
+<div class="modal-overlay" id="videopicker-modal">
+  <div class="modal">
+    <div class="modal-title">📚 Bibliothèque</div>
+    <div class="modal-sub">Sélectionne une vidéo</div>
+    <input type="text" id="videopicker-search" class="modal-input" style="font-size:14px;font-weight:400;text-align:left;margin-bottom:12px" placeholder="🔍 Rechercher..." oninput="filterVideoPicker()">
+    <div id="videopicker-list" style="max-height:50vh;overflow-y:auto"></div>
+    <button class="btn-modal-cancel" onclick="closeVideoPicker()">Annuler</button>
   </div>
 </div>
 
@@ -890,6 +907,7 @@ async function initApp(){
   }
   await loadMovements();
   await loadBenchmarks();
+  await loadVideos();
   await loadProgrammes();
   await loadMyPRs();
   const d=new Date();
@@ -2101,6 +2119,37 @@ async function loadDashboard(){
     </div>
     <div class="recent-score-val">${s.score_text||s.score_value||'—'}</div>
   </div>`).join('');
+}
+
+// ===== VIDEO PICKER =====
+function openVideoPicker(){
+  if(!allVideos.length){showToast('⚠️ Charge d\'abord des vidéos dans la bibliothèque');return;}
+  document.getElementById('videopicker-modal').classList.add('open');
+  document.getElementById('videopicker-search').value='';
+  renderVideoPicker();
+}
+function closeVideoPicker(){document.getElementById('videopicker-modal').classList.remove('open');}
+function filterVideoPicker(){renderVideoPicker();}
+function renderVideoPicker(){
+  const q=document.getElementById('videopicker-search').value.toLowerCase();
+  const filtered=allVideos.filter(v=>!q||v.title.toLowerCase().includes(q)||(v.movements?.name||'').toLowerCase().includes(q));
+  const el=document.getElementById('videopicker-list');
+  if(!filtered.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Aucune vidéo trouvée</div>';return;}
+  el.innerHTML=filtered.map(v=>`
+    <div onclick="selectVideoFromPicker(${JSON.stringify(v.youtube_url)},${JSON.stringify(v.title)})" style="display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);cursor:pointer">
+      <span style="font-size:22px">▶️</span>
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:600">${v.title}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${v.movements?.name||'—'}</div>
+      </div>
+      <span style="color:var(--accent);font-size:20px;font-weight:300">+</span>
+    </div>`).join('');
+}
+function selectVideoFromPicker(url,label){
+  document.getElementById('f-youtube').value=url;
+  document.getElementById('f-ytlabel').value=label;
+  closeVideoPicker();
+  showToast('✅ Vidéo sélectionnée !');
 }
 
 // ===== VIDÉOS =====
