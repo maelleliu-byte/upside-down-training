@@ -382,6 +382,26 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .multi-score-input:focus{border-color:var(--accent)}
 .score-note-input{width:100%;background:var(--dark);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 12px;outline:none;margin-top:6px}
 
+.cycle-mode-btn{flex:1;padding:10px;background:transparent;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
+.cycle-mode-btn.active{background:var(--card2);color:var(--orange)}
+
+/* VUE SESSION */
+.session-grid-table{border-collapse:collapse;min-width:100%}
+.session-grid-table th{background:var(--card2);padding:8px 10px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border:1px solid var(--border2);white-space:nowrap;min-width:80px}
+.session-grid-table th.row-header{text-align:left;min-width:90px;position:sticky;left:0;z-index:5;background:var(--dark)}
+.session-row-label{background:var(--dark);padding:8px 10px;border:1px solid var(--border2);vertical-align:middle;position:sticky;left:0;z-index:4}
+.session-row-label-inner{display:flex;align-items:center;gap:6px}
+.session-row-label input{background:transparent;border:none;color:var(--text2);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;letter-spacing:.5px;outline:none;width:80px;cursor:pointer}
+.session-row-label input:focus{color:var(--text);border-bottom:1px solid var(--orange)}
+.session-row-del{background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;opacity:.4}
+.session-row-del:hover{opacity:1;color:var(--red)}
+.session-cell{border:1px solid var(--border2);padding:4px;vertical-align:top;cursor:pointer;transition:background .15s;min-height:60px;min-width:80px}
+.session-cell:hover{background:var(--card2)}
+.session-cell-inner{min-height:56px;display:flex;flex-direction:column;gap:3px}
+.session-chip{border-radius:5px;padding:4px 6px;font-size:11px;font-weight:700;text-align:center;cursor:pointer;position:relative;word-break:break-word;letter-spacing:.3px}
+.session-chip-del{position:absolute;top:1px;right:2px;background:none;border:none;font-size:9px;cursor:pointer;opacity:0;color:rgba(0,0,0,.5);line-height:1;padding:0}
+.session-chip:hover .session-chip-del{opacity:1}
+
 /* CYCLE PLANNER */
 .cycle-grid-table{border-collapse:collapse;min-width:100%;font-size:12px}
 .cycle-grid-table th{background:var(--card2);padding:8px 10px;text-align:center;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);border:1px solid var(--border2);white-space:nowrap;position:sticky;top:0;z-index:5}
@@ -725,37 +745,48 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
     <!-- CYCLE PLANNER -->
     <div class="admin-panel" id="admin-cycle">
-      <!-- Header cycle -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap">
-        <div style="flex:1">
-          <input type="text" class="form-input" id="cycle-name" placeholder="Nom du cycle (ex: Bloc Force Printemps 2026)" style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px">
-        </div>
-        <button onclick="saveCycle()" style="padding:10px 16px;background:var(--orange);color:#000;border:none;border-radius:10px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap">💾 Sauver</button>
-        <button onclick="newCycle()" style="padding:10px 16px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:10px;font-size:13px;cursor:pointer;white-space:nowrap">+ Nouveau</button>
+      <!-- Header -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <input type="text" class="form-input" id="cycle-name" placeholder="Nom du cycle..." style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px">
+        <button onclick="saveCycle()" style="padding:9px 14px;background:var(--orange);color:#000;border:none;border-radius:10px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">💾</button>
+        <button onclick="newCycle()" style="padding:9px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:10px;font-size:12px;cursor:pointer">+</button>
       </div>
 
-      <!-- Sélecteur de cycles sauvegardés -->
-      <div style="margin-bottom:12px;display:flex;gap:8px;align-items:center">
+      <!-- Sélecteur cycles -->
+      <div style="display:flex;gap:8px;margin-bottom:12px">
         <select class="form-select" id="cycle-selector" onchange="loadCycle(this.value)" style="flex:1">
           <option value="">— Sélectionner un cycle —</option>
         </select>
-        <button onclick="deleteCycle()" style="padding:10px 12px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:10px;font-size:13px;cursor:pointer">🗑</button>
+        <button onclick="deleteCycle()" style="padding:9px 12px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:10px;font-size:13px;cursor:pointer">🗑</button>
       </div>
 
-      <!-- Config colonnes et semaines -->
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <div style="display:flex;align-items:center;gap:6px">
-          <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Semaines</span>
-          <select class="form-select" id="cycle-weeks" onchange="renderCycleGrid()" style="width:70px">
-            <option value="4">4</option><option value="6">6</option><option value="8" selected>8</option>
-            <option value="10">10</option><option value="12">12</option><option value="16">16</option>
-          </select>
+      <!-- Switch mode -->
+      <div style="display:flex;gap:0;margin-bottom:12px;border:1px solid var(--border2);border-radius:8px;overflow:hidden">
+        <button id="mode-btn-cycle" class="cycle-mode-btn active" onclick="setCycleMode('cycle')">📅 Vue Cycle</button>
+        <button id="mode-btn-session" class="cycle-mode-btn" onclick="setCycleMode('session')">📋 Vue Session</button>
+      </div>
+
+      <!-- Config Vue Cycle -->
+      <div id="cycle-config-cycle" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+        <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Semaines</span>
+        <select class="form-select" id="cycle-weeks" onchange="renderCycleGrid()" style="width:70px">
+          <option value="4">4</option><option value="6">6</option><option value="8" selected>8</option>
+          <option value="10">10</option><option value="12">12</option><option value="16">16</option>
+        </select>
+        <button onclick="addCycleColumn()" style="padding:7px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:8px;font-size:12px;cursor:pointer">+ Colonne</button>
+      </div>
+
+      <!-- Config Vue Session -->
+      <div id="cycle-config-session" style="display:none;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Catégories (lignes)</span>
+          <button onclick="addSessionRow()" style="padding:5px 10px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:7px;font-size:11px;cursor:pointer">+ Ligne</button>
         </div>
-        <button onclick="addCycleColumn()" style="padding:8px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:8px;font-size:12px;cursor:pointer">+ Colonne</button>
+        <div id="session-rows-config" style="display:flex;flex-direction:column;gap:6px"></div>
       </div>
 
-      <!-- Grille cycle -->
-      <div style="overflow-x:auto;margin:0 -20px;padding:0 20px">
+      <!-- Grille -->
+      <div style="overflow-x:auto;margin:0 -20px;padding:0 20px 16px">
         <div id="cycle-grid"></div>
       </div>
     </div>
@@ -2369,12 +2400,48 @@ let cycleData = {
   id: null,
   name: '',
   weeks: 8,
+  mode: 'cycle', // 'cycle' ou 'session'
   columns: ['WOD', 'Force', 'Skill', 'Hyrox', 'Team WOD'],
-  cells: {} // key: "week-col", value: [{text, color}]
+  rows: ['Priorité', 'Modalités', 'Schéma', 'Durée', 'Charge', 'Répétitions', 'Mouvement'],
+  cells: {},        // Vue cycle: "week-col"
+  sessionCells: {}  // Vue session: "row-day" (day: 0=Lun..5=Sam)
 };
-let cycleCellTarget = null; // {week, col}
+const DAYS_SESSION=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+let cycleCellTarget = null;
 let selectedChipColor = '#e8ff47';
 let allCycles = [];
+let cycleMode = 'cycle';
+
+function setCycleMode(mode){
+  cycleMode=mode;
+  cycleData.mode=mode;
+  document.getElementById('mode-btn-cycle').classList.toggle('active',mode==='cycle');
+  document.getElementById('mode-btn-session').classList.toggle('active',mode==='session');
+  document.getElementById('cycle-config-cycle').style.display=mode==='cycle'?'flex':'none';
+  document.getElementById('cycle-config-session').style.display=mode==='session'?'block':'none';
+  if(mode==='session')renderSessionRowsConfig();
+  renderCycleGrid();
+}
+
+function renderSessionRowsConfig(){
+  const el=document.getElementById('session-rows-config');
+  el.innerHTML=cycleData.rows.map((r,i)=>`
+    <div style="display:flex;align-items:center;gap:8px">
+      <input type="text" class="form-input" value="${r}" oninput="cycleData.rows[${i}]=this.value;renderCycleGrid()" style="flex:1;padding:8px 12px;font-size:13px">
+      <button onclick="removeSessionRow(${i})" style="padding:8px 10px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:8px;font-size:12px;cursor:pointer">✕</button>
+    </div>`).join('');
+}
+
+function addSessionRow(){
+  cycleData.rows.push('Nouvelle ligne');
+  renderSessionRowsConfig();
+  renderCycleGrid();
+}
+function removeSessionRow(i){
+  cycleData.rows.splice(i,1);
+  renderSessionRowsConfig();
+  renderCycleGrid();
+}
 
 
 async function initCyclePlanner(){
@@ -2396,20 +2463,25 @@ async function loadCycle(id){
   cycleData={
     id:data.id,name:data.name,
     weeks:data.weeks||8,
+    mode:data.mode||'cycle',
     columns:data.columns||['WOD','Force','Skill'],
-    cells:data.cells||{}
+    rows:data.rows||['Priorité','Modalités','Schéma','Durée','Charge','Répétitions','Mouvement'],
+    cells:data.cells||{},
+    sessionCells:data.session_cells||{}
   };
+  cycleMode=cycleData.mode;
   document.getElementById('cycle-name').value=cycleData.name;
   document.getElementById('cycle-weeks').value=cycleData.weeks;
-  renderCycleGrid();
+  setCycleMode(cycleMode);
 }
 
 function newCycle(){
-  cycleData={id:null,name:'',weeks:8,columns:['WOD','Force','Skill','Hyrox','Team WOD'],cells:{}};
+  cycleData={id:null,name:'',weeks:8,mode:'cycle',columns:['WOD','Force','Skill','Hyrox','Team WOD'],rows:['Priorité','Modalités','Schéma','Durée','Charge','Répétitions','Mouvement'],cells:{},sessionCells:{}};
+  cycleMode='cycle';
   document.getElementById('cycle-name').value='';
   document.getElementById('cycle-weeks').value='8';
   document.getElementById('cycle-selector').value='';
-  renderCycleGrid();
+  setCycleMode('cycle');
 }
 
 async function saveCycle(){
@@ -2417,7 +2489,7 @@ async function saveCycle(){
   const weeks=parseInt(document.getElementById('cycle-weeks').value)||8;
   cycleData.name=name;cycleData.weeks=weeks;
 
-  const payload={name,weeks,columns:cycleData.columns,cells:cycleData.cells,created_by:currentUser.id};
+  const payload={name,weeks,mode:cycleMode,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id};
 
   let error;
   if(cycleData.id){
@@ -2449,7 +2521,8 @@ function addCycleColumn(){
 }
 
 function renderCycleGrid(){
-  const weeks=parseInt(document.getElementById('cycle-weeks').value)||cycleData.weeks||8;
+  if(cycleMode==='session'){renderSessionGrid();return;}
+  const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
   const cols=cycleData.columns;
   const grid=document.getElementById('cycle-grid');
 
@@ -2515,11 +2588,50 @@ function removeChip(key,chi){
   renderCycleGrid();
 }
 
-function openCycleCellModal(week,col){
-  cycleCellTarget={week,col};
-  const colName=cycleData.columns[col]||'—';
-  document.getElementById('cycle-cell-title').textContent=`Sem. ${week+1} — ${colName}`;
-  document.getElementById('cycle-cell-subtitle').textContent='Ajoute une idée de séance';
+function renderSessionGrid(){
+  const rows=cycleData.rows;
+  const grid=document.getElementById('cycle-grid');
+  let html=`<table class="session-grid-table"><thead><tr>
+    <th class="row-header">Catégorie</th>
+    ${DAYS_SESSION.map(d=>`<th>${d}</th>`).join('')}
+  </tr></thead><tbody>`;
+
+  rows.forEach((row,ri)=>{
+    html+=`<tr>
+      <td class="session-row-label">
+        <div class="session-row-label-inner">
+          <input type="text" value="${row}" oninput="cycleData.rows[${ri}]=this.value">
+          ${rows.length>1?`<button class="session-row-del" onclick="removeSessionRow(${ri})">✕</button>`:''}
+        </div>
+      </td>
+      ${DAYS_SESSION.map((_,di)=>{
+        const key=`${ri}-${di}`;
+        const chips=(cycleData.sessionCells[key]||[]);
+        const chipsHtml=chips.map((chip,chi)=>`
+          <div class="session-chip" style="background:${chip.color};color:${isLightColor(chip.color)?'#111':'#fff'}">
+            ${chip.text}
+            <button class="session-chip-del" onclick="event.stopPropagation();removeSessionChip('${key}',${chi})">✕</button>
+          </div>`).join('');
+        return`<td class="session-cell" onclick="openCycleCellModal(${ri},${di},'session')">
+          <div class="session-cell-inner">${chipsHtml}<button class="cycle-add-btn">+</button></div>
+        </td>`;
+      }).join('')}
+    </tr>`;
+  });
+  html+='</tbody></table>';
+  grid.innerHTML=html;
+}
+
+function removeSessionChip(key,chi){
+  if(cycleData.sessionCells[key])cycleData.sessionCells[key].splice(chi,1);
+  renderSessionGrid();
+}
+
+function openCycleCellModal(a,b,mode){
+  cycleCellTarget={a,b,mode:mode||'cycle'};
+  const label=mode==='session'?`${cycleData.rows[a]||'—'} — ${DAYS_SESSION[b]}`:`Sem. ${a+1} — ${cycleData.columns[b]||'—'}`;
+  document.getElementById('cycle-cell-title').textContent=label;
+  document.getElementById('cycle-cell-subtitle').textContent='Ajoute une idée';
   document.getElementById('cycle-cell-input').value='';
   selectedChipColor='#e8ff47';
   document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color==='#e8ff47'));
@@ -2542,11 +2654,19 @@ function saveCycleChip(){
   if(!cycleCellTarget)return;
   const text=document.getElementById('cycle-cell-input').value.trim();
   if(!text){showToast('⚠️ Entre du contenu');return;}
-  const key=`${cycleCellTarget.week}-${cycleCellTarget.col}`;
-  if(!cycleData.cells[key])cycleData.cells[key]=[];
-  cycleData.cells[key].push({text,color:selectedChipColor});
-  closeCycleCellModal();
-  renderCycleGrid();
+  const key=`${cycleCellTarget.a}-${cycleCellTarget.b}`;
+
+  if(cycleCellTarget.mode==='session'){
+    if(!cycleData.sessionCells[key])cycleData.sessionCells[key]=[];
+    cycleData.sessionCells[key].push({text,color:selectedChipColor});
+    closeCycleCellModal();
+    renderSessionGrid();
+  } else {
+    if(!cycleData.cells[key])cycleData.cells[key]=[];
+    cycleData.cells[key].push({text,color:selectedChipColor});
+    closeCycleCellModal();
+    renderCycleGrid();
+  }
 }
 
 // ===== VIDEO PICKER =====
