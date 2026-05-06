@@ -2735,8 +2735,12 @@ function openCycleCellModal(a,b,mode){
     presetsArea.style.display='block';
     presetsArea.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Prédéfini</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        ${options.map(o=>`<button class="preset-option-btn" onclick="selectPreset(${JSON.stringify(o.text)},${JSON.stringify(o.color)})" style="background:${o.color};color:${isLightColor(o.color)?'#111':'#fff'};padding:6px 12px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px">${o.text}</button>`).join('')}
+        ${options.map((o,i)=>`<button class="preset-option-btn" data-preset-idx="${i}" style="background:${o.color};color:${isLightColor(o.color)?'#111':'#fff'};padding:6px 12px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px">${o.text}</button>`).join('')}
       </div>`;
+    // Attacher les événements après insertion dans le DOM
+    presetsArea.querySelectorAll('.preset-option-btn').forEach((btn,i)=>{
+      btn.addEventListener('click',()=>selectPreset(options[i].text,options[i].color));
+    });
   } else {
     subtitleEl.textContent='Ajoute une idée';
     presetsArea.style.display='none';
