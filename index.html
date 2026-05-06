@@ -994,9 +994,15 @@ async function loadProgrammes(){
   await loadMyAccess();
   renderProgTabs();
   if(programmes.length>0){
-    const firstAccessible=programmes.find(p=>hasAccess(p))||programmes[0];
-    currentProg=firstAccessible;
-    activateProgTab(firstAccessible.id);
+    const isAdmin=currentProfile?.role==='admin';
+    let first;
+    if(isAdmin){
+      first=programmes.find(p=>p.slug==='training')||programmes[0];
+    } else {
+      first=programmes.find(p=>hasAccess(p))||programmes[0];
+    }
+    currentProg=first;
+    activateProgTab(first.id);
     await renderDayStrip();
     await renderSessions();
   }
@@ -1005,13 +1011,31 @@ function renderProgTabs(){
   const tabs=document.getElementById('prog-tabs');
   const sel=document.getElementById('f-prog');
   const sel2=document.getElementById('admin-filter-prog');
-  tabs.innerHTML=programmes.map(p=>{
+
+  // Trier : accessibles en premier, puis verrouillés
+  // Pour admins : Training en premier
+  const isAdmin=currentProfile?.role==='admin';
+  const sorted=[...programmes].sort((a,b)=>{
+    if(isAdmin){
+      // Training en premier pour les admins
+      if(a.slug==='training')return -1;
+      if(b.slug==='training')return 1;
+      return a.name.localeCompare(b.name);
+    }
+    // Athlètes : accessibles en premier
+    const aAccess=hasAccess(a)?0:1;
+    const bAccess=hasAccess(b)?0:1;
+    if(aAccess!==bAccess)return aAccess-bAccess;
+    return a.name.localeCompare(b.name);
+  });
+
+  tabs.innerHTML=sorted.map(p=>{
     const locked=!hasAccess(p);
     return`<button class="prog-tab ${locked?'prog-tab-locked':''}" data-id="${p.id}" onclick="selectProg('${p.id}')">${p.icon||'💪'} ${p.name}${locked?' 🔒':''}</button>`;
   }).join('');
   sel.innerHTML=programmes.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
   sel2.innerHTML='<option value="">Tous</option>'+programmes.map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
-  if(programmes.length>0)activateProgTab(programmes[0].id);
+  if(sorted.length>0)activateProgTab(sorted[0].id);
 }
 function selectProg(id){currentProg=programmes.find(p=>p.id===id);activateProgTab(id);renderDayStrip();renderSessions();}
 function activateProgTab(id){
