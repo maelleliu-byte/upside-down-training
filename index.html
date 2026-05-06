@@ -668,6 +668,7 @@ async function initApp(){
   }
   loadMovements();loadBenchmarks();
   await loadProgrammes();
+  await loadMyPRs();
   const d=new Date();
   document.getElementById('prog-topbar-date').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
@@ -680,7 +681,7 @@ function goPage(page){
   if(pg){pg.style.display='block';pg.classList.add('active');pg.scrollTop=0;}
   const btn=document.querySelector(`[data-page="${page}"]`);
   if(btn)btn.classList.add('active');
-  if(page==='pr'){loadMyPRs();loadMyBenchScores();}
+  if(page==='pr'){await loadMyPRs();await loadMyBenchScores();renderAll();}
   if(page==='profil')loadProfilStats();
   if(page==='admin'){loadAdminProgs();loadAdminSessions();loadAdminAthletes();loadAdminBenchmarks();}
   if(page==='abos')renderPlans();
@@ -1100,7 +1101,7 @@ async function loadMyPRs(){
   const {data}=await sb.from('athlete_prs').select('*').eq('athlete_id',currentUser.id).order('recorded_at',{ascending:false});
   myPRs={};
   (data||[]).forEach(pr=>{if(!myPRs[pr.movement_id])myPRs[pr.movement_id]=[];myPRs[pr.movement_id].push(pr);});
-  renderAll();
+  if(document.getElementById('page-pr')?.classList.contains('active'))renderAll();
 }
 function filterCat(cat,btn){currentCat=cat;document.querySelectorAll('.cat-btn[data-cat]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAll();}
 function filterAll(){searchQuery=document.getElementById('pr-search-input').value.toLowerCase();renderAll();}
