@@ -330,6 +330,27 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cal-action-btn{width:16px;height:16px;border-radius:3px;border:none;background:rgba(0,0,0,.4);color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .cal-empty-day{height:40px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--border2)}
 
+/* DRAG & DROP CALENDRIER */
+.cal-session-block{cursor:grab}
+.cal-session-block.dragging{opacity:.4;cursor:grabbing}
+.cal-day-col.drag-over{background:rgba(232,255,71,.08);border-radius:8px;border:1.5px dashed var(--accent)}
+
+/* SCALING */
+.scaling-block{border-radius:10px;padding:12px 14px;margin-top:10px}
+.scaling-block-inter{background:rgba(71,200,255,.06);border:1px solid rgba(71,200,255,.2)}
+.scaling-block-scaled{background:rgba(255,140,71,.06);border:1px solid rgba(255,140,71,.2)}
+.scaling-block-found{background:rgba(200,71,255,.06);border:1px solid rgba(200,71,255,.2)}
+.scaling-label{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;gap:5px}
+.scaling-text{font-size:13px;line-height:1.7;color:#bbb;white-space:pre-wrap}
+
+/* MULTI SCORE */
+.multi-score-inputs{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.multi-score-row{display:flex;align-items:center;gap:8px}
+.multi-score-lbl{font-size:12px;font-weight:600;color:var(--muted);min-width:80px;flex-shrink:0}
+.multi-score-input{flex:1;background:var(--dark);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;padding:9px 12px;outline:none;text-align:center}
+.multi-score-input:focus{border-color:var(--accent)}
+.score-note-input{width:100%;background:var(--dark);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 12px;outline:none;margin-top:6px}
+
 /* DASHBOARD */
 .dash-stat-box{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:14px;text-align:center}
 .dash-stat-val{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:var(--accent)}
@@ -493,18 +514,54 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <input type="number" class="form-input" id="f-sets" min="1" max="10" placeholder="Ex: 5">
       </div>
       <div class="form-group"><label class="form-label">Titre</label><input type="text" class="form-input" id="f-title" placeholder="Ex: Back Squat 5x5"></div>
-      <div class="form-group"><label class="form-label">Contenu</label><textarea class="form-textarea" id="f-content" placeholder="Détails de la séance..."></textarea></div>
+      <div class="form-group"><label class="form-label">Contenu RX</label><textarea class="form-textarea" id="f-content" placeholder="Détails de la séance RX..."></textarea></div>
+
+      <!-- SCALING PAR NIVEAU -->
+      <div style="background:var(--card);border-radius:10px;border:1px solid var(--border);padding:14px;margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Scaling par niveau</div>
+        <div class="form-group">
+          <label class="form-label" style="color:var(--blue)">Intermédiaire</label>
+          <textarea class="form-textarea" id="f-scaling-inter" style="min-height:70px" placeholder="Modifications pour le niveau intermédiaire..."></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="color:var(--orange)">Scaled</label>
+          <textarea class="form-textarea" id="f-scaling-scaled" style="min-height:70px" placeholder="Modifications pour le niveau scaled..."></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label" style="color:var(--purple)">Fondation</label>
+          <textarea class="form-textarea" id="f-scaling-foundation" style="min-height:70px" placeholder="Modifications pour le niveau fondation..."></textarea>
+        </div>
+      </div>
+
       <div class="form-group"><label class="form-label">Intensité — <span id="f-int-val">7</span>/10</label><input type="range" min="1" max="10" value="7" id="f-intensity" oninput="document.getElementById('f-int-val').textContent=this.value"></div>
       <div class="form-group"><label class="form-label">Target</label><textarea class="form-textarea" id="f-target" style="min-height:80px" placeholder="Objectif par niveau..."></textarea></div>
       <div class="form-group"><label class="form-label">Coaching Tips</label><textarea class="form-textarea" id="f-tips" style="min-height:90px" placeholder="Points techniques clés..."></textarea></div>
-      <div class="form-group"><label class="form-label">Type de score</label>
-        <select class="form-select" id="f-score-type">
+
+      <!-- SCORES MULTIPLES -->
+      <div class="form-group">
+        <label class="form-label">Type de score</label>
+        <select class="form-select" id="f-score-type" onchange="toggleMultiScore()">
           <option value="time">Temps (mm:ss)</option>
           <option value="reps">Reps</option>
           <option value="rounds">Rounds + reps</option>
           <option value="weight">Charge (kg)</option>
           <option value="calories">Calories</option>
         </select>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <button class="toggle-cb" id="multi-score-toggle" onclick="toggleMultiScore()" style="flex-shrink:0"></button>
+        <label style="font-size:13px;color:var(--text2);cursor:pointer" onclick="document.getElementById('multi-score-toggle').click()">Score multiple (2 valeurs différentes)</label>
+      </div>
+      <div id="multi-score-fields" style="display:none;background:var(--card);border-radius:10px;border:1px solid var(--border);padding:14px;margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">Labels des 2 scores</div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">Label score 1</label><input type="text" class="form-input" id="f-score-label1" placeholder="Ex: Charge barre"></div>
+          <div class="form-group"><label class="form-label">Label score 2</label><input type="text" class="form-input" id="f-score-label2" placeholder="Ex: Kettlebell"></div>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Note texte (optionnel)</label>
+          <input type="text" class="form-input" id="f-score-note" placeholder="Ex: Temps total ou commentaire">
+        </div>
       </div>
       <div class="form-group">
         <label class="form-label">Couleur du bloc</label>
@@ -961,40 +1018,55 @@ async function buildSessionCard(s){
   const targetHtml=s.target?`<div class="info-block"><div class="info-block-title"><span>🎯</span> Target</div><div class="info-block-text">${s.target}</div></div>`:'';
   const tipsHtml=s.tips?`<div class="info-block"><div class="info-block-title"><span>💡</span> Coaching Tips</div><div class="info-block-text">${s.tips}</div></div>`:'';
 
-  // Calcul automatique des charges
+  // Scaling par niveau
+  const scalingHtml=[
+    s.scaling_inter?`<div class="scaling-block scaling-block-inter"><div class="scaling-label" style="color:var(--blue)"><span>💙</span> Intermédiaire</div><div class="scaling-text">${s.scaling_inter}</div></div>`:'',
+    s.scaling_scaled?`<div class="scaling-block scaling-block-scaled"><div class="scaling-label" style="color:var(--orange)"><span>🧡</span> Scaled</div><div class="scaling-text">${s.scaling_scaled}</div></div>`:'',
+    s.scaling_foundation?`<div class="scaling-block scaling-block-found"><div class="scaling-label" style="color:var(--purple)"><span>💜</span> Fondation</div><div class="scaling-text">${s.scaling_foundation}</div></div>`:''
+  ].join('');
+
   const contentWithCharges=renderContentWithCharges(s.content||'');
   const isStrength=s.type==='strength'&&s.sets>0;
+  const isMulti=s.multi_score&&s.score_label1&&s.score_label2;
 
   // Score input
   let scoreInputHtml='';
   if(isStrength){
     const setsArr=Array.from({length:s.sets},(_,i)=>`<div class="set-row"><div class="set-label">Série ${i+1}</div><input class="set-input" id="set-${s.id}-${i}" type="number" step="0.5" min="0" placeholder="kg"></div>`).join('');
     scoreInputHtml=`<div class="sets-inputs">${setsArr}</div>`;
+  } else if(isMulti){
+    scoreInputHtml=`<div class="multi-score-inputs">
+      <div class="multi-score-row"><div class="multi-score-lbl">${s.score_label1}</div><input class="multi-score-input" id="score-1-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>
+      <div class="multi-score-row"><div class="multi-score-lbl">${s.score_label2}</div><input class="multi-score-input" id="score-2-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>
+      ${s.score_note_label?`<input class="score-note-input" id="score-note-${s.id}" placeholder="${s.score_note_label}">`:''}
+    </div>`;
   } else {
     scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>`;
   }
 
-  return `<div class="session-card fade-up" id="sc-${s.id}">
-    <div class="session-header">
-      <span class="badge badge-${s.type}">${TYPE_LABELS[s.type]||s.type}</span>
+  // Couleur de la séance
+  const cardColor=s.color||'#e8ff47';
+
+  return `<div class="session-card fade-up" id="sc-${s.id}" style="border-color:${cardColor}33">
+    <div class="session-header" style="border-bottom-color:${cardColor}22">
+      <span class="badge badge-${s.type}" style="background:${cardColor}18;color:${cardColor}">${TYPE_LABELS[s.type]||s.type}</span>
       <span style="font-size:12px;color:var(--muted)">${formatDate(s.date)}</span>
     </div>
     <div class="session-body">
       <div class="session-title">${s.title}</div>
       <div class="session-content">${contentWithCharges}</div>
+      ${scalingHtml}
       ${intHtml}${targetHtml}${tipsHtml}${videoHtml}
-      <div style="margin-top:16px;display:flex;gap:8px">
-        <div style="flex:1">
-          <div class="score-title" style="margin-bottom:8px">📊 Mon score</div>
-          <div class="level-selector">
-            <button class="level-btn rx active" onclick="selectLevel('${s.id}','rx',this)">RX</button>
-            <button class="level-btn inter" onclick="selectLevel('${s.id}','intermediate',this)">INTER</button>
-            <button class="level-btn scaled" onclick="selectLevel('${s.id}','scaled',this)">SCALED</button>
-            <button class="level-btn found" onclick="selectLevel('${s.id}','foundation',this)">FOND.</button>
-          </div>
-          ${scoreInputHtml}
-          <button class="btn-score" style="width:100%;margin-top:6px" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0})">✓ Valider</button>
+      <div style="margin-top:16px">
+        <div class="score-title" style="margin-bottom:8px">📊 Mon score</div>
+        <div class="level-selector">
+          <button class="level-btn rx active" onclick="selectLevel('${s.id}','rx',this)">RX</button>
+          <button class="level-btn inter" onclick="selectLevel('${s.id}','intermediate',this)">INTER</button>
+          <button class="level-btn scaled" onclick="selectLevel('${s.id}','scaled',this)">SCALED</button>
+          <button class="level-btn found" onclick="selectLevel('${s.id}','foundation',this)">FOND.</button>
         </div>
+        ${scoreInputHtml}
+        <button class="btn-score" style="width:100%;margin-top:6px" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0},${!!isMulti})">✓ Valider</button>
       </div>
       <button class="btn-open-scores" onclick="openScoresModal('${s.id}','${s.score_type||'reps'}',${s.sets||0})">
         🏆 Voir le classement
@@ -1091,7 +1163,7 @@ async function loadScores(sessionId,scoreType,sets){
   }
 }
 
-async function submitScore(sessionId,scoreType,isStrength,sets){
+async function submitScore(sessionId,scoreType,isStrength,sets,isMulti){
   let scoreText='',scoreValue=0,setsData=null;
   const level=getSelectedLevel(sessionId);
 
@@ -1105,6 +1177,13 @@ async function submitScore(sessionId,scoreType,isStrength,sets){
     scoreValue=maxVal;
     scoreText=setValues.map(s=>`S${s.set}:${s.value}kg`).join(' / ');
     setsData=setValues;
+  } else if(isMulti){
+    const v1=document.getElementById(`score-1-${sessionId}`)?.value.trim();
+    const v2=document.getElementById(`score-2-${sessionId}`)?.value.trim();
+    const note=document.getElementById(`score-note-${sessionId}`)?.value.trim();
+    if(!v1&&!v2){showToast('⚠️ Entre au moins un score');return;}
+    scoreText=[v1,v2,note].filter(Boolean).join(' | ');
+    scoreValue=parseFloat(v1)||parseFloat(v2)||0;
   } else {
     const input=document.getElementById(`score-input-${sessionId}`);
     scoreText=input?.value.trim();
@@ -1477,6 +1556,14 @@ async function loadAdminSessions(){
 }
 async function deleteSession(id){const {error}=await sb.from('sessions').delete().eq('id',id);if(error){showToast('❌ '+error.message);return;}showToast('🗑 Supprimée');loadAdminSessions();}
 
+let multiScoreEnabled=false;
+function toggleMultiScore(){
+  multiScoreEnabled=!multiScoreEnabled;
+  const btn=document.getElementById('multi-score-toggle');
+  btn.classList.toggle('on',multiScoreEnabled);
+  document.getElementById('multi-score-fields').style.display=multiScoreEnabled?'block':'none';
+}
+
 let selectedSessionColor='#e8ff47';
 function selectSessionColor(color,el){
   selectedSessionColor=color;
@@ -1513,8 +1600,14 @@ async function loadAdminCalendar(){
     const blocks=sessions.length>0
       ?sessions.map(s=>{
         const color=s.color||'#e8ff47';
-        const textColor=isLightColor(color)?'#000':'#fff';
-        return`<div class="cal-session-block" style="background:${color}22;border:1px solid ${color}66;color:${color}" onclick="editSession('${s.id}')">
+        return`<div class="cal-session-block" 
+          draggable="true"
+          data-session-id="${s.id}"
+          data-date="${s.date}"
+          style="background:${color}22;border:1px solid ${color}66;color:${color}"
+          onclick="editSession('${s.id}')"
+          ondragstart="onSessionDragStart(event,'${s.id}')"
+          ondragend="onSessionDragEnd(event)">
           <div class="cal-session-title" style="color:${color}">${s.title}</div>
           <div class="cal-session-type">${TYPE_LABELS[s.type]||s.type}</div>
           <div class="cal-session-actions">
@@ -1524,10 +1617,44 @@ async function loadAdminCalendar(){
         </div>`;
       }).join('')
       :`<div class="cal-empty-day">+</div>`;
-    return`<div class="cal-day-col">${blocks}</div>`;
+    return`<div class="cal-day-col" 
+      data-date="${iso}"
+      ondragover="onCalDragOver(event)"
+      ondragleave="onCalDragLeave(event)"
+      ondrop="onCalDrop(event,'${iso}')">${blocks}</div>`;
   }).join('');
 
   cal.innerHTML=`<div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div>`;
+}
+
+// DRAG & DROP CALENDRIER
+let draggingSessionId=null;
+function onSessionDragStart(event,sessionId){
+  draggingSessionId=sessionId;
+  event.target.classList.add('dragging');
+  event.dataTransfer.effectAllowed='move';
+}
+function onSessionDragEnd(event){
+  event.target.classList.remove('dragging');
+  document.querySelectorAll('.cal-day-col').forEach(c=>c.classList.remove('drag-over'));
+}
+function onCalDragOver(event){
+  event.preventDefault();
+  event.dataTransfer.dropEffect='move';
+  event.currentTarget.classList.add('drag-over');
+}
+function onCalDragLeave(event){
+  event.currentTarget.classList.remove('drag-over');
+}
+async function onCalDrop(event,targetDate){
+  event.preventDefault();
+  event.currentTarget.classList.remove('drag-over');
+  if(!draggingSessionId)return;
+  const {error}=await sb.from('sessions').update({date:targetDate}).eq('id',draggingSessionId);
+  draggingSessionId=null;
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Séance déplacée !');
+  loadAdminCalendar();
 }
 
 function changeAdminWeek(dir){adminWeekOffset+=dir;loadAdminCalendar();}
@@ -1545,7 +1672,6 @@ async function editSession(id){
   const {data}=await sb.from('sessions').select('*').eq('id',id).single();
   if(!data)return;
   editingSessionId=id;
-  // Remplir le formulaire
   document.getElementById('f-prog').value=data.programme_id;
   document.getElementById('f-date').value=data.date;
   document.getElementById('f-type').value=data.type;
@@ -1558,22 +1684,31 @@ async function editSession(id){
   document.getElementById('f-score-type').value=data.score_type||'reps';
   document.getElementById('f-youtube').value=data.youtube_url||'';
   document.getElementById('f-ytlabel').value=data.youtube_label||'';
-  // Restaurer la couleur
+  // Scaling
+  document.getElementById('f-scaling-inter').value=data.scaling_inter||'';
+  document.getElementById('f-scaling-scaled').value=data.scaling_scaled||'';
+  document.getElementById('f-scaling-foundation').value=data.scaling_foundation||'';
+  // Multi score
+  if(data.multi_score){
+    multiScoreEnabled=true;
+    document.getElementById('multi-score-toggle').classList.add('on');
+    document.getElementById('multi-score-fields').style.display='block';
+    document.getElementById('f-score-label1').value=data.score_label1||'';
+    document.getElementById('f-score-label2').value=data.score_label2||'';
+    document.getElementById('f-score-note').value=data.score_note_label||'';
+  }
+  // Couleur
   if(data.color){
     selectedSessionColor=data.color;
-    document.querySelectorAll('#f-colors .color-swatch').forEach(s=>{
-      s.classList.toggle('selected',s.dataset.color===data.color);
-    });
+    document.querySelectorAll('#f-colors .color-swatch').forEach(s=>s.classList.toggle('selected',s.dataset.color===data.color));
   }
   if(data.type==='strength'){
     document.getElementById('sets-field').style.display='block';
     document.getElementById('f-sets').value=data.sets||'';
   }
-  // Changer le bouton en "Modifier"
   const btn=document.querySelector('#admin-new-session .btn-primary');
   btn.textContent='💾 Sauvegarder les modifications';
   btn.style.background='var(--blue)';
-  // Aller sur l'onglet
   document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById('admin-new-session').classList.add('active');
@@ -1595,9 +1730,22 @@ async function saveSession(){
   const ytlabel=document.getElementById('f-ytlabel').value.trim();
   const sets=type==='strength'?parseInt(document.getElementById('f-sets').value)||null:null;
   const color=selectedSessionColor||'#e8ff47';
+  const scalingInter=document.getElementById('f-scaling-inter').value.trim();
+  const scalingScaled=document.getElementById('f-scaling-scaled').value.trim();
+  const scalingFoundation=document.getElementById('f-scaling-foundation').value.trim();
+  const multiScore=multiScoreEnabled;
+  const scoreLabel1=multiScore?document.getElementById('f-score-label1').value.trim():null;
+  const scoreLabel2=multiScore?document.getElementById('f-score-label2').value.trim():null;
+  const scoreNoteLabel=multiScore?document.getElementById('f-score-note').value.trim():null;
   if(!progId||!date||!title||!content){showToast('⚠️ Remplis les champs obligatoires');return;}
 
-  const payload={programme_id:progId,date,type,title,content,intensity,target:target||null,tips:tips||null,score_type:scoreType,youtube_url:youtube||null,youtube_label:ytlabel||null,sets,color};
+  const payload={
+    programme_id:progId,date,type,title,content,intensity,
+    target:target||null,tips:tips||null,score_type:scoreType,
+    youtube_url:youtube||null,youtube_label:ytlabel||null,sets,color,
+    scaling_inter:scalingInter||null,scaling_scaled:scalingScaled||null,scaling_foundation:scalingFoundation||null,
+    multi_score:multiScore,score_label1:scoreLabel1||null,score_label2:scoreLabel2||null,score_note_label:scoreNoteLabel||null
+  };
 
   let error;
   if(editingSessionId){
@@ -1611,9 +1759,12 @@ async function saveSession(){
   // Reset
   const wasEditing=!!editingSessionId;
   editingSessionId=null;
-  ['f-title','f-content','f-target','f-tips','f-youtube','f-ytlabel'].forEach(id=>document.getElementById(id).value='');
+  ['f-title','f-content','f-target','f-tips','f-youtube','f-ytlabel','f-scaling-inter','f-scaling-scaled','f-scaling-foundation','f-score-label1','f-score-label2','f-score-note'].forEach(id=>document.getElementById(id).value='');
   document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
   document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  multiScoreEnabled=false;
+  document.getElementById('multi-score-toggle').classList.remove('on');
+  document.getElementById('multi-score-fields').style.display='none';
   const btn=document.querySelector('#admin-new-session .btn-primary');
   btn.textContent='Publier la séance';btn.style.background='';
   showToast(wasEditing?'✅ Séance modifiée !':'✅ Séance publiée !');
