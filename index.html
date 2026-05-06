@@ -1040,12 +1040,12 @@ const STRIPE_PLANS={
 };
 
 // SPLASH SCREEN
-window.addEventListener('load',()=>{
-  setTimeout(()=>{
-    const splash=document.getElementById('splash-screen');
-    if(splash){splash.style.opacity='0';setTimeout(()=>splash.style.display='none',600);}
-  },2000);
-});
+function hideSplash(){
+  const splash=document.getElementById('splash-screen');
+  if(splash){splash.style.opacity='0';setTimeout(()=>splash.style.display='none',600);}
+}
+// Masquer après 2.5s max quoi qu'il arrive
+setTimeout(hideSplash, 2500);
 
 // INIT
 window.onload=async()=>{
