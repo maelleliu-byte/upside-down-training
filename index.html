@@ -822,7 +822,7 @@ let currentCat='all',searchQuery='',currentBcat='all';
 const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
 const TYPE_LABELS={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymnastics:'Gymnastics',renforcement:'Renforcement',bodybuilding:'Bodybuilding',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité',separator:'Séparateur'};
-const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio',autre:'Autre'};
+const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio / Mono',autre:'Autre'};
 const LEVEL_LABELS={rx:'RX',intermediate:'Inter',scaled:'Scaled',foundation:'Fond.'};
 const LEVEL_COLORS={rx:'var(--accent)',intermediate:'var(--blue)',scaled:'var(--orange)',foundation:'var(--purple)'};
 const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétitions',rounds:'Ex: 12 + 5',weight:'Charge en kg (ex: 85)',calories:'Nombre de calories'};
@@ -1448,20 +1448,58 @@ function openPRModal(movementId){
   const histEl=document.getElementById('modal-history');
   if(prs.length>0){
     const max=Math.max(...prs.map(p=>p.value));
-    histEl.innerHTML=`<div class="pr-hist-title">Historique</div>`+prs.slice(0,5).map(p=>`<div class="pr-hist-item"><div><span class="pr-hist-val">${p.value} ${currentModalMovement.unit}</span>${p.value===max?'<span class="pr-hist-new">PR</span>':''}</div><div class="pr-hist-date">${formatDate(p.recorded_at)}</div></div>`).join('');
+    histEl.innerHTML=`<div class="pr-hist-title">Historique</div>`+prs.slice(0,8).map(p=>`
+      <div class="pr-hist-item">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="pr-hist-val">${p.value} ${currentModalMovement.unit}</span>
+          ${p.value===max?'<span class="pr-hist-new">PR</span>':''}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="pr-hist-date">${formatDate(p.recorded_at)}</span>
+          <button onclick="editPR('${p.id}','${p.value}','${p.recorded_at}')" style="background:rgba(71,200,255,.1);border:1px solid rgba(71,200,255,.3);color:var(--blue);border-radius:5px;padding:2px 7px;font-size:11px;cursor:pointer">✏️</button>
+          <button onclick="deletePR('${p.id}')" style="background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:5px;padding:2px 7px;font-size:11px;cursor:pointer">✕</button>
+        </div>
+      </div>`).join('');
     if(prs.length>=2)histEl.insertAdjacentHTML('beforeend',buildMiniChart(prs.slice(0,8).reverse()));
   } else {histEl.innerHTML='';}
   document.getElementById('pr-modal').classList.add('open');
 }
-function closePRModal(){document.getElementById('pr-modal').classList.remove('open');currentModalMovement=null;}
+function closePRModal(){document.getElementById('pr-modal').classList.remove('open');currentModalMovement=null;editingPRId=null;}
+
+let editingPRId=null;
+function editPR(id,value,date){
+  editingPRId=id;
+  document.getElementById('modal-pr-val').value=value;
+  document.getElementById('modal-pr-date').value=date;
+  document.querySelector('.btn-modal-save').textContent='💾 Modifier le PR';
+  document.getElementById('modal-pr-val').focus();
+}
+async function deletePR(id){
+  const {error}=await sb.from('athlete_prs').delete().eq('id',id);
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('🗑 PR supprimé');
+  await loadMyPRs();
+  if(currentModalMovement)openPRModal(currentModalMovement.id);
+}
 async function savePR(){
   if(!currentModalMovement)return;
   const val=parseFloat(document.getElementById('modal-pr-val').value);
   const date=document.getElementById('modal-pr-date').value;
   if(!val||val<=0){showToast('⚠️ Entre une valeur valide');return;}
-  const {error}=await sb.from('athlete_prs').insert({athlete_id:currentUser.id,movement_id:currentModalMovement.id,value:val,recorded_at:date});
-  if(error){showToast('❌ '+error.message);return;}
-  showToast('🏆 PR enregistré !');closePRModal();await loadMyPRs();
+
+  if(editingPRId){
+    const {error}=await sb.from('athlete_prs').update({value:val,recorded_at:date}).eq('id',editingPRId);
+    if(error){showToast('❌ '+error.message);return;}
+    showToast('✅ PR modifié !');
+    editingPRId=null;
+    document.querySelector('.btn-modal-save').textContent='Enregistrer';
+  } else {
+    const {error}=await sb.from('athlete_prs').insert({athlete_id:currentUser.id,movement_id:currentModalMovement.id,value:val,recorded_at:date});
+    if(error){showToast('❌ '+error.message);return;}
+    showToast('🏆 PR enregistré !');
+  }
+  await loadMyPRs();
+  openPRModal(currentModalMovement.id);
 }
 function buildMiniChart(prs){
   if(prs.length<2)return'';
