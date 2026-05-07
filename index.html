@@ -10,7 +10,7 @@
 <script src="https://js.stripe.com/v3/"></script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
-:root{--black:#000000;--dark:#0a0a0a;--card:#141414;--card2:#1c1c1c;--border:#222;--border2:#2e2e2e;--accent:#1e9b9b;--accent-soft:#2bb8b8;--accent-dark:#0d4747;--red:#ff4444;--blue:#47c8ff;--orange:#ff8c47;--purple:#c847ff;--green:#47ff8c;--text:#f0f0f0;--text2:#aaa;--muted:#666;--safe-bottom:env(safe-area-inset-bottom,0px)}
+:root{--black:#080808;--dark:#101010;--card:#161616;--card2:#1e1e1e;--border:#252525;--border2:#333;--accent:#e8ff47;--red:#ff4444;--blue:#47c8ff;--orange:#ff8c47;--purple:#c847ff;--green:#47ff8c;--text:#f0f0f0;--text2:#aaa;--muted:#666;--safe-bottom:env(safe-area-inset-bottom,0px)}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);max-width:430px;margin:0 auto;position:relative}
@@ -52,7 +52,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);
 
 /* COMMON */
 .badge{display:inline-flex;align-items:center;padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase}
-.badge-wod{background:rgba(30,155,155,.12);color:var(--accent)}
+.badge-wod{background:rgba(232,255,71,.12);color:var(--accent)}
 .badge-strength{background:rgba(255,68,68,.12);color:var(--red)}
 .badge-skill{background:rgba(71,200,255,.12);color:var(--blue)}
 .badge-warmup{background:rgba(255,140,71,.12);color:var(--orange)}
@@ -92,7 +92,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .day-strip::-webkit-scrollbar{display:none}
 .day-pill{flex-shrink:0;display:flex;flex-direction:column;align-items:center;padding:8px 12px;border-radius:10px;border:1.5px solid var(--border);background:var(--card);cursor:pointer;transition:all .2s;min-width:46px}
 .day-pill.has-content::after{content:'';width:4px;height:4px;border-radius:50%;background:var(--accent);margin-top:3px;display:block}
-.day-pill.active{border-color:var(--accent);background:rgba(30,155,155,.08)}
+.day-pill.active{border-color:var(--accent);background:rgba(232,255,71,.08)}
 .day-name{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .day-num{font-family:'Bebas Neue',sans-serif;font-size:20px;line-height:1.1;margin-top:1px}
 .day-pill.active .day-name,.day-pill.active .day-num{color:var(--accent)}
@@ -124,16 +124,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 /* LEVEL SELECTOR */
 .level-selector{display:flex;gap:6px;margin-bottom:12px}
 .level-btn{flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;letter-spacing:.5px}
-.level-btn.rx.active{border-color:#fff;color:#fff;background:#000}
-.level-btn.inter.active{border-color:var(--red);color:#fff;background:var(--red)}
-.level-btn.scaled.active{border-color:var(--blue);color:#fff;background:var(--blue)}
-.level-btn.found.active{border-color:var(--purple);color:#fff;background:var(--purple)}
-.gender-filter{display:flex;gap:6px;padding:8px 0 12px}
-.gf-btn{flex:1;padding:7px 8px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.8px}
-.gf-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(30,155,155,.1)}
-.score-self-actions{display:flex;gap:6px;margin-top:6px}
-.score-self-btn{flex:1;padding:7px 10px;border-radius:7px;background:transparent;border:1px solid var(--border2);color:var(--muted);font-size:11px;font-weight:700;cursor:pointer;letter-spacing:.5px}
-.score-self-btn.del{color:var(--red);border-color:rgba(255,68,68,.3)}
+.level-btn.rx.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,.08)}
+.level-btn.inter.active{border-color:var(--blue);color:var(--blue);background:rgba(71,200,255,.08)}
+.level-btn.scaled.active{border-color:var(--orange);color:var(--orange);background:rgba(255,140,71,.08)}
+.level-btn.found.active{border-color:var(--purple);color:var(--purple);background:rgba(200,71,255,.08)}
 
 /* SETS INPUT */
 .sets-inputs{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
@@ -160,7 +154,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .score-name{flex:1;font-size:13px;font-weight:600}
 .score-val{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px}
 .level-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px}
-.lbadge-rx{background:rgba(30,155,155,.15);color:var(--accent)}
+.lbadge-rx{background:rgba(232,255,71,.15);color:var(--accent)}
 .lbadge-intermediate{background:rgba(71,200,255,.12);color:var(--blue)}
 .lbadge-scaled{background:rgba(255,140,71,.12);color:var(--orange)}
 .lbadge-foundation{background:rgba(200,71,255,.12);color:var(--purple)}
@@ -172,12 +166,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .react-btn.liked{color:var(--red)}
 .react-btn:active{transform:scale(.9)}
 .comment-btn{flex:1;text-align:left;font-size:12px}
-.comments-area{margin-top:8px;display:none;background:rgba(30,155,155,.04);border-left:2px solid rgba(30,155,155,.3);padding:8px 12px;border-radius:0 8px 8px 0}
-.athlete-notes{margin:6px 0 4px}
-.athlete-notes:empty{display:none}
-.athlete-note{background:rgba(255,200,71,.06);border-left:2px solid rgba(255,200,71,.4);padding:6px 10px;border-radius:0 6px 6px 0;margin-top:4px}
-.athlete-note-date{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
-.athlete-note-text{font-size:12px;color:#e8d488;line-height:1.4;margin-top:2px;white-space:pre-wrap}
+.comments-area{margin-top:8px;display:none}
 .comments-area.open{display:block}
 .comment-item{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
 .comment-item:last-child{border-bottom:none}
@@ -196,7 +185,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .pr-cats{display:flex;overflow-x:auto;gap:6px;padding:10px 20px 4px;scrollbar-width:none}
 .pr-cats::-webkit-scrollbar{display:none}
 .cat-btn{flex-shrink:0;padding:6px 14px;border-radius:20px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;white-space:nowrap}
-.cat-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(30,155,155,.08)}
+.cat-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,.08)}
 .movement-item{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(255,255,255,.04);cursor:pointer;transition:background .15s}
 .movement-item:active{background:var(--card)}
 .mv-name{font-size:14px;font-weight:600}
@@ -233,7 +222,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .pr-hist-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04)}
 .pr-hist-val{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px}
 .pr-hist-date{font-size:11px;color:var(--muted)}
-.pr-hist-new{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(30,155,155,.15);color:var(--accent)}
+.pr-hist-new{font-size:9px;font-weight:700;padding:2px 7px;border-radius:4px;background:rgba(232,255,71,.15);color:var(--accent)}
 .mini-chart{width:100%;height:80px;margin-top:12px}
 .mini-chart svg{width:100%;height:100%}
 
@@ -276,7 +265,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .athlete-email{font-size:12px;color:var(--muted);margin-top:1px}
 .athlete-role{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px}
 .role-admin{background:rgba(255,140,71,.15);color:var(--orange)}
-.role-athlete{background:rgba(30,155,155,.1);color:var(--accent)}
+.role-athlete{background:rgba(232,255,71,.1);color:var(--accent)}
 
 /* PROFIL */
 .profil-header{padding:24px 20px 16px;display:flex;align-items:center;gap:16px}
@@ -307,7 +296,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .plan-feature::before{content:'✓';color:var(--accent);font-weight:700;flex-shrink:0}
 .btn-subscribe{width:100%;padding:14px;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;transition:all .2s}
 .btn-subscribe.locked{background:var(--accent);color:#000}
-.btn-subscribe.active{background:rgba(30,155,155,.1);color:var(--accent);border:1.5px solid var(--accent)}
+.btn-subscribe.active{background:rgba(232,255,71,.1);color:var(--accent);border:1.5px solid var(--accent)}
 .btn-subscribe:active{opacity:.8}
 .access-badge{display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:6px;font-size:11px;font-weight:700;background:rgba(71,255,140,.1);color:var(--green)}
 
@@ -334,19 +323,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cal-day-header{text-align:center;font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;padding:4px 0}
 .cal-day-col{display:flex;flex-direction:column;gap:4px;min-height:60px}
 .cal-day-date{font-family:'Bebas Neue',sans-serif;font-size:16px;text-align:center;padding:4px 0;border-radius:6px;margin-bottom:2px;color:var(--muted)}
-.cal-day-date.today{background:rgba(30,155,155,.15);color:var(--accent)}
+.cal-day-date.today{background:rgba(232,255,71,.15);color:var(--accent)}
 .cal-session-block{border-radius:6px;padding:5px 6px;font-size:10px;font-weight:700;line-height:1.3;cursor:pointer;transition:opacity .2s;position:relative;overflow:hidden}
 .cal-session-block:active{opacity:.7}
 .cal-session-title{font-size:10px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .cal-session-type{font-size:9px;opacity:.8;text-transform:uppercase;letter-spacing:.5px;margin-top:1px}
-.cal-session-preview{font-size:9.5px;color:rgba(255,255,255,.65);margin-top:4px;line-height:1.35;white-space:pre-wrap;max-height:80px;overflow:hidden;font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:0;text-transform:none;border-top:1px solid rgba(255,255,255,.08);padding-top:4px}
 .cal-session-actions{display:none;position:absolute;top:2px;right:2px;gap:2px}
 .cal-session-block:hover .cal-session-actions{display:flex}
 .cal-action-btn{width:16px;height:16px;border-radius:3px;border:none;background:rgba(0,0,0,.4);color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .cal-empty-day{height:40px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--border2)}
 
 .format-btn{padding:6px 12px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
-.format-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(30,155,155,.1)}
+.format-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,.1)}
 
 /* ÉDITEUR RICHE */
 .rich-editor-wrap{border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;transition:border-color .2s}
@@ -376,7 +364,83 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 /* DRAG & DROP CALENDRIER */
 .cal-session-block{cursor:grab}
 .cal-session-block.dragging{opacity:.4;cursor:grabbing}
-.cal-day-col.drag-over{background:rgba(30,155,155,.08);border-radius:8px;border:1.5px dashed var(--accent)}
+.cal-day-col.drag-over{background:rgba(232,255,71,.08);border-radius:8px;border:1.5px dashed var(--accent)}
+
+/* CALENDRIER ADMIN — BLOCS RICHES */
+.cal-day-col.rich{min-height:120px;gap:8px}
+.cal-rich{position:relative;border-radius:10px;padding:10px;background:#0d0e0f;border:1px solid var(--border);cursor:pointer;overflow:hidden;transition:transform .15s,border-color .15s}
+.cal-rich:hover{transform:translateY(-1px);border-color:var(--border2)}
+.cal-rich .cal-accent{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:10px 0 0 10px}
+.cal-rich-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
+.cal-rich-type{font-family:'Bebas Neue',sans-serif;font-size:10px;letter-spacing:1.5px;padding:2px 6px;border-radius:4px}
+.cal-rich-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;line-height:1.15;color:var(--text);margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.cal-rich-content{font-size:10px;color:var(--muted);line-height:1.4;max-height:48px;overflow:hidden;position:relative}
+.cal-rich-content::after{content:'';position:absolute;bottom:0;left:0;right:0;height:18px;background:linear-gradient(to bottom,transparent,#0d0e0f)}
+.cal-rich-content em{color:#bdbfc2;font-style:normal}
+.cal-rich-content b{color:#e6e7ea;font-weight:700}
+.cal-rich-meta{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.cal-rich-meta .dot{width:3px;height:3px;border-radius:50%;background:var(--border2)}
+.cal-rich-actions{position:absolute;top:6px;right:6px;display:none;gap:3px;background:rgba(0,0,0,.55);padding:3px;border-radius:6px;backdrop-filter:blur(6px)}
+.cal-rich:hover .cal-rich-actions{display:flex}
+.cal-rich.separator{background:transparent;border:none;text-align:center;padding:6px 0;cursor:default}
+.cal-rich.separator .cal-rich-title{color:var(--accent);font-size:11px;letter-spacing:2px;margin:0}
+
+/* MODAL LECTURE SÉANCE */
+.read-modal{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);z-index:9999;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.read-modal.open{display:flex}
+.read-modal-box{background:var(--card);border:1px solid var(--border);border-radius:18px;max-width:560px;width:100%;max-height:calc(100vh - 40px);display:flex;flex-direction:column;overflow:hidden}
+.read-modal-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+.read-modal-head-l{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px}
+.read-modal-close{width:32px;height:32px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.read-modal-body{padding:14px 16px;overflow-y:auto;flex:1}
+.read-modal-foot{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0}
+.read-modal-foot .btn-primary,.read-modal-foot .btn-secondary{flex:1;margin:0}
+
+/* ESPACE PERSO — ADMIN */
+.perso-back{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:8px 0;margin-bottom:8px}
+.perso-back:hover{color:var(--text)}
+.perso-search{margin-bottom:12px}
+.perso-search input{width:100%;background:#0d0e0f;border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:14px}
+.perso-athlete-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.perso-athlete-card:hover{border-color:var(--accent)}
+.perso-athlete-card .athlete-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#e8ff47,#47c8ff);color:#000;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;flex-shrink:0}
+.perso-athlete-card .perso-meta{flex:1;min-width:0}
+.perso-athlete-card .perso-name{font-weight:700;font-size:14px;color:var(--text);margin-bottom:2px}
+.perso-athlete-card .perso-sub{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.perso-athlete-card .perso-count{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--accent);letter-spacing:1px}
+.perso-athlete-card .chev{color:var(--muted);font-size:18px}
+
+.perso-fiche-head{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
+.perso-fiche-head .athlete-avatar{width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#e8ff47,#47c8ff);color:#000;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;flex-shrink:0}
+.perso-fiche-head .perso-name{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1.5px;line-height:1}
+.perso-fiche-head .perso-sub{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.5px}
+
+.perso-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+.perso-view-toggle{display:inline-flex;background:#0d0e0f;border:1px solid var(--border);border-radius:8px;padding:2px}
+.perso-view-toggle button{background:transparent;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:6px 12px;border-radius:6px;cursor:pointer}
+.perso-view-toggle button.active{background:var(--accent);color:#000}
+.perso-week-nav{display:inline-flex;align-items:center;gap:6px}
+.perso-add-btn{background:var(--accent);color:#000;border:none;border-radius:10px;padding:9px 14px;font-family:'DM Sans',sans-serif;font-weight:700;font-size:12px;cursor:pointer}
+
+/* CALENDRIER MENSUEL PERSO */
+.perso-month{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
+.perso-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.perso-month-grid .h{text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 0}
+.perso-month-cell{aspect-ratio:1;border-radius:8px;border:1px solid var(--border);background:#0d0e0f;padding:5px;display:flex;flex-direction:column;gap:3px;cursor:pointer;position:relative;transition:border-color .15s}
+.perso-month-cell:hover{border-color:var(--border2)}
+.perso-month-cell.other{opacity:.3}
+.perso-month-cell.today{border-color:var(--accent)}
+.perso-month-cell .num{font-size:11px;color:var(--muted);font-weight:600}
+.perso-month-cell.today .num{color:var(--accent)}
+.perso-month-cell .pill{font-size:9px;line-height:1.2;padding:2px 4px;border-radius:3px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.perso-month-cell .more{font-size:9px;color:var(--muted)}
+.perso-month-label{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;text-align:center;margin-bottom:10px;color:var(--text)}
+
+/* PERSO — STATE EMPTY */
+.perso-empty-card{background:var(--card);border:1.5px dashed var(--border);border-radius:14px;padding:32px 20px;text-align:center}
+.perso-empty-card .ic{font-size:32px;margin-bottom:8px;opacity:.5}
+.perso-empty-card .ti{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px;margin-bottom:4px}
+.perso-empty-card .de{font-size:12px;color:var(--muted);margin-bottom:14px}
 
 /* SCALING */
 .scaling-block{border-radius:10px;padding:12px 14px;margin-top:10px}
@@ -556,6 +620,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <button class="admin-tab-btn" onclick="adminTab('videos',this)">Vidéos</button>
       <button class="admin-tab-btn" onclick="adminTab('dashboard',this)">📊 Dashboard</button>
       <button class="admin-tab-btn" onclick="adminTab('athletes',this)">Athlètes</button>
+      <button class="admin-tab-btn" onclick="adminTab('perso',this)">👤 Espace perso</button>
     </div>
 
     <!-- PROGRAMMES -->
@@ -567,29 +632,23 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="np-desc" placeholder="Description courte"></div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Prix/mois (€)</label><input type="number" class="form-input" id="np-price" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="np-type"><option value="subscription">Abonnement</option><option value="oneshot">One-shot</option><option value="perso">Perso (athlètes assignés)</option></select></div>
+          <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="np-type"><option value="subscription">Abonnement</option><option value="oneshot">One-shot</option></select></div>
         </div>
         <div class="form-group">
           <label class="form-label">Couleur</label>
           <div class="color-picker" id="np-colors">
-            <div class="color-swatch selected" data-color="#1e9b9b" style="background:#1e9b9b" onclick="selectColor('#1e9b9b',this)"></div>
-            <div class="color-swatch" data-color="#e8ff47" style="background:#e8ff47" onclick="selectColor('#e8ff47',this)"></div>
+            <div class="color-swatch selected" data-color="#e8ff47" style="background:#e8ff47" onclick="selectColor('#e8ff47',this)"></div>
             <div class="color-swatch" data-color="#47c8ff" style="background:#47c8ff" onclick="selectColor('#47c8ff',this)"></div>
             <div class="color-swatch" data-color="#ff8c47" style="background:#ff8c47" onclick="selectColor('#ff8c47',this)"></div>
             <div class="color-swatch" data-color="#c847ff" style="background:#c847ff" onclick="selectColor('#c847ff',this)"></div>
             <div class="color-swatch" data-color="#47ff8c" style="background:#47ff8c" onclick="selectColor('#47ff8c',this)"></div>
             <div class="color-swatch" data-color="#ff4747" style="background:#ff4747" onclick="selectColor('#ff4747',this)"></div>
-            <div class="color-swatch" data-color="#ff47c8" style="background:#ff47c8" onclick="selectColor('#ff47c8',this)"></div>
-            <div class="color-swatch" data-color="#ffc847" style="background:#ffc847" onclick="selectColor('#ffc847',this)"></div>
-            <div class="color-swatch" data-color="#8c47ff" style="background:#8c47ff" onclick="selectColor('#8c47ff',this)"></div>
-            <div class="color-swatch" data-color="#47ffc8" style="background:#47ffc8" onclick="selectColor('#47ffc8',this)"></div>
-            <div class="color-swatch" data-color="#ffffff" style="background:#fff" onclick="selectColor('#ffffff',this)"></div>
           </div>
         </div>
-        <div class="form-group" style="display:none">
+        <div class="form-group">
           <label class="form-label">Icône</label>
           <div class="icon-picker" id="np-icons">
-            ${['💪','🏋️','🤸','🎯','🔥','⭐','🦁'].map(ic=>`<button class="icon-btn ${ic==='💪'?'selected':''}" data-icon="${ic}" onclick="selectIcon('${ic}',this)">${ic}</button>`).join('')}
+            ${['🏟','💪','🧒','⚡','🏋️','🤸','🎯','🔥','⭐','🦁'].map(ic=>`<button class="icon-btn ${ic==='🏟'?'selected':''}" data-icon="${ic}" onclick="selectIcon('${ic}',this)">${ic}</button>`).join('')}
           </div>
         </div>
         <button class="btn-primary" onclick="saveNewProg()">Créer le programme</button>
@@ -600,7 +659,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
     <!-- NOUVELLE SÉANCE -->
     <div class="admin-panel" id="admin-new-session">
-      <div class="form-group"><label class="form-label">Programme</label><select class="form-select" id="f-prog"></select></div>
+      <div id="form-perso-banner" style="display:none;background:linear-gradient(135deg,#e8ff4722,#47c8ff22);border:1px solid #e8ff4744;border-radius:12px;padding:12px 14px;margin-bottom:14px;align-items:center;gap:12px">
+        <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#e8ff47,#47c8ff);color:#000;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:13px" id="form-perso-avatar">?</div>
+        <div style="flex:1">
+          <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:2px">Espace perso</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px" id="form-perso-name">—</div>
+        </div>
+        <button class="btn-secondary" style="margin:0;padding:8px 12px;font-size:11px" onclick="exitPersoForm()">✕ Quitter</button>
+      </div>
+      <div class="form-group" id="form-prog-group"><label class="form-label">Programme</label><select class="form-select" id="f-prog"></select></div>
       <div class="form-row">
         <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="f-date"></div>
         <div class="form-group"><label class="form-label">Type</label>
@@ -652,11 +719,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div style="background:var(--card);border-radius:10px;border:1px solid var(--border);padding:14px;margin-bottom:14px">
         <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Scaling par niveau</div>
         <div class="form-group">
-          <label class="form-label" style="color: rgb(255, 71, 109)">Intermédiaire</label>
+          <label class="form-label" style="color:var(--blue)">Intermédiaire</label>
           <textarea class="form-textarea" id="f-scaling-inter" style="min-height:70px" placeholder="Modifications pour le niveau intermédiaire..."></textarea>
         </div>
         <div class="form-group">
-          <label class="form-label" style="color: rgb(71, 247, 255)">Scaled</label>
+          <label class="form-label" style="color:var(--orange)">Scaled</label>
           <textarea class="form-textarea" id="f-scaling-scaled" style="min-height:70px" placeholder="Modifications pour le niveau scaled..."></textarea>
         </div>
         <div class="form-group" style="margin-bottom:0">
@@ -771,10 +838,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       </div>
 
       <!-- Sélecteur cycles -->
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <select class="form-select" id="cycle-year-filter" onchange="loadAllCycles()" style="flex:0 0 110px">
-        </select>
-        <select class="form-select" id="cycle-selector" onchange="loadCycle(this.value)" style="flex:1;min-width:180px">
+      <div style="display:flex;gap:8px;margin-bottom:12px">
+        <select class="form-select" id="cycle-selector" onchange="loadCycle(this.value)" style="flex:1">
           <option value="">— Sélectionner un cycle —</option>
         </select>
         <button onclick="deleteCycle()" style="padding:9px 12px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:10px;font-size:13px;cursor:pointer">🗑</button>
@@ -813,6 +878,56 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <!-- ATHLÈTES -->
     <div class="admin-panel" id="admin-athletes">
       <div id="admin-athletes-list"></div>
+    </div>
+
+    <!-- ESPACE PERSO (admin) -->
+    <div class="admin-panel" id="admin-perso">
+      <!-- VUE 1 : LISTE DES ATHLÈTES -->
+      <div id="perso-list-view">
+        <div style="margin-bottom:14px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px">Espace perso</div>
+          <div style="font-size:12px;color:var(--muted)">Programmation individuelle hors abonnements</div>
+        </div>
+        <div class="perso-search">
+          <input type="text" id="perso-search" placeholder="Rechercher un athlète..." oninput="filterPersoAthletes()">
+        </div>
+        <div id="perso-athletes-list"></div>
+      </div>
+
+      <!-- VUE 2 : FICHE ATHLÈTE -->
+      <div id="perso-fiche-view" style="display:none">
+        <button class="perso-back" onclick="persoBackToList()">‹ Retour aux athlètes</button>
+        <div class="perso-fiche-head">
+          <div class="athlete-avatar" id="perso-fiche-avatar">?</div>
+          <div style="flex:1;min-width:0">
+            <div class="perso-name" id="perso-fiche-name">—</div>
+            <div class="perso-sub" id="perso-fiche-sub">—</div>
+          </div>
+          <button class="perso-add-btn" onclick="persoNewSession()">+ Séance</button>
+        </div>
+        <div class="perso-toolbar">
+          <div class="perso-view-toggle">
+            <button id="perso-view-week" class="active" onclick="persoSetView('week')">Semaine</button>
+            <button id="perso-view-month" onclick="persoSetView('month')">Mois</button>
+          </div>
+          <div class="perso-week-nav">
+            <button class="arrow-btn" onclick="persoNav(-1)">‹</button>
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--muted);min-width:140px;text-align:center" id="perso-period-label">—</span>
+            <button class="arrow-btn" onclick="persoNav(1)">›</button>
+          </div>
+        </div>
+        <div id="perso-calendar-area"></div>
+      </div>
+
+      <!-- VUE 3 : FORMULAIRE SÉANCE PERSO -->
+      <div id="perso-form-view" style="display:none">
+        <button class="perso-back" onclick="persoBackToFiche()">‹ Retour au calendrier</button>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px" id="perso-form-title">Nouvelle séance perso</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="perso-form-sub">—</div>
+        <div id="perso-form-container">
+          <!-- Le formulaire sera cloné depuis #admin-new-session -->
+        </div>
+      </div>
     </div>
 
     <!-- DASHBOARD COACH -->
@@ -872,10 +987,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div class="stat-box"><div class="stat-val" id="stat-wod">—</div><div class="stat-lbl">WODs</div></div>
       <div class="stat-box"><div class="stat-val" id="stat-bench">—</div><div class="stat-lbl">Benchmarks</div></div>
     </div>
-    <!-- WELLNESS CHECK-IN -->
-    <div style="padding:0 20px;margin:18px 0 8px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Check-in du jour</div></div>
-    <div id="wellness-card" style="margin:0 20px 14px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px"></div>
-    <div class="menu-item" onclick="openGenderModal()"><span class="menu-item-label">⚧ Catégorie : <span id="profil-gender-lbl" style="color:var(--accent);font-weight:700">—</span></span><span>›</span></div>
     <div class="menu-item" onclick="goPage('pr')"><span class="menu-item-label">📊 Mes records (PR)</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('bench')"><span class="menu-item-label">🏆 Mes benchmarks</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('abos')"><span class="menu-item-label">💳 Mes abonnements</span><span>›</span></div>
@@ -905,6 +1016,25 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div id="videos-athlete-list" style="padding:0 20px"></div>
   </div>
 
+  <!-- MODAL LECTURE SÉANCE (admin = vue athlète) -->
+  <div class="read-modal" id="read-modal" onclick="if(event.target===this)closeReadModal()">
+    <div class="read-modal-box">
+      <div class="read-modal-head">
+        <div class="read-modal-head-l">
+          <span id="read-modal-prog">—</span>
+          <span style="opacity:.4">·</span>
+          <span id="read-modal-date">—</span>
+        </div>
+        <button class="read-modal-close" onclick="closeReadModal()">✕</button>
+      </div>
+      <div class="read-modal-body" id="read-modal-body">—</div>
+      <div class="read-modal-foot">
+        <button class="btn-secondary" onclick="closeReadModal()">Fermer</button>
+        <button class="btn-primary" id="read-modal-edit-btn" onclick="readModalEdit()">✏️ Éditer</button>
+      </div>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <div class="bottom-nav" id="bottom-nav">
     <button class="nav-btn active" data-page="prog" onclick="goPage('prog')"><span class="nav-icon">🏋️</span><span class="nav-label">Prog</span></button>
@@ -912,19 +1042,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <button class="nav-btn" data-page="videos" onclick="goPage('videos')"><span class="nav-icon">🎬</span><span class="nav-label">Vidéos</span></button>
     <button class="nav-btn" data-page="abos" onclick="goPage('abos')"><span class="nav-icon">💳</span><span class="nav-label">Abos</span></button>
     <button class="nav-btn" data-page="profil" onclick="goPage('profil')"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
-  </div>
-</div>
-
-<!-- MODAL GENDER -->
-<div class="modal-overlay" id="gender-modal">
-  <div class="modal">
-    <div class="modal-title">CATÉGORIE</div>
-    <div class="modal-sub">Pour le classement homme/femme</div>
-    <div style="display:flex;gap:10px;margin:8px 0 16px">
-      <button class="level-btn" id="gbtn-M" style="flex:1;padding:18px" onclick="setMyGender('M')">♂ HOMME</button>
-      <button class="level-btn" id="gbtn-F" style="flex:1;padding:18px" onclick="setMyGender('F')">♀ FEMME</button>
-    </div>
-    <button class="btn-ghost" style="width:100%" onclick="document.getElementById('gender-modal').classList.remove('open')">Fermer</button>
   </div>
 </div>
 
@@ -1052,7 +1169,7 @@ const stripe=Stripe(STRIPE_PK);
 let currentUser=null,currentProfile=null,programmes=[],movements=[],benchmarks=[],myPRs={},myAccess=new Set(),myAccessIds=new Set();
 let currentProg=null,currentWeekOffset=0,selectedDate=new Date().toISOString().split('T')[0];
 let currentModalMovement=null,currentBenchmark=null,currentBLevel='rx';
-let selectedColor='#1e9b9b',selectedIcon='💪';
+let selectedColor='#e8ff47',selectedIcon='🏟';
 let currentCat='all',searchQuery='',currentBcat='all';
 
 const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
@@ -1061,91 +1178,7 @@ const TYPE_LABELS={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymn
 const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio / Mono',autre:'Autre'};
 const LEVEL_LABELS={rx:'RX',intermediate:'Inter',scaled:'Scaled',foundation:'Fond.'};
 const LEVEL_COLORS={rx:'var(--accent)',intermediate:'var(--blue)',scaled:'var(--orange)',foundation:'var(--purple)'};
-
-// Parse un score selon son type. Retourne nombre comparable, plus petit = meilleur pour time
-function parseScoreNumeric(text, type){
-  if(!text)return NaN;
-  const s=String(text).trim();
-  if(s.toUpperCase().startsWith('DNF'))return NaN;
-  if(type==='time'){
-    const parts=s.split(':').map(p=>parseFloat(p)||0);
-    if(parts.length===2)return parts[0]*60+parts[1];
-    if(parts.length===3)return parts[0]*3600+parts[1]*60+parts[2];
-    return parseFloat(s)||0;
-  }
-  if(type==='rounds'){
-    const m=s.match(/(\d+)\s*\+\s*(\d+)/);
-    if(m)return parseInt(m[1])*1000+parseInt(m[2]);
-    return parseFloat(s)||0;
-  }
-  return parseFloat(s.replace(',','.').replace(/[^\d.\-]/g,''))||0;
-}
-function compareScores(a,b,type){
-  const ta=String(a.score_text||'').toUpperCase(),tb=String(b.score_text||'').toUpperCase();
-  const aDNF=ta.startsWith('DNF'),bDNF=tb.startsWith('DNF');
-  if(aDNF&&!bDNF)return 1;
-  if(!aDNF&&bDNF)return -1;
-  if(aDNF&&bDNF){
-    // both DNF: more reps = better
-    const ra=parseInt(ta.replace(/[^\d]/g,''))||0;
-    const rb=parseInt(tb.replace(/[^\d]/g,''))||0;
-    return rb-ra;
-  }
-  const va=parseScoreNumeric(a.score_text||a.score_value,type);
-  const vb=parseScoreNumeric(b.score_text||b.score_value,type);
-  if(isNaN(va)&&isNaN(vb))return 0;
-  if(isNaN(va))return 1;
-  if(isNaN(vb))return -1;
-  if(type==='time')return va-vb;
-  return vb-va;
-}
-// Filtre genre
-let leaderboardGenderFilter='all'; // 'all','M','F'
-function setGenderFilter(g){
-  leaderboardGenderFilter=g;
-  document.querySelectorAll('.gf-btn').forEach(b=>b.classList.toggle('active',b.dataset.g===g));
-  if(currentScoresSession)renderScoresModal(currentScoresSession.sessionId,currentScoresSession.scoreType,currentScoresSession.sets);
-}
-function filterByGender(scores){
-  if(leaderboardGenderFilter==='all')return scores;
-  return scores.filter(s=>(s.profiles?.gender||'').toUpperCase()===leaderboardGenderFilter);
-}
-function openGenderModal(){
-  document.getElementById('gender-modal').classList.add('open');
-  ['M','F'].forEach(g=>{
-    const b=document.getElementById('gbtn-'+g);
-    if(b)b.style.background=currentProfile?.gender===g?'var(--accent)':'transparent';
-    if(b)b.style.color=currentProfile?.gender===g?'#000':'var(--muted)';
-    if(b)b.style.borderColor=currentProfile?.gender===g?'var(--accent)':'var(--border2)';
-  });
-}
-async function setMyGender(g){
-  const {error}=await sb.from('profiles').update({gender:g}).eq('id',currentUser.id);
-  if(error){showToast('❌ '+error.message);return;}
-  currentProfile.gender=g;
-  const lbl=document.getElementById('profil-gender-lbl');
-  if(lbl)lbl.textContent=g==='M'?'Homme':'Femme';
-  showToast('✅ Catégorie mise à jour');
-  document.getElementById('gender-modal').classList.remove('open');
-}
-async function deleteMyScore(scoreId,sessionId,scoreType,sets){
-  if(!confirm('Supprimer ton score ?'))return;
-  await sb.from('wod_scores').delete().eq('id',scoreId);
-  showToast('🗑 Score supprimé');
-  if(currentScoresSession?.sessionId===sessionId)await renderScoresModal(sessionId,scoreType,sets);
-  await loadScores(sessionId,scoreType,sets);
-}
-async function editMyScore(scoreId,sessionId){
-  const newVal=prompt('Nouveau score :');
-  if(!newVal)return;
-  const {data:cur}=await sb.from('wod_scores').select('*').eq('id',scoreId).single();
-  const numVal=parseFloat(String(newVal).replace(':','').replace('+',''))||0;
-  await sb.from('wod_scores').update({score_text:newVal,score_value:numVal}).eq('id',scoreId);
-  showToast('✅ Score modifié');
-  if(currentScoresSession)await renderScoresModal(currentScoresSession.sessionId,currentScoresSession.scoreType,currentScoresSession.sets);
-  await loadScores(sessionId,cur?.score_type||'reps',0);
-}
-const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32) — plus petit = mieux',reps:'Nombre de répétitions — plus grand = mieux',rounds:'Format: tours + reps (ex: 12 + 5)',weight:'Charge en kg (ex: 85)',calories:'Nombre de calories'};
+const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétitions',rounds:'Ex: 12 + 5',weight:'Charge en kg (ex: 85)',calories:'Nombre de calories'};
 const STRIPE_PLANS={
   affiliate:{paymentLink:'https://buy.stripe.com/eVqaEX5X37FN2fheZx5AQ01',name:'Affiliate',icon:'🏟',price:'120€',period:'/mois',desc:'Programmation salle complète — CrossFit Sandglass.',features:['WOD quotidien','Séances force & skill','Coaching tips & targets','Suivi des scores','PR tracking'],color:'#e8ff47'},
   training:{paymentLink:'https://buy.stripe.com/4gM9ATfxDaRZ1bd9Fd5AQ00',name:'Training',icon:'💪',price:'45€',period:'/mois',desc:'Préparation compétition Upside Down.',features:['Programmation compétition','Haltérophilie avancée','Périodisation structurée','Suivi performances','Accès coach direct'],color:'#ff8c47'}
@@ -1201,8 +1234,6 @@ async function initApp(){
   document.getElementById('profil-avatar').textContent=init;
   document.getElementById('profil-name').textContent=currentProfile?.full_name||'Athlète';
   document.getElementById('profil-email').textContent=currentUser.email;
-  const gLbl=document.getElementById('profil-gender-lbl');
-  if(gLbl)gLbl.textContent=currentProfile?.gender==='M'?'Homme':currentProfile?.gender==='F'?'Femme':'Non défini';
   if(currentProfile?.role==='admin'){
     document.getElementById('admin-menu-item').style.display='flex';
     if(!document.querySelector('[data-page="admin"]')){
@@ -1232,7 +1263,7 @@ async function goPage(page){
   const btn=document.querySelector(`[data-page="${page}"]`);
   if(btn)btn.classList.add('active');
   if(page==='pr'){await loadMyPRs();await loadMyBenchScores();renderAll();}
-  if(page==='profil'){loadProfilStats();loadWellness();}
+  if(page==='profil')loadProfilStats();
   if(page==='admin'){loadAdminProgs();loadAdminSessions();loadAdminAthletes();loadAdminBenchmarks();}
   if(page==='abos')renderPlans();
   if(page==='videos'){await loadVideos();renderVideosAthlete();}
@@ -1241,15 +1272,7 @@ async function goPage(page){
 // PROGRAMMES
 async function loadProgrammes(){
   const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
-  let all=data||[];
-  // Filtrer les programmes "perso" : ne montrer que ceux assignés à l'athlète courant (sauf admin qui voit tout)
-  const isAdmin=currentUser&&currentProfile?.role==='admin';
-  if(!isAdmin && currentUser){
-    const {data:assigns}=await sb.from('athlete_programmes').select('programme_id').eq('athlete_id',currentUser.id);
-    const myPersoIds=new Set((assigns||[]).map(a=>a.programme_id));
-    all=all.filter(p=>p.type!=='perso'||myPersoIds.has(p.id));
-  }
-  programmes=all;
+  programmes=data||[];
 
   // Gérer retour Stripe ici, après chargement des programmes
   const params=new URLSearchParams(window.location.search);
@@ -1439,14 +1462,6 @@ async function buildSessionCard(s){
           <input class="multi-score-input" id="score-${i}-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}">
         </div>`).join('')}
     </div>`;
-  } else if(s.score_type==='time'){
-    scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" type="text" placeholder="14:32 (mm:ss)"></div>
-    <label style="display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);margin-top:6px;cursor:pointer">
-      <input type="checkbox" id="dnf-${s.id}" onchange="toggleDNF('${s.id}')"> Pas terminé (cap atteint)
-    </label>
-    <div id="dnf-reps-${s.id}" style="display:none;margin-top:6px"><input class="score-input" id="score-reps-${s.id}" type="number" placeholder="Nombre de reps réalisées"></div>`;
-  } else if(s.score_type==='rounds'){
-    scoreInputHtml=`<div style="display:flex;gap:6px"><input class="score-input" id="score-rounds-${s.id}" type="number" placeholder="Tours" style="flex:1"><input class="score-input" id="score-extra-${s.id}" type="number" placeholder="+ reps" style="flex:1"></div>`;
   } else {
     scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>`;
   }
@@ -1496,7 +1511,7 @@ function renderContentWithCharges(content){
     const pr=findPRByName(mvtName.trim());
     if(pr){
       const charge=Math.round((parseFloat(pct)/100)*pr.value*2)/2;
-      return `<span style="color:var(--muted)">@ ${pct}%</span> <span style="background:rgba(30,155,155,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}kg</span>`;
+      return `<span style="color:var(--muted)">@ ${pct}%</span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}kg</span>`;
     }
     return `@ ${pct}%`;
   });
@@ -1510,13 +1525,6 @@ function findPRByName(name){
   return prs[0]||null;
 }
 
-function toggleDNF(sid){
-  const cb=document.getElementById('dnf-'+sid);
-  const wrap=document.getElementById('dnf-reps-'+sid);
-  const inp=document.getElementById('score-input-'+sid);
-  if(cb?.checked){wrap.style.display='block';if(inp)inp.disabled=true;}
-  else{wrap.style.display='none';if(inp)inp.disabled=false;}
-}
 function selectLevel(sessionId,level,btn){
   const card=document.getElementById(`sc-${sessionId}`);
   card.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));
@@ -1534,15 +1542,16 @@ function getSelectedLevel(sessionId){
 }
 
 async function loadScores(sessionId,scoreType,sets){
-  const {data}=await sb.from('wod_scores').select('*,profiles(full_name,gender)').eq('session_id',sessionId);
+  const {data}=await sb.from('wod_scores').select('*,profiles(full_name)').eq('session_id',sessionId);
   const el=document.getElementById(`scores-${sessionId}`);
   if(!el)return;
   if(!data||data.length===0){el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">Sois le premier à scorer !</div>';return;}
 
+  // Sort: RX first, then intermediate, scaled, foundation, then by score
   const levelOrder={rx:0,intermediate:1,scaled:2,foundation:3};
   const sorted=[...data].sort((a,b)=>{
     if(levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
-    return compareScores(a,b,scoreType);
+    return(b.score_value||0)-(a.score_value||0);
   });
 
   const rankIcons=['gold','silver','bronze'];
@@ -1550,7 +1559,7 @@ async function loadScores(sessionId,scoreType,sets){
     const isMe=sc.athlete_id===currentUser?.id;
     const setsDetail=sc.sets_data?JSON.parse(typeof sc.sets_data==='string'?sc.sets_data:JSON.stringify(sc.sets_data)):null;
     const setsHtml=setsDetail?`<div class="score-sets-detail">${setsDetail.map(s=>`S${s.set}: ${s.value}kg`).join(' · ')}</div>`:'';
-    return `<div class="score-row" style="${isMe?'border:1px solid rgba(30,155,155,.2)':''}" id="sr-${sc.id}">
+    return `<div class="score-row" style="${isMe?'border:1px solid rgba(232,255,71,.2)':''}" id="sr-${sc.id}">
       <div class="score-rank ${rankIcons[i]||''}">${i+1}</div>
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:6px">
@@ -1563,15 +1572,10 @@ async function loadScores(sessionId,scoreType,sets){
         <div class="score-val">${sc.score_text||sc.score_value||'—'}</div>
       </div>
     </div>
-    <div class="athlete-notes" data-athlete-notes="${sc.athlete_id}"></div>
     <div class="score-actions">
       <button class="react-btn" id="react-${sc.id}" onclick="toggleReaction('${sc.id}')">❤️ <span id="react-count-${sc.id}">0</span></button>
       <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
     </div>
-    ${isMe?`<div class="score-self-actions">
-      <button class="score-self-btn" onclick="editMyScore('${sc.id}','${sessionId}')">✏️ Modifier</button>
-      <button class="score-self-btn del" onclick="deleteMyScore('${sc.id}','${sessionId}','${scoreType}',${sets||0})">🗑 Supprimer</button>
-    </div>`:''}
     <div class="comments-area" id="comments-${sc.id}">
       <div id="comments-list-${sc.id}"></div>
       <div class="comment-input-row">
@@ -1586,7 +1590,6 @@ async function loadScores(sessionId,scoreType,sets){
     loadReactions(sc.id);
     loadComments(sc.id);
   }
-  loadSessionNotes(sessionId);
 }
 
 async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,scoreCount){
@@ -1617,27 +1620,6 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     if(!values.length){showToast('⚠️ Entre au moins un score');return;}
     scoreText=values.join(' | ');
     scoreValue=parseFloat(values[0])||0;
-  } else if(scoreType==='time'){
-    const dnf=document.getElementById(`dnf-${sessionId}`)?.checked;
-    if(dnf){
-      const reps=document.getElementById(`score-reps-${sessionId}`)?.value.trim();
-      if(!reps){showToast('⚠️ Indique le nombre de reps');return;}
-      scoreText=`DNF · ${reps} reps`;
-      scoreValue=parseInt(reps)||0;
-    } else {
-      const input=document.getElementById(`score-input-${sessionId}`);
-      scoreText=input?.value.trim();
-      if(!scoreText){showToast('⚠️ Entre ton temps');return;}
-      // Convert mm:ss to total seconds for sorting
-      const parts=scoreText.split(':').map(p=>parseFloat(p)||0);
-      scoreValue=parts.length===2?parts[0]*60+parts[1]:parseFloat(scoreText)||0;
-    }
-  } else if(scoreType==='rounds'){
-    const r=parseInt(document.getElementById(`score-rounds-${sessionId}`)?.value)||0;
-    const e=parseInt(document.getElementById(`score-extra-${sessionId}`)?.value)||0;
-    if(!r&&!e){showToast('⚠️ Entre tours et reps');return;}
-    scoreText=e>0?`${r} + ${e}`:`${r}`;
-    scoreValue=r*1000+e;
   } else {
     const input=document.getElementById(`score-input-${sessionId}`);
     scoreText=input?.value.trim();
@@ -1679,32 +1661,27 @@ function closeScoresModal(){
 async function renderScoresModal(sessionId, scoreType, sets){
   const el=document.getElementById('smodal-leaderboard');
   el.innerHTML='<div class="spinner"></div>';
-  const {data}=await sb.from('wod_scores').select('*,profiles(full_name,gender)').eq('session_id',sessionId);
+  const {data}=await sb.from('wod_scores').select('*,profiles(full_name)').eq('session_id',sessionId);
 
   if(!data||data.length===0){
     el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>Pas encore de scores.</p></div>';
     return;
   }
 
-  const filtered=filterByGender(data);
   const levelOrder={rx:0,intermediate:1,scaled:2,foundation:3};
-  const sorted=[...filtered].sort((a,b)=>{
+  const sorted=[...data].sort((a,b)=>{
     if(levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
-    return compareScores(a,b,scoreType);
+    return(b.score_value||0)-(a.score_value||0);
   });
 
   const rankIcons=['gold','silver','bronze'];
-  el.innerHTML=`<div class="gender-filter">
-    <button class="gf-btn ${leaderboardGenderFilter==='all'?'active':''}" data-g="all" onclick="setGenderFilter('all')">MIXTE</button>
-    <button class="gf-btn ${leaderboardGenderFilter==='M'?'active':''}" data-g="M" onclick="setGenderFilter('M')">HOMMES</button>
-    <button class="gf-btn ${leaderboardGenderFilter==='F'?'active':''}" data-g="F" onclick="setGenderFilter('F')">FEMMES</button>
-  </div><div class="scores-list">
+  el.innerHTML=`<div class="scores-list">
     ${sorted.map((sc,i)=>{
       const isMe=sc.athlete_id===currentUser?.id;
       const setsDetail=sc.sets_data?JSON.parse(typeof sc.sets_data==='string'?sc.sets_data:JSON.stringify(sc.sets_data)):null;
       const setsHtml=setsDetail?`<div class="score-sets-detail">${setsDetail.map(s=>`S${s.set}: ${s.value}kg`).join(' · ')}</div>`:'';
       return `<div>
-        <div class="score-row" style="${isMe?'border:1px solid rgba(30,155,155,.2)':''}" id="sr-${sc.id}">
+        <div class="score-row" style="${isMe?'border:1px solid rgba(232,255,71,.2)':''}" id="sr-${sc.id}">
           <div class="score-rank ${rankIcons[i]||''}">${i+1}</div>
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
@@ -1715,15 +1692,10 @@ async function renderScoresModal(sessionId, scoreType, sets){
           </div>
           <div style="text-align:right"><div class="score-val">${sc.score_text||sc.score_value||'—'}</div></div>
         </div>
-        <div class="athlete-notes" data-athlete-notes="${sc.athlete_id}"></div>
         <div class="score-actions">
           <button class="react-btn ${''}" id="react-${sc.id}" onclick="toggleReactionModal('${sc.id}')">❤️ <span id="react-count-${sc.id}">0</span></button>
           <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
         </div>
-        ${isMe?`<div class="score-self-actions">
-          <button class="score-self-btn" onclick="editMyScore('${sc.id}','${sessionId}')">✏️ Modifier</button>
-          <button class="score-self-btn del" onclick="deleteMyScore('${sc.id}','${sessionId}','${scoreType}',${sets||0})">🗑 Supprimer</button>
-        </div>`:''}
         <div class="comments-area" id="comments-${sc.id}">
           <div id="comments-list-${sc.id}"></div>
           <div class="comment-input-row">
@@ -2033,7 +2005,7 @@ async function loadBenchLeaderboard(benchmarkId){
   const el=document.getElementById('bmodal-leaderboard');
   if(!data||data.length===0){el.innerHTML='';return;}
   const levelOrder={rx:0,intermediate:1,scaled:2,foundation:3};
-  const sorted=[...data].sort((a,b)=>levelOrder[a.level]-levelOrder[b.level]||compareScores(a,b,currentBenchmark?.score_type||'reps'));
+  const sorted=[...data].sort((a,b)=>levelOrder[a.level]-levelOrder[b.level]||(b.score_value-a.score_value));
   el.innerHTML=`<div class="pr-hist-title">Leaderboard</div>`+sorted.slice(0,10).map((s,i)=>`<div class="pr-hist-item">
     <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Bebas Neue';font-size:16px;color:var(--muted)">${i+1}</span><span style="font-size:13px;font-weight:600">${s.profiles?.full_name||'Athlète'}</span><span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span></div>
     <span class="pr-hist-val" style="font-size:16px">${s.score_text||s.score_value}</span>
@@ -2058,7 +2030,41 @@ async function loadAdminProgs(){
   const grid=document.getElementById('admin-prog-grid');
   const counts={};
   for(const p of programmes){const {count}=await sb.from('sessions').select('id',{count:'exact'}).eq('programme_id',p.id);counts[p.id]=count||0;}
-  grid.innerHTML=programmes.map(p=>`<div class="prog-card-admin" style="border-color:${p.color}33"><div class="prog-card-icon">${p.icon||'💪'}</div><div class="prog-card-name" style="color:${p.color}">${p.name}</div><div class="prog-card-desc">${p.description||''}</div><div class="prog-card-count" style="color:${p.color}">${counts[p.id]} séances</div></div>`).join('');
+  grid.innerHTML=programmes.map(p=>`<div class="prog-card-admin" style="border-color:${p.color}33;position:relative">
+    <button class="btn-delete" onclick="event.stopPropagation();deleteProgramme('${p.id}','${(p.name||'').replace(/'/g,"\\'")}',${counts[p.id]||0})" style="position:absolute;top:8px;right:8px;width:26px;height:26px;font-size:12px">✕</button>
+    <div class="prog-card-icon">${p.icon||'💪'}</div>
+    <div class="prog-card-name" style="color:${p.color}">${p.name}</div>
+    <div class="prog-card-desc">${p.description||''}</div>
+    <div class="prog-card-count" style="color:${p.color}">${counts[p.id]} séances</div>
+  </div>`).join('');
+}
+async function deleteProgramme(id,name,sessionCount){
+  if(sessionCount>0){
+    if(!confirm(`⚠️ Le programme "${name}" contient ${sessionCount} séance(s).\n\nSupprimer le programme ET toutes ses séances ?\n\nCette action est irréversible.`))return;
+    const {error:eS}=await sb.from('sessions').delete().eq('programme_id',id);
+    if(eS){showToast('❌ Séances : '+eS.message);console.error('delete sessions',eS);return;}
+  }else{
+    if(!confirm(`Supprimer le programme "${name}" ?`))return;
+  }
+  // Nettoyer toutes les FK possibles (silencieux si table absente)
+  await sb.from('athlete_programmes').delete().eq('programme_id',id).then(r=>r.error&&console.warn('athlete_programmes',r.error.message));
+  await sb.from('programme_access').delete().eq('programme_id',id).then(r=>r.error&&console.warn('programme_access',r.error.message));
+  await sb.from('cycle_plans').delete().eq('programme_id',id).then(r=>r.error&&console.warn('cycle_plans',r.error.message));
+  await sb.from('personal_sessions').delete().eq('programme_id',id).then(r=>r.error&&console.warn('personal_sessions',r.error.message));
+  const {error,data}=await sb.from('programmes').delete().eq('id',id).select();
+  if(error){showToast('❌ '+error.message);console.error('delete programme',error);return;}
+  if(!data||data.length===0){
+    showToast('⚠️ Programme non supprimé (RLS ?). Vérifie la console.');
+    console.warn('Programme delete returned no rows. Probable RLS policy missing for DELETE on programmes.');
+    return;
+  }
+  showToast('🗑 Programme supprimé');
+  // Forcer reset du state local + reload complet
+  programmes=programmes.filter(p=>p.id!==id);
+  await loadProgrammes();
+  await loadAdminProgs();
+  if(typeof loadAdminSessions==='function')loadAdminSessions();
+  if(typeof renderProgTabs==='function')renderProgTabs();
 }
 function selectColor(color,el){selectedColor=color;document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));el.classList.add('selected');}
 function selectIcon(icon,el){selectedIcon=icon;document.querySelectorAll('.icon-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');}
@@ -2071,7 +2077,7 @@ async function saveNewProg(){
   const slug=name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
   const {error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,created_by:currentUser.id});
   if(error){showToast('❌ '+error.message);return;}
-  showToast(type==='perso'?'✅ Programme perso créé ! Assigne-le aux athlètes via l\'onglet Athlètes':'✅ Programme créé !');
+  showToast('✅ Programme créé !');
   document.getElementById('new-prog-form').style.display='none';
   document.getElementById('btn-show-new-prog').style.display='block';
   document.getElementById('np-name').value='';document.getElementById('np-desc').value='';
@@ -2109,24 +2115,17 @@ async function loadAdminSessions(){
   const {data}=await q;
   const list=document.getElementById('admin-sessions-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucune séance.</p></div>';return;}
-  list.innerHTML=data.map(s=>{
-    const cw=renderContentWithCharges(s.content||'');
-    const isHtml=/<[a-z][\s\S]*>/i.test(cw);
-    const contentHtml=isHtml?cw:cw.replace(/\n/g,'<br>');
-    return`<div class="sessions-list-item" style="display:block;padding:14px">
-    <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:10px">
-      <div style="flex:1">
-        <div class="sli-title">${s.title}</div>
-        <div class="sli-meta">${formatDate(s.date)} · ${s.programmes?.icon||''} ${s.programmes?.name||''} · ${TYPE_LABELS[s.type]||s.type}</div>
-      </div>
-      <div style="display:flex;gap:6px;flex-shrink:0">
-        <button class="btn-delete" style="background:rgba(71,200,255,.1);border-color:rgba(71,200,255,.3);color:var(--blue)" onclick="editSession('${s.id}')">✏️</button>
-        <button class="btn-delete" style="background:rgba(30,155,155,.1);border-color:rgba(30,155,155,.3);color:var(--accent)" onclick="duplicateSession('${s.id}')">📋</button>
-        <button class="btn-delete" onclick="deleteSession('${s.id}')">✕</button>
-      </div>
+  list.innerHTML=data.map(s=>`<div class="sessions-list-item">
+    <div style="flex:1">
+      <div class="sli-title">${s.title}</div>
+      <div class="sli-meta">${formatDate(s.date)} · ${s.programmes?.icon||''} ${s.programmes?.name||''} · ${TYPE_LABELS[s.type]||s.type}</div>
     </div>
-    <div class="session-content" style="font-size:13px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:200px;overflow:auto">${contentHtml}</div>
-  </div>`;}).join('');
+    <div style="display:flex;gap:6px">
+      <button class="btn-delete" style="background:rgba(71,200,255,.1);border-color:rgba(71,200,255,.3);color:var(--blue)" onclick="editSession('${s.id}')">✏️</button>
+      <button class="btn-delete" style="background:rgba(232,255,71,.1);border-color:rgba(232,255,71,.3);color:var(--accent)" onclick="duplicateSession('${s.id}')">📋</button>
+      <button class="btn-delete" onclick="deleteSession('${s.id}')">✕</button>
+    </div>
+  </div>`).join('');
 }
 async function deleteSession(id){const {error}=await sb.from('sessions').delete().eq('id',id);if(error){showToast('❌ '+error.message);return;}showToast('🗑 Supprimée');loadAdminSessions();}
 
@@ -2194,34 +2193,55 @@ async function loadAdminCalendar(){
     const iso=d.toISOString().split('T')[0];
     return`<div class="cal-day-date ${iso===today?'today':''}">${d.getDate()}</div>`;
   }).join('');
-  // Sessions per day
+  // Sessions per day — rendu RICHE (mini-fiche avant/après)
   const sessionCols=dates.map(d=>{
     const iso=d.toISOString().split('T')[0];
     const sessions=byDate[iso]||[];
     const blocks=sessions.length>0
       ?sessions.map(s=>{
+        if(s.type==='separator'){
+          return`<div class="cal-rich separator" data-session-id="${s.id}"
+            draggable="true"
+            ondragstart="onSessionDragStart(event,'${s.id}')"
+            ondragend="onSessionDragEnd(event)"
+            onclick="openReadSession('${s.id}','session')">
+            <div class="cal-rich-title">— ${escapeHtml(s.title||'Séparateur')} —</div>
+          </div>`;
+        }
         const color=s.color||'#e8ff47';
-        return`<div class="cal-session-block" 
+        const typeLabel=TYPE_LABELS[s.type]||s.type;
+        // Aperçu contenu (strip HTML, charges remplacées)
+        const rawContent=s.content||'';
+        const withCharges=renderContentWithCharges(rawContent);
+        const preview=stripHtml(withCharges).slice(0,160);
+        const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
+        const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
+        const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
+        return`<div class="cal-rich"
           draggable="true"
           data-session-id="${s.id}"
           data-date="${s.date}"
-          style="background:${color}22;border:1px solid ${color}66;color:${color}"
-          onclick="editSession('${s.id}')"
           ondragstart="onSessionDragStart(event,'${s.id}')"
-          ondragend="onSessionDragEnd(event)">
-          <div class="cal-session-title" style="color:${color}">${s.type==='separator'?'— '+s.title:s.title}</div>
-          <div class="cal-session-type">${s.type==='separator'?'Séparateur':TYPE_LABELS[s.type]||s.type}</div>
-          ${s.content&&s.type!=='separator'?`<div class="cal-session-preview">${(s.content||'').slice(0,160).replace(/</g,'&lt;')}${s.content.length>160?'…':''}</div>`:''}
-          <div class="cal-session-actions">
-            <button class="cal-action-btn" onclick="event.stopPropagation();moveSession('${s.id}','up','${iso}')">↑</button>
-            <button class="cal-action-btn" onclick="event.stopPropagation();moveSession('${s.id}','down','${iso}')">↓</button>
-            <button class="cal-action-btn" onclick="event.stopPropagation();duplicateSession('${s.id}')">📋</button>
-            <button class="cal-action-btn" onclick="event.stopPropagation();deleteSession('${s.id}')">✕</button>
+          ondragend="onSessionDragEnd(event)"
+          onclick="openReadSession('${s.id}','session')">
+          <div class="cal-accent" style="background:${color}"></div>
+          <div class="cal-rich-head">
+            <span class="cal-rich-type" style="background:${color}22;color:${color}">${typeLabel}</span>
+            <div class="cal-rich-actions">
+              <button class="cal-action-btn" onclick="event.stopPropagation();moveSession('${s.id}','up','${iso}')">↑</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();moveSession('${s.id}','down','${iso}')">↓</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();editSession('${s.id}')">✏</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();duplicateSession('${s.id}')">📋</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();deleteSession('${s.id}')">✕</button>
+            </div>
           </div>
+          <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
+          ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
+          <div class="cal-rich-meta">${intensity}${sets}${yt}</div>
         </div>`;
       }).join('')
-      :`<div class="cal-empty-day">+</div>`;
-    return`<div class="cal-day-col" 
+      :`<div class="cal-empty-day" onclick="quickAddSession('${iso}')">+</div>`;
+    return`<div class="cal-day-col rich"
       data-date="${iso}"
       ondragover="onCalDragOver(event)"
       ondragleave="onCalDragLeave(event)"
@@ -2299,6 +2319,8 @@ async function loadAdminSessions(){loadAdminCalendar();}
 let editingSessionId=null;
 
 async function editSession(id){
+  // S'assurer qu'on n'est pas en mode perso et que le form est dans son emplacement original
+  if(personalAthleteId){exitPersoForm();}
   const {data}=await sb.from('sessions').select('*').eq('id',id).single();
   if(!data)return;
   editingSessionId=id;
@@ -2384,10 +2406,11 @@ async function saveSession(){
   const multiScore=multiScoreEnabled;
   const scoreCount=multiScore?parseInt(document.getElementById('f-score-count')?.value)||2:0;
   const scoreLabels=multiScore?Array.from({length:scoreCount},(_,i)=>document.getElementById(`f-score-label-${i}`)?.value.trim()||`Score ${i+1}`):[];
-  if(!progId||!date){showToast('⚠️ Programme et date requis');return;}
+  if(!progId&&!personalAthleteId){showToast('⚠️ Programme et date requis');return;}
+  if(!date){showToast('⚠️ Date requise');return;}
 
   const payload={
-    programme_id:progId,date,type,title,content,intensity,
+    date,type,title,content,intensity,
     target:target||null,tips:tips||null,score_type:scoreType,
     youtube_url:youtube||null,youtube_label:ytlabel||null,sets,color,
     scaling_inter:scalingInter||null,scaling_scaled:scalingScaled||null,scaling_foundation:scalingFoundation||null,
@@ -2397,17 +2420,30 @@ async function saveSession(){
   };
 
   let error;
-  if(editingSessionId){
-    ({error}=await sb.from('sessions').update(payload).eq('id',editingSessionId));
+  if(personalAthleteId){
+    payload.athlete_id=personalAthleteId;
+    if(personalEditingId){
+      ({error}=await sb.from('personal_sessions').update(payload).eq('id',personalEditingId));
+    } else {
+      ({error}=await sb.from('personal_sessions').insert({...payload,created_by:currentUser.id}));
+    }
   } else {
-    ({error}=await sb.from('sessions').insert({...payload,created_by:currentUser.id}));
+    payload.programme_id=progId;
+    if(editingSessionId){
+      ({error}=await sb.from('sessions').update(payload).eq('id',editingSessionId));
+    } else {
+      ({error}=await sb.from('sessions').insert({...payload,created_by:currentUser.id}));
+    }
   }
 
   if(error){showToast('❌ '+error.message);return;}
 
   // Reset
-  const wasEditing=!!editingSessionId;
+  const wasEditing=!!(editingSessionId||personalEditingId);
+  const wasPerso=!!personalAthleteId;
+  const persoAthlete=personalAthleteId;
   editingSessionId=null;
+  personalEditingId=null;
   const cancelBtn=document.getElementById('edit-cancel-btn');
   if(cancelBtn)cancelBtn.remove();
   ['f-title','f-target','f-tips','f-youtube','f-ytlabel','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>document.getElementById(id).value='');
@@ -2422,7 +2458,19 @@ async function saveSession(){
   const btn=document.querySelector('#admin-new-session .btn-primary');
   btn.textContent='Publier la séance';btn.style.background='';
   showToast(wasEditing?'✅ Séance modifiée !':'✅ Séance publiée !');
-  loadAdminSessions();
+  if(wasPerso){
+    // Retour à la fiche perso
+    personalAthleteId=null;
+    document.getElementById('form-perso-banner').style.display='none';
+    document.getElementById('form-prog-group').style.display='';
+    if(persoAthlete){
+      currentPersoAthlete=persoAthletesCache.find(a=>a.id===persoAthlete)||currentPersoAthlete;
+      adminTab('perso',document.querySelector('.admin-tab-btn:last-child'));
+      openPersoFiche(persoAthlete);
+    }
+  } else {
+    loadAdminSessions();
+  }
 }
 
 async function duplicateSession(id){
@@ -2474,34 +2522,38 @@ async function saveBenchmark(){
 async function loadAdminAthletes(){
   const {data}=await sb.from('profiles').select('*').order('full_name');
   const list=document.getElementById('admin-athletes-list');
-  // Filtre soft-delete côté client (compatible si la colonne deleted_at n'existe pas)
-  const filtered=(data||[]).filter(p=>!p.deleted_at);
-  if(!filtered||filtered.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
-  list.innerHTML=filtered.map(p=>{
+  if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
+  list.innerHTML=data.map(p=>{
     const init=(p.full_name||p.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-    const safeName=(p.full_name||p.email||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
-    return`<div class="athlete-row"><div class="athlete-avatar" onclick="openAthleteDetail('${p.id}')" style="cursor:pointer">${init}</div><div style="flex:1;cursor:pointer" onclick="openAthleteDetail('${p.id}')"><div class="athlete-name">${p.full_name||'—'}</div><div class="athlete-email">${p.email||''}</div></div><span class="athlete-role ${p.role==='admin'?'role-admin':'role-athlete'}">${p.role==='admin'?'Admin':'Athlète'}</span><button class="btn-delete" style="margin-left:8px" data-aid="${p.id}" data-aname="${safeName}" onclick="deleteAthlete(this.dataset.aid,this.dataset.aname)">✕</button></div>`;
+    const isMe=p.id===currentUser.id;
+    return`<div class="athlete-row">
+      <div class="athlete-avatar">${init}</div>
+      <div style="flex:1;min-width:0">
+        <div class="athlete-name">${p.full_name||'—'}</div>
+        <div class="athlete-email">${p.email||''}</div>
+      </div>
+      <span class="athlete-role ${p.role==='admin'?'role-admin':'role-athlete'}">${p.role==='admin'?'Admin':'Athlète'}</span>
+      ${isMe?'':`<button class="btn-delete" onclick="deleteAthlete('${p.id}','${(p.full_name||p.email||'?').replace(/'/g,"\\'")}')">✕</button>`}
+    </div>`;
   }).join('');
 }
 async function deleteAthlete(id,name){
-  if(!confirm(`Supprimer ${name} ? Tous ses scores, PR et données seront supprimés.`))return;
-  // Suppression en cascade : d'abord les données liées
-  await sb.from('wod_scores').delete().eq('athlete_id',id);
-  await sb.from('athlete_prs').delete().eq('athlete_id',id);
-  await sb.from('benchmark_scores').delete().eq('athlete_id',id);
-  await sb.from('wellness_logs').delete().eq('athlete_id',id);
-  await sb.from('athlete_programmes').delete().eq('athlete_id',id);
-  // Puis le profil — marqué deleted si la suppression directe est bloquée par RLS
-  const {error}=await sb.from('profiles').delete().eq('id',id);
-  if(error){
-    // Fallback : soft delete via update si RLS bloque
-    const {error:e2}=await sb.from('profiles').update({deleted_at:new Date().toISOString(),email:null,full_name:'[Supprimé]'}).eq('id',id);
-    if(e2){showToast('❌ '+e2.message+' (vérifier policies RLS)');return;}
-    showToast('🗑 Athlète marqué supprimé (compte auth toujours actif — supprime-le depuis Supabase Dashboard)');
-  } else {
-    showToast('🗑 Athlète supprimé');
+  if(!confirm(`⚠️ Supprimer définitivement "${name}" ?\n\nToutes ses données (scores, PR, séances perso) seront effacées.\n\nCette action est irréversible.`))return;
+  // Cascade silencieuse (warn si table absente)
+  const tables=['wod_scores','athlete_prs','athlete_scores','athlete_programmes','programme_access','personal_sessions','bench_scores','benchmark_scores','session_notes'];
+  for(const t of tables){
+    const r=await sb.from(t).delete().eq('athlete_id',id);
+    if(r.error)console.warn(t,r.error.message);
   }
-  await loadAdminAthletes();
+  const {error,data}=await sb.from('profiles').delete().eq('id',id).select();
+  if(error){showToast('❌ '+error.message);console.error('delete profile',error);return;}
+  if(!data||data.length===0){
+    showToast('⚠️ Athlète non supprimé (RLS ?). Vérifie la console.');
+    console.warn('Profile delete returned no rows. Probable RLS policy missing for DELETE on profiles. Tu dois ajouter une policy admin DELETE ou utiliser un appel admin via service_role.');
+    return;
+  }
+  showToast('🗑 Athlète supprimé');
+  loadAdminAthletes();
 }
 function adminTab(tab,btn){
   document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
@@ -2513,7 +2565,7 @@ function adminTab(tab,btn){
   if(tab==='benchmarks')loadAdminBenchmarks();
   if(tab==='dashboard')loadDashboard();
   if(tab==='videos'){loadAdminVideos();populateVideoMovementSelect();}
-  if(tab==='cycle')initCyclePlanner();
+  if(tab==='perso')loadPersoAthletes();
 }
 
 // ===== DASHBOARD COACH =====
@@ -2666,25 +2718,8 @@ async function initCyclePlanner(){
 }
 
 async function loadAllCycles(){
-  const yearSel=document.getElementById('cycle-year-filter');
-  const currentYear=new Date().getFullYear();
-  if(yearSel && !yearSel.options.length){
-    const years=[];for(let y=currentYear-1;y<=currentYear+3;y++)years.push(y);
-    yearSel.innerHTML='<option value="">Toutes</option>'+years.map(y=>`<option value="${y}" ${y===currentYear?'selected':''}>${y}</option>`).join('');
-  }
-  const yearFilter=yearSel?yearSel.value:'';
-  let q=sb.from('cycle_plans').select('id,name,start_date').order('created_at',{ascending:false});
-  const {data}=await q;
-  let filtered=data||[];
-  if(yearFilter){
-    filtered=filtered.filter(c=>{
-      const dateStr=c.start_date||'';
-      if(dateStr.startsWith(yearFilter))return true;
-      const m=(c.name||'').match(/20\d{2}/);
-      return m && m[0]===yearFilter;
-    });
-  }
-  allCycles=filtered;
+  const {data}=await sb.from('cycle_plans').select('id,name').order('created_at',{ascending:false});
+  allCycles=data||[];
   const sel=document.getElementById('cycle-selector');
   sel.innerHTML='<option value="">— Sélectionner un cycle —</option>'+allCycles.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
 }
@@ -2919,7 +2954,7 @@ function openCycleCellModal(a,b,mode){
     presetsArea.style.display='block';
     presetsArea.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Prédéfini</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        ${options.map(o=>`<button class="preset-option-btn" data-text="${o.text}" data-color="${o.color}" onclick="selectPreset(this.dataset.text,this.dataset.color)" style="background:${o.color};color:${isLightColor(o.color)?'#111':'#fff'};padding:6px 12px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px">${o.text}</button>`).join('')}
+        ${options.map(o=>`<button class="preset-option-btn" onclick="selectPreset(${JSON.stringify(o.text)},${JSON.stringify(o.color)})" style="background:${o.color};color:${isLightColor(o.color)?'#111':'#fff'};padding:6px 12px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px">${o.text}</button>`).join('')}
       </div>`;
   } else {
     subtitleEl.textContent='Ajoute une idée';
@@ -2938,14 +2973,10 @@ function selectPreset(text,color){
   const key=`${cycleCellTarget.a}-${cycleCellTarget.b}`;
   if(cycleCellTarget.mode==='session'){
     if(!cycleData.sessionCells[key])cycleData.sessionCells[key]=[];
+    // Remplacer si déjà une valeur (une seule chip par cellule en mode preset)
     cycleData.sessionCells[key]=[{text,color}];
     closeCycleCellModal();
     renderSessionGrid();
-  } else {
-    if(!cycleData.cells[key])cycleData.cells[key]=[];
-    cycleData.cells[key].push({text,color});
-    closeCycleCellModal();
-    renderCycleGrid();
   }
 }
 
@@ -3092,23 +3123,15 @@ async function saveSessionNote(){
   loadSessionNotes(currentScoresSession.sessionId);
 }
 
-let sessionNotesByAthlete={};
 async function loadSessionNotes(sessionId){
   const {data}=await sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false});
-  sessionNotesByAthlete={};
-  (data||[]).forEach(n=>{
-    if(!sessionNotesByAthlete[n.athlete_id])sessionNotesByAthlete[n.athlete_id]=[];
-    sessionNotesByAthlete[n.athlete_id].push(n);
-  });
-  // Inject under each score row
-  Object.entries(sessionNotesByAthlete).forEach(([aid,notes])=>{
-    document.querySelectorAll(`[data-athlete-notes="${aid}"]`).forEach(el=>{
-      el.innerHTML=notes.map(n=>`<div class="athlete-note"><div class="athlete-note-date">${formatDate(n.created_at?.split('T')[0])}</div><div class="athlete-note-text">📝 ${n.content}</div></div>`).join('');
-    });
-  });
-  // Hide the legacy global notes list
   const el=document.getElementById('session-notes-list');
-  if(el)el.innerHTML='';
+  if(!el)return;
+  if(!data||data.length===0){el.innerHTML='';return;}
+  el.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:8px 0 6px">Notes partagées</div>`+data.map(n=>`<div class="note-item">
+    <div class="note-author"><span>${n.profiles?.full_name||'Athlète'}</span><span>${formatDate(n.created_at?.split('T')[0])}</span></div>
+    <div class="note-text">${n.content}</div>
+  </div>`).join('');
 }
 
 // STRIPE / ABOS
@@ -3151,166 +3174,500 @@ function extractYTId(url){const m=url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)
 function formatDate(iso){if(!iso)return'—';const d=new Date(iso+'T12:00:00');return`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 
-// ===== ATHLETE DETAIL MODAL (COACH VIEW) =====
-async function openAthleteDetail(athleteId){
-  let m=document.getElementById('athlete-detail-modal');
-  if(!m){
-    m=document.createElement('div');m.id='athlete-detail-modal';
-    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);z-index:9999;display:none;overflow-y:auto;padding:20px';
-    m.innerHTML=`<div style="max-width:640px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--card2)">
-        <div style="font-family:Bebas Neue;font-size:22px;letter-spacing:1.5px" id="ad-title">ATHLÈTE</div>
-        <button onclick="document.getElementById('athlete-detail-modal').style.display='none'" style="background:transparent;border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;font-size:18px;cursor:pointer">✕</button>
-      </div>
-      <div id="ad-body" style="padding:20px"></div>
-    </div>`;
-    document.body.appendChild(m);
+// ===================================================
+// HELPERS — escape / strip
+// ===================================================
+function escapeHtml(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
+function stripHtml(s){if(!s)return'';const d=document.createElement('div');d.innerHTML=s;return(d.textContent||d.innerText||'').replace(/\s+/g,' ').trim();}
+
+// ===================================================
+// MODAL LECTURE SÉANCE — vue identique à l'athlète
+// ===================================================
+let readModalSession=null;
+let readModalIsPerso=false;
+async function openReadSession(id, source){
+  // source: 'session' (table sessions) ou 'personal' (personal_sessions)
+  let data;
+  if(source==='personal'){
+    const r=await sb.from('personal_sessions').select('*').eq('id',id).single();
+    data=r.data;
+  } else {
+    const r=await sb.from('sessions').select('*,programmes(name,icon,color)').eq('id',id).single();
+    data=r.data;
   }
-  m.style.display='block';
-  const body=document.getElementById('ad-body');
-  body.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">Chargement...</div>';
-
-  const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
-  const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
-  const [profileRes,prsRes,wodWeekRes,wodMonthRes,benchRes]=await Promise.all([
-    sb.from('profiles').select('*').eq('id',athleteId).single(),
-    sb.from('athlete_prs').select('*,movements(name,unit,category)').eq('athlete_id',athleteId).order('recorded_at',{ascending:true}),
-    sb.from('wod_scores').select('*,sessions(title,date,type)').eq('athlete_id',athleteId).gte('created_at',sevenDaysAgo).order('created_at',{ascending:false}),
-    sb.from('wod_scores').select('id,created_at').eq('athlete_id',athleteId).gte('created_at',thirtyDaysAgo),
-    sb.from('benchmark_scores').select('*,benchmarks(name)').eq('athlete_id',athleteId).order('created_at',{ascending:false}).limit(5)
-  ]);
-  const p=profileRes.data||{};
-  const init=(p.full_name||p.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-  document.getElementById('ad-title').textContent=(p.full_name||p.email||'ATHLÈTE').toUpperCase();
-
-  // Group PRs by movement
-  const prsByMov={};
-  (prsRes.data||[]).forEach(pr=>{
-    if(!prsByMov[pr.movement_id])prsByMov[pr.movement_id]={name:pr.movements?.name||'—',unit:pr.movements?.unit||'',cat:pr.movements?.category,history:[]};
-    prsByMov[pr.movement_id].history.push({date:pr.recorded_at,value:parseFloat(pr.value)||0,raw:pr.value});
-  });
-
-  body.innerHTML=`
-    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
-      <div style="width:56px;height:56px;border-radius:50%;background:var(--accent-dark);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;border:2px solid var(--accent)">${init}</div>
-      <div><div style="font-size:16px;font-weight:700">${p.full_name||'—'}</div><div style="font-size:12px;color:var(--muted)">${p.email||''}</div></div>
-    </div>
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px">
-      <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-family:Bebas Neue;font-size:26px;color:var(--accent)">${(wodWeekRes.data||[]).length}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px">WODs 7j</div></div>
-      <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-family:Bebas Neue;font-size:26px;color:var(--orange)">${(wodMonthRes.data||[]).length}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px">WODs 30j</div></div>
-      <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-family:Bebas Neue;font-size:26px;color:var(--green)">${(prsRes.data||[]).length}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px">PR Total</div></div>
-    </div>
-
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:10px">WODs cette semaine</div>
-    <div style="margin-bottom:20px">${(wodWeekRes.data||[]).length===0?'<div style="font-size:13px;color:var(--muted);padding:12px;background:var(--card2);border-radius:8px;text-align:center">Aucun WOD cette semaine</div>':(wodWeekRes.data||[]).map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><div><div style="font-size:13px;font-weight:600">${s.sessions?.title||'—'}</div><div style="font-size:11px;color:var(--muted)">${formatDate(s.sessions?.date)} · <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]||s.level}</span></div></div><div style="font-size:14px;font-weight:700;color:var(--accent)">${s.score_text||s.score_value||'—'}</div></div>`).join('')}</div>
-
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:10px">Programmes perso assignés</div>
-    <div id="ad-perso-progs" style="margin-bottom:20px"><div style="font-size:12px;color:var(--muted)">Chargement...</div></div>
-
-    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:10px">Progression PR</div>
-    ${Object.keys(prsByMov).length===0?'<div style="font-size:13px;color:var(--muted);padding:12px;background:var(--card2);border-radius:8px;text-align:center">Aucun PR enregistré</div>':Object.entries(prsByMov).map(([mid,m])=>{
-      const sorted=m.history.sort((a,b)=>new Date(a.date)-new Date(b.date));
-      const last=sorted[sorted.length-1];const first=sorted[0];
-      const delta=sorted.length>1?((last.value-first.value)/first.value*100).toFixed(1):0;
-      return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
-        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-          <div><div style="font-size:13px;font-weight:600">${m.name}</div><div style="font-size:10px;color:var(--muted)">${sorted.length} entrée${sorted.length>1?'s':''}</div></div>
-          <div style="text-align:right"><div style="font-size:15px;font-weight:700;color:var(--accent)">${last.raw} ${m.unit}</div>${sorted.length>1?`<div style="font-size:10px;color:${delta>=0?'var(--green)':'var(--red)'};font-weight:700">${delta>=0?'+':''}${delta}%</div>`:''}</div>
-        </div>
-        ${renderPRSparkline(sorted)}
-      </div>`;
-    }).join('')}
-  `;
-  // Load perso programmes after main render
-  loadAthletePersoProgs(athleteId);
+  if(!data){showToast('❌ Séance introuvable');return;}
+  readModalSession=data;
+  readModalIsPerso=(source==='personal');
+  // En-tête
+  if(readModalIsPerso){
+    const ath=currentPersoAthlete||persoAthletesCache.find(a=>a.id===data.athlete_id);
+    document.getElementById('read-modal-prog').textContent='👤 '+(ath?.full_name||'Athlète');
+  } else {
+    const p=data.programmes;
+    document.getElementById('read-modal-prog').textContent=p?`${p.icon||''} ${p.name}`:'Programme';
+  }
+  document.getElementById('read-modal-date').textContent=formatDate(data.date);
+  // Corps : on réutilise buildSessionCard pour rendu identique athlète
+  const body=document.getElementById('read-modal-body');
+  body.innerHTML='<div class="spinner"></div>';
+  if(data.type==='separator'){
+    body.innerHTML=buildSeparatorCard(data);
+  } else {
+    body.innerHTML=await buildSessionCard(data);
+  }
+  document.getElementById('read-modal').classList.add('open');
 }
-async function loadAthletePersoProgs(athleteId){
-  const el=document.getElementById('ad-perso-progs');if(!el)return;
-  const [progsRes,assignsRes]=await Promise.all([
-    sb.from('programmes').select('id,name,color,icon').eq('type','perso').eq('is_active',true),
-    sb.from('athlete_programmes').select('programme_id').eq('athlete_id',athleteId)
-  ]);
-  const progs=progsRes.data||[];
-  const assigned=new Set((assignsRes.data||[]).map(a=>a.programme_id));
-  if(progs.length===0){el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:10px;background:var(--card2);border-radius:8px">Aucun programme perso créé. Crée-en un dans l\'onglet Programmes (type "Perso").</div>';return;}
-  el.innerHTML=progs.map(p=>{
-    const isOn=assigned.has(p.id);
-    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--card2);border:1px solid ${isOn?p.color:'var(--border)'};border-radius:8px;margin-bottom:6px">
-      <div style="display:flex;align-items:center;gap:10px"><div style="width:8px;height:24px;background:${p.color};border-radius:2px"></div><div style="font-size:13px;font-weight:600">${p.name}</div></div>
-      <button onclick="toggleAssign('${athleteId}','${p.id}',${!isOn})" style="background:${isOn?'var(--accent)':'var(--card)'};color:${isOn?'#062a2a':'var(--text)'};border:1px solid ${isOn?'var(--accent)':'var(--border)'};padding:6px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">${isOn?'✓ Assigné':'+ Assigner'}</button>
+function closeReadModal(){
+  document.getElementById('read-modal').classList.remove('open');
+  readModalSession=null;
+}
+function readModalEdit(){
+  if(!readModalSession)return;
+  const s=readModalSession;
+  const isPerso=readModalIsPerso;
+  closeReadModal();
+  if(isPerso){
+    persoEditSession(s.id, s.athlete_id);
+  } else {
+    editSession(s.id);
+  }
+}
+
+// ===================================================
+// ESPACE PERSO — STATE
+// ===================================================
+let persoAthletesCache=[];
+let currentPersoAthlete=null;
+let persoView='week';        // 'week' | 'month'
+let persoOffset=0;            // semaines ou mois selon view
+let persoSessionsCache=[];
+let personalAthleteId=null;   // si non-null → form en mode perso
+let personalEditingId=null;
+let personalSessionCounts={}; // map athlete_id → count
+
+async function loadPersoAthletes(){
+  // Reset à la vue liste
+  document.getElementById('perso-list-view').style.display='';
+  document.getElementById('perso-fiche-view').style.display='none';
+  document.getElementById('perso-form-view').style.display='none';
+
+  const {data}=await sb.from('profiles').select('*').eq('role','athlete').order('full_name');
+  persoAthletesCache=data||[];
+  // Compter les séances perso par athlète
+  const {data:counts}=await sb.from('personal_sessions').select('athlete_id');
+  personalSessionCounts={};
+  (counts||[]).forEach(r=>{personalSessionCounts[r.athlete_id]=(personalSessionCounts[r.athlete_id]||0)+1;});
+  renderPersoAthletes();
+}
+function filterPersoAthletes(){renderPersoAthletes();}
+function renderPersoAthletes(){
+  const q=(document.getElementById('perso-search')?.value||'').toLowerCase();
+  const list=persoAthletesCache.filter(a=>!q||(a.full_name||'').toLowerCase().includes(q)||(a.email||'').toLowerCase().includes(q));
+  const el=document.getElementById('perso-athletes-list');
+  if(!list.length){el.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
+  el.innerHTML=list.map(a=>{
+    const init=(a.full_name||a.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    const cnt=personalSessionCounts[a.id]||0;
+    return`<div class="perso-athlete-card" onclick="openPersoFiche('${a.id}')">
+      <div class="athlete-avatar">${init}</div>
+      <div class="perso-meta">
+        <div class="perso-name">${escapeHtml(a.full_name||'—')}</div>
+        <div class="perso-sub">${escapeHtml(a.email||'')}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="perso-count">${cnt}</div>
+        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">séance${cnt>1?'s':''}</div>
+      </div>
+      <div class="chev">›</div>
     </div>`;
   }).join('');
 }
-async function toggleAssign(athleteId,progId,turnOn){
-  if(turnOn){
-    const {error}=await sb.from('athlete_programmes').insert({athlete_id:athleteId,programme_id:progId});
-    if(error){showToast('❌ '+error.message);return;}
-    showToast('✅ Programme assigné');
-  } else {
-    const {error}=await sb.from('athlete_programmes').delete().eq('athlete_id',athleteId).eq('programme_id',progId);
-    if(error){showToast('❌ '+error.message);return;}
-    showToast('🗑 Assignation retirée');
+
+async function openPersoFiche(athleteId){
+  currentPersoAthlete=persoAthletesCache.find(a=>a.id===athleteId);
+  if(!currentPersoAthlete){
+    // Au cas où on arrive directement (post-save), reload
+    const {data}=await sb.from('profiles').select('*').eq('id',athleteId).single();
+    currentPersoAthlete=data;
+    if(!persoAthletesCache.length)persoAthletesCache=[data];
   }
-  loadAthletePersoProgs(athleteId);
+  document.getElementById('perso-list-view').style.display='none';
+  document.getElementById('perso-fiche-view').style.display='';
+  document.getElementById('perso-form-view').style.display='none';
+  const init=(currentPersoAthlete.full_name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('perso-fiche-avatar').textContent=init;
+  document.getElementById('perso-fiche-name').textContent=currentPersoAthlete.full_name||'—';
+  document.getElementById('perso-fiche-sub').textContent=currentPersoAthlete.email||'';
+  persoView='week';
+  persoOffset=0;
+  document.getElementById('perso-view-week').classList.add('active');
+  document.getElementById('perso-view-month').classList.remove('active');
+  await renderPersoCalendar();
 }
-function renderPRSparkline(history){
-  if(history.length<2)return '<div style="font-size:10px;color:var(--muted);font-style:italic">Plus de données nécessaires pour la courbe</div>';
-  const w=580,h=40,pad=4;
-  const vals=history.map(h=>h.value);
-  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
-  const pts=history.map((p,i)=>{const x=pad+(i/(history.length-1))*(w-pad*2);const y=h-pad-((p.value-min)/range)*(h-pad*2);return `${x},${y}`;}).join(' ');
-  return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>${history.map((p,i)=>{const x=pad+(i/(history.length-1))*(w-pad*2);const y=h-pad-((p.value-min)/range)*(h-pad*2);return `<circle cx="${x}" cy="${y}" r="2.5" fill="var(--accent)"/>`;}).join('')}</svg>`;
+function persoBackToList(){loadPersoAthletes();}
+function persoBackToFiche(){
+  // On ne nettoie pas le form ici (savéSession l'aura fait), juste on switche
+  if(currentPersoAthlete){
+    document.getElementById('perso-list-view').style.display='none';
+    document.getElementById('perso-fiche-view').style.display='';
+    document.getElementById('perso-form-view').style.display='none';
+    // Quitter le mode perso si on n'a pas sauvegardé
+    if(personalAthleteId){
+      exitPersoForm();
+    }
+    renderPersoCalendar();
+  } else {
+    loadPersoAthletes();
+  }
+}
+function persoSetView(v){
+  persoView=v;
+  persoOffset=0;
+  document.getElementById('perso-view-week').classList.toggle('active',v==='week');
+  document.getElementById('perso-view-month').classList.toggle('active',v==='month');
+  renderPersoCalendar();
+}
+function persoNav(dir){persoOffset+=dir;renderPersoCalendar();}
+
+async function renderPersoCalendar(){
+  if(!currentPersoAthlete)return;
+  const area=document.getElementById('perso-calendar-area');
+  area.innerHTML='<div class="spinner"></div>';
+  if(persoView==='week'){
+    const dates=getWeekDates(persoOffset);
+    const wk=getWeekNum(dates[0]);
+    document.getElementById('perso-period-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
+    const isos=dates.map(d=>d.toISOString().split('T')[0]);
+    const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+    persoSessionsCache=data||[];
+    const byDate={};isos.forEach(iso=>byDate[iso]=[]);
+    (data||[]).forEach(s=>{if(byDate[s.date])byDate[s.date].push(s);});
+    const today=new Date().toISOString().split('T')[0];
+    const headers=dates.map(d=>`<div class="cal-day-header">${DAYS[d.getDay()]}</div>`).join('');
+    const dateRow=dates.map(d=>{
+      const iso=d.toISOString().split('T')[0];
+      return`<div class="cal-day-date ${iso===today?'today':''}">${d.getDate()}</div>`;
+    }).join('');
+    const sessionCols=dates.map(d=>{
+      const iso=d.toISOString().split('T')[0];
+      const sessions=byDate[iso]||[];
+      const blocks=sessions.length>0?sessions.map(s=>{
+        if(s.type==='separator'){
+          return`<div class="cal-rich separator" onclick="openReadSession('${s.id}','personal')">
+            <div class="cal-rich-title">— ${escapeHtml(s.title||'Séparateur')} —</div>
+          </div>`;
+        }
+        const color=s.color||'#e8ff47';
+        const typeLabel=TYPE_LABELS[s.type]||s.type;
+        const preview=stripHtml(renderContentWithCharges(s.content||'')).slice(0,160);
+        const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
+        const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
+        const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
+        return`<div class="cal-rich" onclick="openReadSession('${s.id}','personal')">
+          <div class="cal-accent" style="background:${color}"></div>
+          <div class="cal-rich-head">
+            <span class="cal-rich-type" style="background:${color}22;color:${color}">${typeLabel}</span>
+            <div class="cal-rich-actions">
+              <button class="cal-action-btn" onclick="event.stopPropagation();persoEditSession('${s.id}','${currentPersoAthlete.id}')">✏</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();persoDeleteSession('${s.id}')">✕</button>
+            </div>
+          </div>
+          <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
+          ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
+          <div class="cal-rich-meta">${intensity}${sets}${yt}</div>
+        </div>`;
+      }).join(''):`<div class="cal-empty-day" onclick="persoNewSessionOn('${iso}')">+</div>`;
+      return`<div class="cal-day-col rich">${blocks}</div>`;
+    }).join('');
+    area.innerHTML=`<div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div>`;
+  } else {
+    // Vue MOIS
+    const now=new Date();
+    const ref=new Date(now.getFullYear(),now.getMonth()+persoOffset,1);
+    const year=ref.getFullYear(),month=ref.getMonth();
+    document.getElementById('perso-period-label').textContent=`${['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][month]} ${year}`;
+    const first=new Date(year,month,1);
+    const startDay=(first.getDay()===0?6:first.getDay()-1); // lundi=0
+    const startDate=new Date(year,month,1-startDay);
+    const cells=[];
+    for(let i=0;i<42;i++){
+      const d=new Date(startDate);d.setDate(startDate.getDate()+i);
+      cells.push(d);
+    }
+    const isos=cells.map(d=>d.toISOString().split('T')[0]);
+    const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+    const byDate={};isos.forEach(iso=>byDate[iso]=[]);
+    (data||[]).forEach(s=>{if(byDate[s.date])byDate[s.date].push(s);});
+    const today=new Date().toISOString().split('T')[0];
+    const headers=['L','M','M','J','V','S','D'].map(h=>`<div class="h">${h}</div>`).join('');
+    const cellsHtml=cells.map(d=>{
+      const iso=d.toISOString().split('T')[0];
+      const isOther=d.getMonth()!==month;
+      const isToday=iso===today;
+      const sess=byDate[iso]||[];
+      const pills=sess.slice(0,2).map(s=>{
+        const c=s.color||'#e8ff47';
+        return`<div class="pill" style="background:${c}22;color:${c}" onclick="event.stopPropagation();openReadSession('${s.id}','personal')">${escapeHtml(s.title||'—').slice(0,18)}</div>`;
+      }).join('');
+      const more=sess.length>2?`<div class="more">+${sess.length-2}</div>`:'';
+      return`<div class="perso-month-cell ${isOther?'other':''} ${isToday?'today':''}" onclick="persoMonthCellClick('${iso}')">
+        <div class="num">${d.getDate()}</div>
+        ${pills}${more}
+      </div>`;
+    }).join('');
+    area.innerHTML=`<div class="perso-month"><div class="perso-month-grid">${headers}</div><div class="perso-month-grid" style="margin-top:6px">${cellsHtml}</div></div>`;
+  }
+  if(persoSessionsCache?.length===0&&persoView==='week'){
+    // Pas vide totalement — on a déjà rendu les colonnes
+  }
 }
 
-// ===== WELLNESS CHECK-IN (ATHLETE) =====
-const WELLNESS_FIELDS=[
-  {key:'fatigue',label:'Fatigue',icon:'😴',color:'#ff8c47',hint:['Très frais','OK','Moyen','Fatigué','Crevé']},
-  {key:'soreness',label:'Courbatures',icon:'💪',color:'#c847ff',hint:['Aucune','Légères','Moyennes','Importantes','Très douloureuses']},
-  {key:'sleep',label:'Sommeil',icon:'🌙',color:'#47c8ff',hint:['Très mauvais','Mauvais','Correct','Bon','Excellent']},
-  {key:'energy',label:'Énergie',icon:'⚡',color:'#1e9b9b',hint:['Aucune','Faible','Moyenne','Bonne','Au top']},
-];
-let wellnessToday={fatigue:3,soreness:3,sleep:3,energy:3,note:''};
-async function loadWellness(){
-  if(!currentUser)return;
-  const today=new Date().toISOString().slice(0,10);
-  const {data}=await sb.from('wellness_logs').select('*').eq('athlete_id',currentUser.id).eq('log_date',today).maybeSingle();
-  if(data)wellnessToday={fatigue:data.fatigue||3,soreness:data.soreness||3,sleep:data.sleep||3,energy:data.energy||3,note:data.note||'',id:data.id};
-  renderWellness();
+function persoMonthCellClick(iso){
+  // Ouvre directement le formulaire perso avec la date pré-remplie
+  persoNewSessionOn(iso);
 }
-function renderWellness(){
-  const card=document.getElementById('wellness-card');if(!card)return;
-  card.innerHTML=WELLNESS_FIELDS.map(f=>`
-    <div style="margin-bottom:14px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-        <div style="font-size:13px;font-weight:600">${f.icon} ${f.label}</div>
-        <div style="font-size:11px;color:${f.color};font-weight:700">${f.hint[wellnessToday[f.key]-1]}</div>
-      </div>
-      <input type="range" min="1" max="5" value="${wellnessToday[f.key]}" oninput="wellnessToday.${f.key}=parseInt(this.value);renderWellness()" style="width:100%;accent-color:${f.color}">
-    </div>
-  `).join('')+`
-    <textarea id="wellness-note" placeholder="Note du jour (optionnel)..." oninput="wellnessToday.note=this.value" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:12px;resize:vertical;min-height:50px;font-family:inherit;margin-bottom:10px">${wellnessToday.note||''}</textarea>
-    <button onclick="saveWellness()" style="width:100%;background:var(--accent);color:#062a2a;border:none;padding:11px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">${wellnessToday.id?'✓ Mettre à jour':'✓ Enregistrer le check-in'}</button>
-  `;
+
+function persoNewSession(){
+  persoNewSessionOn(new Date().toISOString().split('T')[0]);
 }
-async function saveWellness(){
-  if(!currentUser)return;
-  const today=new Date().toISOString().slice(0,10);
-  const payload={athlete_id:currentUser.id,log_date:today,fatigue:wellnessToday.fatigue,soreness:wellnessToday.soreness,sleep:wellnessToday.sleep,energy:wellnessToday.energy,note:wellnessToday.note||null};
-  const {error}=await sb.from('wellness_logs').upsert(payload,{onConflict:'athlete_id,log_date'});
+function persoNewSessionOn(iso){
+  if(!currentPersoAthlete)return;
+  enterPersoFormMode(currentPersoAthlete.id);
+  // Reset form
+  resetSessionForm();
+  document.getElementById('f-date').value=iso||new Date().toISOString().split('T')[0];
+  // Switch panel
+  document.getElementById('perso-list-view').style.display='none';
+  document.getElementById('perso-fiche-view').style.display='none';
+  document.getElementById('perso-form-view').style.display='';
+  document.getElementById('perso-form-title').textContent='Nouvelle séance perso';
+  document.getElementById('perso-form-sub').textContent=`Pour ${currentPersoAthlete.full_name||'—'}`;
+  // Déplacer le formulaire dans le container perso
+  const container=document.getElementById('perso-form-container');
+  const form=document.getElementById('admin-new-session');
+  container.appendChild(form);
+  form.classList.add('active');
+  form.style.display='';
+  document.getElementById('page-admin').scrollTop=0;
+}
+
+async function persoEditSession(id, athleteId){
+  // Charger
+  const {data}=await sb.from('personal_sessions').select('*').eq('id',id).single();
+  if(!data){showToast('❌ Séance introuvable');return;}
+  if(!currentPersoAthlete||currentPersoAthlete.id!==athleteId){
+    const {data:ath}=await sb.from('profiles').select('*').eq('id',athleteId).single();
+    currentPersoAthlete=ath;
+    if(!persoAthletesCache.find(a=>a.id===athleteId))persoAthletesCache.push(ath);
+  }
+  enterPersoFormMode(athleteId);
+  personalEditingId=id;
+  resetSessionForm();
+  // Remplir avec les données
+  document.getElementById('f-date').value=data.date;
+  document.getElementById('f-type').value=data.type;
+  document.getElementById('f-title').value=data.title||'';
+  setEditorContent(data.content||'');
+  document.getElementById('f-intensity').value=data.intensity||7;
+  document.getElementById('f-int-val').textContent=data.intensity||7;
+  document.getElementById('f-target').value=data.target||'';
+  document.getElementById('f-tips').value=data.tips||'';
+  document.getElementById('f-score-type').value=data.score_type||'reps';
+  document.getElementById('f-youtube').value=data.youtube_url||'';
+  document.getElementById('f-ytlabel').value=data.youtube_label||'';
+  document.getElementById('f-scaling-inter').value=data.scaling_inter||'';
+  document.getElementById('f-scaling-scaled').value=data.scaling_scaled||'';
+  document.getElementById('f-scaling-foundation').value=data.scaling_foundation||'';
+  if(data.color){
+    selectedSessionColor=data.color;
+    document.querySelectorAll('#f-colors .color-swatch').forEach(s=>s.classList.toggle('selected',s.dataset.color===data.color));
+  }
+  if(data.type==='strength'){
+    document.getElementById('sets-field').style.display='block';
+    document.getElementById('f-sets').value=data.sets||'';
+  }
+  // Switch panel
+  document.getElementById('perso-list-view').style.display='none';
+  document.getElementById('perso-fiche-view').style.display='none';
+  document.getElementById('perso-form-view').style.display='';
+  document.getElementById('perso-form-title').textContent='Modifier la séance perso';
+  document.getElementById('perso-form-sub').textContent=`Pour ${currentPersoAthlete.full_name||'—'}`;
+  const container=document.getElementById('perso-form-container');
+  const form=document.getElementById('admin-new-session');
+  container.appendChild(form);
+  form.classList.add('active');
+  form.style.display='';
+  // Bouton sauvegarder en mode édition
+  const btn=document.querySelector('#admin-new-session .btn-primary');
+  btn.textContent='💾 Sauvegarder les modifications';
+  btn.style.background='var(--blue)';
+  document.getElementById('page-admin').scrollTop=0;
+}
+
+async function persoDeleteSession(id){
+  if(!confirm('Supprimer cette séance perso ?'))return;
+  const {error}=await sb.from('personal_sessions').delete().eq('id',id);
   if(error){showToast('❌ '+error.message);return;}
-  showToast('✅ Check-in enregistré !');
-  await loadWellness();
+  showToast('🗑 Séance supprimée');
+  renderPersoCalendar();
 }
+
+function enterPersoFormMode(athleteId){
+  personalAthleteId=athleteId;
+  const ath=persoAthletesCache.find(a=>a.id===athleteId)||currentPersoAthlete;
+  document.getElementById('form-perso-banner').style.display='flex';
+  document.getElementById('form-prog-group').style.display='none';
+  if(ath){
+    const init=(ath.full_name||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+    document.getElementById('form-perso-avatar').textContent=init;
+    document.getElementById('form-perso-name').textContent=ath.full_name||'—';
+  }
+}
+function exitPersoForm(){
+  personalAthleteId=null;
+  personalEditingId=null;
+  document.getElementById('form-perso-banner').style.display='none';
+  document.getElementById('form-prog-group').style.display='';
+  // Réintégrer le form dans son emplacement d'origine
+  const form=document.getElementById('admin-new-session');
+  const adminContainer=document.querySelector('#page-admin > .admin-tabs')?.parentElement;
+  // Remet le form dans le page-admin (juste après les onglets, à sa position originelle)
+  // On le réinjecte avant #admin-sessions si présent
+  const sessionsPanel=document.getElementById('admin-sessions');
+  if(sessionsPanel&&sessionsPanel.parentElement&&form.parentElement!==sessionsPanel.parentElement){
+    sessionsPanel.parentElement.insertBefore(form,sessionsPanel);
+  }
+  form.classList.remove('active');
+  resetSessionForm();
+  // Si on était dans la vue form perso, retour à la fiche
+  if(currentPersoAthlete&&document.getElementById('perso-form-view').style.display!=='none'){
+    document.getElementById('perso-form-view').style.display='none';
+    document.getElementById('perso-fiche-view').style.display='';
+    renderPersoCalendar();
+  }
+}
+function resetSessionForm(){
+  ['f-title','f-target','f-tips','f-youtube','f-ytlabel','f-scaling-inter','f-scaling-scaled','f-scaling-foundation','f-sets'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  clearEditor();
+  document.getElementById('score-labels-container').innerHTML='';
+  document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
+  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
+  document.getElementById('f-score-type').value='time';
+  document.getElementById('f-type').value='wod';
+  document.getElementById('sets-field').style.display='none';
+  multiScoreEnabled=false;
+  document.getElementById('multi-score-toggle').classList.remove('on');
+  document.getElementById('multi-score-fields').style.display='none';
+  selectedSessionColor='#e8ff47';
+  document.querySelectorAll('#f-colors .color-swatch').forEach(s=>s.classList.toggle('selected',s.dataset.color==='#e8ff47'));
+  const btn=document.querySelector('#admin-new-session .btn-primary');
+  if(btn){btn.textContent='Publier la séance';btn.style.background='';}
+  const cancelBtn=document.getElementById('edit-cancel-btn');
+  if(cancelBtn)cancelBtn.remove();
+  editingSessionId=null;
+}
+
+function quickAddSession(iso){
+  // Quand on clique sur un jour vide du calendrier admin (sessions classiques)
+  adminTab('new-session',document.querySelector('.admin-tab-btn:nth-child(2)'));
+  resetSessionForm();
+  document.getElementById('f-date').value=iso;
+}
+
+// ===================================================
+// HOOK CÔTÉ ATHLÈTE — onglet "Espace perso" virtuel
+// ===================================================
+// On surcharge renderProgTabs pour ajouter un pseudo-prog,
+// et selectProg / renderDayStrip / renderSessions pour le supporter.
+const PERSO_PROG={id:'__perso__',name:'Espace perso',color:'#e8ff47',icon:'👤',slug:'__perso__'};
+
+const __origRenderProgTabs=renderProgTabs;
+renderProgTabs=function(){
+  __origRenderProgTabs();
+  // Ajouter l'onglet Espace perso à la fin (visible pour tous : athlètes ET admins peuvent voir leur propre espace)
+  const tabs=document.getElementById('prog-tabs');
+  if(!tabs)return;
+  // Ne pas dupliquer
+  if(tabs.querySelector('[data-id="__perso__"]'))return;
+  const btn=document.createElement('button');
+  btn.className='prog-tab';
+  btn.dataset.id='__perso__';
+  btn.textContent='👤 Espace perso';
+  btn.onclick=()=>selectProg('__perso__');
+  tabs.appendChild(btn);
+};
+
+const __origSelectProg=selectProg;
+selectProg=function(id){
+  if(id==='__perso__'){
+    currentProg=PERSO_PROG;
+    activatePersoTab();
+    renderPersoDayStrip();
+    renderPersoSessions();
+    return;
+  }
+  __origSelectProg(id);
+};
+
+function activatePersoTab(){
+  document.querySelectorAll('.prog-tab').forEach(t=>{
+    if(t.dataset.id==='__perso__'){
+      t.style.borderColor=PERSO_PROG.color;t.style.color=PERSO_PROG.color;t.style.background=PERSO_PROG.color+'18';
+    } else {
+      t.style.cssText='';
+    }
+  });
+  document.getElementById('prog-topbar-title').textContent='ESPACE PERSO';
+}
+
+async function renderPersoDayStrip(){
+  const dates=getWeekDates(currentWeekOffset);
+  const wk=getWeekNum(dates[0]);
+  document.getElementById('week-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
+  const isos=dates.map(d=>d.toISOString().split('T')[0]);
+  const {data}=await sb.from('personal_sessions').select('date').eq('athlete_id',currentUser.id).in('date',isos);
+  const withContent=new Set((data||[]).map(s=>s.date));
+  document.getElementById('day-strip').innerHTML=dates.map(d=>{
+    const iso=d.toISOString().split('T')[0];
+    return `<div class="day-pill ${iso===selectedDate?'active':''} ${withContent.has(iso)?'has-content':''}" onclick="selectDate('${iso}')">
+      <div class="day-name">${DAYS[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>
+    </div>`;
+  }).join('');
+}
+
+async function renderPersoSessions(){
+  const area=document.getElementById('sessions-area');
+  area.innerHTML='<div class="spinner"></div>';
+  const {data:sessions}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentUser.id).eq('date',selectedDate).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+  if(!sessions||sessions.length===0){
+    area.innerHTML=`<div class="empty fade-up">
+      <div class="empty-icon">👤</div>
+      <p>Pas de séance perso<br>programmée ce jour.</p>
+      <div style="font-size:11px;color:var(--muted);margin-top:8px">Ton coach peut t'en ajouter depuis son espace admin.</div>
+    </div>`;
+    return;
+  }
+  area.innerHTML='';
+  for(const s of sessions){
+    if(s.type==='separator'){
+      area.insertAdjacentHTML('beforeend',buildSeparatorCard(s));
+    } else {
+      area.insertAdjacentHTML('beforeend',await buildSessionCard(s));
+    }
+  }
+}
+
+// Surcharger renderDayStrip / renderSessions pour rerouter quand currentProg=__perso__
+const __origRenderDayStrip=renderDayStrip;
+renderDayStrip=async function(){
+  if(currentProg?.id==='__perso__'){return renderPersoDayStrip();}
+  return __origRenderDayStrip();
+};
+const __origRenderSessions=renderSessions;
+renderSessions=async function(){
+  if(currentProg?.id==='__perso__'){return renderPersoSessions();}
+  return __origRenderSessions();
+};
 </script>
 </body>
 </html>
-
-<style id="__om-edit-overrides">
-#day-strip >[onclick="selectDate('2026-05-10')"] { border-color: rgb(8, 8, 8) !important }
-#sc-3f6caa64-9eda-4f9c-a15f-fea4fe025e8a .level-selector >.inter { color: rgb(255, 71, 93) !important }
-#sc-3f6caa64-9eda-4f9c-a15f-fea4fe025e8a .level-selector >.inter { color: rgb(247, 12, 40) !important }
-#sc-3f6caa64-9eda-4f9c-a15f-fea4fe025e8a .level-selector >.inter { border-color: rgb(255, 71, 90) !important }
-#sc-3f6caa64-9eda-4f9c-a15f-fea4fe025e8a .level-selector >.inter { border-color: rgb(247, 12, 40) !important }
-#sc-3f6caa64-9eda-4f9c-a15f-fea4fe025e8a .level-selector >.inter { color: rgb(102, 102, 102) !important }
-#sc-3f6caa64-9eda-4f9c-a15f-fea4fe025e8a .level-selector >.inter { border-color: rgb(102, 102, 102) !important }
-</style>
