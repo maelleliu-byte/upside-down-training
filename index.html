@@ -2688,7 +2688,7 @@ function openCycleCellModal(a,b,mode){
     presetsArea.style.display='block';
     presetsArea.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Prédéfini</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        ${options.map(o=>`<button class="preset-option-btn" onclick="selectPreset(${JSON.stringify(o.text)},${JSON.stringify(o.color)})" style="background:${o.color};color:${isLightColor(o.color)?'#111':'#fff'};padding:6px 12px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px">${o.text}</button>`).join('')}
+        ${options.map(o=>`<button class="preset-option-btn" data-text="${o.text}" data-color="${o.color}" onclick="selectPreset(this.dataset.text,this.dataset.color)" style="background:${o.color};color:${isLightColor(o.color)?'#111':'#fff'};padding:6px 12px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px">${o.text}</button>`).join('')}
       </div>`;
   } else {
     subtitleEl.textContent='Ajoute une idée';
@@ -2707,10 +2707,14 @@ function selectPreset(text,color){
   const key=`${cycleCellTarget.a}-${cycleCellTarget.b}`;
   if(cycleCellTarget.mode==='session'){
     if(!cycleData.sessionCells[key])cycleData.sessionCells[key]=[];
-    // Remplacer si déjà une valeur (une seule chip par cellule en mode preset)
     cycleData.sessionCells[key]=[{text,color}];
     closeCycleCellModal();
     renderSessionGrid();
+  } else {
+    if(!cycleData.cells[key])cycleData.cells[key]=[];
+    cycleData.cells[key].push({text,color});
+    closeCycleCellModal();
+    renderCycleGrid();
   }
 }
 
