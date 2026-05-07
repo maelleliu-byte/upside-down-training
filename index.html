@@ -1787,6 +1787,10 @@ function _formatChargeForMovement(mvt,bestPR,pct){
     const pace=_kmhToPaceStr(targetKmh);
     return `${targetKmh} km/h <span style="opacity:.7">(${pace})</span>`;
   }
+  if(mode==='watt'){
+    const target=Math.round((parseFloat(pct)/100)*bestPR.value);
+    return `${target} W`;
+  }
   if(mode==='time'){
     // bestPR.value en secondes — % du temps n'a pas de sens classique → on l'applique quand même
     const target=Math.round((parseFloat(pct)/100)*bestPR.value);
@@ -2172,24 +2176,39 @@ function renderAll(){
       html+=filtered.map(m=>{
         const prs=myPRs[m.id]||[];
         const formats=(m.available_formats||'').split(',').map(f=>f.trim()).filter(Boolean);
-        let prHtml='';
-        if(prs.length>0){
-          // Trouver le meilleur PR (valeur max)
-          // Pour time, le PR = min (le plus rapide); sinon max
-          const sample=prs[0];
-          const mode=getPRModeFor(m,sample.format);
-          const best=mode==='time'
-            ? prs.reduce((a,b)=>b.value<a.value?b:a)
-            : prs.reduce((a,b)=>b.value>a.value?b:a);
-          const fmtLabel=best.format?` <span style="font-size:9px;color:var(--muted)">${best.format}</span>`:'';
-          const display=mode==='number'?best.value:formatPRValue(best.value,mode);
-          const unitDisplay=mode==='time'?'temps':(mode==='rounds'?'rounds + reps':m.unit);
-          prHtml=`<div><div class="mv-pr-val">${display}${fmtLabel}</div><div class="mv-pr-unit">${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
-        } else {
-          prHtml=`<div class="mv-no-pr">+ Ajouter</div>`;
+        // Si le mouvement a des formats → une ligne par format (jaune)
+        if(formats.length>0){
+          return formats.map(fmt=>{
+            const fmtPRs=prs.filter(p=>(p.format||'')===fmt);
+            const mode=getPRModeFor(m,fmt);
+            let prHtml;
+            if(fmtPRs.length>0){
+              const best=mode==='time'
+                ? fmtPRs.reduce((a,b)=>b.value<a.value?b:a)
+                : fmtPRs.reduce((a,b)=>b.value>a.value?b:a);
+              const display=mode==='number'?best.value:formatPRValue(best.value,mode);
+              const unitDisplay=mode==='time'?'temps':(mode==='rounds'?'rounds + reps':(mode==='run'?'km/h':(mode==='watt'?'W':m.unit)));
+              prHtml=`<div><div class="mv-pr-val">${display}</div><div class="mv-pr-unit">${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
+            } else {
+              prHtml=`<div class="mv-no-pr">+ Ajouter</div>`;
+            }
+            return`<div class="movement-item" onclick="openPRModal('${m.id}','${fmt.replace(/'/g,"\\'")}')">
+              <div><div class="mv-name">${m.name} <span style="color:var(--accent);font-size:11px;font-weight:600">· ${fmt}</span></div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>${prHtml}
+            </div>`;
+          }).join('');
         }
+        // Mouvements sans format : afficher SEULEMENT s'ils ont au moins un PR
+        if(prs.length===0)return '';
+        const sample=prs[0];
+        const mode=getPRModeFor(m,sample.format);
+        const best=mode==='time'
+          ? prs.reduce((a,b)=>b.value<a.value?b:a)
+          : prs.reduce((a,b)=>b.value>a.value?b:a);
+        const display=mode==='number'?best.value:formatPRValue(best.value,mode);
+        const unitDisplay=mode==='time'?'temps':(mode==='rounds'?'rounds + reps':m.unit);
+        const prHtml=`<div><div class="mv-pr-val">${display}</div><div class="mv-pr-unit">${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
         return`<div class="movement-item" onclick="openPRModal('${m.id}')">
-          <div><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}${formats.length>1?` · <span style="color:var(--accent);font-size:10px">${formats.length} formats</span>`:''}</div></div>${prHtml}
+          <div><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>${prHtml}
         </div>`;
       }).join('');
     }
@@ -2215,7 +2234,7 @@ function renderAll(){
   if(!html)html='<div class="empty"><div class="empty-icon">🔍</div><p>Aucun résultat</p></div>';
   list.innerHTML=html;
 }
-function openPRModal(movementId){
+function openPRModal(movementId,preselectFormat){
   currentModalMovement=movements.find(m=>m.id===movementId);if(!currentModalMovement)return;
   document.getElementById('modal-mv-name').textContent=currentModalMovement.name;
 
@@ -2225,8 +2244,10 @@ function openPRModal(movementId){
   if(formats.length>1){
     formatEl.style.display='block';
     formatEl.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Format</div>
-      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${formats.map((f,i)=>`
-        <button class="format-btn ${i===0?'active':''}" data-format="${f}" onclick="selectFormat(this)">${f}</button>`).join('')}</div>`;
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${formats.map((f,i)=>{
+        const sel=preselectFormat?(f===preselectFormat):(i===0);
+        return `<button class="format-btn ${sel?'active':''}" data-format="${f}" onclick="selectFormat(this)">${f}</button>`;
+      }).join('')}</div>`;
   } else {
     formatEl.style.display='none';
   }
@@ -2250,15 +2271,22 @@ function getPRModeFor(movement,format){
   const unit=(movement?.unit||'').toLowerCase();
   const name=(movement?.name||'').toLowerCase();
   const cat=(movement?.category||'').toLowerCase();
-  // RUN — détection large : unité, format, nom du mouvement, ou catégorie cardio
+  // ERG (Row, Ski, Bike, Assault Bike) — mode watt si format Test xmin / FTP / Puissance Critique
+  const isErg=name.includes('row')||name.includes('ski')||name.includes('bike')||name.includes('abike')||name.includes('assault');
+  if(isErg){
+    if(fmt.includes('ftp')||fmt.includes('puissance critique')||fmt.includes('puissance')||!!fmt.match(/test\s*\d+\s*'?\s*min?/)||!!fmt.match(/test\s*\d+\s*'/)){
+      return 'watt';
+    }
+    // Distances/cal sur erg → temps
+    if(fmt.match(/\d+\s*k\b/)||fmt.match(/\d+\s*km/)||fmt.match(/\d+\s*m\b/)||fmt.includes('cal')||fmt.includes('acid'))return 'time';
+  }
+  // RUN — détection large : unité, format, nom du mouvement
   const runUnit=unit.includes('km/h')||unit.includes('min/km')||unit.includes('pace')||unit.includes('allure')||unit.includes('vitesse');
-  const runFmt=fmt.includes('run')||fmt.includes('pace')||fmt.includes('marathon')||fmt.includes('semi')||fmt.includes('vma')||fmt.includes('vitesse')||fmt.includes('allure')||fmt.includes('cooper')||!!fmt.match(/\d+\s*k\b/)||!!fmt.match(/\d+\s*km/)||!!fmt.match(/test\s*\d+\s*min/)||!!fmt.match(/^\d+\s*min$/);
-  const runName=name.includes('run')||name.includes('course')||name.includes('cours')||name.includes('jog')||name.includes('vma')||name.includes('marathon')||name.includes('cooper')||name.includes('fartlek')||name.includes('sprint');
-  const isRunCtx=runUnit||runFmt||runName||(cat==='cardio'&&!fmt.includes('row')&&!fmt.includes('bike')&&!fmt.includes('ski'));
+  const runFmt=(fmt.includes('run')||fmt.includes('pace')||fmt.includes('marathon')||fmt.includes('semi')||fmt.includes('vma')||fmt.includes('vitesse critique')||fmt.includes('allure')||fmt.includes('cooper')||!!fmt.match(/test\s*\d+\s*'?\s*min?/)||!!fmt.match(/^\d+\s*min$/));
+  const runName=(name==='run'||name.includes('course')||name.includes('cours')||name.includes('jog')||name.includes('vma')||name.includes('marathon')||name.includes('cooper')||name.includes('fartlek')||name.includes('sprint'))&&!isErg;
+  const isRunCtx=(runUnit||runName||(runFmt&&!isErg))&&!isErg;
   if(isRunCtx){
-    // Distances fixes (5K, 10K, semi, marathon) → TEMPS h:m:s
     if(fmt.match(/\d+\s*k\b/)||fmt.match(/\d+\s*km/)||fmt.includes('marathon')||fmt.includes('semi'))return 'time';
-    // Tout le reste (Test 3/6/12min, Cooper, Vitesse critique, VMA, Run générique) → vitesse + allure
     return 'run';
   }
   if(fmt.includes('time')||fmt==='for time'||unit==='sec'||unit==='temps'||unit.includes('min:sec')||unit.includes('time')){return 'time';}
@@ -2286,16 +2314,6 @@ function renderPRInputArea(){
         <span style="font-size:18px;font-weight:700;color:var(--muted)">+</span>
         <input class="modal-input" id="pr-reps" type="number" min="0" placeholder="reps" style="margin:0;text-align:center">
       </div>`;
-  } else if(mode==='run-distance'){
-    const fmt=getSelectedFormat()||'';
-    const minMatch=fmt.match(/(\d+)\s*min/i);
-    const dur=minMatch?minMatch[1]+' min':(fmt.toLowerCase().includes('cooper')?'12 min':'durée fixe');
-    wrap.innerHTML=`<div class="modal-sub">Distance parcourue en ${dur}</div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
-        <input class="modal-input" id="pr-rd-m" type="number" min="0" placeholder="mètres (ex: 2400)" style="margin:0" oninput="onRunDistChange()">
-        <span style="font-size:11px;color:var(--muted);font-weight:700">m</span>
-      </div>
-      <div id="run-dist-preview" style="font-size:12px;color:var(--muted);margin-bottom:12px;min-height:18px"></div>`;
   } else if(mode==='run'){
     wrap.innerHTML=`<div class="modal-sub">Vitesse / Allure (au choix)</div>
       <div style="display:flex;gap:6px;margin-bottom:8px">
@@ -2314,6 +2332,12 @@ function renderPRInputArea(){
         </div>
       </div>
       <div id="run-preview" style="font-size:12px;color:var(--muted);margin-bottom:12px;min-height:18px"></div>`;
+  } else if(mode==='watt'){
+    wrap.innerHTML=`<div class="modal-sub">Puissance moyenne (watts)</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px">
+        <input class="modal-input" id="pr-watt" type="number" min="0" step="1" placeholder="ex: 285" style="margin:0">
+        <span style="font-size:11px;color:var(--muted);font-weight:700">W</span>
+      </div>`;
   } else {
     wrap.innerHTML=`<div class="modal-sub" id="modal-mv-unit">Valeur en ${currentModalMovement?.unit||''}</div>
       <input class="modal-input" id="modal-pr-val" type="number" step="0.5" min="0" placeholder="0">`;
@@ -2341,10 +2365,10 @@ function readPRValue(){
     if(!kmh||kmh<=0)return null;
     return {value:kmh};
   }
-  if(mode==='run-distance'){
-    const m=parseFloat(document.getElementById('pr-rd-m')?.value)||0;
-    if(m<=0)return null;
-    return {value:m};
+  if(mode==='watt'){
+    const w=parseFloat(document.getElementById('pr-watt')?.value)||0;
+    if(w<=0)return null;
+    return {value:w};
   }
   const v=parseFloat(document.getElementById('modal-pr-val')?.value);
   if(!v||v<=0)return null;
@@ -2378,9 +2402,8 @@ function setPRValue(value){
       const psEl=document.getElementById('pr-pace-s');if(psEl)psEl.value=s||'';
     }
     onRunInputChange();
-  } else if(mode==='run-distance'){
-    const el=document.getElementById('pr-rd-m');if(el)el.value=value||'';
-    onRunDistChange();
+  } else if(mode==='watt'){
+    const el=document.getElementById('pr-watt');if(el)el.value=value||'';
   } else {
     const el=document.getElementById('modal-pr-val');if(el)el.value=value||'';
   }
@@ -2406,10 +2429,8 @@ function formatPRValue(value,mode){
     const s=Math.round(secPerKm%60);
     return `${v.toFixed(1)} km/h · ${m}:${String(s).padStart(2,'0')}/km`;
   }
-  if(mode==='run-distance'){
-    // v en mètres
-    if(v>=1000)return `${(v/1000).toFixed(2)} km`;
-    return `${Math.round(v)} m`;
+  if(mode==='watt'){
+    return `${Math.round(v)} W`;
   }
   return String(value);
 }
