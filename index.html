@@ -11,6 +11,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 :root{--black:#080808;--dark:#101010;--card:#161616;--card2:#1e1e1e;--border:#252525;--border2:#333;--accent:#e8ff47;--red:#ff4444;--blue:#47c8ff;--orange:#ff8c47;--purple:#c847ff;--green:#47ff8c;--text:#f0f0f0;--text2:#aaa;--muted:#666;--safe-bottom:env(safe-area-inset-bottom,0px)}
+:root[data-theme="light"]{--black:#fafaf7;--dark:#f3f3ee;--card:#ffffff;--card2:#f6f6f1;--border:#e5e5dd;--border2:#d4d4cb;--accent:#7a8a18;--red:#d33;--blue:#0d7fb3;--orange:#c95a0e;--purple:#7a1fb3;--green:#1e8a4a;--text:#1a1a1a;--text2:#444;--muted:#888}
+:root[data-theme="light"] .info-block-text{color:#333}
+:root[data-theme="light"] .comment-text{color:#333}
+:root[data-theme="light"] .btn-auth,:root[data-theme="light"] .btn-primary,:root[data-theme="light"] .btn-score{color:#fff}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);max-width:430px;margin:0 auto;position:relative}
@@ -1155,7 +1159,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <div class="page" id="page-profil" style="display:none">
     <div class="topbar"><div><div class="topbar-title">PROFIL</div></div></div>
     <div class="profil-header">
-      <div class="profil-avatar" id="profil-avatar">?</div>
+      <div style="position:relative;flex-shrink:0">
+        <div class="profil-avatar" id="profil-avatar">?</div>
+        <button onclick="document.getElementById('avatar-file-input').click()" style="position:absolute;bottom:-2px;right:-2px;width:24px;height:24px;border-radius:50%;background:var(--accent);color:#000;border:2px solid var(--black);font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700">📷</button>
+        <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="uploadAvatar(event)">
+      </div>
       <div><div class="profil-name" id="profil-name">—</div><div class="profil-email" id="profil-email">—</div></div>
     </div>
     <div class="profil-stats">
@@ -1163,6 +1171,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div class="stat-box"><div class="stat-val" id="stat-wod">—</div><div class="stat-lbl">WODs</div></div>
       <div class="stat-box"><div class="stat-val" id="stat-bench">—</div><div class="stat-lbl">Benchmarks</div></div>
     </div>
+    <div class="menu-item" onclick="toggleTheme()"><span class="menu-item-label" id="theme-label">🌙 Mode clair</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('pr')"><span class="menu-item-label">📊 Mes records (PR)</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('bench')"><span class="menu-item-label">🏆 Mes benchmarks</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('abos')"><span class="menu-item-label">💳 Mes abonnements</span><span>›</span></div>
@@ -1322,8 +1331,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <div class="modal">
     <div class="modal-title" id="modal-mv-name">—</div>
     <div id="modal-pr-format"></div>
-    <div class="modal-sub" id="modal-mv-unit">Valeur</div>
-    <input class="modal-input" id="modal-pr-val" type="number" step="0.5" min="0" placeholder="0">
+    <div id="pr-input-wrap">
+      <div class="modal-sub" id="modal-mv-unit">Valeur</div>
+      <input class="modal-input" id="modal-pr-val" type="number" step="0.5" min="0" placeholder="0">
+    </div>
     <input class="modal-date" id="modal-pr-date" type="date">
     <div id="modal-history"></div>
     <button class="btn-modal-save" onclick="savePR()">Enregistrer</button>
@@ -1422,6 +1433,47 @@ async function loadProfile(){
   const {data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   currentProfile=data;
 }
+function toggleTheme(){
+  const cur=document.documentElement.getAttribute('data-theme')||'dark';
+  const next=cur==='dark'?'light':'dark';
+  document.documentElement.setAttribute('data-theme',next);
+  try{localStorage.setItem('upside-theme',next);}catch(e){}
+  const lbl=document.getElementById('theme-label');
+  if(lbl)lbl.textContent=next==='dark'?'🌙 Mode clair':'☀️ Mode sombre';
+}
+(function initTheme(){
+  try{
+    const saved=localStorage.getItem('upside-theme')||'dark';
+    document.documentElement.setAttribute('data-theme',saved);
+  }catch(e){}
+})();
+async function uploadAvatar(ev){
+  const file=ev.target.files?.[0];
+  if(!file||!currentUser)return;
+  if(file.size>2*1024*1024){alert('Image trop lourde (max 2 Mo)');return;}
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+  const path=`${currentUser.id}/avatar.${ext}`;
+  const {error}=await sb.storage.from('avatars').upload(path,file,{upsert:true,contentType:file.type});
+  if(error){alert('Erreur upload : '+error.message);return;}
+  const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
+  const url=pub.publicUrl+'?t='+Date.now();
+  await sb.from('profiles').update({avatar_url:url}).eq('id',currentUser.id);
+  currentProfile=currentProfile||{};
+  currentProfile.avatar_url=url;
+  applyAvatarToUI(url);
+}
+function applyAvatarToUI(url){
+  ['profil-avatar','avatar-btn','wellness-avatar'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    if(url){
+      el.style.backgroundImage=`url("${url}")`;
+      el.style.backgroundSize='cover';
+      el.style.backgroundPosition='center';
+      el.textContent='';
+    }
+  });
+}
 
 async function initApp(){
   document.getElementById('auth-screen').classList.add('hidden');
@@ -1429,6 +1481,9 @@ async function initApp(){
   const init=(currentProfile?.full_name||currentUser.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
   document.getElementById('avatar-btn').textContent=init;
   document.getElementById('profil-avatar').textContent=init;
+  if(currentProfile?.avatar_url)applyAvatarToUI(currentProfile.avatar_url);
+  const tlbl=document.getElementById('theme-label');
+  if(tlbl){const cur=document.documentElement.getAttribute('data-theme')||'dark';tlbl.textContent=cur==='dark'?'🌙 Mode clair':'☀️ Mode sombre';}
   document.getElementById('profil-name').textContent=currentProfile?.full_name||'Athlète';
   document.getElementById('profil-email').textContent=currentUser.email;
   if(currentProfile?.role==='admin'){
@@ -1714,21 +1769,80 @@ function buildSeparatorCard(s){
   </div>`;
 }
 
-// CALCUL AUTOMATIQUE DES CHARGES
+// CALCUL AUTOMATIQUE DES CHARGES & ALLURES
+function _kmhToPaceStr(kmh){
+  if(!kmh||kmh<=0)return '';
+  const secPerKm=3600/kmh;
+  const m=Math.floor(secPerKm/60);
+  const s=Math.round(secPerKm%60);
+  return `${m}:${String(s).padStart(2,'0')}/km`;
+}
+function _formatChargeForMovement(mvt,bestPR,pct){
+  // Détermine le mode (number/time/rounds/run) et calcule la valeur cible à pct%
+  const fmt=bestPR?.format||null;
+  const mode=getPRModeFor(mvt,fmt);
+  if(mode==='run'){
+    // bestPR.value stocké en km/h
+    const targetKmh=Math.round((parseFloat(pct)/100)*bestPR.value*10)/10;
+    const pace=_kmhToPaceStr(targetKmh);
+    return `${targetKmh} km/h <span style="opacity:.7">(${pace})</span>`;
+  }
+  if(mode==='time'){
+    // bestPR.value en secondes — % du temps n'a pas de sens classique → on l'applique quand même
+    const target=Math.round((parseFloat(pct)/100)*bestPR.value);
+    return formatPRValue(target,'time');
+  }
+  if(mode==='rounds'){
+    const r=Math.floor(bestPR.value/1000);
+    const reps=bestPR.value%1000;
+    const total=r*1000+reps;
+    const targetTotal=Math.round((parseFloat(pct)/100)*total);
+    return formatPRValue(targetTotal,'rounds');
+  }
+  // mode number — utilise l'unité du mouvement
+  const unit=mvt.unit||'kg';
+  const charge=Math.round((parseFloat(pct)/100)*bestPR.value*2)/2;
+  return `${charge}${unit}`;
+}
 function renderContentWithCharges(content){
-  return content.replace(/(@\s*(\d+(?:\.\d+)?)%\s*\[([^\]]+)\])/gi, (match, full, pct, mvtName)=>{
+  // 2 syntaxes acceptées :
+  //   80%|BACKSQUAT|     ← nouvelle (préférée)
+  //   @80%[BackSquat]    ← ancienne (rétro-compat)
+  let out=content||'';
+  // Syntaxe 1 : NN%|NOM|  ou  NN.5%|NOM|
+  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|]+)\|/g,(match,pct,mvtName)=>{
     const pr=findPRByName(mvtName.trim());
-    if(pr){
-      const charge=Math.round((parseFloat(pct)/100)*pr.value*2)/2;
-      return `<span style="color:var(--muted)">@ ${pct}%</span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}kg</span>`;
+    const mvt=findMovementByName(mvtName.trim());
+    if(pr&&mvt){
+      const charge=_formatChargeForMovement(mvt,pr,pct);
+      return `<span style="color:var(--muted)">${pct}%</span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}</span>`;
+    }
+    return `${pct}%|${mvtName}|`;
+  });
+  // Syntaxe 2 (rétro-compat)
+  out=out.replace(/(@\s*(\d+(?:\.\d+)?)%\s*\[([^\]]+)\])/gi,(match,full,pct,mvtName)=>{
+    const pr=findPRByName(mvtName.trim());
+    const mvt=findMovementByName(mvtName.trim());
+    if(pr&&mvt){
+      const charge=_formatChargeForMovement(mvt,pr,pct);
+      return `<span style="color:var(--muted)">@ ${pct}%</span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}</span>`;
     }
     return `@ ${pct}%`;
   });
+  return out;
+}
+
+function findMovementByName(name){
+  if(!movements||movements.length===0)return null;
+  const norm=name.toLowerCase().replace(/\s+/g,'');
+  return movements.find(m=>{
+    const mn=m.name.toLowerCase().replace(/\s+/g,'');
+    return mn===norm||mn.includes(norm)||norm.includes(mn);
+  })||null;
 }
 
 function findPRByName(name){
-  if(!movements||movements.length===0)return null;
-  const mv=movements.find(m=>m.name.toLowerCase()===name.toLowerCase()||m.name.toLowerCase().includes(name.toLowerCase()));
+  const mv=findMovementByName(name);
   if(!mv)return null;
   const prs=myPRs[mv.id]||[];
   return prs[0]||null;
@@ -2061,9 +2175,16 @@ function renderAll(){
         let prHtml='';
         if(prs.length>0){
           // Trouver le meilleur PR (valeur max)
-          const best=prs.reduce((a,b)=>b.value>a.value?b:a);
+          // Pour time, le PR = min (le plus rapide); sinon max
+          const sample=prs[0];
+          const mode=getPRModeFor(m,sample.format);
+          const best=mode==='time'
+            ? prs.reduce((a,b)=>b.value<a.value?b:a)
+            : prs.reduce((a,b)=>b.value>a.value?b:a);
           const fmtLabel=best.format?` <span style="font-size:9px;color:var(--muted)">${best.format}</span>`:'';
-          prHtml=`<div><div class="mv-pr-val">${best.value}${fmtLabel}</div><div class="mv-pr-unit">${m.unit}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
+          const display=mode==='number'?best.value:formatPRValue(best.value,mode);
+          const unitDisplay=mode==='time'?'temps':(mode==='rounds'?'rounds + reps':m.unit);
+          prHtml=`<div><div class="mv-pr-val">${display}${fmtLabel}</div><div class="mv-pr-unit">${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
         } else {
           prHtml=`<div class="mv-no-pr">+ Ajouter</div>`;
         }
@@ -2110,8 +2231,7 @@ function openPRModal(movementId){
     formatEl.style.display='none';
   }
 
-  document.getElementById('modal-mv-unit').textContent=`Valeur en ${currentModalMovement.unit}`;
-  document.getElementById('modal-pr-val').value='';
+  renderPRInputArea();
   document.getElementById('modal-pr-date').value=new Date().toISOString().split('T')[0];
   document.querySelector('.btn-modal-save').textContent='Enregistrer';
   editingPRId=null;
@@ -2122,6 +2242,246 @@ function openPRModal(movementId){
 function selectFormat(btn){
   document.querySelectorAll('#modal-pr-format .format-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
+  renderPRInputArea();
+}
+
+function getPRModeFor(movement,format){
+  const fmt=(format||'').toLowerCase().trim();
+  const unit=(movement?.unit||'').toLowerCase();
+  const name=(movement?.name||'').toLowerCase();
+  const cat=(movement?.category||'').toLowerCase();
+  // RUN — détection large : unité, format, nom du mouvement, ou catégorie cardio
+  const runUnit=unit.includes('km/h')||unit.includes('min/km')||unit.includes('pace')||unit.includes('allure')||unit.includes('vitesse');
+  const runFmt=fmt.includes('run')||fmt.includes('pace')||fmt.includes('marathon')||fmt.includes('semi')||fmt.includes('vma')||fmt.includes('vitesse')||fmt.includes('allure')||fmt.includes('cooper')||!!fmt.match(/\d+\s*k\b/)||!!fmt.match(/\d+\s*km/)||!!fmt.match(/test\s*\d+\s*min/)||!!fmt.match(/^\d+\s*min$/);
+  const runName=name.includes('run')||name.includes('course')||name.includes('cours')||name.includes('jog')||name.includes('vma')||name.includes('marathon')||name.includes('cooper')||name.includes('fartlek')||name.includes('sprint');
+  const isRunCtx=runUnit||runFmt||runName||(cat==='cardio'&&!fmt.includes('row')&&!fmt.includes('bike')&&!fmt.includes('ski'));
+  if(isRunCtx){
+    // Distances fixes (5K, 10K, semi, marathon) → TEMPS h:m:s
+    if(fmt.match(/\d+\s*k\b/)||fmt.match(/\d+\s*km/)||fmt.includes('marathon')||fmt.includes('semi'))return 'time';
+    // Tout le reste (Test 3/6/12min, Cooper, Vitesse critique, VMA, Run générique) → vitesse + allure
+    return 'run';
+  }
+  if(fmt.includes('time')||fmt==='for time'||unit==='sec'||unit==='temps'||unit.includes('min:sec')||unit.includes('time')){return 'time';}
+  if(fmt.includes('amrap')||fmt.includes('round')||unit.includes('round')||unit.includes('amrap')){return 'rounds';}
+  return 'number';
+}
+function getPRMode(){
+  return getPRModeFor(currentModalMovement,getSelectedFormat());
+}
+function renderPRInputArea(){
+  const mode=getPRMode();
+  const wrap=document.getElementById('pr-input-wrap');
+  if(!wrap)return;
+  if(mode==='time'){
+    wrap.innerHTML=`<div class="modal-sub">Temps (h / min / s)</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        <input class="modal-input" id="pr-h" type="number" min="0" placeholder="h" style="margin:0;text-align:center">
+        <input class="modal-input" id="pr-m" type="number" min="0" max="59" placeholder="min" style="margin:0;text-align:center">
+        <input class="modal-input" id="pr-s" type="number" min="0" max="59" placeholder="sec" style="margin:0;text-align:center">
+      </div>`;
+  } else if(mode==='rounds'){
+    wrap.innerHTML=`<div class="modal-sub">Rounds + Reps</div>
+      <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+        <input class="modal-input" id="pr-rounds" type="number" min="0" placeholder="rounds" style="margin:0;text-align:center">
+        <span style="font-size:18px;font-weight:700;color:var(--muted)">+</span>
+        <input class="modal-input" id="pr-reps" type="number" min="0" placeholder="reps" style="margin:0;text-align:center">
+      </div>`;
+  } else if(mode==='run-distance'){
+    const fmt=getSelectedFormat()||'';
+    const minMatch=fmt.match(/(\d+)\s*min/i);
+    const dur=minMatch?minMatch[1]+' min':(fmt.toLowerCase().includes('cooper')?'12 min':'durée fixe');
+    wrap.innerHTML=`<div class="modal-sub">Distance parcourue en ${dur}</div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">
+        <input class="modal-input" id="pr-rd-m" type="number" min="0" placeholder="mètres (ex: 2400)" style="margin:0" oninput="onRunDistChange()">
+        <span style="font-size:11px;color:var(--muted);font-weight:700">m</span>
+      </div>
+      <div id="run-dist-preview" style="font-size:12px;color:var(--muted);margin-bottom:12px;min-height:18px"></div>`;
+  } else if(mode==='run'){
+    wrap.innerHTML=`<div class="modal-sub">Vitesse / Allure (au choix)</div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <button type="button" class="run-tab active" data-runtab="kmh" onclick="switchRunTab('kmh')" style="flex:1;background:rgba(232,255,71,.15);border:1px solid rgba(232,255,71,.4);color:var(--accent);padding:6px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer">KM/H</button>
+        <button type="button" class="run-tab" data-runtab="pace" onclick="switchRunTab('pace')" style="flex:1;background:transparent;border:1px solid var(--border2);color:var(--muted);padding:6px;border-radius:6px;font-size:11px;font-weight:700;letter-spacing:1px;cursor:pointer">MIN/KM</button>
+      </div>
+      <div id="run-input-kmh">
+        <input class="modal-input" id="pr-kmh" type="number" step="0.1" min="0" placeholder="ex: 13.3" oninput="onRunInputChange()">
+      </div>
+      <div id="run-input-pace" style="display:none">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="modal-input" id="pr-pace-m" type="number" min="0" placeholder="min" style="margin:0;text-align:center" oninput="onRunInputChange()">
+          <span style="font-size:18px;font-weight:700;color:var(--muted)">:</span>
+          <input class="modal-input" id="pr-pace-s" type="number" min="0" max="59" placeholder="sec" style="margin:0;text-align:center" oninput="onRunInputChange()">
+          <span style="font-size:11px;color:var(--muted);font-weight:700">/km</span>
+        </div>
+      </div>
+      <div id="run-preview" style="font-size:12px;color:var(--muted);margin-bottom:12px;min-height:18px"></div>`;
+  } else {
+    wrap.innerHTML=`<div class="modal-sub" id="modal-mv-unit">Valeur en ${currentModalMovement?.unit||''}</div>
+      <input class="modal-input" id="modal-pr-val" type="number" step="0.5" min="0" placeholder="0">`;
+  }
+}
+function readPRValue(){
+  // Retourne {value:number, displayText:string} ou null si invalide
+  const mode=getPRMode();
+  if(mode==='time'){
+    const h=parseInt(document.getElementById('pr-h')?.value)||0;
+    const m=parseInt(document.getElementById('pr-m')?.value)||0;
+    const s=parseInt(document.getElementById('pr-s')?.value)||0;
+    const total=h*3600+m*60+s;
+    if(total<=0)return null;
+    return {value:total};
+  }
+  if(mode==='rounds'){
+    const r=parseInt(document.getElementById('pr-rounds')?.value)||0;
+    const reps=parseInt(document.getElementById('pr-reps')?.value)||0;
+    if(r<=0&&reps<=0)return null;
+    return {value:r*1000+reps};
+  }
+  if(mode==='run'){
+    const kmh=_readRunAsKmh();
+    if(!kmh||kmh<=0)return null;
+    return {value:kmh};
+  }
+  if(mode==='run-distance'){
+    const m=parseFloat(document.getElementById('pr-rd-m')?.value)||0;
+    if(m<=0)return null;
+    return {value:m};
+  }
+  const v=parseFloat(document.getElementById('modal-pr-val')?.value);
+  if(!v||v<=0)return null;
+  return {value:v};
+}
+function setPRValue(value){
+  const mode=getPRMode();
+  if(mode==='time'){
+    const v=parseFloat(value)||0;
+    const h=Math.floor(v/3600);
+    const m=Math.floor((v%3600)/60);
+    const s=Math.floor(v%60);
+    const hEl=document.getElementById('pr-h');if(hEl)hEl.value=h||'';
+    const mEl=document.getElementById('pr-m');if(mEl)mEl.value=m||'';
+    const sEl=document.getElementById('pr-s');if(sEl)sEl.value=s||'';
+  } else if(mode==='rounds'){
+    const v=parseInt(value)||0;
+    const r=Math.floor(v/1000);
+    const reps=v%1000;
+    const rEl=document.getElementById('pr-rounds');if(rEl)rEl.value=r||'';
+    const repsEl=document.getElementById('pr-reps');if(repsEl)repsEl.value=reps||'';
+  } else if(mode==='run'){
+    // value stocké en km/h
+    const kmh=parseFloat(value)||0;
+    const kmhEl=document.getElementById('pr-kmh');if(kmhEl)kmhEl.value=kmh||'';
+    if(kmh>0){
+      const secPerKm=3600/kmh;
+      const m=Math.floor(secPerKm/60);
+      const s=Math.round(secPerKm%60);
+      const pmEl=document.getElementById('pr-pace-m');if(pmEl)pmEl.value=m||'';
+      const psEl=document.getElementById('pr-pace-s');if(psEl)psEl.value=s||'';
+    }
+    onRunInputChange();
+  } else if(mode==='run-distance'){
+    const el=document.getElementById('pr-rd-m');if(el)el.value=value||'';
+    onRunDistChange();
+  } else {
+    const el=document.getElementById('modal-pr-val');if(el)el.value=value||'';
+  }
+}
+function formatPRValue(value,mode){
+  const v=parseFloat(value)||0;
+  if(mode==='time'){
+    const h=Math.floor(v/3600);
+    const m=Math.floor((v%3600)/60);
+    const s=Math.floor(v%60);
+    if(h>0)return `${h}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+    return `${m}:${String(s).padStart(2,'0')}`;
+  }
+  if(mode==='rounds'){
+    const r=Math.floor(v/1000);
+    const reps=v%1000;
+    return `${r} + ${reps}`;
+  }
+  if(mode==='run'){
+    // v en km/h
+    const secPerKm=v>0?3600/v:0;
+    const m=Math.floor(secPerKm/60);
+    const s=Math.round(secPerKm%60);
+    return `${v.toFixed(1)} km/h · ${m}:${String(s).padStart(2,'0')}/km`;
+  }
+  if(mode==='run-distance'){
+    // v en mètres
+    if(v>=1000)return `${(v/1000).toFixed(2)} km`;
+    return `${Math.round(v)} m`;
+  }
+  return String(value);
+}
+
+function _readRunAsKmh(){
+  // Lit l'onglet actif et retourne la vitesse en km/h
+  const tab=document.querySelector('.run-tab.active')?.dataset.runtab||'kmh';
+  if(tab==='kmh'){
+    return parseFloat(document.getElementById('pr-kmh')?.value)||0;
+  }
+  if(tab==='pace'){
+    const m=parseInt(document.getElementById('pr-pace-m')?.value)||0;
+    const s=parseInt(document.getElementById('pr-pace-s')?.value)||0;
+    const totalSec=m*60+s;
+    if(totalSec<=0)return 0;
+    return 3600/totalSec;
+  }
+  if(tab==='dt'){
+    const km=parseFloat(document.getElementById('pr-dt-km')?.value)||0;
+    const m=parseInt(document.getElementById('pr-dt-m')?.value)||0;
+    const s=parseInt(document.getElementById('pr-dt-s')?.value)||0;
+    const totalSec=m*60+s;
+    if(km<=0||totalSec<=0)return 0;
+    return km/(totalSec/3600);
+  }
+  return 0;
+}
+function switchRunTab(tab){
+  document.querySelectorAll('.run-tab').forEach(b=>{
+    const active=b.dataset.runtab===tab;
+    b.classList.toggle('active',active);
+    if(active){
+      b.style.background='rgba(232,255,71,.15)';
+      b.style.borderColor='rgba(232,255,71,.4)';
+      b.style.color='var(--accent)';
+    } else {
+      b.style.background='transparent';
+      b.style.borderColor='var(--border2)';
+      b.style.color='var(--muted)';
+    }
+  });
+  ['kmh','pace','dt'].forEach(k=>{
+    const el=document.getElementById('run-input-'+k);
+    if(el)el.style.display=(k===tab?'':'none');
+  });
+  onRunInputChange();
+}
+function onRunInputChange(){
+  const kmh=_readRunAsKmh();
+  const prev=document.getElementById('run-preview');
+  if(!prev)return;
+  if(kmh<=0){prev.textContent='';return;}
+  const secPerKm=3600/kmh;
+  const m=Math.floor(secPerKm/60);
+  const s=Math.round(secPerKm%60);
+  prev.innerHTML=`<span style="color:var(--accent);font-weight:700">${kmh.toFixed(1)} km/h</span> · ${m}:${String(s).padStart(2,'0')}/km`;
+}
+function onRunDistChange(){
+  const m=parseFloat(document.getElementById('pr-rd-m')?.value)||0;
+  const prev=document.getElementById('run-dist-preview');
+  if(!prev)return;
+  if(m<=0){prev.textContent='';return;}
+  // Calcul vitesse moyenne d'après format
+  const fmt=getSelectedFormat()||'';
+  const minMatch=fmt.match(/(\d+)\s*min/i);
+  const dur=minMatch?parseInt(minMatch[1]):(fmt.toLowerCase().includes('cooper')?12:0);
+  if(dur<=0){prev.innerHTML=`<span style="color:var(--accent);font-weight:700">${m>=1000?(m/1000).toFixed(2)+' km':m+' m'}</span>`;return;}
+  const kmh=(m/1000)/(dur/60);
+  const secPerKm=kmh>0?3600/kmh:0;
+  const pm=Math.floor(secPerKm/60);
+  const ps=Math.round(secPerKm%60);
+  prev.innerHTML=`<span style="color:var(--accent);font-weight:700">${m>=1000?(m/1000).toFixed(2)+' km':m+' m'}</span> · ${kmh.toFixed(1)} km/h · ${pm}:${String(ps).padStart(2,'0')}/km`;
 }
 
 function getSelectedFormat(){
@@ -2144,13 +2504,16 @@ function renderPRHistory(movementId){
 
   let html='<div class="pr-hist-title">Historique</div>';
   Object.entries(byFormat).forEach(([fmt,entries])=>{
-    const max=Math.max(...entries.map(p=>p.value));
+    const mode=getPRModeFor(currentModalMovement,fmt==='—'?null:fmt);
+    // Pour time, le PR est le MIN; sinon le MAX
+    const best=mode==='time'?Math.min(...entries.map(p=>p.value)):Math.max(...entries.map(p=>p.value));
+    const unitLabel=mode==='time'?'':(mode==='rounds'?'':' '+(currentModalMovement.unit||''));
     if(Object.keys(byFormat).length>1)html+=`<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin:8px 0 4px;text-transform:uppercase">${fmt}</div>`;
     html+=entries.slice(0,5).map(p=>`
       <div class="pr-hist-item">
         <div style="display:flex;align-items:center;gap:8px">
-          <span class="pr-hist-val">${p.value} ${currentModalMovement.unit}</span>
-          ${p.value===max?'<span class="pr-hist-new">PR</span>':''}
+          <span class="pr-hist-val">${mode==='number'?p.value:formatPRValue(p.value,mode)}${unitLabel}</span>
+          ${p.value===best?'<span class="pr-hist-new">PR</span>':''}
         </div>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="pr-hist-date">${formatDate(p.recorded_at)}</span>
@@ -2173,16 +2536,16 @@ function closePRModal(){document.getElementById('pr-modal').classList.remove('op
 let editingPRId=null;
 function editPR(id,value,date,format){
   editingPRId=id;
-  document.getElementById('modal-pr-val').value=value;
-  document.getElementById('modal-pr-date').value=date;
-  // Sélectionner le bon format
+  // Sélectionner le bon format AVANT de re-render l'input area
   if(format){
     document.querySelectorAll('#modal-pr-format .format-btn').forEach(b=>{
       b.classList.toggle('active',b.dataset.format===format);
     });
   }
+  renderPRInputArea();
+  setPRValue(value);
+  document.getElementById('modal-pr-date').value=date;
   document.querySelector('.btn-modal-save').textContent='💾 Modifier';
-  document.getElementById('modal-pr-val').focus();
 }
 async function deletePR(id){
   const {error}=await sb.from('athlete_prs').delete().eq('id',id);
@@ -2193,10 +2556,11 @@ async function deletePR(id){
 }
 async function savePR(){
   if(!currentModalMovement)return;
-  const val=parseFloat(document.getElementById('modal-pr-val').value);
   const date=document.getElementById('modal-pr-date').value;
   const format=getSelectedFormat();
-  if(!val||val<=0){showToast('⚠️ Entre une valeur valide');return;}
+  const r=readPRValue();
+  if(!r){showToast('⚠️ Entre une valeur valide');return;}
+  const val=r.value;
 
   if(editingPRId){
     const {error}=await sb.from('athlete_prs').update({value:val,recorded_at:date,format:format||null}).eq('id',editingPRId);
@@ -2209,7 +2573,7 @@ async function savePR(){
     if(error){showToast('❌ '+error.message);return;}
     showToast('🏆 PR enregistré !');
   }
-  document.getElementById('modal-pr-val').value='';
+  renderPRInputArea();
   await loadMyPRs();
   renderPRHistory(currentModalMovement.id);
 }
@@ -3114,7 +3478,7 @@ function renderCycleGrid(){
         const key=`${w}-${ci}`;
         const chips=(cycleData.cells[key]||[]);
         const chipsHtml=chips.map((chip,chi)=>`
-          <div class="cycle-chip" style="background:${chip.color}22;border:1px solid ${chip.color}55;color:${isLightColor(chip.color)?'#000':chip.color}">
+          <div class="cycle-chip" onclick="event.stopPropagation();editCycleChip(${w},${ci},${chi})" style="background:${chip.color}22;border:1px solid ${chip.color}55;color:${isLightColor(chip.color)?'#000':chip.color}">
             ${chip.text}
             <button class="cycle-chip-del" onclick="event.stopPropagation();removeChip('${key}',${chi})">✕</button>
           </div>`).join('');
@@ -3166,7 +3530,7 @@ function renderSessionGrid(){
         const key=`${ri}-${di}`;
         const chips=(cycleData.sessionCells[key]||[]);
         const chipsHtml=chips.map((chip,chi)=>`
-          <div class="session-chip" style="background:${chip.color};color:${isLightColor(chip.color)?'#111':'#fff'}">
+          <div class="session-chip" onclick="event.stopPropagation();editSessionChip(${ri},${di},${chi})" style="background:${chip.color};color:${isLightColor(chip.color)?'#111':'#fff'}">
             ${chip.text}
             <button class="session-chip-del" onclick="event.stopPropagation();removeSessionChip('${key}',${chi})">✕</button>
           </div>`).join('');
@@ -3301,20 +3665,57 @@ function selectChipColor(color,el){
   el.classList.add('selected');
 }
 
+function editCycleChip(w,ci,chi){
+  const key=`${w}-${ci}`;
+  const chip=(cycleData.cells[key]||[])[chi];
+  if(!chip)return;
+  cycleCellTarget={a:w,b:ci,mode:'cycle',editIdx:chi};
+  document.getElementById('cycle-cell-title').textContent=`Sem. ${w+1} — ${cycleData.columns[ci]||'—'}`;
+  document.getElementById('cycle-cell-subtitle').textContent='Modifier le bloc';
+  document.getElementById('cycle-cell-presets').style.display='none';
+  document.getElementById('cycle-cell-input').value=chip.text;
+  selectedChipColor=chip.color;
+  document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color===chip.color));
+  document.getElementById('cycle-cell-modal').classList.add('open');
+}
+
+function editSessionChip(ri,di,chi){
+  const key=`${ri}-${di}`;
+  const chip=(cycleData.sessionCells[key]||[])[chi];
+  if(!chip)return;
+  cycleCellTarget={a:ri,b:di,mode:'session',editIdx:chi};
+  document.getElementById('cycle-cell-title').textContent=`${cycleData.rows[ri]||'—'} — ${DAYS_SESSION[di]}`;
+  document.getElementById('cycle-cell-subtitle').textContent='Modifier le bloc';
+  document.getElementById('cycle-cell-presets').style.display='none';
+  document.getElementById('cycle-cell-input').value=chip.text;
+  selectedChipColor=chip.color;
+  document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color===chip.color));
+  document.getElementById('cycle-cell-modal').classList.add('open');
+}
+
 function saveCycleChip(){
   if(!cycleCellTarget)return;
   const text=document.getElementById('cycle-cell-input').value.trim();
   if(!text){showToast('⚠️ Entre du contenu');return;}
   const key=`${cycleCellTarget.a}-${cycleCellTarget.b}`;
+  const editIdx=cycleCellTarget.editIdx;
 
   if(cycleCellTarget.mode==='session'){
     if(!cycleData.sessionCells[key])cycleData.sessionCells[key]=[];
-    cycleData.sessionCells[key].push({text,color:selectedChipColor});
+    if(editIdx!=null){
+      cycleData.sessionCells[key][editIdx]={text,color:selectedChipColor};
+    } else {
+      cycleData.sessionCells[key].push({text,color:selectedChipColor});
+    }
     closeCycleCellModal();
     renderSessionGrid();
   } else {
     if(!cycleData.cells[key])cycleData.cells[key]=[];
-    cycleData.cells[key].push({text,color:selectedChipColor});
+    if(editIdx!=null){
+      cycleData.cells[key][editIdx]={text,color:selectedChipColor};
+    } else {
+      cycleData.cells[key].push({text,color:selectedChipColor});
+    }
     closeCycleCellModal();
     renderCycleGrid();
   }
