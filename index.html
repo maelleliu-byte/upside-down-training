@@ -141,6 +141,24 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .score-input{flex:1;background:var(--dark);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;padding:10px 12px;outline:none;transition:border-color .2s}
 .score-input:focus{border-color:var(--accent)}
 .score-input::placeholder{color:var(--muted);font-size:13px}
+
+/* DNF toggle (score type=time) */
+.dnf-toggle{display:flex;align-items:center;gap:8px;margin:6px 0 8px;font-size:12px;color:var(--text2);cursor:pointer;user-select:none}
+.dnf-toggle input{width:16px;height:16px;accent-color:var(--orange);cursor:pointer}
+.dnf-reps-row{margin-bottom:10px}
+
+/* Rounds + Reps split */
+.rounds-inputs{display:flex;align-items:flex-end;gap:8px;margin-bottom:10px}
+.rounds-field{flex:1}
+.rounds-lbl{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.rounds-plus{font-family:'Bebas Neue',sans-serif;font-size:24px;color:var(--muted);padding-bottom:8px}
+
+/* Notes attachées au score (leaderboard) */
+.score-note-attached{margin:4px 0 8px;padding:8px 12px;background:linear-gradient(135deg,rgba(232,255,71,.06),rgba(71,200,255,.04));border-left:2px solid var(--accent);border-radius:0 8px 8px 0;font-size:12px;line-height:1.5;color:var(--text2)}
+.score-note-attached .nlbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:2px;font-weight:700}
+.score-note-attached .nctt{white-space:pre-wrap;word-break:break-word}
+.score-row-dnf .score-val{color:var(--orange)!important}
+.score-row-dnf .score-val-sub{font-size:10px;color:var(--muted);font-weight:500;letter-spacing:0;text-transform:none}
 .btn-score{padding:10px 16px;background:var(--accent);color:#000;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap}
 .btn-score:active{opacity:.8;transform:scale(.98)}
 
@@ -1218,9 +1236,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <div class="bottom-nav" id="bottom-nav">
     <button class="nav-btn active" data-page="prog" onclick="goPage('prog')"><span class="nav-icon">🏋️</span><span class="nav-label">Prog</span></button>
     <button class="nav-btn" data-page="pr" onclick="goPage('pr')"><span class="nav-icon">📈</span><span class="nav-label">PR</span></button>
-    <button class="nav-btn" data-page="wellness" onclick="goPage('wellness')"><span class="nav-icon">💚</span><span class="nav-label">Wellness</span></button>
+    <button class="nav-btn" data-page="wellness" onclick="goPage('wellness')"><span class="nav-icon">💚</span><span class="nav-label">Suivi</span></button>
     <button class="nav-btn" data-page="videos" onclick="goPage('videos')"><span class="nav-icon">🎬</span><span class="nav-label">Vidéos</span></button>
-    <button class="nav-btn" data-page="abos" onclick="goPage('abos')"><span class="nav-icon">💳</span><span class="nav-label">Abos</span></button>
     <button class="nav-btn" data-page="profil" onclick="goPage('profil')"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
   </div>
 </div>
@@ -1642,6 +1659,18 @@ async function buildSessionCard(s){
           <input class="multi-score-input" id="score-${i}-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}">
         </div>`).join('')}
     </div>`;
+  } else if(s.score_type==='time'){
+    // Temps + option WOD non terminé → reps réalisées
+    scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" type="text" placeholder="${getScorePlaceholder('time')}"></div>
+      <label class="dnf-toggle"><input type="checkbox" id="dnf-${s.id}" onchange="onDnfToggle('${s.id}')"> <span>WOD non terminé</span></label>
+      <div class="score-input-row dnf-reps-row" id="dnf-reps-row-${s.id}" style="display:none"><input class="score-input" id="dnf-reps-${s.id}" type="number" inputmode="numeric" placeholder="Reps réalisées"></div>`;
+  } else if(s.score_type==='rounds'){
+    // Rounds + Reps : 2 champs séparés
+    scoreInputHtml=`<div class="rounds-inputs">
+        <div class="rounds-field"><div class="rounds-lbl">Rounds</div><input class="score-input" id="rounds-${s.id}" type="number" inputmode="numeric" placeholder="12"></div>
+        <div class="rounds-plus">+</div>
+        <div class="rounds-field"><div class="rounds-lbl">Reps</div><input class="score-input" id="reps-${s.id}" type="number" inputmode="numeric" placeholder="5"></div>
+      </div>`;
   } else {
     scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>`;
   }
@@ -1800,6 +1829,31 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     if(!values.length){showToast('⚠️ Entre au moins un score');return;}
     scoreText=values.join(' | ');
     scoreValue=parseFloat(values[0])||0;
+  } else if(scoreType==='time'){
+    const input=document.getElementById(`score-input-${sessionId}`);
+    const dnf=document.getElementById(`dnf-${sessionId}`)?.checked;
+    const timeVal=input?.value.trim();
+    if(dnf){
+      const reps=parseInt(document.getElementById(`dnf-reps-${sessionId}`)?.value)||0;
+      if(!reps){showToast('⚠️ Entre le nombre de reps réalisées');return;}
+      // DNF : on encode "DNF — N reps" en texte, score_value = reps (négatif pour trier sous les finishers)
+      scoreText=`DNF · ${reps} reps`;
+      scoreValue=-1000+reps; // garde l'ordre par reps mais sous les finishers (val>=0)
+    } else {
+      if(!timeVal){showToast('⚠️ Entre ton temps');return;}
+      scoreText=timeVal;
+      // convertir mm:ss en secondes pour tri ASC plus tard ; on stocke en positif
+      const parts=timeVal.split(':');
+      const secs=parts.length===2?(parseInt(parts[0])||0)*60+(parseInt(parts[1])||0):(parseFloat(timeVal)||0);
+      scoreValue=secs;
+    }
+  } else if(scoreType==='rounds'){
+    const rounds=parseInt(document.getElementById(`rounds-${sessionId}`)?.value)||0;
+    const reps=parseInt(document.getElementById(`reps-${sessionId}`)?.value)||0;
+    if(!rounds&&!reps){showToast('⚠️ Entre rounds + reps');return;}
+    scoreText=`${rounds} + ${reps}`;
+    // pour le tri : rounds*1000 + reps (assume max 999 reps/round)
+    scoreValue=rounds*1000+reps;
   } else {
     const input=document.getElementById(`score-input-${sessionId}`);
     scoreText=input?.value.trim();
@@ -1841,16 +1895,35 @@ function closeScoresModal(){
 async function renderScoresModal(sessionId, scoreType, sets){
   const el=document.getElementById('smodal-leaderboard');
   el.innerHTML='<div class="spinner"></div>';
-  const {data}=await sb.from('wod_scores').select('*,profiles(full_name)').eq('session_id',sessionId);
+  const [scoresRes, notesRes] = await Promise.all([
+    sb.from('wod_scores').select('*,profiles(full_name)').eq('session_id',sessionId),
+    sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false})
+  ]);
+  const data=scoresRes.data;
+  const allNotes=notesRes.data||[];
 
   if(!data||data.length===0){
     el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>Pas encore de scores.</p></div>';
     return;
   }
 
+  // notes par athlète : on garde la plus récente
+  const noteByAth={};
+  allNotes.forEach(n=>{if(!noteByAth[n.athlete_id])noteByAth[n.athlete_id]=n;});
+
   const levelOrder={rx:0,intermediate:1,scaled:2,foundation:3};
+  // Tri intelligent par type de score
+  // - time : ASC (lowest = best), DNF (score_value < 0) toujours en bas, triés par reps DESC
+  // - tous les autres : DESC
+  const isTime = scoreType==='time';
   const sorted=[...data].sort((a,b)=>{
     if(levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
+    if(isTime){
+      const aDnf=(a.score_value||0)<0, bDnf=(b.score_value||0)<0;
+      if(aDnf!==bDnf)return aDnf?1:-1; // DNF en bas
+      if(aDnf&&bDnf)return (b.score_value||0)-(a.score_value||0); // plus de reps = mieux
+      return (a.score_value||Infinity)-(b.score_value||Infinity); // moins de temps = mieux
+    }
     return(b.score_value||0)-(a.score_value||0);
   });
 
@@ -1860,9 +1933,20 @@ async function renderScoresModal(sessionId, scoreType, sets){
       const isMe=sc.athlete_id===currentUser?.id;
       const setsDetail=sc.sets_data?JSON.parse(typeof sc.sets_data==='string'?sc.sets_data:JSON.stringify(sc.sets_data)):null;
       const setsHtml=setsDetail?`<div class="score-sets-detail">${setsDetail.map(s=>`S${s.set}: ${s.value}kg`).join(' · ')}</div>`:'';
+      const isDnf=isTime&&(sc.score_value||0)<0;
+      const note=noteByAth[sc.athlete_id];
+      const noteHtml=note?`<div class="score-note-attached"><div class="nlbl">📝 Note de séance</div><div class="nctt">${escapeHtml(note.content)}</div></div>`:'';
+      // affichage score : si DNF → "DNF" en grand + reps en dessous ; sinon score_text classique
+      let scoreDisplay;
+      if(isDnf){
+        const reps=(sc.score_value||0)+1000;
+        scoreDisplay=`<div class="score-val">DNF</div><div class="score-val-sub">${reps} reps</div>`;
+      } else {
+        scoreDisplay=`<div class="score-val">${sc.score_text||sc.score_value||'—'}</div>`;
+      }
       return `<div>
-        <div class="score-row" style="${isMe?'border:1px solid rgba(232,255,71,.2)':''}" id="sr-${sc.id}">
-          <div class="score-rank ${rankIcons[i]||''}">${i+1}</div>
+        <div class="score-row ${isDnf?'score-row-dnf':''}" style="${isMe?'border:1px solid rgba(232,255,71,.2)':''}" id="sr-${sc.id}">
+          <div class="score-rank ${!isDnf?(rankIcons[i]||''):''}">${i+1}</div>
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <span class="score-name">${sc.profiles?.full_name||'Athlète'}${isMe?' 👈':''}</span>
@@ -1870,8 +1954,9 @@ async function renderScoresModal(sessionId, scoreType, sets){
             </div>
             ${setsHtml}
           </div>
-          <div style="text-align:right"><div class="score-val">${sc.score_text||sc.score_value||'—'}</div></div>
+          <div style="text-align:right">${scoreDisplay}</div>
         </div>
+        ${noteHtml}
         <div class="score-actions">
           <button class="react-btn ${''}" id="react-${sc.id}" onclick="toggleReactionModal('${sc.id}')">❤️ <span id="react-count-${sc.id}">0</span></button>
           <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
@@ -2757,6 +2842,7 @@ function adminTab(tab,btn){
   if(tab==='dashboard')loadDashboard();
   if(tab==='videos'){loadAdminVideos();populateVideoMovementSelect();}
   if(tab==='perso')loadPersoAthletes();
+  if(tab==='cycle')initCyclePlanner();
 }
 
 // ===== DASHBOARD COACH =====
@@ -3336,22 +3422,28 @@ let currentNoteSession=null;
 async function saveSessionNote(){
   const content=document.getElementById('session-note-input')?.value.trim();
   if(!content||!currentScoresSession){showToast('⚠️ Écris une note');return;}
-  const {error}=await sb.from('session_notes').insert({session_id:currentScoresSession.sessionId,athlete_id:currentUser.id,content});
+  // upsert : une seule note par (session,athlète) — on remplace l'ancienne
+  const sid=currentScoresSession.sessionId;
+  await sb.from('session_notes').delete().eq('session_id',sid).eq('athlete_id',currentUser.id);
+  const {error}=await sb.from('session_notes').insert({session_id:sid,athlete_id:currentUser.id,content});
   if(error){showToast('❌ '+error.message);return;}
-  document.getElementById('session-note-input').value='';
+  document.getElementById('session-note-input').value=document.getElementById('session-note-input').value; // garde le contenu pour réédition
   showToast('📝 Note sauvegardée !');
-  loadSessionNotes(currentScoresSession.sessionId);
+  // rafraîchit le leaderboard pour afficher la note attachée au score
+  if(currentScoresSession){
+    await renderScoresModal(currentScoresSession.sessionId,currentScoresSession.scoreType,currentScoresSession.sets);
+  }
 }
 
 async function loadSessionNotes(sessionId){
-  const {data}=await sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false});
+  // Note : depuis V2, les notes des AUTRES athlètes sont affichées sous chaque score
+  // dans le leaderboard. Ici on charge uniquement la note de l'athlète courant pour préremplir le textarea.
   const el=document.getElementById('session-notes-list');
-  if(!el)return;
-  if(!data||data.length===0){el.innerHTML='';return;}
-  el.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:8px 0 6px">Notes partagées</div>`+data.map(n=>`<div class="note-item">
-    <div class="note-author"><span>${n.profiles?.full_name||'Athlète'}</span><span>${formatDate(n.created_at?.split('T')[0])}</span></div>
-    <div class="note-text">${n.content}</div>
-  </div>`).join('');
+  if(el)el.innerHTML='';
+  if(!currentUser)return;
+  const {data}=await sb.from('session_notes').select('content').eq('session_id',sessionId).eq('athlete_id',currentUser.id).order('created_at',{ascending:false}).limit(1);
+  const ta=document.getElementById('session-note-input');
+  if(ta&&data&&data[0])ta.value=data[0].content;
 }
 
 // STRIPE / ABOS
@@ -3892,6 +3984,16 @@ renderSessions=async function(){
 /* ===================================================== */
 /* === V2 FEATURES : athlete card + wellness === */
 /* ===================================================== */
+
+// --- DNF toggle pour score type=time ---
+function onDnfToggle(sid){
+  const cb=document.getElementById('dnf-'+sid);
+  const row=document.getElementById('dnf-reps-row-'+sid);
+  const inp=document.getElementById('score-input-'+sid);
+  if(!row)return;
+  if(cb&&cb.checked){row.style.display='';if(inp){inp.value='';inp.disabled=true;inp.style.opacity=.4;}}
+  else{row.style.display='none';if(inp){inp.disabled=false;inp.style.opacity=1;}}
+}
 
 // --- Helpers ---
 function _initials(s){return (s||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
