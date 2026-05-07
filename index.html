@@ -536,6 +536,105 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 /* TOAST */
 .toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(10px);background:var(--accent);color:#000;padding:10px 22px;border-radius:30px;font-size:13px;font-weight:700;opacity:0;transition:all .3s;z-index:500;white-space:nowrap;pointer-events:none}
 .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* === V2 FEATURES === */
+
+/* Palette 16 couleurs (override) */
+#np-colors.color-picker{display:grid;grid-template-columns:repeat(8,1fr);gap:8px}
+#np-colors .color-swatch{width:auto;aspect-ratio:1;border-radius:10px;position:relative}
+#np-colors .color-swatch.selected{transform:none;border-color:#fff;box-shadow:0 0 0 2px var(--card),0 0 0 3px #fff}
+#np-colors .color-swatch.selected::after{content:'✓';position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#000;font-weight:900;font-size:13px}
+.np-preview{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;background:var(--card2);border:1px solid var(--border);margin-top:6px}
+.np-preview .dot{width:14px;height:14px;border-radius:4px;flex-shrink:0}
+.np-preview .nm{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;line-height:1}
+.np-preview .sb{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+
+/* Cycles — onglets années */
+.year-tabs{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px;scrollbar-width:none}
+.year-tabs::-webkit-scrollbar{display:none}
+.year-tab{flex-shrink:0;background:transparent;border:1.5px solid var(--border2);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;padding:6px 14px;border-radius:8px;cursor:pointer}
+.year-tab.active{background:var(--accent);color:#000;border-color:var(--accent)}
+
+/* Liste cycles (filtre par année) */
+.cycle-list-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.cycle-list-row:hover{border-color:var(--orange)}
+.cycle-list-bar{width:4px;align-self:stretch;border-radius:2px;background:var(--orange)}
+.cycle-list-mid{flex:1;min-width:0}
+.cycle-list-name{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;line-height:1.2}
+.cycle-list-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.cycle-list-badge{font-size:9px;font-weight:700;letter-spacing:1px;padding:3px 7px;border-radius:5px;text-transform:uppercase;flex-shrink:0}
+.cycle-list-badge.act{background:rgba(71,255,140,.14);color:var(--green)}
+.cycle-list-badge.past{background:rgba(122,122,122,.14);color:var(--muted)}
+.cycle-list-badge.fut{background:rgba(71,200,255,.14);color:var(--blue)}
+
+/* Athlete row clickable */
+.athlete-row{cursor:pointer;transition:background .15s}
+.athlete-row:hover{background:rgba(255,255,255,.02)}
+
+/* Fiche athlète */
+.afiche-back{background:none;border:none;color:var(--muted);font-size:12px;padding:6px 0;cursor:pointer;margin-bottom:6px}
+.afiche-head{display:flex;align-items:center;gap:14px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}
+.afiche-avatar{width:56px;height:56px;border-radius:50%;background:linear-gradient(135deg,#e8ff47,#47c8ff);color:#000;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;flex-shrink:0}
+.afiche-name{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1.5px;line-height:1}
+.afiche-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.afiche-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.afiche-stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
+.afiche-stat-num{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--accent)}
+.afiche-stat-lab{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-top:2px}
+.afiche-h{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--muted);margin:18px 0 8px}
+.afiche-cal{display:grid;grid-template-columns:repeat(7,1fr);gap:5px}
+.afiche-cal-day{aspect-ratio:1;border-radius:6px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);position:relative}
+.afiche-cal-day.done{background:rgba(232,255,71,.18);border-color:var(--accent);color:var(--accent);font-weight:700}
+.afiche-cal-day.today{outline:1.5px solid var(--blue);outline-offset:-1px}
+.afiche-pr{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px}
+.afiche-pr-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8px;gap:10px}
+.afiche-pr-name{font-weight:700;font-size:13px}
+.afiche-pr-val{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--accent)}
+.afiche-pr-trend{font-size:10px;color:var(--green);font-weight:700;margin-top:2px}
+.afiche-pr-trend.down{color:var(--red)}
+.afiche-spark{width:100%;height:32px;display:block}
+
+/* Wellness sliders (athlete) */
+.well-banner{background:linear-gradient(135deg,rgba(232,255,71,.10),rgba(71,200,255,.08));border:1px solid rgba(232,255,71,.25);border-radius:14px;padding:12px 14px;margin-bottom:14px;display:flex;gap:12px;align-items:center}
+.well-banner .ic{font-size:22px}
+.well-banner .ti{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px}
+.well-banner .de{font-size:11px;color:var(--muted);margin-top:2px}
+.well-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:12px}
+.well-row{margin-bottom:14px}
+.well-row:last-child{margin-bottom:0}
+.well-row .lab{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.well-row .name{font-size:13px;font-weight:600}
+.well-row .val{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px}
+.well-slider{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:3px;background:var(--border2);outline:none;cursor:pointer}
+.well-slider::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;border-radius:50%;background:var(--accent);border:2px solid var(--black);cursor:pointer}
+.well-slider::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:var(--accent);border:2px solid var(--black);cursor:pointer;border:0}
+.well-row textarea{width:100%;background:var(--dark);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-family:inherit;font-size:13px;padding:10px;min-height:60px;resize:none}
+
+/* Wellness admin */
+.well-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
+.well-sum{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px;text-align:center}
+.well-sum.danger{border-color:rgba(255,68,68,.3);background:rgba(255,68,68,.04)}
+.well-sum-num{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px}
+.well-sum.danger .well-sum-num{color:var(--red)}
+.well-sum-lab{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;margin-top:2px}
+.well-period{display:flex;gap:6px;margin-bottom:14px}
+.well-period button{background:transparent;border:1px solid var(--border2);color:var(--muted);border-radius:6px;padding:5px 10px;font-size:11px;font-weight:600;cursor:pointer}
+.well-period button.active{background:var(--accent);color:#000;border-color:var(--accent)}
+.well-alert{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-left:3px solid var(--border2);border-radius:10px;padding:10px 13px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
+.well-alert.red{border-left-color:var(--red);background:rgba(255,68,68,.06)}
+.well-alert.orange{border-left-color:var(--orange);background:rgba(255,140,71,.05)}
+.well-alert.green{border-left-color:var(--green)}
+.well-alert .av{width:34px;height:34px;border-radius:50%;background:var(--card2);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0}
+.well-alert .mid{flex:1;min-width:0}
+.well-alert .nm{font-size:13px;font-weight:700}
+.well-alert .meta{font-size:11px;color:var(--muted);margin-top:3px;display:flex;gap:5px;flex-wrap:wrap}
+.well-chip{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--card2);color:var(--text2);font-weight:600}
+.well-chip.r{background:rgba(255,68,68,.14);color:var(--red)}
+.well-chip.o{background:rgba(255,140,71,.14);color:var(--orange)}
+.well-chip.g{background:rgba(71,255,140,.12);color:var(--green)}
+.well-alert .ic{font-size:16px;flex-shrink:0}
+.well-alert.muted{opacity:.5}
+
 </style>
 </head>
 <body>
@@ -620,6 +719,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <button class="admin-tab-btn" onclick="adminTab('videos',this)">Vidéos</button>
       <button class="admin-tab-btn" onclick="adminTab('dashboard',this)">📊 Dashboard</button>
       <button class="admin-tab-btn" onclick="adminTab('athletes',this)">Athlètes</button>
+      <button class="admin-tab-btn" onclick="adminTab('wellness',this)">💚 Wellness</button>
       <button class="admin-tab-btn" onclick="adminTab('perso',this)">👤 Espace perso</button>
     </div>
 
@@ -638,17 +738,31 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
           <label class="form-label">Couleur</label>
           <div class="color-picker" id="np-colors">
             <div class="color-swatch selected" data-color="#e8ff47" style="background:#e8ff47" onclick="selectColor('#e8ff47',this)"></div>
-            <div class="color-swatch" data-color="#47c8ff" style="background:#47c8ff" onclick="selectColor('#47c8ff',this)"></div>
             <div class="color-swatch" data-color="#ff8c47" style="background:#ff8c47" onclick="selectColor('#ff8c47',this)"></div>
-            <div class="color-swatch" data-color="#c847ff" style="background:#c847ff" onclick="selectColor('#c847ff',this)"></div>
-            <div class="color-swatch" data-color="#47ff8c" style="background:#47ff8c" onclick="selectColor('#47ff8c',this)"></div>
+            <div class="color-swatch" data-color="#47c8ff" style="background:#47c8ff" onclick="selectColor('#47c8ff',this)"></div>
             <div class="color-swatch" data-color="#ff4747" style="background:#ff4747" onclick="selectColor('#ff4747',this)"></div>
+            <div class="color-swatch" data-color="#47ff8c" style="background:#47ff8c" onclick="selectColor('#47ff8c',this)"></div>
+            <div class="color-swatch" data-color="#c847ff" style="background:#c847ff" onclick="selectColor('#c847ff',this)"></div>
+            <div class="color-swatch" data-color="#ffd147" style="background:#ffd147" onclick="selectColor('#ffd147',this)"></div>
+            <div class="color-swatch" data-color="#ff47c8" style="background:#ff47c8" onclick="selectColor('#ff47c8',this)"></div>
+            <div class="color-swatch" data-color="#47ffd1" style="background:#47ffd1" onclick="selectColor('#47ffd1',this)"></div>
+            <div class="color-swatch" data-color="#7c47ff" style="background:#7c47ff" onclick="selectColor('#7c47ff',this)"></div>
+            <div class="color-swatch" data-color="#ff6b47" style="background:#ff6b47" onclick="selectColor('#ff6b47',this)"></div>
+            <div class="color-swatch" data-color="#a8ff47" style="background:#a8ff47" onclick="selectColor('#a8ff47',this)"></div>
+            <div class="color-swatch" data-color="#47a8ff" style="background:#47a8ff" onclick="selectColor('#47a8ff',this)"></div>
+            <div class="color-swatch" data-color="#ff479c" style="background:#ff479c" onclick="selectColor('#ff479c',this)"></div>
+            <div class="color-swatch" data-color="#cccccc" style="background:#cccccc" onclick="selectColor('#cccccc',this)"></div>
+            <div class="color-swatch" data-color="#666666" style="background:#666666" onclick="selectColor('#666666',this)"></div>
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Icône</label>
-          <div class="icon-picker" id="np-icons">
-            ${['🏟','💪','🧒','⚡','🏋️','🤸','🎯','🔥','⭐','🦁'].map(ic=>`<button class="icon-btn ${ic==='🏟'?'selected':''}" data-icon="${ic}" onclick="selectIcon('${ic}',this)">${ic}</button>`).join('')}
+          <label class="form-label">Aperçu</label>
+          <div class="np-preview">
+            <div class="dot" id="np-prev-dot" style="background:#e8ff47"></div>
+            <div>
+              <div class="nm" id="np-prev-name">NOUVEAU PROGRAMME</div>
+              <div class="sb" id="np-prev-sub">Description courte</div>
+            </div>
           </div>
         </div>
         <button class="btn-primary" onclick="saveNewProg()">Créer le programme</button>
@@ -837,6 +951,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <button onclick="newCycle()" style="padding:9px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:10px;font-size:12px;cursor:pointer">+</button>
       </div>
 
+      <!-- Filtre par année -->
+      <div class="year-tabs" id="cycle-year-tabs"></div>
+
       <!-- Sélecteur cycles -->
       <div style="display:flex;gap:8px;margin-bottom:12px">
         <select class="form-select" id="cycle-selector" onchange="loadCycle(this.value)" style="flex:1">
@@ -878,6 +995,47 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <!-- ATHLÈTES -->
     <div class="admin-panel" id="admin-athletes">
       <div id="admin-athletes-list"></div>
+      <!-- FICHE ATHLÈTE (cachée par défaut) -->
+      <div id="admin-athlete-card" style="display:none">
+        <button class="afiche-back" onclick="closeAthleteCard()">‹ Retour aux athlètes</button>
+        <div class="afiche-head">
+          <div class="afiche-avatar" id="ac-avatar">?</div>
+          <div style="flex:1;min-width:0">
+            <div class="afiche-name" id="ac-name">—</div>
+            <div class="afiche-sub" id="ac-sub"></div>
+          </div>
+        </div>
+        <div class="afiche-stats">
+          <div class="afiche-stat"><div class="afiche-stat-num" id="ac-week">0</div><div class="afiche-stat-lab">WODs / sem</div></div>
+          <div class="afiche-stat"><div class="afiche-stat-num" id="ac-month">0</div><div class="afiche-stat-lab">WODs / mois</div></div>
+          <div class="afiche-stat"><div class="afiche-stat-num" id="ac-attendance">—</div><div class="afiche-stat-lab">Assiduité</div></div>
+        </div>
+        <div class="afiche-h">ASSIDUITÉ — CETTE SEMAINE</div>
+        <div class="afiche-cal" id="ac-cal"></div>
+        <div class="afiche-h">PR — PROGRESSION</div>
+        <div id="ac-prs"></div>
+        <div class="afiche-h">WELLNESS — 14 DERNIERS JOURS</div>
+        <div id="ac-wellness"></div>
+      </div>
+    </div>
+
+    <!-- WELLNESS ADMIN -->
+    <div class="admin-panel" id="admin-wellness">
+      <div style="margin-bottom:12px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:2px">État du jour</div>
+        <div style="font-size:11px;color:var(--muted)" id="wellness-admin-date">—</div>
+      </div>
+      <div class="well-summary">
+        <div class="well-sum danger"><div class="well-sum-num" id="wa-alerts">0</div><div class="well-sum-lab">Alertes</div></div>
+        <div class="well-sum"><div class="well-sum-num" id="wa-fills">0</div><div class="well-sum-lab">Saisies</div></div>
+        <div class="well-sum"><div class="well-sum-num" id="wa-fatigue">—</div><div class="well-sum-lab">Fatigue moy.</div></div>
+      </div>
+      <div class="well-period">
+        <button class="active" data-p="1" onclick="setWellnessAdminPeriod(1,this)">Aujourd'hui</button>
+        <button data-p="7" onclick="setWellnessAdminPeriod(7,this)">7 jours</button>
+        <button data-p="30" onclick="setWellnessAdminPeriod(30,this)">30 jours</button>
+      </div>
+      <div id="wa-list"></div>
     </div>
 
     <!-- ESPACE PERSO (admin) -->
@@ -1035,10 +1193,32 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     </div>
   </div>
 
+  <!-- PAGE WELLNESS (athlète) -->
+  <div class="page" id="page-wellness" style="display:none">
+    <div class="topbar">
+      <div><div class="topbar-title">WELLNESS</div><div class="topbar-sub" id="wellness-date">—</div></div>
+      <button class="avatar-btn" onclick="goPage('profil')" id="wellness-avatar">?</button>
+    </div>
+    <div style="padding:0 20px 24px">
+      <div class="well-banner">
+        <div class="ic">📊</div>
+        <div style="flex:1">
+          <div class="ti">Comment tu te sens aujourd'hui ?</div>
+          <div class="de" id="wellness-banner-sub">Une saisie quotidienne pour ton coach</div>
+        </div>
+      </div>
+      <div class="well-card" id="wellness-form">
+        <!-- généré par renderWellnessForm() -->
+      </div>
+      <button class="btn-primary" id="wellness-save-btn" onclick="saveWellness()">Enregistrer ma journée</button>
+    </div>
+  </div>
+
   <!-- BOTTOM NAV -->
   <div class="bottom-nav" id="bottom-nav">
     <button class="nav-btn active" data-page="prog" onclick="goPage('prog')"><span class="nav-icon">🏋️</span><span class="nav-label">Prog</span></button>
-    <button class="nav-btn" data-page="pr" onclick="goPage('pr')"><span class="nav-icon">📈</span><span class="nav-label">PR & Bench</span></button>
+    <button class="nav-btn" data-page="pr" onclick="goPage('pr')"><span class="nav-icon">📈</span><span class="nav-label">PR</span></button>
+    <button class="nav-btn" data-page="wellness" onclick="goPage('wellness')"><span class="nav-icon">💚</span><span class="nav-label">Wellness</span></button>
     <button class="nav-btn" data-page="videos" onclick="goPage('videos')"><span class="nav-icon">🎬</span><span class="nav-label">Vidéos</span></button>
     <button class="nav-btn" data-page="abos" onclick="goPage('abos')"><span class="nav-icon">💳</span><span class="nav-label">Abos</span></button>
     <button class="nav-btn" data-page="profil" onclick="goPage('profil')"><span class="nav-icon">👤</span><span class="nav-label">Profil</span></button>
@@ -2066,8 +2246,19 @@ async function deleteProgramme(id,name,sessionCount){
   if(typeof loadAdminSessions==='function')loadAdminSessions();
   if(typeof renderProgTabs==='function')renderProgTabs();
 }
-function selectColor(color,el){selectedColor=color;document.querySelectorAll('.color-swatch').forEach(s=>s.classList.remove('selected'));el.classList.add('selected');}
+function selectColor(color,el){
+  selectedColor=color;
+  document.querySelectorAll('#np-colors .color-swatch').forEach(s=>s.classList.remove('selected'));
+  el.classList.add('selected');
+  const dot=document.getElementById('np-prev-dot');if(dot)dot.style.background=color;
+}
 function selectIcon(icon,el){selectedIcon=icon;document.querySelectorAll('.icon-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');}
+function _wireNpPreview(){
+  const n=document.getElementById('np-name'),d=document.getElementById('np-desc');
+  if(n&&!n._wired){n._wired=1;n.addEventListener('input',()=>{const t=document.getElementById('np-prev-name');if(t)t.textContent=(n.value||'NOUVEAU PROGRAMME').toUpperCase();});}
+  if(d&&!d._wired){d._wired=1;d.addEventListener('input',()=>{const t=document.getElementById('np-prev-sub');if(t)t.textContent=d.value||'Description courte';});}
+}
+document.addEventListener('DOMContentLoaded',_wireNpPreview);
 async function saveNewProg(){
   const name=document.getElementById('np-name').value.trim();
   const desc=document.getElementById('np-desc').value.trim();
@@ -2717,11 +2908,40 @@ async function initCyclePlanner(){
   renderCycleGrid();
 }
 
+let cycleYearFilter='all'; // 'all' or 4-digit year as string
 async function loadAllCycles(){
-  const {data}=await sb.from('cycle_plans').select('id,name').order('created_at',{ascending:false});
+  const {data}=await sb.from('cycle_plans').select('id,name,start_date,created_at').order('start_date',{ascending:false,nullsFirst:false});
   allCycles=data||[];
+  renderCycleYearTabs();
+  renderCycleSelector();
+}
+function _cycleYear(c){
+  if(c.start_date)return new Date(c.start_date+'T12:00:00').getFullYear();
+  if(c.created_at)return new Date(c.created_at).getFullYear();
+  return null;
+}
+function renderCycleYearTabs(){
+  const wrap=document.getElementById('cycle-year-tabs');
+  if(!wrap)return;
+  const years=[...new Set(allCycles.map(_cycleYear).filter(Boolean))].sort((a,b)=>b-a);
+  let html=`<button class="year-tab ${cycleYearFilter==='all'?'active':''}" onclick="setCycleYear('all')">Tous</button>`;
+  html+=years.map(y=>`<button class="year-tab ${cycleYearFilter===String(y)?'active':''}" onclick="setCycleYear('${y}')">${y}</button>`).join('');
+  wrap.innerHTML=html;
+}
+function setCycleYear(y){
+  cycleYearFilter=String(y);
+  renderCycleYearTabs();
+  renderCycleSelector();
+}
+function renderCycleSelector(){
   const sel=document.getElementById('cycle-selector');
-  sel.innerHTML='<option value="">— Sélectionner un cycle —</option>'+allCycles.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+  if(!sel)return;
+  const filtered=cycleYearFilter==='all'?allCycles:allCycles.filter(c=>String(_cycleYear(c))===cycleYearFilter);
+  const cur=sel.value;
+  sel.innerHTML='<option value="">— Sélectionner un cycle —</option>'+filtered.map(c=>{
+    const y=_cycleYear(c);return `<option value="${c.id}">${c.name}${y?` · ${y}`:''}</option>`;
+  }).join('');
+  if(cur&&filtered.find(c=>c.id===cur))sel.value=cur;
 }
 
 async function loadCycle(id){
@@ -3668,6 +3888,426 @@ renderSessions=async function(){
   if(currentProg?.id==='__perso__'){return renderPersoSessions();}
   return __origRenderSessions();
 };
+
+/* ===================================================== */
+/* === V2 FEATURES : athlete card + wellness === */
+/* ===================================================== */
+
+// --- Helpers ---
+function _initials(s){return (s||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);}
+function _isoDate(d){return d.toISOString().split('T')[0];}
+function _weekStart(d){const x=new Date(d);const day=(x.getDay()+6)%7;x.setDate(x.getDate()-day);x.setHours(0,0,0,0);return x;}
+function _addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+n);return x;}
+
+// --- adminTab override : wire wellness + close fiche on tab switch ---
+const __origAdminTab=adminTab;
+adminTab=function(tab,btn){
+  // Quand on change d'onglet, ferme la fiche athlète si ouverte
+  const card=document.getElementById('admin-athlete-card');
+  const list=document.getElementById('admin-athletes-list');
+  if(card)card.style.display='none';
+  if(list)list.style.display='';
+  __origAdminTab(tab,btn);
+  if(tab==='wellness')loadWellnessAdmin();
+};
+
+// ============================================
+// FICHE ATHLÈTE (clic depuis liste athlètes)
+// ============================================
+async function openAthleteCard(id){
+  const card=document.getElementById('admin-athlete-card');
+  const list=document.getElementById('admin-athletes-list');
+  if(!card||!list)return;
+  list.style.display='none';
+  card.style.display='block';
+  document.getElementById('page-admin').scrollTop=0;
+
+  const {data:p}=await sb.from('profiles').select('*').eq('id',id).single();
+  if(!p)return;
+  document.getElementById('ac-avatar').textContent=_initials(p.full_name||p.email);
+  document.getElementById('ac-name').textContent=(p.full_name||'—').toUpperCase();
+  const since=p.created_at?new Date(p.created_at).toLocaleDateString('fr-FR',{month:'short',year:'numeric'}):'';
+  document.getElementById('ac-sub').textContent=`${p.email||''}${since?' · Athlète depuis '+since:''}`;
+
+  await Promise.all([
+    _loadAthleteCardStats(id),
+    _loadAthleteCardPRs(id),
+    _loadAthleteCardWellness(id),
+  ]);
+}
+function closeAthleteCard(){
+  document.getElementById('admin-athlete-card').style.display='none';
+  document.getElementById('admin-athletes-list').style.display='';
+}
+
+async function _loadAthleteCardStats(id){
+  const today=new Date();
+  const wkStart=_weekStart(today);
+  const monthStart=new Date(today.getFullYear(),today.getMonth(),1);
+
+  // wod_scores : tentative principale (inclut tous types de séances faites)
+  const isoMonth=_isoDate(monthStart);
+  const isoWeek=_isoDate(wkStart);
+  let weekDone=[];
+  let monthCount=0;
+  try{
+    const {data:scores}=await sb.from('wod_scores').select('session_id,date,created_at')
+      .eq('athlete_id',id)
+      .gte('date',isoMonth);
+    if(scores){
+      monthCount=scores.length;
+      weekDone=scores.filter(s=>s.date>=isoWeek);
+    }
+  }catch(e){console.warn('wod_scores fetch',e);}
+
+  document.getElementById('ac-week').textContent=weekDone.length;
+  document.getElementById('ac-month').textContent=monthCount;
+  // assiduité : nb jours uniques avec au moins 1 wod / 30 derniers jours
+  const last30=_addDays(today,-30);
+  let attendance='—';
+  try{
+    const {data:s30}=await sb.from('wod_scores').select('date').eq('athlete_id',id).gte('date',_isoDate(last30));
+    if(s30){
+      const days=new Set((s30||[]).map(x=>x.date));
+      attendance=Math.round(days.size/30*100)+'%';
+    }
+  }catch(e){}
+  document.getElementById('ac-attendance').textContent=attendance;
+
+  // calendrier semaine
+  const cal=document.getElementById('ac-cal');
+  const labels=['L','M','M','J','V','S','D'];
+  const todayIso=_isoDate(today);
+  const weekDoneSet=new Set(weekDone.map(x=>x.date));
+  cal.innerHTML=labels.map((lab,i)=>{
+    const d=_addDays(wkStart,i);
+    const iso=_isoDate(d);
+    const isToday=iso===todayIso;
+    const done=weekDoneSet.has(iso);
+    return `<div class="afiche-cal-day ${done?'done':''} ${isToday?'today':''}">${lab}</div>`;
+  }).join('');
+}
+
+async function _loadAthleteCardPRs(id){
+  const wrap=document.getElementById('ac-prs');
+  wrap.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Chargement…</div>';
+  // Récupère tous les PR de l'athlète, joint au mouvement
+  let prs=[];
+  try{
+    const {data}=await sb.from('athlete_prs').select('movement_id,value,unit,date,created_at').eq('athlete_id',id).order('date',{ascending:true,nullsFirst:false});
+    prs=data||[];
+  }catch(e){console.warn(e);}
+  if(!prs.length){wrap.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun PR enregistré.</div>';return;}
+  // grouper par mouvement
+  const byMov={};
+  prs.forEach(pr=>{(byMov[pr.movement_id]=byMov[pr.movement_id]||[]).push(pr);});
+  // trier par date DESC pour pickle dernier
+  const movIds=Object.keys(byMov);
+  // résoudre noms mvt
+  let movs={};
+  if(movIds.length){
+    try{
+      const {data:m}=await sb.from('movements').select('id,name').in('id',movIds);
+      (m||[]).forEach(x=>{movs[x.id]=x.name;});
+    }catch(e){}
+  }
+  // garder top 6 mvts (par récence du dernier PR)
+  const items=movIds.map(mid=>{
+    const series=byMov[mid].slice().sort((a,b)=>(a.date||a.created_at).localeCompare(b.date||b.created_at));
+    return {mid,series,last:series[series.length-1]};
+  }).sort((a,b)=>(b.last.date||'').localeCompare(a.last.date||'')).slice(0,6);
+
+  wrap.innerHTML=items.map(it=>{
+    const {series,last}=it;
+    const name=movs[it.mid]||'Mouvement';
+    const unit=last.unit||'';
+    const first=series[0]?.value;
+    const lastV=last.value;
+    const isTime=unit==='s'||unit==='min';
+    const delta=(typeof first==='number'&&typeof lastV==='number')?(lastV-first):null;
+    const trend=delta==null?'':(isTime?(delta>0?'down':'up'):(delta>0?'up':'down'));
+    const deltaTxt=(delta==null||delta===0)?'':(isTime
+      ? (delta>0?`+${Math.abs(delta).toFixed(0)}${unit}`:`-${Math.abs(delta).toFixed(0)}${unit}`)
+      : (delta>0?`+${Math.abs(delta).toFixed(1)}${unit}`:`-${Math.abs(delta).toFixed(1)}${unit}`));
+    const points=_sparkPoints(series.map(s=>s.value),isTime?'time':'val');
+    const color=delta==null?'var(--accent)':(trend==='up'?'#47ff8c':'#ff8c47');
+    const valTxt=(typeof lastV==='number'?lastV:lastV)+(unit||'');
+    return `<div class="afiche-pr">
+      <div class="afiche-pr-head">
+        <div>
+          <div class="afiche-pr-name">${escapeHtml(name)}</div>
+          ${deltaTxt?`<div class="afiche-pr-trend ${trend==='down'?'down':''}">${deltaTxt} sur ${series.length} entrée${series.length>1?'s':''}</div>`:''}
+        </div>
+        <div class="afiche-pr-val">${escapeHtml(String(valTxt))}</div>
+      </div>
+      <svg class="afiche-spark" viewBox="0 0 300 32" preserveAspectRatio="none">
+        <polyline points="${points}" fill="none" stroke="${color}" stroke-width="2"/>
+      </svg>
+    </div>`;
+  }).join('');
+}
+
+function _sparkPoints(values,kind){
+  if(!values||!values.length)return '0,16';
+  const min=Math.min(...values),max=Math.max(...values);
+  const range=max-min||1;
+  const w=300,h=32,pad=4;
+  return values.map((v,i)=>{
+    const x=values.length===1?w/2:(i/(values.length-1))*w;
+    // pour temps : moins haut = mieux donc on inverse pour visu progression descendante = positif
+    let y;
+    if(kind==='time'){y=pad+((v-min)/range)*(h-2*pad);}
+    else{y=h-pad-((v-min)/range)*(h-2*pad);}
+    return `${x.toFixed(0)},${y.toFixed(1)}`;
+  }).join(' ');
+}
+
+async function _loadAthleteCardWellness(id){
+  const wrap=document.getElementById('ac-wellness');
+  const since=_isoDate(_addDays(new Date(),-14));
+  let entries=[];
+  try{
+    const {data}=await sb.from('wellness_entries').select('*').eq('athlete_id',id).gte('date',since).order('date',{ascending:true});
+    entries=data||[];
+  }catch(e){console.warn('wellness fetch',e);}
+  if(!entries.length){wrap.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Pas de saisie wellness sur les 14 derniers jours.</div>';return;}
+
+  const metrics=[
+    {key:'fatigue',name:'Fatigue générale',color:'#ff8c47',inv:true},
+    {key:'sleep_quality',name:'Qualité du sommeil',color:'#47c8ff'},
+    {key:'soreness',name:'Courbatures',color:'#ff4747',inv:true},
+    {key:'energy',name:'Énergie',color:'#e8ff47'},
+  ];
+  wrap.innerHTML=metrics.map(m=>{
+    const vals=entries.map(e=>e[m.key]).filter(v=>typeof v==='number');
+    if(!vals.length)return '';
+    const avg=(vals.reduce((s,v)=>s+v,0)/vals.length).toFixed(1);
+    const last=vals[vals.length-1];
+    return `<div class="afiche-pr">
+      <div class="afiche-pr-head"><div class="afiche-pr-name">${m.name}</div><div class="afiche-pr-val" style="color:${m.color}">${avg}/10</div></div>
+      <svg class="afiche-spark" viewBox="0 0 300 32" preserveAspectRatio="none">
+        <polyline points="${_sparkPoints(vals,'val')}" fill="none" stroke="${m.color}" stroke-width="2"/>
+      </svg>
+    </div>`;
+  }).join('')||'<div style="color:var(--muted);font-size:12px">Pas assez de données.</div>';
+}
+
+// Override loadAdminAthletes pour rendre les rows cliquables
+const __origLoadAdminAthletes=loadAdminAthletes;
+loadAdminAthletes=async function(){
+  await __origLoadAdminAthletes();
+  // post-process : ajoute onclick sur chaque row (sauf bouton delete)
+  document.querySelectorAll('#admin-athletes-list .athlete-row').forEach(row=>{
+    if(row._wired)return;row._wired=1;
+    const delBtn=row.querySelector('.btn-delete');
+    row.addEventListener('click',(e)=>{
+      if(e.target.closest('.btn-delete'))return;
+      // récupère l'id depuis le bouton delete (qui contient l'id) ou via data-attr — fallback : skip
+      const btn=row.querySelector('.btn-delete');
+      const m=btn&&btn.getAttribute('onclick')&&btn.getAttribute('onclick').match(/deleteAthlete\('([^']+)'/);
+      if(m)openAthleteCard(m[1]);
+    });
+  });
+};
+
+// ============================================
+// WELLNESS ATHLÈTE — saisie quotidienne
+// ============================================
+const WELLNESS_FIELDS=[
+  {key:'sleep_quality',name:'Qualité du sommeil',icon:'😴',inv:false},
+  {key:'energy',name:'Énergie',icon:'🔥',inv:false},
+  {key:'fatigue',name:'Fatigue générale',icon:'💪',inv:true},
+  {key:'soreness',name:'Courbatures',icon:'🦵',inv:true},
+  {key:'motivation',name:'Motivation',icon:'🚀',inv:false},
+  {key:'mood',name:'Humeur',icon:'😊',inv:false},
+  {key:'stress',name:'Stress',icon:'😰',inv:true},
+];
+let _wellnessToday=null;
+
+function _wellnessColor(val,inv){
+  // val 1..10 — pour métriques normales : haut=vert ; pour inversées (fatigue/courbatures/stress) : haut=rouge
+  if(typeof val!=='number')return '#7a7a7a';
+  const v=inv?(11-val):val;
+  if(v>=8)return '#47ff8c';
+  if(v>=5)return '#e8ff47';
+  if(v>=3)return '#ff8c47';
+  return '#ff4747';
+}
+
+async function loadWellnessPage(){
+  const today=new Date();
+  document.getElementById('wellness-date').textContent=today.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'}).toUpperCase();
+  const av=document.getElementById('wellness-avatar');
+  if(av&&currentProfile)av.textContent=_initials(currentProfile.full_name||currentProfile.email);
+
+  const iso=_isoDate(today);
+  let existing=null;
+  try{
+    const {data}=await sb.from('wellness_entries').select('*').eq('athlete_id',currentUser.id).eq('date',iso).maybeSingle();
+    existing=data;
+  }catch(e){console.warn('wellness load',e);}
+  _wellnessToday=existing||{};
+  document.getElementById('wellness-banner-sub').textContent=existing?'Tu peux mettre à jour jusqu\'à minuit':'Une saisie quotidienne pour ton coach';
+  document.getElementById('wellness-save-btn').textContent=existing?'Mettre à jour':'Enregistrer ma journée';
+  renderWellnessForm();
+}
+
+function renderWellnessForm(){
+  const wrap=document.getElementById('wellness-form');
+  const v=_wellnessToday||{};
+  let html=WELLNESS_FIELDS.map(f=>{
+    const val=typeof v[f.key]==='number'?v[f.key]:5;
+    const c=_wellnessColor(val,f.inv);
+    return `<div class="well-row">
+      <div class="lab"><div class="name">${f.icon} ${f.name}</div><div class="val" style="color:${c}" id="wv-${f.key}">${val}/10</div></div>
+      <input type="range" min="1" max="10" step="1" value="${val}" class="well-slider" data-key="${f.key}" data-inv="${f.inv?1:0}" oninput="_onWellSlide(this)" style="--c:${c}">
+    </div>`;
+  }).join('');
+  html+=`<div class="well-row" style="margin-bottom:0">
+    <div class="lab"><div class="name">📝 Note libre</div></div>
+    <textarea id="wv-notes" placeholder="Petit mot pour le coach... (optionnel)">${escapeHtml(v.notes||'')}</textarea>
+  </div>`;
+  wrap.innerHTML=html;
+  // colorise le thumb (chrome)
+  document.querySelectorAll('#wellness-form .well-slider').forEach(s=>{
+    const inv=s.dataset.inv==='1';
+    const v=parseInt(s.value);
+    const c=_wellnessColor(v,inv);
+    s.style.setProperty('background',`linear-gradient(to right, ${c} 0%, ${c} ${(v-1)/9*100}%, var(--border2) ${(v-1)/9*100}%, var(--border2) 100%)`);
+  });
+}
+
+function _onWellSlide(el){
+  const k=el.dataset.key,inv=el.dataset.inv==='1',v=parseInt(el.value);
+  const c=_wellnessColor(v,inv);
+  const lab=document.getElementById('wv-'+k);
+  if(lab){lab.textContent=v+'/10';lab.style.color=c;}
+  el.style.background=`linear-gradient(to right, ${c} 0%, ${c} ${(v-1)/9*100}%, var(--border2) ${(v-1)/9*100}%, var(--border2) 100%)`;
+}
+
+async function saveWellness(){
+  const today=_isoDate(new Date());
+  const payload={athlete_id:currentUser.id,date:today};
+  WELLNESS_FIELDS.forEach(f=>{
+    const el=document.querySelector(`#wellness-form [data-key="${f.key}"]`);
+    if(el)payload[f.key]=parseInt(el.value);
+  });
+  const notes=document.getElementById('wv-notes')?.value?.trim()||null;
+  payload.notes=notes;
+  // upsert sur (athlete_id,date)
+  const {error}=await sb.from('wellness_entries').upsert(payload,{onConflict:'athlete_id,date'});
+  if(error){showToast('❌ '+error.message);console.error(error);return;}
+  showToast('✅ Wellness enregistré');
+  _wellnessToday=payload;
+  document.getElementById('wellness-save-btn').textContent='Mettre à jour';
+  document.getElementById('wellness-banner-sub').textContent='Tu peux mettre à jour jusqu\'à minuit';
+}
+
+// hook into goPage
+const __origGoPage=goPage;
+goPage=async function(p){
+  await __origGoPage(p);
+  if(p==='wellness')loadWellnessPage();
+};
+
+// ============================================
+// WELLNESS ADMIN — tableau global
+// ============================================
+let _wellnessAdminPeriod=1;
+function setWellnessAdminPeriod(d,btn){
+  _wellnessAdminPeriod=d;
+  document.querySelectorAll('.well-period button').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  loadWellnessAdmin();
+}
+
+async function loadWellnessAdmin(){
+  const today=new Date();
+  document.getElementById('wellness-admin-date').textContent=today.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+  const since=_isoDate(_addDays(today,-(_wellnessAdminPeriod-1)));
+  // tous les athlètes
+  const {data:profs}=await sb.from('profiles').select('id,full_name,email').order('full_name');
+  let entries=[];
+  try{
+    const {data}=await sb.from('wellness_entries').select('*').gte('date',since);
+    entries=data||[];
+  }catch(e){console.warn('wellness admin',e);}
+
+  // pour chaque athlète : prendre la saisie la plus récente (sur la période)
+  const lastByAth={};
+  entries.forEach(e=>{
+    const cur=lastByAth[e.athlete_id];
+    if(!cur||e.date>cur.date)lastByAth[e.athlete_id]=e;
+  });
+
+  const rows=(profs||[]).filter(p=>p.id!==currentUser.id||true).map(p=>{
+    const e=lastByAth[p.id];
+    return {p,e,sev:_wellnessSeverity(e)};
+  });
+  // tri : alertes rouges, oranges, vert, puis non saisis
+  const sevOrder={red:0,orange:1,green:2,none:3};
+  rows.sort((a,b)=>(sevOrder[a.sev]-sevOrder[b.sev])||(a.p.full_name||'').localeCompare(b.p.full_name||''));
+
+  // résumé
+  const filled=rows.filter(r=>r.e).length;
+  const alerts=rows.filter(r=>r.sev==='red').length;
+  const fatigues=rows.filter(r=>r.e&&typeof r.e.fatigue==='number').map(r=>r.e.fatigue);
+  const fAvg=fatigues.length?(fatigues.reduce((s,v)=>s+v,0)/fatigues.length).toFixed(1):'—';
+  document.getElementById('wa-alerts').textContent=alerts;
+  document.getElementById('wa-fills').textContent=`${filled} / ${rows.length}`;
+  document.getElementById('wa-fatigue').textContent=fAvg;
+
+  document.getElementById('wa-list').innerHTML=rows.map(r=>{
+    if(!r.e){
+      return `<div class="well-alert muted">
+        <div class="av">${_initials(r.p.full_name||r.p.email)}</div>
+        <div class="mid"><div class="nm">${escapeHtml(r.p.full_name||'—')}</div><div class="meta"><span class="well-chip">Pas de saisie</span></div></div>
+      </div>`;
+    }
+    const ic=r.sev==='red'?'🚨':(r.sev==='orange'?'⚠️':(r.sev==='green'?'✅':''));
+    const chips=_wellnessChips(r.e);
+    return `<div class="well-alert ${r.sev}" onclick="(function(id){adminTab('athletes',document.querySelector('.admin-tab-btn[onclick*=\\'athletes\\']'));setTimeout(()=>openAthleteCard(id),50);})('${r.p.id}')">
+      <div class="av">${_initials(r.p.full_name||r.p.email)}</div>
+      <div class="mid">
+        <div class="nm">${escapeHtml(r.p.full_name||'—')}</div>
+        <div class="meta">${chips}</div>
+      </div>
+      <div class="ic">${ic}</div>
+    </div>`;
+  }).join('')||'<div class="empty"><p>Aucune donnée.</p></div>';
+}
+
+function _wellnessSeverity(e){
+  if(!e)return 'none';
+  const reds=[];
+  if(e.fatigue>=8)reds.push('fat');
+  if(e.soreness>=8)reds.push('sor');
+  if(e.stress>=8)reds.push('str');
+  if(e.sleep_quality<=4)reds.push('slp');
+  if(e.energy<=3)reds.push('eng');
+  if(reds.length>=2)return 'red';
+  if(reds.length===1)return 'orange';
+  if((e.energy>=7||e.motivation>=7)&&e.fatigue<=5)return 'green';
+  return 'orange';
+}
+function _wellnessChips(e){
+  const out=[];
+  const push=(name,v,inv)=>{
+    if(typeof v!=='number')return;
+    let cls='';
+    const norm=inv?v:(11-v);
+    if((inv&&v>=8)||(!inv&&v<=3))cls='r';
+    else if((inv&&v>=6)||(!inv&&v<=5))cls='o';
+    else cls='g';
+    out.push(`<span class="well-chip ${cls}">${name} ${v}</span>`);
+  };
+  push('Fatigue',e.fatigue,true);
+  push('Courb.',e.soreness,true);
+  push('Sommeil',e.sleep_quality,false);
+  push('Stress',e.stress,true);
+  push('Énergie',e.energy,false);
+  return out.slice(0,4).join(' ');
+}
 </script>
 </body>
 </html>
