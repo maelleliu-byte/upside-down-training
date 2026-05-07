@@ -567,23 +567,29 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="np-desc" placeholder="Description courte"></div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Prix/mois (€)</label><input type="number" class="form-input" id="np-price" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="np-type"><option value="subscription">Abonnement</option><option value="oneshot">One-shot</option></select></div>
+          <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="np-type"><option value="subscription">Abonnement</option><option value="oneshot">One-shot</option><option value="perso">Perso (athlètes assignés)</option></select></div>
         </div>
         <div class="form-group">
           <label class="form-label">Couleur</label>
           <div class="color-picker" id="np-colors">
-            <div class="color-swatch selected" data-color="#e8ff47" style="background:#e8ff47" onclick="selectColor('#e8ff47',this)"></div>
+            <div class="color-swatch selected" data-color="#1e9b9b" style="background:#1e9b9b" onclick="selectColor('#1e9b9b',this)"></div>
+            <div class="color-swatch" data-color="#e8ff47" style="background:#e8ff47" onclick="selectColor('#e8ff47',this)"></div>
             <div class="color-swatch" data-color="#47c8ff" style="background:#47c8ff" onclick="selectColor('#47c8ff',this)"></div>
             <div class="color-swatch" data-color="#ff8c47" style="background:#ff8c47" onclick="selectColor('#ff8c47',this)"></div>
             <div class="color-swatch" data-color="#c847ff" style="background:#c847ff" onclick="selectColor('#c847ff',this)"></div>
             <div class="color-swatch" data-color="#47ff8c" style="background:#47ff8c" onclick="selectColor('#47ff8c',this)"></div>
             <div class="color-swatch" data-color="#ff4747" style="background:#ff4747" onclick="selectColor('#ff4747',this)"></div>
+            <div class="color-swatch" data-color="#ff47c8" style="background:#ff47c8" onclick="selectColor('#ff47c8',this)"></div>
+            <div class="color-swatch" data-color="#ffc847" style="background:#ffc847" onclick="selectColor('#ffc847',this)"></div>
+            <div class="color-swatch" data-color="#8c47ff" style="background:#8c47ff" onclick="selectColor('#8c47ff',this)"></div>
+            <div class="color-swatch" data-color="#47ffc8" style="background:#47ffc8" onclick="selectColor('#47ffc8',this)"></div>
+            <div class="color-swatch" data-color="#ffffff" style="background:#fff" onclick="selectColor('#ffffff',this)"></div>
           </div>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="display:none">
           <label class="form-label">Icône</label>
           <div class="icon-picker" id="np-icons">
-            ${['🏟','💪','🧒','⚡','🏋️','🤸','🎯','🔥','⭐','🦁'].map(ic=>`<button class="icon-btn ${ic==='🏟'?'selected':''}" data-icon="${ic}" onclick="selectIcon('${ic}',this)">${ic}</button>`).join('')}
+            ${['💪','🏋️','🤸','🎯','🔥','⭐','🦁'].map(ic=>`<button class="icon-btn ${ic==='💪'?'selected':''}" data-icon="${ic}" onclick="selectIcon('${ic}',this)">${ic}</button>`).join('')}
           </div>
         </div>
         <button class="btn-primary" onclick="saveNewProg()">Créer le programme</button>
@@ -765,8 +771,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       </div>
 
       <!-- Sélecteur cycles -->
-      <div style="display:flex;gap:8px;margin-bottom:12px">
-        <select class="form-select" id="cycle-selector" onchange="loadCycle(this.value)" style="flex:1">
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select class="form-select" id="cycle-year-filter" onchange="loadAllCycles()" style="flex:0 0 110px">
+        </select>
+        <select class="form-select" id="cycle-selector" onchange="loadCycle(this.value)" style="flex:1;min-width:180px">
           <option value="">— Sélectionner un cycle —</option>
         </select>
         <button onclick="deleteCycle()" style="padding:9px 12px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:10px;font-size:13px;cursor:pointer">🗑</button>
@@ -864,6 +872,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div class="stat-box"><div class="stat-val" id="stat-wod">—</div><div class="stat-lbl">WODs</div></div>
       <div class="stat-box"><div class="stat-val" id="stat-bench">—</div><div class="stat-lbl">Benchmarks</div></div>
     </div>
+    <!-- WELLNESS CHECK-IN -->
+    <div style="padding:0 20px;margin:18px 0 8px"><div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Check-in du jour</div></div>
+    <div id="wellness-card" style="margin:0 20px 14px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px"></div>
     <div class="menu-item" onclick="openGenderModal()"><span class="menu-item-label">⚧ Catégorie : <span id="profil-gender-lbl" style="color:var(--accent);font-weight:700">—</span></span><span>›</span></div>
     <div class="menu-item" onclick="goPage('pr')"><span class="menu-item-label">📊 Mes records (PR)</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('bench')"><span class="menu-item-label">🏆 Mes benchmarks</span><span>›</span></div>
@@ -1041,7 +1052,7 @@ const stripe=Stripe(STRIPE_PK);
 let currentUser=null,currentProfile=null,programmes=[],movements=[],benchmarks=[],myPRs={},myAccess=new Set(),myAccessIds=new Set();
 let currentProg=null,currentWeekOffset=0,selectedDate=new Date().toISOString().split('T')[0];
 let currentModalMovement=null,currentBenchmark=null,currentBLevel='rx';
-let selectedColor='#e8ff47',selectedIcon='🏟';
+let selectedColor='#1e9b9b',selectedIcon='💪';
 let currentCat='all',searchQuery='',currentBcat='all';
 
 const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
@@ -1221,7 +1232,7 @@ async function goPage(page){
   const btn=document.querySelector(`[data-page="${page}"]`);
   if(btn)btn.classList.add('active');
   if(page==='pr'){await loadMyPRs();await loadMyBenchScores();renderAll();}
-  if(page==='profil')loadProfilStats();
+  if(page==='profil'){loadProfilStats();loadWellness();}
   if(page==='admin'){loadAdminProgs();loadAdminSessions();loadAdminAthletes();loadAdminBenchmarks();}
   if(page==='abos')renderPlans();
   if(page==='videos'){await loadVideos();renderVideosAthlete();}
@@ -1230,7 +1241,15 @@ async function goPage(page){
 // PROGRAMMES
 async function loadProgrammes(){
   const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
-  programmes=data||[];
+  let all=data||[];
+  // Filtrer les programmes "perso" : ne montrer que ceux assignés à l'athlète courant (sauf admin qui voit tout)
+  const isAdmin=currentUser&&currentProfile?.role==='admin';
+  if(!isAdmin && currentUser){
+    const {data:assigns}=await sb.from('athlete_programmes').select('programme_id').eq('athlete_id',currentUser.id);
+    const myPersoIds=new Set((assigns||[]).map(a=>a.programme_id));
+    all=all.filter(p=>p.type!=='perso'||myPersoIds.has(p.id));
+  }
+  programmes=all;
 
   // Gérer retour Stripe ici, après chargement des programmes
   const params=new URLSearchParams(window.location.search);
@@ -2052,7 +2071,7 @@ async function saveNewProg(){
   const slug=name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
   const {error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,created_by:currentUser.id});
   if(error){showToast('❌ '+error.message);return;}
-  showToast('✅ Programme créé !');
+  showToast(type==='perso'?'✅ Programme perso créé ! Assigne-le aux athlètes via l\'onglet Athlètes':'✅ Programme créé !');
   document.getElementById('new-prog-form').style.display='none';
   document.getElementById('btn-show-new-prog').style.display='block';
   document.getElementById('np-name').value='';document.getElementById('np-desc').value='';
@@ -2090,17 +2109,24 @@ async function loadAdminSessions(){
   const {data}=await q;
   const list=document.getElementById('admin-sessions-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucune séance.</p></div>';return;}
-  list.innerHTML=data.map(s=>`<div class="sessions-list-item">
-    <div style="flex:1">
-      <div class="sli-title">${s.title}</div>
-      <div class="sli-meta">${formatDate(s.date)} · ${s.programmes?.icon||''} ${s.programmes?.name||''} · ${TYPE_LABELS[s.type]||s.type}</div>
+  list.innerHTML=data.map(s=>{
+    const cw=renderContentWithCharges(s.content||'');
+    const isHtml=/<[a-z][\s\S]*>/i.test(cw);
+    const contentHtml=isHtml?cw:cw.replace(/\n/g,'<br>');
+    return`<div class="sessions-list-item" style="display:block;padding:14px">
+    <div style="display:flex;justify-content:space-between;gap:10px;margin-bottom:10px">
+      <div style="flex:1">
+        <div class="sli-title">${s.title}</div>
+        <div class="sli-meta">${formatDate(s.date)} · ${s.programmes?.icon||''} ${s.programmes?.name||''} · ${TYPE_LABELS[s.type]||s.type}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-delete" style="background:rgba(71,200,255,.1);border-color:rgba(71,200,255,.3);color:var(--blue)" onclick="editSession('${s.id}')">✏️</button>
+        <button class="btn-delete" style="background:rgba(30,155,155,.1);border-color:rgba(30,155,155,.3);color:var(--accent)" onclick="duplicateSession('${s.id}')">📋</button>
+        <button class="btn-delete" onclick="deleteSession('${s.id}')">✕</button>
+      </div>
     </div>
-    <div style="display:flex;gap:6px">
-      <button class="btn-delete" style="background:rgba(71,200,255,.1);border-color:rgba(71,200,255,.3);color:var(--blue)" onclick="editSession('${s.id}')">✏️</button>
-      <button class="btn-delete" style="background:rgba(30,155,155,.1);border-color:rgba(30,155,155,.3);color:var(--accent)" onclick="duplicateSession('${s.id}')">📋</button>
-      <button class="btn-delete" onclick="deleteSession('${s.id}')">✕</button>
-    </div>
-  </div>`).join('');
+    <div class="session-content" style="font-size:13px;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px;max-height:200px;overflow:auto">${contentHtml}</div>
+  </div>`;}).join('');
 }
 async function deleteSession(id){const {error}=await sb.from('sessions').delete().eq('id',id);if(error){showToast('❌ '+error.message);return;}showToast('🗑 Supprimée');loadAdminSessions();}
 
@@ -2448,11 +2474,34 @@ async function saveBenchmark(){
 async function loadAdminAthletes(){
   const {data}=await sb.from('profiles').select('*').order('full_name');
   const list=document.getElementById('admin-athletes-list');
-  if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
-  list.innerHTML=data.map(p=>{
+  // Filtre soft-delete côté client (compatible si la colonne deleted_at n'existe pas)
+  const filtered=(data||[]).filter(p=>!p.deleted_at);
+  if(!filtered||filtered.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
+  list.innerHTML=filtered.map(p=>{
     const init=(p.full_name||p.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
-    return`<div class="athlete-row"><div class="athlete-avatar">${init}</div><div style="flex:1"><div class="athlete-name">${p.full_name||'—'}</div><div class="athlete-email">${p.email||''}</div></div><span class="athlete-role ${p.role==='admin'?'role-admin':'role-athlete'}">${p.role==='admin'?'Admin':'Athlète'}</span></div>`;
+    const safeName=(p.full_name||p.email||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+    return`<div class="athlete-row"><div class="athlete-avatar" onclick="openAthleteDetail('${p.id}')" style="cursor:pointer">${init}</div><div style="flex:1;cursor:pointer" onclick="openAthleteDetail('${p.id}')"><div class="athlete-name">${p.full_name||'—'}</div><div class="athlete-email">${p.email||''}</div></div><span class="athlete-role ${p.role==='admin'?'role-admin':'role-athlete'}">${p.role==='admin'?'Admin':'Athlète'}</span><button class="btn-delete" style="margin-left:8px" data-aid="${p.id}" data-aname="${safeName}" onclick="deleteAthlete(this.dataset.aid,this.dataset.aname)">✕</button></div>`;
   }).join('');
+}
+async function deleteAthlete(id,name){
+  if(!confirm(`Supprimer ${name} ? Tous ses scores, PR et données seront supprimés.`))return;
+  // Suppression en cascade : d'abord les données liées
+  await sb.from('wod_scores').delete().eq('athlete_id',id);
+  await sb.from('athlete_prs').delete().eq('athlete_id',id);
+  await sb.from('benchmark_scores').delete().eq('athlete_id',id);
+  await sb.from('wellness_logs').delete().eq('athlete_id',id);
+  await sb.from('athlete_programmes').delete().eq('athlete_id',id);
+  // Puis le profil — marqué deleted si la suppression directe est bloquée par RLS
+  const {error}=await sb.from('profiles').delete().eq('id',id);
+  if(error){
+    // Fallback : soft delete via update si RLS bloque
+    const {error:e2}=await sb.from('profiles').update({deleted_at:new Date().toISOString(),email:null,full_name:'[Supprimé]'}).eq('id',id);
+    if(e2){showToast('❌ '+e2.message+' (vérifier policies RLS)');return;}
+    showToast('🗑 Athlète marqué supprimé (compte auth toujours actif — supprime-le depuis Supabase Dashboard)');
+  } else {
+    showToast('🗑 Athlète supprimé');
+  }
+  await loadAdminAthletes();
 }
 function adminTab(tab,btn){
   document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
@@ -2617,8 +2666,25 @@ async function initCyclePlanner(){
 }
 
 async function loadAllCycles(){
-  const {data}=await sb.from('cycle_plans').select('id,name').order('created_at',{ascending:false});
-  allCycles=data||[];
+  const yearSel=document.getElementById('cycle-year-filter');
+  const currentYear=new Date().getFullYear();
+  if(yearSel && !yearSel.options.length){
+    const years=[];for(let y=currentYear-1;y<=currentYear+3;y++)years.push(y);
+    yearSel.innerHTML='<option value="">Toutes</option>'+years.map(y=>`<option value="${y}" ${y===currentYear?'selected':''}>${y}</option>`).join('');
+  }
+  const yearFilter=yearSel?yearSel.value:'';
+  let q=sb.from('cycle_plans').select('id,name,start_date').order('created_at',{ascending:false});
+  const {data}=await q;
+  let filtered=data||[];
+  if(yearFilter){
+    filtered=filtered.filter(c=>{
+      const dateStr=c.start_date||'';
+      if(dateStr.startsWith(yearFilter))return true;
+      const m=(c.name||'').match(/20\d{2}/);
+      return m && m[0]===yearFilter;
+    });
+  }
+  allCycles=filtered;
   const sel=document.getElementById('cycle-selector');
   sel.innerHTML='<option value="">— Sélectionner un cycle —</option>'+allCycles.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
 }
@@ -3084,6 +3150,157 @@ function getScorePlaceholder(type){return{time:'14:32',reps:'87',rounds:'12 + 5'
 function extractYTId(url){const m=url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null;}
 function formatDate(iso){if(!iso)return'—';const d=new Date(iso+'T12:00:00');return`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;}
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
+
+// ===== ATHLETE DETAIL MODAL (COACH VIEW) =====
+async function openAthleteDetail(athleteId){
+  let m=document.getElementById('athlete-detail-modal');
+  if(!m){
+    m=document.createElement('div');m.id='athlete-detail-modal';
+    m.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.85);backdrop-filter:blur(8px);z-index:9999;display:none;overflow-y:auto;padding:20px';
+    m.innerHTML=`<div style="max-width:640px;margin:0 auto;background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 20px;border-bottom:1px solid var(--border);background:var(--card2)">
+        <div style="font-family:Bebas Neue;font-size:22px;letter-spacing:1.5px" id="ad-title">ATHLÈTE</div>
+        <button onclick="document.getElementById('athlete-detail-modal').style.display='none'" style="background:transparent;border:1px solid var(--border);color:var(--text);width:34px;height:34px;border-radius:8px;font-size:18px;cursor:pointer">✕</button>
+      </div>
+      <div id="ad-body" style="padding:20px"></div>
+    </div>`;
+    document.body.appendChild(m);
+  }
+  m.style.display='block';
+  const body=document.getElementById('ad-body');
+  body.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">Chargement...</div>';
+
+  const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
+  const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
+  const [profileRes,prsRes,wodWeekRes,wodMonthRes,benchRes]=await Promise.all([
+    sb.from('profiles').select('*').eq('id',athleteId).single(),
+    sb.from('athlete_prs').select('*,movements(name,unit,category)').eq('athlete_id',athleteId).order('recorded_at',{ascending:true}),
+    sb.from('wod_scores').select('*,sessions(title,date,type)').eq('athlete_id',athleteId).gte('created_at',sevenDaysAgo).order('created_at',{ascending:false}),
+    sb.from('wod_scores').select('id,created_at').eq('athlete_id',athleteId).gte('created_at',thirtyDaysAgo),
+    sb.from('benchmark_scores').select('*,benchmarks(name)').eq('athlete_id',athleteId).order('created_at',{ascending:false}).limit(5)
+  ]);
+  const p=profileRes.data||{};
+  const init=(p.full_name||p.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  document.getElementById('ad-title').textContent=(p.full_name||p.email||'ATHLÈTE').toUpperCase();
+
+  // Group PRs by movement
+  const prsByMov={};
+  (prsRes.data||[]).forEach(pr=>{
+    if(!prsByMov[pr.movement_id])prsByMov[pr.movement_id]={name:pr.movements?.name||'—',unit:pr.movements?.unit||'',cat:pr.movements?.category,history:[]};
+    prsByMov[pr.movement_id].history.push({date:pr.recorded_at,value:parseFloat(pr.value)||0,raw:pr.value});
+  });
+
+  body.innerHTML=`
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:20px">
+      <div style="width:56px;height:56px;border-radius:50%;background:var(--accent-dark);color:var(--accent);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:20px;border:2px solid var(--accent)">${init}</div>
+      <div><div style="font-size:16px;font-weight:700">${p.full_name||'—'}</div><div style="font-size:12px;color:var(--muted)">${p.email||''}</div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:20px">
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-family:Bebas Neue;font-size:26px;color:var(--accent)">${(wodWeekRes.data||[]).length}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px">WODs 7j</div></div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-family:Bebas Neue;font-size:26px;color:var(--orange)">${(wodMonthRes.data||[]).length}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px">WODs 30j</div></div>
+      <div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;text-align:center"><div style="font-family:Bebas Neue;font-size:26px;color:var(--green)">${(prsRes.data||[]).length}</div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px">PR Total</div></div>
+    </div>
+
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:10px">WODs cette semaine</div>
+    <div style="margin-bottom:20px">${(wodWeekRes.data||[]).length===0?'<div style="font-size:13px;color:var(--muted);padding:12px;background:var(--card2);border-radius:8px;text-align:center">Aucun WOD cette semaine</div>':(wodWeekRes.data||[]).map(s=>`<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--card2);border:1px solid var(--border);border-radius:8px;margin-bottom:6px"><div><div style="font-size:13px;font-weight:600">${s.sessions?.title||'—'}</div><div style="font-size:11px;color:var(--muted)">${formatDate(s.sessions?.date)} · <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]||s.level}</span></div></div><div style="font-size:14px;font-weight:700;color:var(--accent)">${s.score_text||s.score_value||'—'}</div></div>`).join('')}</div>
+
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:10px">Programmes perso assignés</div>
+    <div id="ad-perso-progs" style="margin-bottom:20px"><div style="font-size:12px;color:var(--muted)">Chargement...</div></div>
+
+    <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;font-weight:700;margin-bottom:10px">Progression PR</div>
+    ${Object.keys(prsByMov).length===0?'<div style="font-size:13px;color:var(--muted);padding:12px;background:var(--card2);border-radius:8px;text-align:center">Aucun PR enregistré</div>':Object.entries(prsByMov).map(([mid,m])=>{
+      const sorted=m.history.sort((a,b)=>new Date(a.date)-new Date(b.date));
+      const last=sorted[sorted.length-1];const first=sorted[0];
+      const delta=sorted.length>1?((last.value-first.value)/first.value*100).toFixed(1):0;
+      return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:12px;margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <div><div style="font-size:13px;font-weight:600">${m.name}</div><div style="font-size:10px;color:var(--muted)">${sorted.length} entrée${sorted.length>1?'s':''}</div></div>
+          <div style="text-align:right"><div style="font-size:15px;font-weight:700;color:var(--accent)">${last.raw} ${m.unit}</div>${sorted.length>1?`<div style="font-size:10px;color:${delta>=0?'var(--green)':'var(--red)'};font-weight:700">${delta>=0?'+':''}${delta}%</div>`:''}</div>
+        </div>
+        ${renderPRSparkline(sorted)}
+      </div>`;
+    }).join('')}
+  `;
+  // Load perso programmes after main render
+  loadAthletePersoProgs(athleteId);
+}
+async function loadAthletePersoProgs(athleteId){
+  const el=document.getElementById('ad-perso-progs');if(!el)return;
+  const [progsRes,assignsRes]=await Promise.all([
+    sb.from('programmes').select('id,name,color,icon').eq('type','perso').eq('is_active',true),
+    sb.from('athlete_programmes').select('programme_id').eq('athlete_id',athleteId)
+  ]);
+  const progs=progsRes.data||[];
+  const assigned=new Set((assignsRes.data||[]).map(a=>a.programme_id));
+  if(progs.length===0){el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:10px;background:var(--card2);border-radius:8px">Aucun programme perso créé. Crée-en un dans l\'onglet Programmes (type "Perso").</div>';return;}
+  el.innerHTML=progs.map(p=>{
+    const isOn=assigned.has(p.id);
+    return `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:var(--card2);border:1px solid ${isOn?p.color:'var(--border)'};border-radius:8px;margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:10px"><div style="width:8px;height:24px;background:${p.color};border-radius:2px"></div><div style="font-size:13px;font-weight:600">${p.name}</div></div>
+      <button onclick="toggleAssign('${athleteId}','${p.id}',${!isOn})" style="background:${isOn?'var(--accent)':'var(--card)'};color:${isOn?'#062a2a':'var(--text)'};border:1px solid ${isOn?'var(--accent)':'var(--border)'};padding:6px 14px;border-radius:6px;font-weight:700;font-size:12px;cursor:pointer">${isOn?'✓ Assigné':'+ Assigner'}</button>
+    </div>`;
+  }).join('');
+}
+async function toggleAssign(athleteId,progId,turnOn){
+  if(turnOn){
+    const {error}=await sb.from('athlete_programmes').insert({athlete_id:athleteId,programme_id:progId});
+    if(error){showToast('❌ '+error.message);return;}
+    showToast('✅ Programme assigné');
+  } else {
+    const {error}=await sb.from('athlete_programmes').delete().eq('athlete_id',athleteId).eq('programme_id',progId);
+    if(error){showToast('❌ '+error.message);return;}
+    showToast('🗑 Assignation retirée');
+  }
+  loadAthletePersoProgs(athleteId);
+}
+function renderPRSparkline(history){
+  if(history.length<2)return '<div style="font-size:10px;color:var(--muted);font-style:italic">Plus de données nécessaires pour la courbe</div>';
+  const w=580,h=40,pad=4;
+  const vals=history.map(h=>h.value);
+  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
+  const pts=history.map((p,i)=>{const x=pad+(i/(history.length-1))*(w-pad*2);const y=h-pad-((p.value-min)/range)*(h-pad*2);return `${x},${y}`;}).join(' ');
+  return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="display:block"><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2"/>${history.map((p,i)=>{const x=pad+(i/(history.length-1))*(w-pad*2);const y=h-pad-((p.value-min)/range)*(h-pad*2);return `<circle cx="${x}" cy="${y}" r="2.5" fill="var(--accent)"/>`;}).join('')}</svg>`;
+}
+
+// ===== WELLNESS CHECK-IN (ATHLETE) =====
+const WELLNESS_FIELDS=[
+  {key:'fatigue',label:'Fatigue',icon:'😴',color:'#ff8c47',hint:['Très frais','OK','Moyen','Fatigué','Crevé']},
+  {key:'soreness',label:'Courbatures',icon:'💪',color:'#c847ff',hint:['Aucune','Légères','Moyennes','Importantes','Très douloureuses']},
+  {key:'sleep',label:'Sommeil',icon:'🌙',color:'#47c8ff',hint:['Très mauvais','Mauvais','Correct','Bon','Excellent']},
+  {key:'energy',label:'Énergie',icon:'⚡',color:'#1e9b9b',hint:['Aucune','Faible','Moyenne','Bonne','Au top']},
+];
+let wellnessToday={fatigue:3,soreness:3,sleep:3,energy:3,note:''};
+async function loadWellness(){
+  if(!currentUser)return;
+  const today=new Date().toISOString().slice(0,10);
+  const {data}=await sb.from('wellness_logs').select('*').eq('athlete_id',currentUser.id).eq('log_date',today).maybeSingle();
+  if(data)wellnessToday={fatigue:data.fatigue||3,soreness:data.soreness||3,sleep:data.sleep||3,energy:data.energy||3,note:data.note||'',id:data.id};
+  renderWellness();
+}
+function renderWellness(){
+  const card=document.getElementById('wellness-card');if(!card)return;
+  card.innerHTML=WELLNESS_FIELDS.map(f=>`
+    <div style="margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <div style="font-size:13px;font-weight:600">${f.icon} ${f.label}</div>
+        <div style="font-size:11px;color:${f.color};font-weight:700">${f.hint[wellnessToday[f.key]-1]}</div>
+      </div>
+      <input type="range" min="1" max="5" value="${wellnessToday[f.key]}" oninput="wellnessToday.${f.key}=parseInt(this.value);renderWellness()" style="width:100%;accent-color:${f.color}">
+    </div>
+  `).join('')+`
+    <textarea id="wellness-note" placeholder="Note du jour (optionnel)..." oninput="wellnessToday.note=this.value" style="width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px;color:var(--text);font-size:12px;resize:vertical;min-height:50px;font-family:inherit;margin-bottom:10px">${wellnessToday.note||''}</textarea>
+    <button onclick="saveWellness()" style="width:100%;background:var(--accent);color:#062a2a;border:none;padding:11px;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer">${wellnessToday.id?'✓ Mettre à jour':'✓ Enregistrer le check-in'}</button>
+  `;
+}
+async function saveWellness(){
+  if(!currentUser)return;
+  const today=new Date().toISOString().slice(0,10);
+  const payload={athlete_id:currentUser.id,log_date:today,fatigue:wellnessToday.fatigue,soreness:wellnessToday.soreness,sleep:wellnessToday.sleep,energy:wellnessToday.energy,note:wellnessToday.note||null};
+  const {error}=await sb.from('wellness_logs').upsert(payload,{onConflict:'athlete_id,log_date'});
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Check-in enregistré !');
+  await loadWellness();
+}
 </script>
 </body>
 </html>
