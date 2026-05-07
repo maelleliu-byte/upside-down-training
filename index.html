@@ -2363,27 +2363,6 @@ function toggleSetsField(){
   const type=document.getElementById('f-type').value;
   document.getElementById('sets-field').style.display=type==='strength'?'block':'none';
 }
-async function saveSession(){
-  const progId=document.getElementById('f-prog').value;
-  const date=document.getElementById('f-date').value;
-  const type=document.getElementById('f-type').value;
-  const title=document.getElementById('f-title').value.trim();
-  const content=document.getElementById('f-content').value.trim();
-  const intensity=parseInt(document.getElementById('f-intensity').value);
-  const target=document.getElementById('f-target').value.trim();
-  const tips=document.getElementById('f-tips').value.trim();
-  const scoreType=document.getElementById('f-score-type').value;
-  const youtube=document.getElementById('f-youtube').value.trim();
-  const ytlabel=document.getElementById('f-ytlabel').value.trim();
-  const sets=type==='strength'?parseInt(document.getElementById('f-sets').value)||null:null;
-  if(!progId||!date||!title||!content){showToast('⚠️ Remplis les champs obligatoires');return;}
-  const {error}=await sb.from('sessions').insert({programme_id:progId,date,type,title,content,intensity,target:target||null,tips:tips||null,score_type:scoreType,youtube_url:youtube||null,youtube_label:ytlabel||null,sets,created_by:currentUser.id});
-  if(error){showToast('❌ '+error.message);return;}
-  ['f-title','f-content','f-target','f-tips','f-youtube','f-ytlabel'].forEach(id=>document.getElementById(id).value='');
-  document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
-  document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
-  showToast('✅ Séance publiée !');loadAdminSessions();
-}
 async function loadAdminSessions(){
   const progId=document.getElementById('admin-filter-prog').value;
   let q=sb.from('sessions').select('*,programmes(name,icon)').order('date',{ascending:false}).limit(50);
@@ -3260,7 +3239,7 @@ function openCycleCellModal(a,b,mode){
     presetsArea.style.display='block';
     presetsArea.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Prédéfini</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">
-        ${options.map(o=>`<button class="preset-option-btn" onclick="selectPreset(${JSON.stringify(o.text)},${JSON.stringify(o.color)})" style="background:${o.color};color:${isLightColor(o.color)?'#111':'#fff'};padding:6px 12px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px">${o.text}</button>`).join('')}
+        ${options.map(o=>`<button class="preset-option-btn" onclick='selectPreset(${JSON.stringify(o.text)},${JSON.stringify(o.color)})' style="background:${o.color};color:${isLightColor(o.color)?'#111':'#fff'};padding:6px 12px;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer;letter-spacing:.5px">${o.text}</button>`).join('')}
       </div>`;
   } else {
     subtitleEl.textContent='Ajoute une idée';
