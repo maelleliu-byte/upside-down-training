@@ -170,6 +170,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .scores-list{display:flex;flex-direction:column;gap:6px;margin-top:10px}
 .score-row{display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--dark);border-radius:8px}
 .score-rank{font-family:'Bebas Neue',sans-serif;font-size:18px;color:var(--muted);width:24px;flex-shrink:0;text-align:center}
+.score-avatar{width:34px;height:34px;border-radius:50%;flex-shrink:0;background:var(--card2) center/cover no-repeat;border:1.5px solid var(--border2);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:.5px;color:var(--text2);text-transform:uppercase;overflow:hidden}
+.score-avatar.has-img{background-color:transparent;border-color:rgba(255,255,255,.08)}
+.pr-hist-item .score-avatar{width:28px;height:28px;font-size:11px}
+.recent-score-row .score-avatar{width:32px;height:32px;font-size:12px}
 .score-rank.gold{color:#ffd700}
 .score-rank.silver{color:#c0c0c0}
 .score-rank.bronze{color:#cd7f32}
@@ -1177,6 +1181,18 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div class="stat-box"><div class="stat-val" id="stat-wod">—</div><div class="stat-lbl">WODs</div></div>
       <div class="stat-box"><div class="stat-val" id="stat-bench">—</div><div class="stat-lbl">Benchmarks</div></div>
     </div>
+    <div style="margin:0 20px 16px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Catégorie</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">Pour le classement Hommes / Femmes</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="cls-gtab" data-mygender="male" onclick="setMyGender('male')">♂ Homme</button>
+        <button class="cls-gtab" data-mygender="female" onclick="setMyGender('female')">♀ Femme</button>
+      </div>
+    </div>
     <div class="menu-item" onclick="toggleTheme()"><span class="menu-item-label" id="theme-label">🌙 Mode clair</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('pr')"><span class="menu-item-label">📊 Mes records (PR)</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('bench')"><span class="menu-item-label">🏆 Mes benchmarks</span><span>›</span></div>
@@ -1477,6 +1493,30 @@ async function uploadAvatar(ev){
   currentProfile.avatar_url=url;
   applyAvatarToUI(url);
 }
+function avatarHtml(profile,opts){
+  const cls=(opts&&opts.cls)||'score-avatar';
+  const url=profile&&profile.avatar_url;
+  const name=(profile&&profile.full_name)||'';
+  const initials=name?name.split(' ').filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2):'?';
+  if(url)return `<div class="${cls} has-img" style="background-image:url('${url.replace(/'/g,"\\'")}')"></div>`;
+  return `<div class="${cls}">${initials}</div>`;
+}
+function refreshMyGenderUI(){
+  const g=(currentProfile?.gender||'').toLowerCase();
+  const norm=(g==='m'||g==='homme')?'male':(g==='f'||g==='femme')?'female':g;
+  document.querySelectorAll('[data-mygender]').forEach(b=>{
+    b.classList.toggle('active',b.dataset.mygender===norm);
+  });
+}
+async function setMyGender(g){
+  if(!currentUser)return;
+  const {error}=await sb.from('profiles').update({gender:g}).eq('id',currentUser.id);
+  if(error){showToast('❌ '+error.message);return;}
+  currentProfile=currentProfile||{};
+  currentProfile.gender=g;
+  refreshMyGenderUI();
+  showToast(g==='male'?'♂ Catégorie Hommes':'♀ Catégorie Femmes');
+}
 function applyAvatarToUI(url){
   ['profil-avatar','avatar-btn','wellness-avatar'].forEach(id=>{
     const el=document.getElementById(id);
@@ -1501,6 +1541,7 @@ async function initApp(){
   if(tlbl){const cur=document.documentElement.getAttribute('data-theme')||'dark';tlbl.textContent=cur==='dark'?'🌙 Mode clair':'☀️ Mode sombre';}
   document.getElementById('profil-name').textContent=currentProfile?.full_name||'Athlète';
   document.getElementById('profil-email').textContent=currentUser.email;
+  refreshMyGenderUI();
   if(currentProfile?.role==='admin'){
     document.getElementById('admin-menu-item').style.display='flex';
     if(!document.querySelector('[data-page="admin"]')){
@@ -2042,7 +2083,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
   const el=document.getElementById('smodal-leaderboard');
   el.innerHTML='<div class="spinner"></div>';
   const [scoresRes, notesRes] = await Promise.all([
-    sb.from('wod_scores').select('*,profiles(full_name,gender)').eq('session_id',sessionId),
+    sb.from('wod_scores').select('*,profiles(full_name,gender,avatar_url)').eq('session_id',sessionId),
     sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false})
   ]);
   const data=scoresRes.data;
@@ -2110,6 +2151,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
       return `<div>
         <div class="score-row ${isDnf?'score-row-dnf':''}" style="${isMe?'border:1px solid rgba(232,255,71,.2)':''}" id="sr-${sc.id}">
           <div class="score-rank ${!isDnf?(rankIcons[i]||''):''}">${i+1}</div>
+          ${avatarHtml(sc.profiles)}
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <span class="score-name">${sc.profiles?.full_name||'Athlète'}${isMe?' 👈':''}</span>
@@ -2696,13 +2738,13 @@ async function saveBenchScore(){
   showToast('🏆 Score enregistré !');closeBenchModal();await loadMyBenchScores();
 }
 async function loadBenchLeaderboard(benchmarkId){
-  const {data}=await sb.from('benchmark_scores').select('*,profiles(full_name)').eq('benchmark_id',benchmarkId).order('level').order('score_value',{ascending:false});
+  const {data}=await sb.from('benchmark_scores').select('*,profiles(full_name,avatar_url)').eq('benchmark_id',benchmarkId).order('level').order('score_value',{ascending:false});
   const el=document.getElementById('bmodal-leaderboard');
   if(!data||data.length===0){el.innerHTML='';return;}
   const levelOrder={rx:0,intermediate:1,scaled:2,foundation:3};
   const sorted=[...data].sort((a,b)=>levelOrder[a.level]-levelOrder[b.level]||(b.score_value-a.score_value));
   el.innerHTML=`<div class="pr-hist-title">Leaderboard</div>`+sorted.slice(0,10).map((s,i)=>`<div class="pr-hist-item">
-    <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Bebas Neue';font-size:16px;color:var(--muted)">${i+1}</span><span style="font-size:13px;font-weight:600">${s.profiles?.full_name||'Athlète'}</span><span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span></div>
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Bebas Neue';font-size:16px;color:var(--muted)">${i+1}</span>${avatarHtml(s.profiles)}<span style="font-size:13px;font-weight:600">${s.profiles?.full_name||'Athlète'}</span><span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span></div>
     <span class="pr-hist-val" style="font-size:16px">${s.score_text||s.score_value}</span>
   </div>`).join('');
 }
@@ -2723,15 +2765,46 @@ async function loadProfilStats(){
 // ADMIN
 async function loadAdminProgs(){
   const grid=document.getElementById('admin-prog-grid');
+  // Toujours s'assurer que le bouton "+ Nouveau programme" est visible si le form est caché
+  const _form=document.getElementById('new-prog-form');
+  const _btn=document.getElementById('btn-show-new-prog');
+  if(_btn&&(!_form||_form.style.display==='none'))_btn.style.display='block';
   const counts={};
   for(const p of programmes){const {count}=await sb.from('sessions').select('id',{count:'exact'}).eq('programme_id',p.id);counts[p.id]=count||0;}
   grid.innerHTML=programmes.map(p=>`<div class="prog-card-admin" style="border-color:${p.color}33;position:relative">
     <button class="btn-delete" onclick="event.stopPropagation();deleteProgramme('${p.id}','${(p.name||'').replace(/'/g,"\\'")}',${counts[p.id]||0})" style="position:absolute;top:8px;right:8px;width:26px;height:26px;font-size:12px">✕</button>
+    <button class="btn-secondary" onclick="event.stopPropagation();editProgramme('${p.id}')" style="position:absolute;top:8px;right:40px;width:26px;height:26px;font-size:12px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center">✏</button>
     <div class="prog-card-icon">${p.icon||'💪'}</div>
     <div class="prog-card-name" style="color:${p.color}">${p.name}</div>
     <div class="prog-card-desc">${p.description||''}</div>
     <div class="prog-card-count" style="color:${p.color}">${counts[p.id]} séances</div>
   </div>`).join('');
+}
+
+async function editProgramme(id){
+  const p=programmes.find(x=>x.id===id);if(!p){showToast('❌ Programme introuvable');return;}
+  const newName=prompt('Nom du programme :',p.name);if(newName===null)return;
+  const newDesc=prompt('Description :',p.description||'');if(newDesc===null)return;
+  const newPriceStr=prompt('Prix mensuel (€) — vide si pas abonnement :',p.price_monthly||'');
+  if(newPriceStr===null)return;
+  const newPrice=newPriceStr.trim()===''?null:parseFloat(newPriceStr);
+  const updates={name:newName.trim()||p.name,description:newDesc.trim()};
+  if(p.type==='subscription')updates.price_monthly=newPrice;
+  const {error}=await sb.from('programmes').update(updates).eq('id',id);
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Programme mis à jour');
+  // Sync Stripe si abonnement avec prix
+  if(p.type==='subscription'&&newPrice){
+    showToast('⏳ Sync Stripe...');
+    try{
+      const fnUrl=(window.SUPABASE_URL||sb.supabaseUrl||'').replace(/\/$/,'')+'/functions/v1/create-stripe-product';
+      const res=await fetch(fnUrl,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({programme_id:id,name:updates.name,description:updates.description,price_monthly:newPrice,currency:'eur'})});
+      const data=await res.json();
+      if(data.error){showToast('⚠️ Stripe : '+data.error);}else{showToast('✅ Stripe synchronisé');}
+    }catch(e){console.warn(e);}
+  }
+  await loadProgrammes();await loadAdminProgs();
 }
 async function deleteProgramme(id,name,sessionCount){
   if(sessionCount>0){
@@ -2741,6 +2814,8 @@ async function deleteProgramme(id,name,sessionCount){
   }else{
     if(!confirm(`Supprimer le programme "${name}" ?`))return;
   }
+  // Récupérer les IDs Stripe AVANT suppression DB
+  const {data:progBeforeDelete}=await sb.from('programmes').select('stripe_product_id,stripe_price_id').eq('id',id).maybeSingle();
   // Nettoyer toutes les FK possibles (silencieux si table absente)
   await sb.from('athlete_programmes').delete().eq('programme_id',id).then(r=>r.error&&console.warn('athlete_programmes',r.error.message));
   await sb.from('programme_access').delete().eq('programme_id',id).then(r=>r.error&&console.warn('programme_access',r.error.message));
@@ -2754,6 +2829,15 @@ async function deleteProgramme(id,name,sessionCount){
     return;
   }
   showToast('🗑 Programme supprimé');
+  // Archiver le produit Stripe en arrière-plan (silencieux)
+  if(progBeforeDelete?.stripe_product_id||progBeforeDelete?.stripe_price_id){
+    try{
+      const fnUrl=(window.SUPABASE_URL||sb.supabaseUrl||'').replace(/\/$/,'')+'/functions/v1/delete-stripe-product';
+      fetch(fnUrl,{method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({stripe_product_id:progBeforeDelete.stripe_product_id,stripe_price_id:progBeforeDelete.stripe_price_id})
+      }).catch(e=>console.warn('stripe archive',e));
+    }catch(e){console.warn(e);}
+  }
   // Forcer reset du state local + reload complet
   programmes=programmes.filter(p=>p.id!==id);
   await loadProgrammes();
@@ -2780,10 +2864,46 @@ async function saveNewProg(){
   const price=parseFloat(document.getElementById('np-price').value)||null;
   const type=document.getElementById('np-type').value;
   if(!name){showToast('⚠️ Nom requis');return;}
-  const slug=name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-');
-  const {error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,created_by:currentUser.id});
-  if(error){showToast('❌ '+error.message);return;}
+  let slug=name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
+  // Vérifier si le slug existe déjà — si oui, ajouter un suffixe numérique
+  const {data:existing}=await sb.from('programmes').select('slug').like('slug',slug+'%');
+  if(existing&&existing.length>0){
+    const taken=new Set(existing.map(r=>r.slug));
+    if(taken.has(slug)){
+      let i=2;while(taken.has(slug+'-'+i))i++;
+      slug=slug+'-'+i;
+    }
+  }
+  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,created_by:currentUser.id}).select().single();
+  if(error){
+    showToast('❌ '+error.message);
+    // Restaurer le bouton "+ Nouveau programme" même en cas d'erreur
+    const btn=document.getElementById('btn-show-new-prog');if(btn)btn.style.display='block';
+    return;
+  }
   showToast('✅ Programme créé !');
+
+  // Si c'est un abonnement avec un prix, créer auto le produit Stripe
+  if(type==='subscription'&&price&&inserted?.id){
+    showToast('⏳ Création du produit Stripe...');
+    try{
+      const {data:{session}}=await sb.auth.getSession();
+      const token=session?.access_token;
+      const fnUrl=(window.SUPABASE_URL||sb.supabaseUrl||'').replace(/\/$/,'')+'/functions/v1/create-stripe-product';
+      const res=await fetch(fnUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({programme_id:inserted.id,name,description:desc,price_monthly:price,currency:'eur'})
+      });
+      const data=await res.json();
+      if(data.error){showToast('⚠️ Stripe : '+data.error);console.warn(data);}
+      else{showToast('✅ Produit Stripe créé !');}
+    }catch(e){
+      console.error('stripe sync error',e);
+      showToast('⚠️ Stripe non synchronisé : '+e.message);
+    }
+  }
+
   document.getElementById('new-prog-form').style.display='none';
   document.getElementById('btn-show-new-prog').style.display='block';
   document.getElementById('np-name').value='';document.getElementById('np-desc').value='';
@@ -2890,6 +3010,10 @@ async function loadAdminCalendar(){
             ondragstart="onSessionDragStart(event,'${s.id}')"
             ondragend="onSessionDragEnd(event)"
             onclick="openReadSession('${s.id}','session')">
+            <div class="cal-rich-actions" style="display:flex;position:absolute;top:2px;right:2px">
+              <button class="cal-action-btn" onclick="event.stopPropagation();editSession('${s.id}')">✏</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();deleteSession('${s.id}')">✕</button>
+            </div>
             <div class="cal-rich-title">— ${escapeHtml(s.title||'Séparateur')} —</div>
           </div>`;
         }
@@ -3302,8 +3426,9 @@ async function loadDashboard(){
     :topList.map((t,i)=>`<div class="inactive-row"><div class="inactive-name">${i===0?'🥇':i===1?'🥈':'🥉'} ${t.name}</div><div style="font-size:12px;color:var(--accent);font-weight:700">${t.count} PR</div></div>`).join('');
 
   // Derniers scores
-  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name),sessions(title)').order('created_at',{ascending:false}).limit(8);
+  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name,avatar_url),sessions(title)').order('created_at',{ascending:false}).limit(8);
   document.getElementById('dash-recent').innerHTML=(recentScores||[]).map(s=>`<div class="recent-score-row">
+    ${avatarHtml(s.profiles)}
     <div class="recent-score-info">
       <div class="recent-score-name">${s.profiles?.full_name||'—'}</div>
       <div class="recent-score-meta">${s.sessions?.title||'—'} · <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]||s.level}</span></div>
@@ -3954,34 +4079,65 @@ function hasAccess(prog){
 async function renderPlans(){
   await loadMyAccess();
   const list=document.getElementById('plans-list');
-  // Fusion : on liste TOUS les programmes de la DB.
-  // Si un programme a une entrée correspondante dans STRIPE_PLANS (par slug),
-  // on affiche le bouton S'abonner. Sinon, on affiche la carte sans paiement
-  // (ex: programme créé manuellement sans Stripe configuré).
+  // Liste TOUS les programmes de la DB.
+  // Un programme est "abonnable" si stripe_price_id est rempli (créé manuellement
+  // ou via la Edge Function create-stripe-product).
   const cards=programmes.map(p=>{
     const slug=p.slug;
-    const stripeCfg=STRIPE_PLANS[slug];
+    const stripeCfg=STRIPE_PLANS[slug]; // override pour les 4 historiques (features etc)
     const hasAccess=myAccess.has(slug)||myAccessIds.has(p.id)||currentProfile?.role==='admin';
     const icon=stripeCfg?.icon||p.icon||'💪';
     const name=stripeCfg?.name||p.name;
     const color=stripeCfg?.color||p.color||'#999';
-    const price=stripeCfg?.price||(p.price_monthly?p.price_monthly+'€':'—');
-    const period=stripeCfg?.period||(p.price_monthly?'/mois':'');
+    const priceVal=p.price_monthly||(stripeCfg?.price?parseFloat(stripeCfg.price):null);
+    const price=priceVal?priceVal+'€':'—';
+    const period=priceVal?'/mois':'';
     const desc=stripeCfg?.desc||p.description||'';
     const features=stripeCfg?.features||[];
+    const stripePriceId=p.stripe_price_id||stripeCfg?.priceId;
     return`<div class="plan-card ${slug==='affiliate'?'featured':''}">
       <div class="plan-header"><div><div style="font-size:28px;margin-bottom:4px">${icon}</div><div class="plan-name" style="color:${color}">${name}</div></div><div><div class="plan-price-val">${price}</div><div class="plan-price-period">${period}</div></div></div>
       ${desc?`<div class="plan-desc">${desc}</div>`:''}
       ${features.length?`<div class="plan-features">${features.map(f=>`<div class="plan-feature">${f}</div>`).join('')}</div>`:''}
       ${hasAccess
         ?`<div class="access-badge">✓ Accès actif</div>`
-        :stripeCfg
-          ?`<button class="btn-subscribe locked" onclick="subscribeTo('${slug}')">💳 S'abonner — ${price}${period}<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">14 jours d'essai gratuits</div></button>`
-          :`<div style="text-align:center;padding:14px;background:rgba(255,140,71,.1);border:1px dashed rgba(255,140,71,.4);border-radius:10px;color:var(--orange);font-size:12px;font-weight:700">⚠️ Stripe non configuré — contacte l'admin</div>`
+        :stripePriceId
+          ?`<button class="btn-subscribe locked" onclick="subscribeToProg('${p.id}')">💳 S'abonner — ${price}${period}<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">14 jours d'essai gratuits</div></button>`
+          :`<div style="text-align:center;padding:14px;background:rgba(255,140,71,.1);border:1px dashed rgba(255,140,71,.4);border-radius:10px;color:var(--orange);font-size:12px;font-weight:700">⚠️ Paiement non configuré</div>`
       }
     </div>`;
   }).join('');
   list.innerHTML=cards||'<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Aucun programme disponible</div>';
+}
+
+// Nouvelle fonction qui prend l'ID du programme et lit son stripe_price_id depuis la DB
+function subscribeToProg(programmeId){
+  const prog=programmes.find(p=>p.id===programmeId);
+  if(!prog){showToast('❌ Programme introuvable');return;}
+  if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
+  const priceId=prog.stripe_price_id||STRIPE_PLANS[prog.slug]?.priceId;
+  if(!priceId){showToast('❌ Stripe non configuré pour ce programme');return;}
+  showToast('⏳ Redirection vers Stripe...');
+  (async()=>{
+    try{
+      const {data:{session}}=await sb.auth.getSession();
+      const token=session?.access_token;
+      if(!token){showToast('⚠️ Session expirée — reconnecte-toi');return;}
+      const fnUrl=(window.SUPABASE_URL||sb.supabaseUrl||'').replace(/\/$/,'')+'/functions/v1/create-checkout-session';
+      const res=await fetch(fnUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({price_id:priceId,programme_slug:prog.slug})
+      });
+      const data=await res.json();
+      if(data.error){showToast('❌ '+data.error);console.error(data);return;}
+      if(data.url){window.location.href=data.url;}
+      else{showToast('❌ Pas d\'URL retournée');}
+    }catch(e){
+      console.error('subscribe error',e);
+      showToast('❌ Erreur : '+e.message);
+    }
+  })();
 }
 function subscribeTo(slug){
   const plan=STRIPE_PLANS[slug];if(!plan)return;
@@ -4194,7 +4350,11 @@ async function renderPersoCalendar(){
       const sessions=byDate[iso]||[];
       const blocks=sessions.length>0?sessions.map(s=>{
         if(s.type==='separator'){
-          return`<div class="cal-rich separator" onclick="openReadSession('${s.id}','personal')">
+          return`<div class="cal-rich separator" onclick="openReadSession('${s.id}','personal')" style="position:relative">
+            <div class="cal-rich-actions" style="display:flex;position:absolute;top:2px;right:2px">
+              <button class="cal-action-btn" onclick="event.stopPropagation();persoEditSession('${s.id}','${currentPersoAthlete.id}')">✏</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();persoDeleteSession('${s.id}')">✕</button>
+            </div>
             <div class="cal-rich-title">— ${escapeHtml(s.title||'Séparateur')} —</div>
           </div>`;
         }
