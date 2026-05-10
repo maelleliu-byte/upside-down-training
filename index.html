@@ -4176,10 +4176,10 @@ function renderCycleGrid(){
         const key=`${w}-${ci}`;
         const chips=(cycleData.cells[key]||[]);
         const chipsHtml=chips.map((chip,chi)=>`
-          <div class="cycle-chip" onclick="event.stopPropagation();editCycleChip(${w},${ci},${chi})" style="background:${chip.color}22;border:1px solid ${chip.color}55;color:${isLightColor(chip.color)?'#000':chip.color};${chip.done?'opacity:.55;text-decoration:line-through':''}">
-            <input type="checkbox" ${chip.done?'checked':''} onclick="event.stopPropagation();toggleChipDone('${key}',${chi})" title="Traité" style="margin-right:4px;cursor:pointer;accent-color:${chip.color}">
-            ${chip.text}
-            <button class="cycle-chip-del" onclick="event.stopPropagation();removeChip('${key}',${chi})">✕</button>
+          <div class="cycle-chip" style="background:${chip.color}22;border:1px solid ${chip.color}55;color:${isLightColor(chip.color)?'#000':chip.color};${chip.done?'opacity:.55;text-decoration:line-through':''};display:flex;align-items:center;gap:5px">
+            <span class="chip-toggle" data-toggle-key="${key}" data-toggle-idx="${chi}" role="checkbox" aria-checked="${!!chip.done}" title="Traité" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1.5px solid ${chip.color};border-radius:3px;background:${chip.done?chip.color:'transparent'};color:${isLightColor(chip.color)?'#000':'#fff'};font-size:12px;line-height:1;cursor:pointer;user-select:none">${chip.done?'✓':''}</span>
+            <span class="cycle-chip-text" style="flex:1;min-width:0" onclick="event.stopPropagation();editCycleChip(${w},${ci},${chi})">${chip.text}</span>
+            <button class="cycle-chip-del" onclick="event.stopPropagation();removeChip('${key}',${chi})" style="position:static;opacity:.6">✕</button>
           </div>`).join('');
         return`<td class="cycle-cell" onclick="openCycleCellModal(${w},${ci})">
           <div class="cycle-cell-content">
@@ -4192,6 +4192,10 @@ function renderCycleGrid(){
   }
   html+='</tbody></table>';
   grid.innerHTML=html;
+  // Bind direct listeners aux toggles (fiabilité max, bypass onclick parents)
+  grid.querySelectorAll('.chip-toggle').forEach(t=>{
+    t.addEventListener('click',function(ev){ev.stopPropagation();ev.preventDefault();const k=this.getAttribute('data-toggle-key');const i=parseInt(this.getAttribute('data-toggle-idx'));toggleChipDone(k,i);});
+  });
 }
 
 function renameColumn(ci,name){cycleData.columns[ci]=name;}
@@ -4253,12 +4257,15 @@ function renderSessionGrid(){
         ${DAYS_SESSION.map((_,di)=>{
           const key=`w${wk}-${ri}-${di}`;
           const chips=(cycleData.sessionCells[key]||[]);
-          const chipsHtml=chips.map((chip,chi)=>`
-            <div class="session-chip" onclick="event.stopPropagation();editSessionChip(${wk},${ri},${di},${chi})" style="background:${chip.color};color:${isLightColor(chip.color)?'#111':'#fff'};${chip.done?'opacity:.55;text-decoration:line-through':''}">
-              <input type="checkbox" ${chip.done?'checked':''} onclick="event.stopPropagation();toggleChipDone('${key}',${chi})" title="Traité" style="margin-right:4px;cursor:pointer;accent-color:#000">
-              ${chip.text}
-              <button class="session-chip-del" onclick="event.stopPropagation();removeSessionChip('${key}',${chi})">✕</button>
-            </div>`).join('');
+          const chipsHtml=chips.map((chip,chi)=>{
+            const fg=isLightColor(chip.color)?'#111':'#fff';
+            return`
+            <div class="session-chip" style="background:${chip.color};color:${fg};${chip.done?'opacity:.55;text-decoration:line-through':''};display:flex;align-items:center;gap:5px">
+              <span class="chip-toggle" data-toggle-key="${key}" data-toggle-idx="${chi}" role="checkbox" aria-checked="${!!chip.done}" title="Traité" style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1.5px solid ${fg};border-radius:3px;background:${chip.done?fg:'transparent'};color:${chip.done?(isLightColor(fg)?'#111':chip.color):fg};font-size:12px;line-height:1;cursor:pointer;user-select:none">${chip.done?'✓':''}</span>
+              <span class="session-chip-text" style="flex:1;min-width:0" onclick="event.stopPropagation();editSessionChip(${wk},${ri},${di},${chi})">${chip.text}</span>
+              <button class="session-chip-del" onclick="event.stopPropagation();removeSessionChip('${key}',${chi})" style="position:static;opacity:.7">✕</button>
+            </div>`;
+          }).join('');
           return`<td class="session-cell" onclick="openCycleCellModal(${wk},${ri},${di},'session')">
             <div class="session-cell-inner">${chipsHtml}<button class="cycle-add-btn">+</button></div>
           </td>`;
@@ -4268,11 +4275,35 @@ function renderSessionGrid(){
     html+='</tbody></table></div>';
   }
   grid.innerHTML=html;
+  grid.querySelectorAll('.chip-toggle').forEach(t=>{
+    t.addEventListener('click',function(ev){ev.stopPropagation();ev.preventDefault();const k=this.getAttribute('data-toggle-key');const i=parseInt(this.getAttribute('data-toggle-idx'));toggleChipDone(k,i);});
+  });
 }
 
-function toggleChipDone(key,chi){
+// Délégation capture-phase pour les toggles de chips (bypass tous les onclick parents)
+if(!window.__chipToggleBound){
+  window.__chipToggleBound=true;
+  document.addEventListener('click',function(e){
+    const t=e.target.closest&&e.target.closest('.chip-toggle');
+    if(!t)return;
+    e.stopPropagation();e.preventDefault();
+    const k=t.getAttribute('data-toggle-key');
+    const i=parseInt(t.getAttribute('data-toggle-idx'));
+    if(k!=null&&!isNaN(i))toggleChipDone(k,i);
+  },true);
+}
+
+async function toggleChipDone(key,chi){
   const arr=cycleData.sessionCells[key]||cycleData.cells[key];
-  if(arr&&arr[chi]){arr[chi].done=!arr[chi].done;renderCycleGrid();}
+  if(!arr||!arr[chi])return;
+  arr[chi].done=!arr[chi].done;
+  renderCycleGrid();
+  // Persistance silencieuse si cycle déjà sauvegardé
+  if(cycleData.id){
+    try{
+      await sb.from('cycle_plans').update({cells:cycleData.cells,session_cells:cycleData.sessionCells}).eq('id',cycleData.id);
+    }catch(e){console.warn('toggleChipDone persist',e);}
+  }
 }
 
 function removeSessionChip(key,chi){
@@ -4448,9 +4479,10 @@ function saveCycleChip(){
   } else {
     if(!cycleData.cells[key])cycleData.cells[key]=[];
     if(editIdx!=null){
-      cycleData.cells[key][editIdx]={text,color:selectedChipColor};
+      const prev=cycleData.cells[key][editIdx]||{};
+      cycleData.cells[key][editIdx]={text,color:selectedChipColor,done:!!prev.done};
     } else {
-      cycleData.cells[key].push({text,color:selectedChipColor});
+      cycleData.cells[key].push({text,color:selectedChipColor,done:false});
     }
     closeCycleCellModal();
     renderCycleGrid();
@@ -5270,7 +5302,7 @@ const PERSO_PROG={id:'__perso__',name:'Espace perso',color:'#e8ff47',icon:'👤'
 const __origRenderProgTabs=renderProgTabs;
 renderProgTabs=function(){
   __origRenderProgTabs();
-  // Ajouter l'onglet Espace perso à la fin (visible pour tous : athlètes ET admins peuvent voir leur propre espace)
+  // Ajouter l'onglet Espace perso en PREMIER (visible pour tous : athlètes ET admins peuvent voir leur propre espace)
   const tabs=document.getElementById('prog-tabs');
   if(!tabs)return;
   // Ne pas dupliquer
@@ -5280,7 +5312,7 @@ renderProgTabs=function(){
   btn.dataset.id='__perso__';
   btn.textContent='👤 Espace perso';
   btn.onclick=()=>selectProg('__perso__');
-  tabs.appendChild(btn);
+  tabs.insertBefore(btn, tabs.firstChild);
 };
 
 const __origSelectProg=selectProg;
