@@ -2,6 +2,7 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
+<script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.1/dist/drag-drop-touch.umd.min.js"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -408,6 +409,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cal-rich-meta .dot{width:3px;height:3px;border-radius:50%;background:var(--border2)}
 .cal-rich-actions{position:absolute;top:6px;right:6px;display:none;gap:3px;background:rgba(0,0,0,.55);padding:3px;border-radius:6px;backdrop-filter:blur(6px)}
 .cal-rich:hover .cal-rich-actions{display:flex}
+@media (hover:none){.cal-rich-actions{display:flex!important}}
+.cal-rich-nav{display:flex;gap:4px;margin:6px 0 4px;justify-content:flex-start}
+.cal-rich-nav .cal-action-btn{width:24px;height:22px;font-size:12px;background:rgba(255,255,255,.06);border:1px solid var(--border)}
 .cal-rich.separator{background:transparent;border:none;text-align:center;padding:6px 0;cursor:default}
 .cal-rich.separator .cal-rich-title{color:var(--accent);font-size:11px;letter-spacing:2px;margin:0}
 
@@ -422,6 +426,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .read-modal-foot{display:flex;gap:8px;padding:12px 16px;border-top:1px solid var(--border);flex-shrink:0}
 .read-modal-foot .btn-primary,.read-modal-foot .btn-secondary{flex:1;margin:0}
 
+.cal-rich.dragging{opacity:.4}
+.cal-day-col.drag-over{background:rgba(232,255,71,.06);border-radius:8px;outline:1.5px dashed rgba(232,255,71,.4);outline-offset:-2px}
 /* ESPACE PERSO — ADMIN */
 .perso-back{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:8px 0;margin-bottom:8px}
 .perso-back:hover{color:var(--text)}
@@ -748,8 +754,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <button class="admin-tab-btn" onclick="adminTab('benchmarks',this)">Mouv. &amp; Bench.</button>
       <button class="admin-tab-btn" onclick="adminTab('videos',this)">Vidéos</button>
       <button class="admin-tab-btn" onclick="adminTab('dashboard',this)">📊 Dashboard</button>
-      <button class="admin-tab-btn" onclick="adminTab('athletes',this)">Athlètes</button>
-      <button class="admin-tab-btn" onclick="adminTab('wellness',this)">💚 Wellness</button>
       <button class="admin-tab-btn" onclick="adminTab('perso',this)">👤 Espace perso</button>
     </div>
 
@@ -1139,6 +1143,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div id="dash-top"></div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin:16px 0 10px">Derniers scores</div>
       <div id="dash-recent"></div>
+      <div id="dash-wellness-section" style="margin-top:32px"></div>
+      <div id="dash-athletes-section" style="margin-top:32px"></div>
     </div>
 
     <!-- BIBLIOTHÈQUE VIDÉOS -->
@@ -3425,6 +3431,37 @@ function adminTab(tab,btn){
 }
 
 // ===== DASHBOARD COACH =====
+async function _dashEmbedExtras(){
+  const dash=document.getElementById('admin-dashboard');if(!dash)return;
+  const wMount=document.getElementById('dash-wellness-section');
+  const aMount=document.getElementById('dash-athletes-section');
+  if(!wMount||!aMount)return;
+  // Wellness — recharge puis clone
+  if(typeof loadWellnessAdmin==='function')try{await loadWellnessAdmin();}catch(e){}
+  const wSrc=document.getElementById('admin-wellness');
+  if(wSrc){
+    const wClone=wSrc.cloneNode(true);
+    wClone.id='admin-wellness-dash';
+    wClone.className='';wClone.style.cssText='padding:0';
+    // décale les ids dupliqués pour éviter conflits
+    wClone.querySelectorAll('[id]').forEach(el=>{el.id='dash-'+el.id;});
+    wMount.innerHTML='<div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:2px;margin:0 0 12px;border-top:1px solid var(--border);padding-top:20px">💚 WELLNESS</div>';
+    wMount.appendChild(wClone);
+  }
+  // Athlètes — recharge puis clone
+  if(typeof loadAdminAthletes==='function')try{await loadAdminAthletes();}catch(e){}
+  const aSrc=document.getElementById('admin-athletes');
+  if(aSrc){
+    const aClone=aSrc.cloneNode(true);
+    aClone.id='admin-athletes-dash';
+    aClone.className='';aClone.style.cssText='padding:0';
+    aClone.querySelectorAll('[id]').forEach(el=>{el.id='dash-'+el.id;});
+    // cache la fiche athlète clonée
+    const card=aClone.querySelector('#dash-admin-athlete-card');if(card)card.style.display='none';
+    aMount.innerHTML='<div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:2px;margin:0 0 12px;border-top:1px solid var(--border);padding-top:20px">👥 ATHLÈTES</div>';
+    aMount.appendChild(aClone);
+  }
+}
 async function loadDashboard(){
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
@@ -3481,6 +3518,7 @@ async function loadDashboard(){
     </div>
     <div class="recent-score-val">${s.score_text||s.score_value||'—'}</div>
   </div>`).join('');
+  await _dashEmbedExtras();
 }
 
 // ===== ÉDITEUR RICHE =====
@@ -4294,7 +4332,7 @@ async function loadPersoAthletes(){
   document.getElementById('perso-fiche-view').style.display='none';
   document.getElementById('perso-form-view').style.display='none';
 
-  const {data}=await sb.from('profiles').select('*').eq('role','athlete').order('full_name');
+  const {data}=await sb.from('profiles').select('*').order('full_name');
   persoAthletesCache=data||[];
   // Compter les séances perso par athlète
   const {data:counts}=await sb.from('personal_sessions').select('athlete_id');
@@ -4396,7 +4434,7 @@ async function renderPersoCalendar(){
       const sessions=byDate[iso]||[];
       const blocks=sessions.length>0?sessions.map(s=>{
         if(s.type==='separator'){
-          return`<div class="cal-rich separator" onclick="openReadSession('${s.id}','personal')" style="position:relative">
+          return`<div class="cal-rich separator" draggable="true" data-sid="${s.id}" data-date="${iso}" ondragstart="persoDragStart(event,'${s.id}','${iso}')" ondragend="persoDragEnd(event)" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}','${s.id}')" onclick="openReadSession('${s.id}','personal')" style="position:relative;cursor:grab">
             <div class="cal-rich-actions" style="display:flex;position:absolute;top:2px;right:2px">
               <button class="cal-action-btn" onclick="event.stopPropagation();persoEditSession('${s.id}','${currentPersoAthlete.id}')">✏</button>
               <button class="cal-action-btn" onclick="event.stopPropagation();persoDeleteSession('${s.id}')">✕</button>
@@ -4410,7 +4448,7 @@ async function renderPersoCalendar(){
         const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
         const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
         const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
-        return`<div class="cal-rich" onclick="openReadSession('${s.id}','personal')">
+        return`<div class="cal-rich" draggable="true" data-sid="${s.id}" data-date="${iso}" ondragstart="persoDragStart(event,'${s.id}','${iso}')" ondragend="persoDragEnd(event)" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}','${s.id}')" onclick="openReadSession('${s.id}','personal')" style="cursor:grab">
           <div class="cal-accent" style="background:${color}"></div>
           <div class="cal-rich-head">
             <span class="cal-rich-type" style="background:${color}22;color:${color}">${typeLabel}</span>
@@ -4422,9 +4460,15 @@ async function renderPersoCalendar(){
           <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
           ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
           <div class="cal-rich-meta">${intensity}${sets}${yt}</div>
+          <div class="cal-rich-nav">
+            <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveToDay('${s.id}',-1)" title="Jour précédent">‹</button>
+            <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveSession('${s.id}',-1)" title="Monter">↑</button>
+            <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveSession('${s.id}',1)" title="Descendre">↓</button>
+            <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveToDay('${s.id}',1)" title="Jour suivant">›</button>
+          </div>
         </div>`;
-      }).join(''):`<div class="cal-empty-day" onclick="persoNewSessionOn('${iso}')">+</div>`;
-      return`<div class="cal-day-col rich">${blocks}</div>`;
+      }).join(''):`<div class="cal-empty-day" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}',null)" onclick="persoNewSessionOn('${iso}')">+</div>`;
+      return`<div class="cal-day-col rich" data-date="${iso}" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}',null)">${blocks}</div>`;
     }).join('');
     area.innerHTML=`<div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div>`;
   } else {
@@ -4435,30 +4479,30 @@ async function renderPersoCalendar(){
     document.getElementById('perso-period-label').textContent=`${['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][month]} ${year}`;
     const first=new Date(year,month,1);
     const startDay=(first.getDay()===0?6:first.getDay()-1); // lundi=0
-    const startDate=new Date(year,month,1-startDay);
+    const startDate=new Date(Date.UTC(year,month,1-startDay));
     const cells=[];
     for(let i=0;i<42;i++){
-      const d=new Date(startDate);d.setDate(startDate.getDate()+i);
+      const d=new Date(startDate);d.setUTCDate(startDate.getUTCDate()+i);
       cells.push(d);
     }
     const isos=cells.map(d=>d.toISOString().split('T')[0]);
     const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
     const byDate={};isos.forEach(iso=>byDate[iso]=[]);
     (data||[]).forEach(s=>{if(byDate[s.date])byDate[s.date].push(s);});
-    const today=new Date().toISOString().split('T')[0];
+    const tNow=new Date();const today=`${tNow.getFullYear()}-${String(tNow.getMonth()+1).padStart(2,'0')}-${String(tNow.getDate()).padStart(2,'0')}`;
     const headers=['L','M','M','J','V','S','D'].map(h=>`<div class="h">${h}</div>`).join('');
     const cellsHtml=cells.map(d=>{
       const iso=d.toISOString().split('T')[0];
-      const isOther=d.getMonth()!==month;
+      const isOther=d.getUTCMonth()!==month;
       const isToday=iso===today;
       const sess=byDate[iso]||[];
-      const pills=sess.slice(0,2).map(s=>{
+      const pills=sess.map(s=>{
         const c=s.color||'#e8ff47';
         return`<div class="pill" style="background:${c}22;color:${c}" onclick="event.stopPropagation();openReadSession('${s.id}','personal')">${escapeHtml(s.title||'—').slice(0,18)}</div>`;
       }).join('');
-      const more=sess.length>2?`<div class="more">+${sess.length-2}</div>`:'';
+      const more='';
       return`<div class="perso-month-cell ${isOther?'other':''} ${isToday?'today':''}" onclick="persoMonthCellClick('${iso}')">
-        <div class="num">${d.getDate()}</div>
+        <div class="num">${d.getUTCDate()}</div>
         ${pills}${more}
       </div>`;
     }).join('');
@@ -4467,6 +4511,67 @@ async function renderPersoCalendar(){
   if(persoSessionsCache?.length===0&&persoView==='week'){
     // Pas vide totalement — on a déjà rendu les colonnes
   }
+}
+
+let _persoDrag=null;
+let _persoTouch=null;
+function persoDragStart(ev,sid,fromIso){
+  _persoDrag={sid,fromIso};
+  ev.dataTransfer.effectAllowed='move';
+  try{ev.dataTransfer.setData('text/plain',sid);}catch(e){}
+  ev.currentTarget.classList.add('dragging');
+}
+async function persoMoveSession(sid,direction){
+  const sess=persoSessionsCache.find(s=>s.id===sid);if(!sess)return;
+  const sameDay=persoSessionsCache.filter(s=>s.date===sess.date).sort((a,b)=>(a.sort_order??999)-(b.sort_order??999));
+  const idx=sameDay.findIndex(s=>s.id===sid);
+  const ni=idx+direction;if(ni<0||ni>=sameDay.length)return;
+  [sameDay[idx],sameDay[ni]]=[sameDay[ni],sameDay[idx]];
+  await Promise.all(sameDay.map((s,i)=>sb.from('personal_sessions').update({sort_order:i}).eq('id',s.id)));
+  await renderPersoCalendar();
+}
+async function persoMoveToDay(sid,delta){
+  const sess=persoSessionsCache.find(s=>s.id===sid);if(!sess)return;
+  const [y,m,da]=sess.date.split('-').map(Number);
+  const d=new Date(Date.UTC(y,m-1,da));
+  d.setUTCDate(d.getUTCDate()+delta);
+  const newIso=d.toISOString().split('T')[0];
+  await sb.from('personal_sessions').update({date:newIso,sort_order:9999}).eq('id',sid);
+  await renderPersoCalendar();
+}
+function persoDragEnd(ev){
+  ev.currentTarget.classList.remove('dragging');
+  document.querySelectorAll('.cal-day-col.drag-over').forEach(el=>el.classList.remove('drag-over'));
+}
+function persoDragOver(ev){
+  if(!_persoDrag)return;
+  ev.preventDefault();
+  ev.dataTransfer.dropEffect='move';
+  const col=ev.currentTarget.closest('.cal-day-col');
+  if(col){
+    document.querySelectorAll('.cal-day-col.drag-over').forEach(el=>{if(el!==col)el.classList.remove('drag-over');});
+    col.classList.add('drag-over');
+  }
+}
+async function persoDrop(ev,toIso,targetSid){
+  ev.preventDefault();ev.stopPropagation();
+  if(!_persoDrag)return;
+  const {sid,fromIso}=_persoDrag;_persoDrag=null;
+  document.querySelectorAll('.cal-day-col.drag-over,.cal-rich.dragging').forEach(el=>el.classList.remove('drag-over','dragging'));
+  if(sid===targetSid)return;
+  const target=persoSessionsCache.filter(s=>s.date===toIso&&s.id!==sid);
+  const moved=persoSessionsCache.find(s=>s.id===sid);if(!moved)return;
+  let insertAt=target.length;
+  if(targetSid){const idx=target.findIndex(s=>s.id===targetSid);if(idx>=0)insertAt=idx;}
+  target.splice(insertAt,0,{...moved,date:toIso});
+  try{
+    await Promise.all(target.map((s,i)=>sb.from('personal_sessions').update({date:toIso,sort_order:i}).eq('id',s.id)));
+    if(fromIso!==toIso){
+      const src=persoSessionsCache.filter(s=>s.date===fromIso&&s.id!==sid);
+      await Promise.all(src.map((s,i)=>sb.from('personal_sessions').update({sort_order:i}).eq('id',s.id)));
+    }
+  }catch(e){showToast('❌ '+(e.message||'Erreur'));return;}
+  if(typeof renderPersoFiche==='function')renderPersoFiche();
 }
 
 function persoMonthCellClick(iso){
