@@ -745,7 +745,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <button class="admin-tab-btn" onclick="adminTab('new-session',this)">+ Séance</button>
       <button class="admin-tab-btn" onclick="adminTab('sessions',this)">Séances</button>
       <button class="admin-tab-btn" onclick="adminTab('cycle',this)">🗓 Cycle</button>
-      <button class="admin-tab-btn" onclick="adminTab('benchmarks',this)">Benchmarks</button>
+      <button class="admin-tab-btn" onclick="adminTab('benchmarks',this)">Mouv. &amp; Bench.</button>
       <button class="admin-tab-btn" onclick="adminTab('videos',this)">Vidéos</button>
       <button class="admin-tab-btn" onclick="adminTab('dashboard',this)">📊 Dashboard</button>
       <button class="admin-tab-btn" onclick="adminTab('athletes',this)">Athlètes</button>
@@ -950,6 +950,12 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
     <!-- BENCHMARKS ADMIN -->
     <div class="admin-panel" id="admin-benchmarks">
+      <div class="pr-hist-title" style="margin-bottom:8px">Mouvements (PR)</div>
+      <div style="position:relative;margin-bottom:10px">
+        <input type="text" class="form-input" id="admin-mv-search" placeholder="Rechercher un mouvement…" oninput="loadAdminMovements()" style="padding-left:12px">
+      </div>
+      <div id="admin-mv-list" style="margin-bottom:22px"></div>
+      <div class="pr-hist-title" style="margin-bottom:8px">Benchmarks</div>
       <div id="admin-bench-list" style="margin-bottom:16px"></div>
       <div class="new-prog-form">
         <div class="new-prog-title">+ Nouveau benchmark</div>
@@ -2262,7 +2268,7 @@ function renderAll(){
       if(isAll)html+=`<div style="padding:12px 20px 4px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted)">RECORDS PERSONNELS</div>`;
       html+=filtered.map(m=>{
         const prs=myPRs[m.id]||[];
-        const formats=(m.available_formats||'').split(',').map(f=>f.trim()).filter(Boolean);
+        const formats=[...new Set((m.available_formats||'').split(',').map(f=>f.trim()).filter(Boolean).map(f=>f))];
         // Si le mouvement a des formats → une ligne par format (jaune)
         if(formats.length>0){
           return formats.map(fmt=>{
@@ -3310,10 +3316,50 @@ async function confirmDuplicate(){
   loadAdminSessions();
 }
 async function loadAdminBenchmarks(){
+  loadAdminMovements();
   const {data}=await sb.from('benchmarks').select('*').order('category,name');
   const el=document.getElementById('admin-bench-list');
   if(!data||data.length===0){el.innerHTML='';return;}
   el.innerHTML=`<div class="pr-hist-title">${data.length} benchmarks actifs</div>`+data.map(b=>`<div class="sessions-list-item"><div><div class="sli-title">${b.name}</div><div class="sli-meta">${b.category} · ${b.score_type}</div></div></div>`).join('');
+}
+async function loadAdminMovements(){
+  const el=document.getElementById('admin-mv-list');
+  if(!el)return;
+  const q=(document.getElementById('admin-mv-search')?.value||'').toLowerCase().trim();
+  const {data}=await sb.from('movements').select('*').order('category,name');
+  let list=data||[];
+  // Détection des doublons (même nom normalisé)
+  const norm=s=>s.toLowerCase().replace(/\s+/g,' ').trim();
+  const counts={};list.forEach(m=>{const k=norm(m.name);counts[k]=(counts[k]||0)+1;});
+  if(q)list=list.filter(m=>m.name.toLowerCase().includes(q)||(m.category||'').toLowerCase().includes(q));
+  if(!list.length){el.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0">Aucun mouvement.</div>';return;}
+  el.innerHTML=`<div style="font-size:11px;color:var(--muted);margin-bottom:6px">${list.length} mouvement${list.length>1?'s':''}</div>`+list.map(m=>{
+    const dup=counts[norm(m.name)]>1;
+    const inactive=m.is_active===false;
+    return `<div class="sessions-list-item" style="${dup?'border-left:3px solid var(--orange);padding-left:8px':''}">
+      <div style="flex:1;min-width:0">
+        <div class="sli-title" style="${inactive?'opacity:.5;text-decoration:line-through':''}">${m.name}${dup?' <span style="font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;background:rgba(255,140,71,.2);color:var(--orange);margin-left:6px;letter-spacing:.5px">DOUBLON</span>':''}${inactive?' <span style="font-size:9px;color:var(--muted)">(masqué)</span>':''}</div>
+        <div class="sli-meta">${m.category||'—'}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-delete" onclick="toggleMovementActive('${m.id}',${!inactive})" title="${inactive?'Réactiver':'Masquer'}" style="background:transparent;border:1px solid var(--border2);color:var(--muted);padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer">${inactive?'Réact.':'Masquer'}</button>
+        <button class="btn-delete" onclick="deleteMovement('${m.id}','${m.name.replace(/'/g,"\\'")}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function toggleMovementActive(id,deactivate){
+  const {error}=await sb.from('movements').update({is_active:!deactivate}).eq('id',id);
+  if(error){showToast('❌ '+error.message);return;}
+  showToast(deactivate?'🙈 Mouvement masqué':'✅ Mouvement réactivé');
+  await loadMovements();loadAdminMovements();
+}
+async function deleteMovement(id,name){
+  if(!confirm(`Supprimer définitivement « ${name} » ?\n\nLes PR liés seront aussi supprimés.`))return;
+  const {error}=await sb.from('movements').delete().eq('id',id);
+  if(error){showToast('❌ '+error.message+' — essaie « Masquer » à la place');return;}
+  showToast('🗑️ Mouvement supprimé');
+  await loadMovements();loadAdminMovements();
 }
 async function saveBenchmark(){
   const name=document.getElementById('b-name').value.trim();
