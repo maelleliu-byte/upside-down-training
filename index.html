@@ -128,9 +128,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 /* LEVEL SELECTOR */
 .level-selector{display:flex;gap:6px;margin-bottom:12px}
 .level-btn{flex:1;padding:8px 4px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;cursor:pointer;text-align:center;transition:all .2s;letter-spacing:.5px}
-.level-btn.rx.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,.08)}
-.level-btn.inter.active{border-color:var(--blue);color:var(--blue);background:rgba(71,200,255,.08)}
-.level-btn.scaled.active{border-color:var(--orange);color:var(--orange);background:rgba(255,140,71,.08)}
+.level-btn.rx.active{border-color:#111;color:#fff;background:#111}
+.level-btn.inter.active{border-color:var(--red);color:#fff;background:var(--red)}
+.level-btn.scaled.active{border-color:var(--blue);color:#fff;background:var(--blue)}
 .level-btn.found.active{border-color:var(--purple);color:var(--purple);background:rgba(200,71,255,.08)}
 
 /* SETS INPUT */
@@ -176,9 +176,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .score-name{flex:1;font-size:13px;font-weight:600}
 .score-val{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px}
 .level-badge{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;margin-left:4px}
-.lbadge-rx{background:rgba(232,255,71,.15);color:var(--accent)}
-.lbadge-intermediate{background:rgba(71,200,255,.12);color:var(--blue)}
-.lbadge-scaled{background:rgba(255,140,71,.12);color:var(--orange)}
+.lbadge-rx{background:#111;color:#fff;border:1px solid #333}
+.lbadge-intermediate{background:rgba(255,71,71,.18);color:#ff7a7a}
+.lbadge-scaled{background:rgba(71,200,255,.18);color:#7ad6ff}
 .lbadge-foundation{background:rgba(200,71,255,.12);color:var(--purple)}
 .score-sets-detail{font-size:11px;color:var(--muted);margin-top:2px}
 
@@ -479,6 +479,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .multi-score-input{flex:1;background:var(--dark);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:15px;font-weight:600;padding:9px 12px;outline:none;text-align:center}
 .multi-score-input:focus{border-color:var(--accent)}
 .score-note-input{width:100%;background:var(--dark);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:8px 12px;outline:none;margin-top:6px}
+
+/* Classement Homme/Femme tabs */
+.cls-gtab{flex:1;padding:8px 10px;background:transparent;border:1px solid var(--border2);color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;border-radius:8px;cursor:pointer;transition:all .15s}
+.cls-gtab.active{background:var(--accent);color:#000;border-color:var(--accent)}
 
 .cycle-mode-btn{flex:1;padding:10px;background:transparent;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s}
 .cycle-mode-btn.active{background:var(--card2);color:var(--orange)}
@@ -817,6 +821,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
             <option value="skill">Skill</option>
             <option value="warmup">Échauffement</option>
             <option value="mobility">Mobilité</option>
+            <option value="engine">Engine</option>
+            <option value="run">Run</option>
             <option value="separator">— Séparateur</option>
           </select>
         </div>
@@ -1315,6 +1321,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <div class="modal">
     <div class="scores-modal-title" id="smodal-title">Classement</div>
     <div class="scores-modal-sub" id="smodal-sub">—</div>
+    <div id="smodal-gender-tabs" style="display:flex;gap:6px;margin:10px 0 4px">
+      <button class="cls-gtab active" data-g="all" onclick="setLeaderboardGender('all')">Tous</button>
+      <button class="cls-gtab" data-g="male" onclick="setLeaderboardGender('male')">♂ Hommes</button>
+      <button class="cls-gtab" data-g="female" onclick="setLeaderboardGender('female')">♀ Femmes</button>
+    </div>
     <div class="scores-modal-input">
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📝 Ma note de séance</div>
       <textarea id="session-note-input" style="width:100%;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;resize:none;outline:none;min-height:60px" placeholder="Comment s'est passée la séance ? Sensations, difficultés..."></textarea>
@@ -1382,14 +1393,18 @@ let currentCat='all',searchQuery='',currentBcat='all';
 
 const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-const TYPE_LABELS={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymnastics:'Gymnastics',renforcement:'Renforcement',bodybuilding:'Bodybuilding',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité',separator:'Séparateur'};
+const TYPE_LABELS={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymnastics:'Gymnastics',renforcement:'Renforcement',bodybuilding:'Bodybuilding',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité',engine:'Engine',run:'Run',separator:'Séparateur'};
 const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio / Mono',autre:'Autre'};
 const LEVEL_LABELS={rx:'RX',intermediate:'Inter',scaled:'Scaled',foundation:'Fond.'};
-const LEVEL_COLORS={rx:'var(--accent)',intermediate:'var(--blue)',scaled:'var(--orange)',foundation:'var(--purple)'};
+const LEVEL_COLORS={rx:'#111',intermediate:'var(--red)',scaled:'var(--blue)',foundation:'var(--purple)'};
 const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétitions',rounds:'Ex: 12 + 5',weight:'Charge en kg (ex: 85)',calories:'Nombre de calories'};
+// STRIPE — clé publique LIVE + price IDs
+const STRIPE_PUBLIC_KEY='pk_live_51TTgoeGfW5FegIxCCDUZQvm2EakuXj3rC2UFYiRDXfvuaE42WwX3Hjys4734FK0p9Dqe5ngaCNKpR35ssPKRUVSH004VamRL0F';
 const STRIPE_PLANS={
-  affiliate:{paymentLink:'https://buy.stripe.com/eVqaEX5X37FN2fheZx5AQ01',name:'Affiliate',icon:'🏟',price:'120€',period:'/mois',desc:'Programmation salle complète — CrossFit Sandglass.',features:['WOD quotidien','Séances force & skill','Coaching tips & targets','Suivi des scores','PR tracking'],color:'#e8ff47'},
-  training:{paymentLink:'https://buy.stripe.com/4gM9ATfxDaRZ1bd9Fd5AQ00',name:'Training',icon:'💪',price:'45€',period:'/mois',desc:'Préparation compétition Upside Down.',features:['Programmation compétition','Haltérophilie avancée','Périodisation structurée','Suivi performances','Accès coach direct'],color:'#ff8c47'}
+  affiliate:{priceId:'price_1TThBIGfW5FegIxCy3Bd5zmi',name:'Affiliate',icon:'🏟',price:'120€',period:'/mois',trial:14,desc:'Programmation salle complète — CrossFit Sandglass.',features:['WOD quotidien','Séances force & skill','Coaching tips & targets','Suivi des scores','PR tracking','14 jours d\'essai gratuit'],color:'#e8ff47'},
+  hyrox:{priceId:'price_1TVVEsGfW5FegIxCD0fssSlu',name:'Hyrox',icon:'🏃',price:'30€',period:'/mois',trial:14,desc:'Programmation Hyrox — endurance & compromised running.',features:['Sessions Hyrox spécifiques','Compromised running','Sled push/pull','Wall balls & burpees','14 jours d\'essai gratuit'],color:'#ff4444'},
+  training:{priceId:'price_1TThDzGfW5FegIxCGRb4q1tN',name:'Training',icon:'💪',price:'45€',period:'/mois',trial:14,desc:'Préparation compétition Upside Down.',features:['Programmation compétition','Haltérophilie avancée','Périodisation structurée','Suivi performances','Accès coach direct','14 jours d\'essai gratuit'],color:'#ff8c47'},
+  kids:{priceId:'price_1TVVFiGfW5FegIxCmwl0GkBV',name:'Kids & Teens',icon:'🧒',price:'30€',period:'/mois',trial:14,desc:'Programmation jeunes athlètes (8-16 ans).',features:['Adapté au développement','Mouvements fondamentaux','Coordination & motricité','Suivi progression','14 jours d\'essai gratuit'],color:'#47b8ff'}
 };
 
 // SPLASH SCREEN
@@ -1528,7 +1543,7 @@ async function loadProgrammes(){
 
   // Gérer retour Stripe ici, après chargement des programmes
   const params=new URLSearchParams(window.location.search);
-  if(params.get('success')==='1'){
+  if(params.get('success')==='1'||params.get('subscription')==='success'){
     const progSlug=params.get('prog');
     if(progSlug&&currentUser){
       const programme=programmes.find(p=>p.slug===progSlug);
@@ -1538,8 +1553,12 @@ async function loadProgrammes(){
           programme_id:programme.id
         },{onConflict:'athlete_id,programme_id'});
         await loadMyAccess();
-        showToast('🎉 Accès activé !');
+        showToast('🎉 Abonnement activé !');
+      } else {
+        showToast('🎉 Abonnement activé !');
       }
+    } else {
+      showToast('🎉 Abonnement activé !');
     }
     window.history.replaceState({},'','/');
   }
@@ -1995,6 +2014,15 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
 // SCORES MODAL
 let currentScoresSession=null;
 
+window._leaderboardGender='all';
+function setLeaderboardGender(g){
+  window._leaderboardGender=g;
+  document.querySelectorAll('.cls-gtab').forEach(b=>b.classList.toggle('active',b.dataset.g===g));
+  if(currentScoresSession){
+    renderScoresModal(currentScoresSession.sessionId,currentScoresSession.scoreType,currentScoresSession.sets);
+  }
+}
+
 async function openScoresModal(sessionId, scoreType, sets){
   currentScoresSession={sessionId, scoreType, sets};
   document.getElementById('smodal-title').textContent='🏆 Classement';
@@ -2014,7 +2042,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
   const el=document.getElementById('smodal-leaderboard');
   el.innerHTML='<div class="spinner"></div>';
   const [scoresRes, notesRes] = await Promise.all([
-    sb.from('wod_scores').select('*,profiles(full_name)').eq('session_id',sessionId),
+    sb.from('wod_scores').select('*,profiles(full_name,gender)').eq('session_id',sessionId),
     sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false})
   ]);
   const data=scoresRes.data;
@@ -2022,6 +2050,23 @@ async function renderScoresModal(sessionId, scoreType, sets){
 
   if(!data||data.length===0){
     el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>Pas encore de scores.</p></div>';
+    return;
+  }
+
+  // Filtre genre (Homme / Femme / Tous)
+  const g=window._leaderboardGender||'all';
+  let filtered=data;
+  if(g!=='all'){
+    filtered=data.filter(d=>{
+      const gv=(d.profiles?.gender||'').toLowerCase();
+      if(g==='male')return gv==='male'||gv==='m'||gv==='homme';
+      if(g==='female')return gv==='female'||gv==='f'||gv==='femme';
+      return true;
+    });
+  }
+
+  if(filtered.length===0){
+    el.innerHTML='<div class="empty"><div class="empty-icon">👥</div><p>Aucun score pour ce genre.</p><p style="font-size:11px;color:var(--muted);margin-top:4px">Définis le genre dans le profil athlète pour activer le filtre.</p></div>';
     return;
   }
 
@@ -2034,7 +2079,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
   // - time : ASC (lowest = best), DNF (score_value < 0) toujours en bas, triés par reps DESC
   // - tous les autres : DESC
   const isTime = scoreType==='time';
-  const sorted=[...data].sort((a,b)=>{
+  const sorted=[...filtered].sort((a,b)=>{
     if(levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
     if(isTime){
       const aDnf=(a.score_value||0)<0, bDnf=(b.score_value||0)<0;
@@ -3499,7 +3544,8 @@ function renderCycleGrid(){
         const key=`${w}-${ci}`;
         const chips=(cycleData.cells[key]||[]);
         const chipsHtml=chips.map((chip,chi)=>`
-          <div class="cycle-chip" onclick="event.stopPropagation();editCycleChip(${w},${ci},${chi})" style="background:${chip.color}22;border:1px solid ${chip.color}55;color:${isLightColor(chip.color)?'#000':chip.color}">
+          <div class="cycle-chip" onclick="event.stopPropagation();editCycleChip(${w},${ci},${chi})" style="background:${chip.color}22;border:1px solid ${chip.color}55;color:${isLightColor(chip.color)?'#000':chip.color};${chip.done?'opacity:.55;text-decoration:line-through':''}">
+            <input type="checkbox" ${chip.done?'checked':''} onclick="event.stopPropagation();toggleChipDone('${key}',${chi})" title="Traité" style="margin-right:4px;cursor:pointer;accent-color:${chip.color}">
             ${chip.text}
             <button class="cycle-chip-del" onclick="event.stopPropagation();removeChip('${key}',${chi})">✕</button>
           </div>`).join('');
@@ -3534,35 +3580,47 @@ function removeChip(key,chi){
 function renderSessionGrid(){
   const rows=cycleData.rows;
   const grid=document.getElementById('cycle-grid');
-  let html=`<table class="session-grid-table"><thead><tr>
-    <th class="row-header">Catégorie</th>
-    ${DAYS_SESSION.map(d=>`<th>${d}</th>`).join('')}
-  </tr></thead><tbody>`;
-
-  rows.forEach((row,ri)=>{
-    html+=`<tr>
-      <td class="session-row-label">
-        <div class="session-row-label-inner">
-          <input type="text" value="${row}" oninput="cycleData.rows[${ri}]=this.value">
-          ${rows.length>1?`<button class="session-row-del" onclick="removeSessionRow(${ri})">✕</button>`:''}
-        </div>
-      </td>
-      ${DAYS_SESSION.map((_,di)=>{
-        const key=`${ri}-${di}`;
-        const chips=(cycleData.sessionCells[key]||[]);
-        const chipsHtml=chips.map((chip,chi)=>`
-          <div class="session-chip" onclick="event.stopPropagation();editSessionChip(${ri},${di},${chi})" style="background:${chip.color};color:${isLightColor(chip.color)?'#111':'#fff'}">
-            ${chip.text}
-            <button class="session-chip-del" onclick="event.stopPropagation();removeSessionChip('${key}',${chi})">✕</button>
-          </div>`).join('');
-        return`<td class="session-cell" onclick="openCycleCellModal(${ri},${di},'session')">
-          <div class="session-cell-inner">${chipsHtml}<button class="cycle-add-btn">+</button></div>
-        </td>`;
-      }).join('')}
-    </tr>`;
-  });
-  html+='</tbody></table>';
+  const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
+  cycleData.weeks=weeks;
+  let html='';
+  for(let wk=0; wk<weeks; wk++){
+    html+=`<div style="margin-bottom:18px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--orange);margin:6px 2px 6px;padding:4px 0;border-bottom:1px solid var(--border2)">SEMAINE ${wk+1}</div>
+      <table class="session-grid-table"><thead><tr>
+        <th class="row-header">Catégorie</th>
+        ${DAYS_SESSION.map(d=>`<th>${d}</th>`).join('')}
+      </tr></thead><tbody>`;
+    rows.forEach((row,ri)=>{
+      html+=`<tr>
+        <td class="session-row-label">
+          <div class="session-row-label-inner">
+            <input type="text" value="${row}" oninput="cycleData.rows[${ri}]=this.value">
+            ${rows.length>1?`<button class="session-row-del" onclick="removeSessionRow(${ri})">✕</button>`:''}
+          </div>
+        </td>
+        ${DAYS_SESSION.map((_,di)=>{
+          const key=`w${wk}-${ri}-${di}`;
+          const chips=(cycleData.sessionCells[key]||[]);
+          const chipsHtml=chips.map((chip,chi)=>`
+            <div class="session-chip" onclick="event.stopPropagation();editSessionChip(${wk},${ri},${di},${chi})" style="background:${chip.color};color:${isLightColor(chip.color)?'#111':'#fff'};${chip.done?'opacity:.55;text-decoration:line-through':''}">
+              <input type="checkbox" ${chip.done?'checked':''} onclick="event.stopPropagation();toggleChipDone('${key}',${chi})" title="Traité" style="margin-right:4px;cursor:pointer;accent-color:#000">
+              ${chip.text}
+              <button class="session-chip-del" onclick="event.stopPropagation();removeSessionChip('${key}',${chi})">✕</button>
+            </div>`).join('');
+          return`<td class="session-cell" onclick="openCycleCellModal(${wk},${ri},${di},'session')">
+            <div class="session-cell-inner">${chipsHtml}<button class="cycle-add-btn">+</button></div>
+          </td>`;
+        }).join('')}
+      </tr>`;
+    });
+    html+='</tbody></table></div>';
+  }
   grid.innerHTML=html;
+}
+
+function toggleChipDone(key,chi){
+  const arr=cycleData.sessionCells[key]||cycleData.cells[key];
+  if(arr&&arr[chi]){arr[chi].done=!arr[chi].done;renderCycleGrid();}
 }
 
 function removeSessionChip(key,chi){
@@ -3605,23 +3663,26 @@ function getRowOptions(rowName){
   return key?SESSION_ROW_OPTIONS[key]:null;
 }
 
-function openCycleCellModal(a,b,mode){
-  cycleCellTarget={a,b,mode:mode||'cycle'};
-  const label=mode==='session'?`${cycleData.rows[a]||'—'} — ${DAYS_SESSION[b]}`:`Sem. ${a+1} — ${cycleData.columns[b]||'—'}`;
+function openCycleCellModal(a,b,c,mode){
+  // session mode: a=wk, b=ri, c=di | cycle mode: a=wk, b=ci (c omitted)
+  const isSession=(mode==='session'||c!=null&&typeof c==='number');
+  const realMode=isSession?'session':(mode||'cycle');
+  cycleCellTarget=isSession?{wk:a,ri:b,di:c,mode:'session'}:{a,b,mode:realMode};
+  const label=isSession?`Sem. ${a+1} — ${cycleData.rows[b]||'—'} — ${DAYS_SESSION[c]}`:`Sem. ${a+1} — ${cycleData.columns[b]||'—'}`;
   document.getElementById('cycle-cell-title').textContent=label;
   document.getElementById('cycle-cell-modal').classList.add('open');
 
   // En mode session, chercher des options prédéfinies
-  const rowName=mode==='session'?cycleData.rows[a]:'';
-  const options=mode==='session'?getRowOptions(rowName):null;
+  const rowName=isSession?cycleData.rows[b]:'';
+  const options=isSession?getRowOptions(rowName):null;
 
   const subtitleEl=document.getElementById('cycle-cell-subtitle');
   const inputArea=document.getElementById('cycle-cell-input-area');
   const presetsArea=document.getElementById('cycle-cell-presets');
 
   if(options&&options.length){
-    const isMulti=mode==='session'&&rowName.toLowerCase().includes('mouvement');
-    const key=`${a}-${b}`;
+    const isMulti=isSession&&rowName.toLowerCase().includes('mouvement');
+    const key=isSession?`w${a}-${b}-${c}`:`${a}-${b}`;
     const existing=new Set(((cycleData.sessionCells||{})[key]||[]).map(c=>c.text));
     subtitleEl.textContent=isMulti?'Sélection multiple — clique pour ajouter/retirer':'Sélectionne ou tape librement';
     presetsArea.style.display='block';
@@ -3642,10 +3703,11 @@ function openCycleCellModal(a,b,mode){
 
 function selectPreset(text,color){
   if(!cycleCellTarget)return;
-  const key=`${cycleCellTarget.a}-${cycleCellTarget.b}`;
+  const t=cycleCellTarget;
+  const key=t.mode==='session'?`w${t.wk}-${t.ri}-${t.di}`:`${t.a}-${t.b}`;
   if(cycleCellTarget.mode==='session'){
     if(!cycleData.sessionCells[key])cycleData.sessionCells[key]=[];
-    const rowName=cycleData.rows[cycleCellTarget.a]||'';
+    const rowName=cycleData.rows[t.ri]||'';
     const isMulti=rowName.toLowerCase().includes('mouvement');
     if(isMulti){
       // Toggle: ajouter si absent, retirer si déjà présent
@@ -3700,12 +3762,12 @@ function editCycleChip(w,ci,chi){
   document.getElementById('cycle-cell-modal').classList.add('open');
 }
 
-function editSessionChip(ri,di,chi){
-  const key=`${ri}-${di}`;
+function editSessionChip(wk,ri,di,chi){
+  const key=`w${wk}-${ri}-${di}`;
   const chip=(cycleData.sessionCells[key]||[])[chi];
   if(!chip)return;
-  cycleCellTarget={a:ri,b:di,mode:'session',editIdx:chi};
-  document.getElementById('cycle-cell-title').textContent=`${cycleData.rows[ri]||'—'} — ${DAYS_SESSION[di]}`;
+  cycleCellTarget={wk,ri,di,mode:'session',editIdx:chi};
+  document.getElementById('cycle-cell-title').textContent=`Sem. ${wk+1} — ${cycleData.rows[ri]||'—'} — ${DAYS_SESSION[di]}`;
   document.getElementById('cycle-cell-subtitle').textContent='Modifier le bloc';
   document.getElementById('cycle-cell-presets').style.display='none';
   document.getElementById('cycle-cell-input').value=chip.text;
@@ -3718,7 +3780,8 @@ function saveCycleChip(){
   if(!cycleCellTarget)return;
   const text=document.getElementById('cycle-cell-input').value.trim();
   if(!text){showToast('⚠️ Entre du contenu');return;}
-  const key=`${cycleCellTarget.a}-${cycleCellTarget.b}`;
+  const t=cycleCellTarget;
+  const key=t.mode==='session'?`w${t.wk}-${t.ri}-${t.di}`:`${t.a}-${t.b}`;
   const editIdx=cycleCellTarget.editIdx;
 
   if(cycleCellTarget.mode==='session'){
@@ -3891,20 +3954,60 @@ function hasAccess(prog){
 async function renderPlans(){
   await loadMyAccess();
   const list=document.getElementById('plans-list');
-  list.innerHTML=Object.entries(STRIPE_PLANS).map(([slug,plan])=>{
-    const hasAccess=myAccess.has(slug)||currentProfile?.role==='admin';
+  // Fusion : on liste TOUS les programmes de la DB.
+  // Si un programme a une entrée correspondante dans STRIPE_PLANS (par slug),
+  // on affiche le bouton S'abonner. Sinon, on affiche la carte sans paiement
+  // (ex: programme créé manuellement sans Stripe configuré).
+  const cards=programmes.map(p=>{
+    const slug=p.slug;
+    const stripeCfg=STRIPE_PLANS[slug];
+    const hasAccess=myAccess.has(slug)||myAccessIds.has(p.id)||currentProfile?.role==='admin';
+    const icon=stripeCfg?.icon||p.icon||'💪';
+    const name=stripeCfg?.name||p.name;
+    const color=stripeCfg?.color||p.color||'#999';
+    const price=stripeCfg?.price||(p.price_monthly?p.price_monthly+'€':'—');
+    const period=stripeCfg?.period||(p.price_monthly?'/mois':'');
+    const desc=stripeCfg?.desc||p.description||'';
+    const features=stripeCfg?.features||[];
     return`<div class="plan-card ${slug==='affiliate'?'featured':''}">
-      <div class="plan-header"><div><div style="font-size:28px;margin-bottom:4px">${plan.icon}</div><div class="plan-name" style="color:${plan.color}">${plan.name}</div></div><div><div class="plan-price-val">${plan.price}</div><div class="plan-price-period">${plan.period}</div></div></div>
-      <div class="plan-desc">${plan.desc}</div>
-      <div class="plan-features">${plan.features.map(f=>`<div class="plan-feature">${f}</div>`).join('')}</div>
-      ${hasAccess?`<div class="access-badge">✓ Accès actif</div>`:`<button class="btn-subscribe locked" onclick="subscribeTo('${slug}')">💳 S'abonner — ${plan.price}${plan.period}</button>`}
+      <div class="plan-header"><div><div style="font-size:28px;margin-bottom:4px">${icon}</div><div class="plan-name" style="color:${color}">${name}</div></div><div><div class="plan-price-val">${price}</div><div class="plan-price-period">${period}</div></div></div>
+      ${desc?`<div class="plan-desc">${desc}</div>`:''}
+      ${features.length?`<div class="plan-features">${features.map(f=>`<div class="plan-feature">${f}</div>`).join('')}</div>`:''}
+      ${hasAccess
+        ?`<div class="access-badge">✓ Accès actif</div>`
+        :stripeCfg
+          ?`<button class="btn-subscribe locked" onclick="subscribeTo('${slug}')">💳 S'abonner — ${price}${period}<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">14 jours d'essai gratuits</div></button>`
+          :`<div style="text-align:center;padding:14px;background:rgba(255,140,71,.1);border:1px dashed rgba(255,140,71,.4);border-radius:10px;color:var(--orange);font-size:12px;font-weight:700">⚠️ Stripe non configuré — contacte l'admin</div>`
+      }
     </div>`;
   }).join('');
+  list.innerHTML=cards||'<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Aucun programme disponible</div>';
 }
 function subscribeTo(slug){
   const plan=STRIPE_PLANS[slug];if(!plan)return;
   if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
-  window.location.href=plan.paymentLink+'?prefilled_email='+encodeURIComponent(currentUser.email);
+  // Appel à la Edge Function Supabase qui crée la Checkout Session
+  showToast('⏳ Redirection vers Stripe...');
+  (async()=>{
+    try{
+      const {data:{session}}=await sb.auth.getSession();
+      const token=session?.access_token;
+      if(!token){showToast('⚠️ Session expirée — reconnecte-toi');return;}
+      const fnUrl=(window.SUPABASE_URL||sb.supabaseUrl||'').replace(/\/$/,'')+'/functions/v1/create-checkout-session';
+      const res=await fetch(fnUrl,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+        body:JSON.stringify({price_id:plan.priceId,programme_slug:slug})
+      });
+      const data=await res.json();
+      if(data.error){showToast('❌ '+data.error);console.error(data);return;}
+      if(data.url){window.location.href=data.url;}
+      else{showToast('❌ Pas d\'URL retournée');}
+    }catch(e){
+      console.error('subscribe error',e);
+      showToast('❌ Erreur : '+e.message);
+    }
+  })();
 }
 // UTILS
 function getScorePlaceholder(type){return{time:'14:32',reps:'87',rounds:'12 + 5',weight:'85',calories:'42'}[type]||'—';}
@@ -4724,7 +4827,16 @@ async function saveWellness(){
   payload.notes=notes;
   // upsert sur (athlete_id,date)
   const {error}=await sb.from('wellness_entries').upsert(payload,{onConflict:'athlete_id,date'});
-  if(error){showToast('❌ '+error.message);console.error(error);return;}
+  if(error){
+    console.error('wellness save',error);
+    const msg=(error.message||'').toLowerCase();
+    if(msg.includes('schema')||msg.includes('does not exist')||msg.includes('not find')){
+      showToast('⚠️ Table wellness manquante — exécute sql/wellness_entries.sql dans Supabase');
+    } else {
+      showToast('❌ '+error.message);
+    }
+    return;
+  }
   showToast('✅ Wellness enregistré');
   _wellnessToday=payload;
   document.getElementById('wellness-save-btn').textContent='Mettre à jour';
