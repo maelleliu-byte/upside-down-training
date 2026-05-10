@@ -523,6 +523,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cycle-col-header input:focus{color:var(--text);border-bottom:1px solid var(--orange)}
 .cycle-col-del{background:transparent;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0;line-height:1;opacity:.5}
 .cycle-col-del:hover{opacity:1;color:var(--red)}
+.cycle-col-move{background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:0 2px;line-height:1;opacity:.5;font-weight:700}
+.cycle-col-move:hover{opacity:1;color:var(--orange)}
+.cycle-col-move:disabled{opacity:.15;cursor:not-allowed}
 .cycle-week-cell{background:var(--dark);padding:6px 8px;border:1px solid var(--border2);vertical-align:top;min-width:90px;max-width:130px;position:sticky;left:0;z-index:4}
 .cycle-week-label{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;color:var(--text2)}
 .cycle-week-dates{font-size:10px;color:var(--muted);margin-top:2px}
@@ -590,6 +593,38 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .year-tabs::-webkit-scrollbar{display:none}
 .year-tab{flex-shrink:0;background:transparent;border:1.5px solid var(--border2);color:var(--muted);font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;padding:6px 14px;border-radius:8px;cursor:pointer}
 .year-tab.active{background:var(--accent);color:#000;border-color:var(--accent)}
+
+/* Vue d'ensemble saison */
+.season-overview{margin-bottom:16px}
+.season-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;padding:8px 2px}
+.season-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;line-height:1}
+.season-sub{font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:1.2px}
+.season-stats{display:flex;gap:10px}
+.season-stat{background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:6px 10px;text-align:center;min-width:54px}
+.season-stat-n{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;line-height:1;color:var(--orange)}
+.season-stat-l{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-top:2px}
+.season-months{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px}
+.season-month{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 12px;display:flex;flex-direction:column;gap:8px;min-height:120px}
+.season-month.is-current{border-color:var(--orange);box-shadow:inset 0 0 0 1px var(--orange)}
+.season-month.is-empty{opacity:.55}
+.season-month-head{display:flex;align-items:baseline;justify-content:space-between;border-bottom:1px solid var(--border2);padding-bottom:6px}
+.season-month-name{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:2px}
+.season-month-now{font-size:8px;font-weight:700;letter-spacing:1.2px;color:var(--orange);text-transform:uppercase}
+.season-month-count{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase}
+.season-month-empty{font-size:11px;color:var(--muted);font-style:italic;padding:6px 2px}
+.season-cycle{background:var(--card2);border:1px solid var(--border2);border-left:3px solid var(--orange);border-radius:8px;padding:8px 9px;cursor:pointer;transition:border-color .15s,transform .1s}
+.season-cycle:hover{border-color:var(--orange);transform:translateY(-1px)}
+.season-cycle-name{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;line-height:1.15;text-transform:uppercase;text-wrap:pretty}
+.season-cycle-meta{font-size:10px;color:var(--muted);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+.season-cycle-meta b{color:var(--text2);font-weight:600}
+.season-cycle-tags{display:flex;flex-wrap:wrap;gap:3px;margin-top:6px}
+.season-cycle-tag{font-size:9px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;padding:2px 6px;border-radius:4px;background:rgba(255,255,255,.05);color:var(--text2);border:1px solid var(--border2);white-space:nowrap}
+.season-cycle-tag.more{background:transparent;color:var(--muted);border-style:dashed}
+
+/* Thèmes éditeur */
+.theme-chip{display:inline-flex;align-items:center;gap:5px;font-family:'Bebas Neue',sans-serif;font-size:11px;letter-spacing:1.2px;text-transform:uppercase;padding:4px 8px;border-radius:6px;border:1px solid currentColor;background:rgba(255,255,255,.04)}
+.theme-chip button{background:none;border:none;color:inherit;font-size:12px;line-height:1;padding:0 0 0 3px;cursor:pointer;opacity:.6}
+.theme-chip button:hover{opacity:1}
 
 /* Liste cycles (filtre par année) */
 .cycle-list-row{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
@@ -1009,6 +1044,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
       <!-- Filtre par année -->
       <div class="year-tabs" id="cycle-year-tabs"></div>
+
+      <!-- Vue d'ensemble saison (visible quand une année est sélectionnée) -->
+      <div class="season-overview" id="cycle-season-overview" style="display:none"></div>
 
       <!-- Sélecteur cycles -->
       <div style="display:flex;gap:8px;margin-bottom:12px">
@@ -3816,16 +3854,91 @@ async function initCyclePlanner(){
 
 let cycleYearFilter='all'; // 'all' or 4-digit year as string
 async function loadAllCycles(){
-  const {data}=await sb.from('cycle_plans').select('id,name,start_date,created_at').order('start_date',{ascending:false,nullsFirst:false});
+  const {data}=await sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
   allCycles=data||[];
   renderCycleYearTabs();
   renderCycleSelector();
+  renderSeasonOverview();
 }
 function _cycleYear(c){
   if(c.start_date)return new Date(c.start_date+'T12:00:00').getFullYear();
   if(c.created_at)return new Date(c.created_at).getFullYear();
   return null;
 }
+function _cycleStartDate(c){
+  if(c.start_date)return new Date(c.start_date+'T12:00:00');
+  if(c.created_at)return new Date(c.created_at);
+  return null;
+}
+function _cycleEndDate(c){
+  const s=_cycleStartDate(c);if(!s)return null;
+  const wk=parseInt(c.weeks)||8;
+  const e=new Date(s);e.setDate(s.getDate()+wk*7-1);
+  return e;
+}
+function _cycleMonthsInYear(c,year){
+  // Retourne les indices de mois (0..11) que le cycle couvre dans `year`
+  const s=_cycleStartDate(c),e=_cycleEndDate(c);
+  if(!s||!e)return [];
+  const months=new Set();
+  const cur=new Date(s.getFullYear(),s.getMonth(),1);
+  const end=new Date(e.getFullYear(),e.getMonth(),1);
+  while(cur<=end){
+    if(cur.getFullYear()===year)months.add(cur.getMonth());
+    cur.setMonth(cur.getMonth()+1);
+  }
+  return [...months];
+}
+// Thèmes : extraits de la colonne "Thème" du cycle
+function _themeColumnIndex(c){
+  const cols=c.columns||[];
+  return cols.findIndex(n=>{
+    const s=(n||'').toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return s.startsWith('them'); // matche theme, thème, themes, thèmes, thématique...
+  });
+}
+function _cycleThemes(c){
+  // Récupère les chips de la colonne "Thème", semaine par semaine
+  const ci=_themeColumnIndex(c);
+  if(ci<0)return [];
+  const cells=c.cells||{};
+  const out=[];const seen=new Set();
+  const weeks=parseInt(c.weeks)||0;
+  for(let w=0;w<weeks;w++){
+    const arr=cells[`${w}-${ci}`];
+    if(!Array.isArray(arr))continue;
+    arr.forEach(chip=>{
+      const t=(chip&&chip.text||'').trim();
+      if(!t)return;
+      const key=t.toUpperCase();
+      if(seen.has(key))return;
+      seen.add(key);
+      out.push({text:t,color:chip.color||'#ff8c47'});
+    });
+  }
+  return out;
+}
+
+function _cycleTopTags(c,max=4){
+  // 1) Priorité aux chips de la colonne "Thème"
+  const themes=_cycleThemes(c);
+  if(themes.length)return themes.slice(0,max).map(t=>({text:t.text,color:t.color||'#ff8c47',n:1}));
+  // 2) Sinon, fallback sur les chips les plus fréquents
+  const cells=c.cells||{};
+  const counts={};
+  Object.entries(cells).forEach(([k,arr])=>{
+    if(k==='__themes__'||!Array.isArray(arr))return;
+    arr.forEach(chip=>{
+      const t=(chip&&chip.text||'').trim();
+      if(!t)return;
+      const key=t.toUpperCase();
+      if(!counts[key])counts[key]={text:t,n:0,color:chip.color||'#ff8c47'};
+      counts[key].n++;
+    });
+  });
+  return Object.values(counts).sort((a,b)=>b.n-a.n).slice(0,max);
+}
+function _fmtDay(d){return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}`}
 function renderCycleYearTabs(){
   const wrap=document.getElementById('cycle-year-tabs');
   if(!wrap)return;
@@ -3838,6 +3951,85 @@ function setCycleYear(y){
   cycleYearFilter=String(y);
   renderCycleYearTabs();
   renderCycleSelector();
+  renderSeasonOverview();
+}
+
+const MONTHS_FR=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+function renderSeasonOverview(){
+  const wrap=document.getElementById('cycle-season-overview');
+  if(!wrap)return;
+  if(cycleYearFilter==='all'){wrap.style.display='none';wrap.innerHTML='';return;}
+  const year=parseInt(cycleYearFilter);
+  if(!year){wrap.style.display='none';return;}
+  const yearCycles=allCycles.filter(c=>_cycleYear(c)===year ||
+    (_cycleStartDate(c)&&_cycleEndDate(c)&&_cycleStartDate(c).getFullYear()<=year&&_cycleEndDate(c).getFullYear()>=year));
+  const now=new Date();
+  const isCurrentYear=now.getFullYear()===year;
+  const totalWeeks=yearCycles.reduce((s,c)=>s+(parseInt(c.weeks)||0),0);
+
+  let html=`<div class="season-head">
+    <div>
+      <div class="season-title">Saison ${year}</div>
+      <div class="season-sub">Vue d'ensemble — mois par mois</div>
+    </div>
+    <div class="season-stats">
+      <div class="season-stat"><div class="season-stat-n">${yearCycles.length}</div><div class="season-stat-l">Cycles</div></div>
+      <div class="season-stat"><div class="season-stat-n">${totalWeeks}</div><div class="season-stat-l">Semaines</div></div>
+    </div>
+  </div>
+  <div class="season-months">`;
+
+  for(let m=0;m<12;m++){
+    const inMonth=yearCycles.filter(c=>_cycleMonthsInYear(c,year).includes(m));
+    const isCurrent=isCurrentYear&&now.getMonth()===m;
+    const cls=['season-month'];
+    if(isCurrent)cls.push('is-current');
+    if(!inMonth.length)cls.push('is-empty');
+    html+=`<div class="${cls.join(' ')}">
+      <div class="season-month-head">
+        <div class="season-month-name">${MONTHS_FR[m]}${isCurrent?' <span class="season-month-now">· en cours</span>':''}</div>
+        <div class="season-month-count">${inMonth.length||'—'}</div>
+      </div>`;
+    if(!inMonth.length){
+      html+=`<div class="season-month-empty">Aucun cycle programmé</div>`;
+    } else {
+      inMonth.forEach(c=>{
+        const s=_cycleStartDate(c),e=_cycleEndDate(c);
+        const tags=_cycleTopTags(c,4);
+        const cellEntries=Object.entries(c.cells||{}).filter(([k])=>k!=='__themes__');
+        const totalChips=cellEntries.reduce((n,[,a])=>n+(Array.isArray(a)?a.length:0),0);
+        const allTags=_cycleTopTags(c,99);
+        const moreTags=Math.max(0,allTags.length-tags.length);
+        html+=`<div class="season-cycle" onclick="openCycleFromOverview('${c.id}')" title="Ouvrir ${escapeAttr(c.name||'')}">
+          <div class="season-cycle-name">${escapeHtml(c.name||'Cycle sans nom')}</div>
+          <div class="season-cycle-meta">
+            ${s?`<span><b>${_fmtDay(s)}</b> → <b>${e?_fmtDay(e):'?'}</b></span>`:''}
+            <span>${c.weeks||'?'} sem.</span>
+            ${totalChips?`<span>${totalChips} séances</span>`:''}
+          </div>
+          ${tags.length?`<div class="season-cycle-tags">
+            ${tags.map(t=>`<span class="season-cycle-tag" style="border-color:${t.color}55;color:${t.color}">${escapeHtml(t.text)}</span>`).join('')}
+            ${moreTags>0?`<span class="season-cycle-tag more">+${moreTags}</span>`:''}
+          </div>`:''}
+        </div>`;
+      });
+    }
+    html+=`</div>`;
+  }
+  html+=`</div>`;
+  wrap.innerHTML=html;
+  wrap.style.display='block';
+}
+
+function escapeAttr(s){return escapeHtml(s)}
+
+async function openCycleFromOverview(id){
+  const sel=document.getElementById('cycle-selector');
+  if(sel){sel.value=id;}
+  await loadCycle(id);
+  // Scroll vers l'éditeur pour voir le cycle chargé
+  const target=document.getElementById('cycle-selector');
+  if(target&&target.scrollIntoView){target.scrollIntoView({behavior:'smooth',block:'center'});}
 }
 function renderCycleSelector(){
   const sel=document.getElementById('cycle-selector');
@@ -3858,7 +4050,7 @@ async function loadCycle(id){
     id:data.id,name:data.name,
     weeks:data.weeks||8,
     mode:data.mode||'cycle',
-    columns:data.columns||['WOD','Force','Skill'],
+    columns:data.columns||['Thème','WOD','Force','Skill'],
     rows:data.rows||['Priorité','Modalités','Schéma','Durée','Charge','Répétitions','Mouvement'],
     cells:data.cells||{},
     sessionCells:data.session_cells||{}
@@ -3871,7 +4063,7 @@ async function loadCycle(id){
 }
 
 function newCycle(){
-  cycleData={id:null,name:'',weeks:8,mode:'cycle',columns:['WOD','Force','Skill','Hyrox','Team WOD'],rows:['Priorité','Modalités','Schéma','Durée','Charge','Répétitions','Mouvement'],cells:{},sessionCells:{}};
+  cycleData={id:null,name:'',weeks:8,mode:'cycle',columns:['Thème','WOD','Force','Skill','Hyrox','Team WOD'],rows:['Priorité','Modalités','Schéma','Durée','Charge','Répétitions','Mouvement'],cells:{},sessionCells:{}};
   cycleMode='cycle';
   document.getElementById('cycle-name').value='';
   document.getElementById('cycle-weeks').value='8';
@@ -3934,7 +4126,9 @@ function renderCycleGrid(){
     <th class="week-header">Semaine</th>
     ${cols.map((c,ci)=>`<th>
       <div class="cycle-col-header">
+        <button class="cycle-col-move" onclick="moveColumn(${ci},-1)" ${ci===0?'disabled':''} title="Décaler à gauche">‹</button>
         <input type="text" value="${c}" onchange="renameColumn(${ci},this.value)" onclick="event.stopPropagation()">
+        <button class="cycle-col-move" onclick="moveColumn(${ci},1)" ${ci===cols.length-1?'disabled':''} title="Décaler à droite">›</button>
         ${cols.length>1?`<button class="cycle-col-del" onclick="removeColumn(${ci})">✕</button>`:''}
       </div>
     </th>`).join('')}
@@ -3974,6 +4168,26 @@ function renderCycleGrid(){
 }
 
 function renameColumn(ci,name){cycleData.columns[ci]=name;}
+function moveColumn(ci,dir){
+  const cols=cycleData.columns;
+  const newCi=ci+dir;
+  if(newCi<0||newCi>=cols.length)return;
+  // Swap colonnes
+  [cols[ci],cols[newCi]]=[cols[newCi],cols[ci]];
+  // Remap les cellules (clé `${w}-${ci}`)
+  const newCells={};
+  Object.entries(cycleData.cells||{}).forEach(([k,v])=>{
+    if(k==='__themes__'){newCells[k]=v;return;}
+    const m=k.match(/^(\d+)-(\d+)$/);
+    if(!m){newCells[k]=v;return;}
+    const w=m[1];let c=parseInt(m[2]);
+    if(c===ci)c=newCi;
+    else if(c===newCi)c=ci;
+    newCells[`${w}-${c}`]=v;
+  });
+  cycleData.cells=newCells;
+  renderCycleGrid();
+}
 function removeColumn(ci){
   cycleData.columns.splice(ci,1);
   // Nettoyer les cellules de cette colonne
