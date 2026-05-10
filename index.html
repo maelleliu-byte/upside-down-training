@@ -122,6 +122,20 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .video-box iframe{position:absolute;inset:0;width:100%;height:100%;border:none}
 .video-lbl{font-size:10px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
 
+/* Multi-vidéos dans le formulaire séance */
+.f-videos-list{display:flex;flex-direction:column;gap:8px}
+.f-videos-list:empty{display:none}
+.f-video-row{display:flex;gap:6px;align-items:stretch;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:6px;animation:fadeUp .2s ease}
+.f-video-row .f-video-grip{display:flex;align-items:center;color:var(--muted);font-size:14px;padding:0 4px;cursor:grab;user-select:none}
+.f-video-row .f-video-fields{flex:1;display:flex;flex-direction:column;gap:4px;min-width:0}
+.f-video-row input{width:100%;background:transparent;border:none;color:var(--text);font-family:inherit;font-size:13px;padding:6px 8px;outline:none;border-radius:6px}
+.f-video-row input:focus{background:rgba(255,255,255,.04)}
+.f-video-row input.f-video-url{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2)}
+.f-video-row input.f-video-label{font-weight:600}
+.f-video-row .f-video-del{flex-shrink:0;width:32px;background:transparent;border:none;color:var(--muted);font-size:16px;cursor:pointer;border-radius:8px;transition:all .15s}
+.f-video-row .f-video-del:hover{background:rgba(255,71,71,.15);color:var(--red)}
+.f-video-row .f-video-badge{flex-shrink:0;display:flex;align-items:center;padding:0 8px;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--accent);text-transform:uppercase}
+
 /* SCORE SECTION */
 .score-section{margin-top:14px;padding-top:14px;border-top:1px solid var(--border)}
 .score-title{font-size:11px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
@@ -978,13 +992,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">YouTube (optionnel)</label>
-        <div style="display:flex;gap:8px">
-          <input type="text" class="form-input" id="f-youtube" placeholder="https://youtube.com/...">
-          <button onclick="openVideoPicker()" style="flex-shrink:0;padding:10px 12px;background:var(--card2);border:1.5px solid var(--border2);border-radius:10px;color:var(--text2);font-size:13px;cursor:pointer;white-space:nowrap">📚 Biblio</button>
+        <label class="form-label">Vidéos (optionnel)</label>
+        <div id="f-videos-list" class="f-videos-list"></div>
+        <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+          <button type="button" onclick="addVideoToForm()" style="flex:1;min-width:140px;padding:10px 12px;background:var(--card2);border:1.5px solid var(--border2);border-radius:10px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer">+ URL vidéo</button>
+          <button type="button" onclick="openVideoPicker()" style="flex:1;min-width:140px;padding:10px 12px;background:var(--card2);border:1.5px solid var(--accent);border-radius:10px;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer">📚 Bibliothèque</button>
         </div>
+        <!-- Legacy hidden inputs (1ère vidéo) — conservés pour compat -->
+        <input type="hidden" id="f-youtube">
+        <input type="hidden" id="f-ytlabel">
       </div>
-      <div class="form-group"><label class="form-label">Libellé vidéo</label><input type="text" class="form-input" id="f-ytlabel" placeholder="Ex: Démo technique"></div>
       <button class="btn-primary" onclick="saveSession()">Publier la séance</button>
     </div>
 
@@ -1857,14 +1874,18 @@ async function renderSessions(){
 }
 
 async function buildSessionCard(s){
-  const videoHtml=s.youtube_url?`<a href="${s.youtube_url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;background:rgba(255,0,0,.1);border:1px solid rgba(255,0,0,.25);border-radius:10px;text-decoration:none;color:var(--text)">
+  // Multi-vidéos (avec fallback legacy)
+  let _vids=[];
+  try{_vids=Array.isArray(s.videos)?s.videos:(typeof s.videos==='string'?JSON.parse(s.videos):[]);}catch(e){_vids=[];}
+  if((!_vids||!_vids.length)&&s.youtube_url){_vids=[{url:s.youtube_url,label:s.youtube_label||''}];}
+  const videoHtml=_vids.length?`<div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">${_vids.map((v,i)=>`<a href="${v.url}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,0,0,.1);border:1px solid rgba(255,0,0,.25);border-radius:10px;text-decoration:none;color:var(--text)">
     <span style="font-size:22px">▶️</span>
-    <div>
-      <div style="font-size:13px;font-weight:700">${s.youtube_label||'Voir la vidéo démo'}</div>
+    <div style="flex:1;min-width:0">
+      <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.label||'Voir la vidéo démo'}${_vids.length>1?` <span style="color:var(--muted);font-weight:400">· ${i+1}/${_vids.length}</span>`:''}</div>
       <div style="font-size:11px;color:var(--muted);margin-top:2px">Ouvrir sur YouTube</div>
     </div>
     <span style="margin-left:auto;color:var(--muted);font-size:16px">↗</span>
-  </a>`:'';
+  </a>`).join('')}</div>`:'';
   const intensity=s.intensity;
   let intHtml='';
   if(intensity){const pct=intensity*10;const col=intensity<=4?'var(--blue)':intensity<=7?'var(--accent)':'var(--red)';intHtml=`<div class="intensity-bar"><div class="int-row"><span class="int-label">Intensité</span><span class="int-val" style="color:${col}">${intensity}/10</span></div><div class="int-track"><div class="int-fill" style="width:${pct}%;background:${col}"></div></div></div>`;}
@@ -3384,8 +3405,11 @@ async function editSession(id){
   document.getElementById('f-target').value=data.target||'';
   document.getElementById('f-tips').value=data.tips||'';
   document.getElementById('f-score-type').value=data.score_type||'reps';
-  document.getElementById('f-youtube').value=data.youtube_url||'';
-  document.getElementById('f-ytlabel').value=data.youtube_label||'';
+  // Multi-vidéos
+  let _vids=[];
+  try{_vids=Array.isArray(data.videos)?data.videos:(typeof data.videos==='string'?JSON.parse(data.videos):[]);}catch(e){_vids=[];}
+  if((!_vids||!_vids.length)&&data.youtube_url){_vids=[{url:data.youtube_url,label:data.youtube_label||''}];}
+  setFormVideos(_vids);
   // Scaling
   document.getElementById('f-scaling-inter').value=data.scaling_inter||'';
   document.getElementById('f-scaling-scaled').value=data.scaling_scaled||'';
@@ -3446,8 +3470,10 @@ async function saveSession(){
   const target=document.getElementById('f-target').value.trim();
   const tips=document.getElementById('f-tips').value.trim();
   const scoreType=document.getElementById('f-score-type').value;
-  const youtube=document.getElementById('f-youtube').value.trim();
-  const ytlabel=document.getElementById('f-ytlabel').value.trim();
+  syncLegacyVideoFields();
+  const videos=getFormVideos();
+  const youtube=videos[0]?.url||'';
+  const ytlabel=videos[0]?.label||'';
   const sets=type==='strength'?parseInt(document.getElementById('f-sets').value)||null:null;
   const color=selectedSessionColor||'#e8ff47';
   const scalingInter=document.getElementById('f-scaling-inter').value.trim();
@@ -3473,7 +3499,7 @@ async function saveSession(){
     day_of_week:oneshot?dayOfWeek:null,
     type,title,content,intensity,
     target:target||null,tips:tips||null,score_type:scoreType,
-    youtube_url:youtube||null,youtube_label:ytlabel||null,sets,color,
+    youtube_url:youtube||null,youtube_label:ytlabel||null,videos:videos.length?videos:null,sets,color,
     scaling_inter:scalingInter||null,scaling_scaled:scalingScaled||null,scaling_foundation:scalingFoundation||null,
     multi_score:multiScore,score_count:scoreCount||null,
     score_labels:scoreLabels.length?JSON.stringify(scoreLabels):null,
@@ -3507,7 +3533,8 @@ async function saveSession(){
   personalEditingId=null;
   const cancelBtn=document.getElementById('edit-cancel-btn');
   if(cancelBtn)cancelBtn.remove();
-  ['f-title','f-target','f-tips','f-youtube','f-ytlabel','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>document.getElementById(id).value='');
+  ['f-title','f-target','f-tips','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>document.getElementById(id).value='');
+  setFormVideos([]);
   clearEditor();
   document.getElementById('score-labels-container').innerHTML='';
   document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
@@ -4431,10 +4458,15 @@ function saveCycleChip(){
 }
 
 // ===== VIDEO PICKER =====
-function openVideoPicker(){
-  if(!allVideos.length){showToast('⚠️ Charge d\'abord des vidéos dans la bibliothèque');return;}
+async function openVideoPicker(){
   document.getElementById('videopicker-modal').classList.add('open');
   document.getElementById('videopicker-search').value='';
+  const el=document.getElementById('videopicker-list');
+  // refresh à chaque ouverture pour récupérer les vidéos ajoutées récemment
+  if(!allVideos.length){
+    el.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px"><div class="spinner" style="margin:0 auto 10px"></div>Chargement…</div>';
+    try{await loadVideos();}catch(e){}
+  }
   renderVideoPicker();
 }
 function closeVideoPicker(){document.getElementById('videopicker-modal').classList.remove('open');}
@@ -4443,22 +4475,91 @@ function renderVideoPicker(){
   const q=document.getElementById('videopicker-search').value.toLowerCase();
   const filtered=allVideos.filter(v=>!q||v.title.toLowerCase().includes(q)||(v.movements?.name||'').toLowerCase().includes(q));
   const el=document.getElementById('videopicker-list');
+  if(!allVideos.length){
+    el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px 12px;font-size:13px;line-height:1.6"><div style="font-size:32px;margin-bottom:8px">🎬</div>Aucune vidéo dans la bibliothèque.<br><span style="font-size:11px">Ajoute-en via l\'onglet <b style="color:var(--accent)">Vidéos</b> de l\'admin.</span></div>';
+    return;
+  }
   if(!filtered.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Aucune vidéo trouvée</div>';return;}
-  el.innerHTML=filtered.map(v=>`
-    <div onclick="selectVideoFromPicker(${JSON.stringify(v.youtube_url)},${JSON.stringify(v.title)})" style="display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);cursor:pointer">
+  el.innerHTML=filtered.map(v=>{
+    const url=(v.youtube_url||'').replace(/"/g,'&quot;');
+    const title=(v.title||'').replace(/"/g,'&quot;');
+    const mv=(v.movements?.name||'—').replace(/</g,'&lt;');
+    return `<div class="videopicker-item" data-vp-url="${url}" data-vp-label="${title}" style="display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);cursor:pointer">
       <span style="font-size:22px">▶️</span>
-      <div style="flex:1">
-        <div style="font-size:14px;font-weight:600">${v.title}</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:2px">${v.movements?.name||'—'}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:600">${title}</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">${mv}</div>
       </div>
       <span style="color:var(--accent);font-size:20px;font-weight:300">+</span>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+  // event delegation : robuste face aux URL avec guillemets
+  el.querySelectorAll('.videopicker-item').forEach(item=>{
+    item.addEventListener('click',()=>selectVideoFromPicker(item.dataset.vpUrl,item.dataset.vpLabel));
+  });
 }
 function selectVideoFromPicker(url,label){
-  document.getElementById('f-youtube').value=url;
-  document.getElementById('f-ytlabel').value=label;
+  addVideoToForm(url,label);
   closeVideoPicker();
-  showToast('✅ Vidéo sélectionnée !');
+  showToast('✅ Vidéo ajoutée !');
+}
+
+// ===== MULTI-VIDÉOS (formulaire séance) =====
+function getFormVideos(){
+  const list=document.getElementById('f-videos-list');
+  if(!list)return[];
+  return [...list.querySelectorAll('.f-video-row')].map(row=>({
+    url:(row.querySelector('.f-video-url')?.value||'').trim(),
+    label:(row.querySelector('.f-video-label')?.value||'').trim()
+  })).filter(v=>v.url);
+}
+function setFormVideos(videos){
+  const list=document.getElementById('f-videos-list');
+  if(!list)return;
+  list.innerHTML='';
+  (videos||[]).forEach(v=>addVideoToForm(v.url||'', v.label||'', {silent:true}));
+  syncLegacyVideoFields();
+}
+function addVideoToForm(url,label,opts){
+  const list=document.getElementById('f-videos-list');
+  if(!list)return;
+  // Si un nouvel ajout vient d'une URL déjà présente => focus existant
+  if(url){
+    const dup=[...list.querySelectorAll('.f-video-url')].find(i=>i.value===url);
+    if(dup){dup.closest('.f-video-row').querySelector('.f-video-label')?.focus();syncLegacyVideoFields();return;}
+  }
+  const row=document.createElement('div');
+  row.className='f-video-row';
+  const idx=list.children.length;
+  row.innerHTML=`
+    <div class="f-video-badge">#${idx+1}</div>
+    <div class="f-video-fields">
+      <input type="text" class="f-video-label" placeholder="Libellé (ex: Démo technique)" value="${(label||'').replace(/"/g,'&quot;')}">
+      <input type="text" class="f-video-url" placeholder="https://youtube.com/..." value="${(url||'').replace(/"/g,'&quot;')}">
+    </div>
+    <button type="button" class="f-video-del" title="Retirer" onclick="removeFormVideo(this)">✕</button>`;
+  list.appendChild(row);
+  row.querySelectorAll('input').forEach(i=>i.addEventListener('input',syncLegacyVideoFields));
+  syncLegacyVideoFields();
+  if(!opts||!opts.silent){
+    if(!url){row.querySelector('.f-video-url').focus();}
+  }
+}
+function removeFormVideo(btn){
+  const row=btn.closest('.f-video-row');
+  if(!row)return;
+  row.remove();
+  // re-numéroter les badges
+  const list=document.getElementById('f-videos-list');
+  [...list.querySelectorAll('.f-video-row')].forEach((r,i)=>{const b=r.querySelector('.f-video-badge');if(b)b.textContent='#'+(i+1);});
+  syncLegacyVideoFields();
+}
+function syncLegacyVideoFields(){
+  const vids=getFormVideos();
+  const yt=document.getElementById('f-youtube');
+  const lb=document.getElementById('f-ytlabel');
+  if(yt)yt.value=vids[0]?.url||'';
+  if(lb)lb.value=vids[0]?.label||'';
 }
 
 // ===== VIDÉOS =====
@@ -5042,8 +5143,11 @@ async function persoEditSession(id, athleteId){
   document.getElementById('f-target').value=data.target||'';
   document.getElementById('f-tips').value=data.tips||'';
   document.getElementById('f-score-type').value=data.score_type||'reps';
-  document.getElementById('f-youtube').value=data.youtube_url||'';
-  document.getElementById('f-ytlabel').value=data.youtube_label||'';
+  // Multi-vidéos
+  let _vids=[];
+  try{_vids=Array.isArray(data.videos)?data.videos:(typeof data.videos==='string'?JSON.parse(data.videos):[]);}catch(e){_vids=[];}
+  if((!_vids||!_vids.length)&&data.youtube_url){_vids=[{url:data.youtube_url,label:data.youtube_label||''}];}
+  setFormVideos(_vids);
   document.getElementById('f-scaling-inter').value=data.scaling_inter||'';
   document.getElementById('f-scaling-scaled').value=data.scaling_scaled||'';
   document.getElementById('f-scaling-foundation').value=data.scaling_foundation||'';
@@ -5116,7 +5220,8 @@ function exitPersoForm(){
   }
 }
 function resetSessionForm(){
-  ['f-title','f-target','f-tips','f-youtube','f-ytlabel','f-scaling-inter','f-scaling-scaled','f-scaling-foundation','f-sets'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  ['f-title','f-target','f-tips','f-scaling-inter','f-scaling-scaled','f-scaling-foundation','f-sets'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  setFormVideos([]);
   clearEditor();
   document.getElementById('score-labels-container').innerHTML='';
   document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
