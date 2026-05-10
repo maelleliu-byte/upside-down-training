@@ -766,7 +766,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="np-desc" placeholder="Description courte"></div>
         <div class="form-row">
           <div class="form-group"><label class="form-label">Prix/mois (€)</label><input type="number" class="form-input" id="np-price" placeholder="0"></div>
-          <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="np-type"><option value="subscription">Abonnement</option><option value="oneshot">One-shot</option></select></div>
+          <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="np-type" onchange="onNpTypeChange()"><option value="subscription">Abonnement</option><option value="oneshot">One-shot</option></select></div>
+        </div>
+        <div class="form-group" id="np-weeks-group" style="display:none">
+          <label class="form-label">Nombre de semaines <span style="color:var(--muted);font-weight:400;text-transform:none;letter-spacing:0">(programme one-shot — durée totale)</span></label>
+          <input type="number" class="form-input" id="np-weeks" min="1" max="52" value="8" placeholder="Ex: 8">
         </div>
         <div class="form-group">
           <label class="form-label">Couleur</label>
@@ -815,9 +819,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
         </div>
         <button class="btn-secondary" style="margin:0;padding:8px 12px;font-size:11px" onclick="exitPersoForm()">✕ Quitter</button>
       </div>
-      <div class="form-group" id="form-prog-group"><label class="form-label">Programme</label><select class="form-select" id="f-prog"></select></div>
+      <div class="form-group" id="form-prog-group"><label class="form-label">Programme</label><select class="form-select" id="f-prog" onchange="onFProgChange()"></select></div>
       <div class="form-row">
-        <div class="form-group"><label class="form-label">Date</label><input type="date" class="form-input" id="f-date"></div>
+        <div class="form-group" id="f-date-group"><label class="form-label">Date</label><input type="date" class="form-input" id="f-date"></div>
+        <div class="form-group" id="f-week-group" style="display:none">
+          <label class="form-label">Semaine &amp; jour</label>
+          <div style="display:flex;gap:6px">
+            <select class="form-select" id="f-week" style="flex:1"></select>
+            <select class="form-select" id="f-dow" style="flex:1">
+              <option value="0">Lundi</option><option value="1">Mardi</option><option value="2">Mercredi</option>
+              <option value="3">Jeudi</option><option value="4">Vendredi</option><option value="5">Samedi</option><option value="6">Dimanche</option>
+            </select>
+          </div>
+        </div>
         <div class="form-group"><label class="form-label">Type</label>
           <select class="form-select" id="f-type" onchange="toggleSetsField()">
             <option value="wod">WOD</option>
@@ -1416,7 +1430,7 @@ const stripe=Stripe(STRIPE_PK);
 let currentUser=null,currentProfile=null,programmes=[],movements=[],benchmarks=[],myPRs={},myAccess=new Set(),myAccessIds=new Set();
 let currentProg=null,currentWeekOffset=0,selectedDate=new Date().toISOString().split('T')[0];
 let currentModalMovement=null,currentBenchmark=null,currentBLevel='rx';
-let selectedColor='#e8ff47',selectedIcon='🏟';
+let selectedColor='#e8ff47',selectedIcon='';
 let currentCat='all',searchQuery='',currentBcat='all';
 
 const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
@@ -1429,10 +1443,10 @@ const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétition
 // STRIPE — clé publique LIVE + price IDs
 const STRIPE_PUBLIC_KEY='pk_live_51TTgoeGfW5FegIxCCDUZQvm2EakuXj3rC2UFYiRDXfvuaE42WwX3Hjys4734FK0p9Dqe5ngaCNKpR35ssPKRUVSH004VamRL0F';
 const STRIPE_PLANS={
-  affiliate:{priceId:'price_1TThBIGfW5FegIxCy3Bd5zmi',name:'Affiliate',icon:'🏟',price:'120€',period:'/mois',trial:14,desc:'Programmation salle complète — CrossFit Sandglass.',features:['WOD quotidien','Séances force & skill','Coaching tips & targets','Suivi des scores','PR tracking','14 jours d\'essai gratuit'],color:'#e8ff47'},
-  hyrox:{priceId:'price_1TVVEsGfW5FegIxCD0fssSlu',name:'Hyrox',icon:'🏃',price:'30€',period:'/mois',trial:14,desc:'Programmation Hyrox — endurance & compromised running.',features:['Sessions Hyrox spécifiques','Compromised running','Sled push/pull','Wall balls & burpees','14 jours d\'essai gratuit'],color:'#ff4444'},
-  training:{priceId:'price_1TThDzGfW5FegIxCGRb4q1tN',name:'Training',icon:'💪',price:'45€',period:'/mois',trial:14,desc:'Préparation compétition Upside Down.',features:['Programmation compétition','Haltérophilie avancée','Périodisation structurée','Suivi performances','Accès coach direct','14 jours d\'essai gratuit'],color:'#ff8c47'},
-  kids:{priceId:'price_1TVVFiGfW5FegIxCmwl0GkBV',name:'Kids & Teens',icon:'🧒',price:'30€',period:'/mois',trial:14,desc:'Programmation jeunes athlètes (8-16 ans).',features:['Adapté au développement','Mouvements fondamentaux','Coordination & motricité','Suivi progression','14 jours d\'essai gratuit'],color:'#47b8ff'}
+  affiliate:{priceId:'price_1TThBIGfW5FegIxCy3Bd5zmi',name:'Affiliate',icon:'',price:'120€',period:'/mois',trial:14,desc:'Programmation salle complète — CrossFit Sandglass.',features:['WOD quotidien','Séances force & skill','Coaching tips & targets','Suivi des scores','PR tracking','14 jours d\'essai gratuit'],color:'#e8ff47'},
+  hyrox:{priceId:'price_1TVVEsGfW5FegIxCD0fssSlu',name:'Hyrox',icon:'',price:'30€',period:'/mois',trial:14,desc:'Programmation Hyrox — endurance & compromised running.',features:['Sessions Hyrox spécifiques','Compromised running','Sled push/pull','Wall balls & burpees','14 jours d\'essai gratuit'],color:'#ff4444'},
+  training:{priceId:'price_1TThDzGfW5FegIxCGRb4q1tN',name:'Training',icon:'',price:'45€',period:'/mois',trial:14,desc:'Préparation compétition Upside Down.',features:['Programmation compétition','Haltérophilie avancée','Périodisation structurée','Suivi performances','Accès coach direct','14 jours d\'essai gratuit'],color:'#ff8c47'},
+  kids:{priceId:'price_1TVVFiGfW5FegIxCmwl0GkBV',name:'Kids & Teens',icon:'',price:'30€',period:'/mois',trial:14,desc:'Programmation jeunes athlètes (8-16 ans).',features:['Adapté au développement','Mouvements fondamentaux','Coordination & motricité','Suivi progression','14 jours d\'essai gratuit'],color:'#47b8ff'}
 };
 
 // SPLASH SCREEN
@@ -1690,6 +1704,49 @@ function getWeekNum(d){
 }
 async function renderDayStrip(){
   if(!currentProg)return;
+  // === ONE-SHOT : navigation par semaine relative basée sur start_date athlète ===
+  if(isOneshotProg(currentProg)){
+    const total=currentProg.total_weeks||8;
+    // Récupérer la start_date de l'athlète pour ce programme
+    let startISO=null;
+    if(currentUser){
+      const {data:acc}=await sb.from('programme_access').select('start_date').eq('athlete_id',currentUser.id).eq('programme_id',currentProg.id).maybeSingle();
+      startISO=acc?.start_date||null;
+    }
+    // Calcul de la semaine courante de l'athlète si on a une start_date
+    let athleteCurWeek=1;
+    if(startISO){
+      const start=new Date(startISO+'T12:00:00');
+      const today=new Date();
+      const diffDays=Math.floor((today-start)/86400000);
+      athleteCurWeek=Math.max(1,Math.min(total,Math.floor(diffDays/7)+1));
+    }
+    if(currentWeekOffset===0&&!window.__oneshotInit){window.__oneshotInit=true;currentWeekOffset=athleteCurWeek-1;}
+    const weekNum=Math.max(1,Math.min(total,currentWeekOffset+1));
+    // Dates réelles pour cette semaine (depuis start_date)
+    let weekDates=null;
+    if(startISO){
+      const wkStart=new Date(startISO+'T12:00:00');
+      wkStart.setDate(wkStart.getDate()+(weekNum-1)*7);
+      weekDates=Array.from({length:7},(_,i)=>{const d=new Date(wkStart);d.setDate(wkStart.getDate()+i);return d;});
+    }
+    const label=weekDates
+      ? `Sem. ${weekNum}/${total} — ${weekDates[0].getDate()} ${MONTHS[weekDates[0].getMonth()]} au ${weekDates[6].getDate()} ${MONTHS[weekDates[6].getMonth()]}`
+      : `Semaine ${weekNum} / ${total}`;
+    document.getElementById('week-label').textContent=label;
+    // Sessions du programme pour cette semaine
+    const {data}=await sb.from('sessions').select('day_of_week').eq('programme_id',currentProg.id).eq('week_number',weekNum);
+    const withContent=hasAccess(currentProg)?new Set((data||[]).map(s=>s.day_of_week)):new Set();
+    const dayLabels=['LUN','MAR','MER','JEU','VEN','SAM','DIM'];
+    document.getElementById('day-strip').innerHTML=Array.from({length:7},(_,dow)=>{
+      const dateNum=weekDates?weekDates[dow].getDate():`J${dow+1}`;
+      const isActive=selectedDate===`__w${weekNum}d${dow}`;
+      return `<div class="day-pill ${isActive?'active':''} ${withContent.has(dow)?'has-content':''}" onclick="selectDateOneshot(${weekNum},${dow})">
+        <div class="day-name">${dayLabels[dow]}</div><div class="day-num">${dateNum}</div>
+      </div>`;
+    }).join('');
+    return;
+  }
   const dates=getWeekDates(currentWeekOffset);
   const wk=getWeekNum(dates[0]);
   document.getElementById('week-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
@@ -1704,7 +1761,16 @@ async function renderDayStrip(){
   }).join('');
 }
 function selectDate(iso){selectedDate=iso;renderDayStrip();renderSessions();}
-function changeWeek(dir){currentWeekOffset+=dir;renderDayStrip();renderSessions();}
+function selectDateOneshot(weekNum,dow){selectedDate=`__w${weekNum}d${dow}`;renderDayStrip();renderSessions();}
+function changeWeek(dir){
+  if(isOneshotProg(currentProg)){
+    const total=currentProg.total_weeks||8;
+    currentWeekOffset=Math.max(0,Math.min(total-1,currentWeekOffset+dir));
+  } else {
+    currentWeekOffset+=dir;
+  }
+  renderDayStrip();renderSessions();
+}
 
 // SESSIONS
 function hasAccess(prog){
@@ -1727,7 +1793,20 @@ async function renderSessions(){
   }
 
   area.innerHTML='<div class="spinner"></div>';
-  const {data:sessions}=await sb.from('sessions').select('*').eq('programme_id',currentProg.id).eq('date',selectedDate).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+  // ONE-SHOT : selectedDate format "__wNdM" -> requête par week_number + day_of_week
+  let sessionsQuery;
+  if(isOneshotProg(currentProg)&&typeof selectedDate==='string'&&selectedDate.startsWith('__w')){
+    const m=selectedDate.match(/^__w(\d+)d(\d+)$/);
+    if(m){
+      sessionsQuery=sb.from('sessions').select('*').eq('programme_id',currentProg.id)
+        .eq('week_number',parseInt(m[1])).eq('day_of_week',parseInt(m[2]))
+        .order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+    }
+  }
+  if(!sessionsQuery){
+    sessionsQuery=sb.from('sessions').select('*').eq('programme_id',currentProg.id).eq('date',selectedDate).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+  }
+  const {data:sessions}=await sessionsQuery;
   if(!sessions||sessions.length===0){area.innerHTML='<div class="empty fade-up"><div class="empty-icon">🗓</div><p>Pas de séance<br>programmée ce jour.</p></div>';return;}
   area.innerHTML='';
   for(const s of sessions){
@@ -2786,7 +2865,6 @@ async function loadAdminProgs(){
   grid.innerHTML=programmes.map(p=>`<div class="prog-card-admin" style="border-color:${p.color}33;position:relative">
     <button class="btn-delete" onclick="event.stopPropagation();deleteProgramme('${p.id}','${(p.name||'').replace(/'/g,"\\'")}',${counts[p.id]||0})" style="position:absolute;top:8px;right:8px;width:26px;height:26px;font-size:12px">✕</button>
     <button class="btn-secondary" onclick="event.stopPropagation();editProgramme('${p.id}')" style="position:absolute;top:8px;right:40px;width:26px;height:26px;font-size:12px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center">✏</button>
-    <div class="prog-card-icon">${p.icon||'💪'}</div>
     <div class="prog-card-name" style="color:${p.color}">${p.name}</div>
     <div class="prog-card-desc">${p.description||''}</div>
     <div class="prog-card-count" style="color:${p.color}">${counts[p.id]} séances</div>
@@ -2863,6 +2941,28 @@ function selectColor(color,el){
   el.classList.add('selected');
   const dot=document.getElementById('np-prev-dot');if(dot)dot.style.background=color;
 }
+function onNpTypeChange(){
+  const type=document.getElementById('np-type').value;
+  const grp=document.getElementById('np-weeks-group');
+  if(grp)grp.style.display=type==='oneshot'?'block':'none';
+}
+// Helpers one-shot
+function getProgById(id){return programmes.find(p=>p.id===id);}
+function isOneshotProg(p){return p&&p.type==='oneshot';}
+function onFProgChange(){
+  const progId=document.getElementById('f-prog').value;
+  const prog=getProgById(progId);
+  const oneshot=isOneshotProg(prog);
+  document.getElementById('f-date-group').style.display=oneshot?'none':'';
+  document.getElementById('f-week-group').style.display=oneshot?'':'none';
+  if(oneshot){
+    const sel=document.getElementById('f-week');
+    const total=prog.total_weeks||8;
+    const cur=sel.value;
+    sel.innerHTML=Array.from({length:total},(_,i)=>`<option value="${i+1}">Semaine ${i+1}</option>`).join('');
+    if(cur&&cur<=total)sel.value=cur;
+  }
+}
 function selectIcon(icon,el){selectedIcon=icon;document.querySelectorAll('.icon-btn').forEach(b=>b.classList.remove('selected'));el.classList.add('selected');}
 function _wireNpPreview(){
   const n=document.getElementById('np-name'),d=document.getElementById('np-desc');
@@ -2875,7 +2975,9 @@ async function saveNewProg(){
   const desc=document.getElementById('np-desc').value.trim();
   const price=parseFloat(document.getElementById('np-price').value)||null;
   const type=document.getElementById('np-type').value;
-  if(!name){showToast('⚠️ Nom requis');return;}
+  const totalWeeks=type==='oneshot'?(parseInt(document.getElementById('np-weeks').value)||8):null;
+  if(!name){showToast('Nom requis');return;}
+  if(type==='oneshot'&&(!totalWeeks||totalWeeks<1||totalWeeks>52)){showToast('Nombre de semaines invalide (1-52)');return;}
   let slug=name.toLowerCase().replace(/[^a-z0-9]/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'');
   // Vérifier si le slug existe déjà — si oui, ajouter un suffixe numérique
   const {data:existing}=await sb.from('programmes').select('slug').like('slug',slug+'%');
@@ -2886,33 +2988,36 @@ async function saveNewProg(){
       slug=slug+'-'+i;
     }
   }
-  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,created_by:currentUser.id}).select().single();
+  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id}).select().single();
   if(error){
     showToast('❌ '+error.message);
     // Restaurer le bouton "+ Nouveau programme" même en cas d'erreur
     const btn=document.getElementById('btn-show-new-prog');if(btn)btn.style.display='block';
     return;
   }
-  showToast('✅ Programme créé !');
+  showToast('Programme créé');
 
-  // Si c'est un abonnement avec un prix, créer auto le produit Stripe
-  if(type==='subscription'&&price&&inserted?.id){
-    showToast('⏳ Création du produit Stripe...');
+  // Si on a un prix, créer auto le produit Stripe (subscription OU oneshot)
+  if(price&&inserted?.id){
+    showToast('Création du produit Stripe...');
     try{
       const {data:{session}}=await sb.auth.getSession();
       const token=session?.access_token;
       const fnUrl=(window.SUPABASE_URL||sb.supabaseUrl||'').replace(/\/$/,'')+'/functions/v1/create-stripe-product';
+      const payload={programme_id:inserted.id,name,description:desc,currency:'eur',type};
+      if(type==='subscription')payload.price_monthly=price;
+      else payload.price_oneshot=price;
       const res=await fetch(fnUrl,{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
-        body:JSON.stringify({programme_id:inserted.id,name,description:desc,price_monthly:price,currency:'eur'})
+        body:JSON.stringify(payload)
       });
       const data=await res.json();
-      if(data.error){showToast('⚠️ Stripe : '+data.error);console.warn(data);}
-      else{showToast('✅ Produit Stripe créé !');}
+      if(data.error){showToast('Stripe : '+data.error);console.warn(data);}
+      else{showToast('Produit Stripe créé');}
     }catch(e){
       console.error('stripe sync error',e);
-      showToast('⚠️ Stripe non synchronisé : '+e.message);
+      showToast('Stripe non synchronisé : '+e.message);
     }
   }
 
@@ -2991,6 +3096,72 @@ async function loadAdminCalendar(){
     document.getElementById('admin-filter-prog').value=progId;
   }
   if(!progId)return;
+  const prog=getProgById(progId);
+  const oneshot=isOneshotProg(prog);
+
+  // === MODE ONE-SHOT : navigation par semaine relative (S1..SN) ===
+  if(oneshot){
+    const total=prog.total_weeks||8;
+    // adminWeekOffset = index 0..total-1
+    if(adminWeekOffset<0)adminWeekOffset=0;
+    if(adminWeekOffset>total-1)adminWeekOffset=total-1;
+    const weekNum=adminWeekOffset+1;
+    document.getElementById('admin-cal-week-label').textContent=`SEMAINE ${weekNum} / ${total}`;
+    const {data}=await sb.from('sessions').select('*,programmes(name,color,icon)')
+      .eq('programme_id',progId).eq('week_number',weekNum)
+      .order('day_of_week',{ascending:true})
+      .order('sort_order',{ascending:true,nullsFirst:false})
+      .order('created_at');
+    const byDow={};for(let i=0;i<7;i++)byDow[i]=[];
+    (data||[]).forEach(s=>{if(s.day_of_week!=null&&byDow[s.day_of_week])byDow[s.day_of_week].push(s);});
+    const cal=document.getElementById('admin-calendar');
+    const dayLabels=['LUN','MAR','MER','JEU','VEN','SAM','DIM'];
+    const headers=dayLabels.map(d=>`<div class="cal-day-header">${d}</div>`).join('');
+    const dateRow=dayLabels.map((_,i)=>`<div class="cal-day-date">J${i+1}</div>`).join('');
+    const sessionCols=Array.from({length:7},(_,dow)=>{
+      const sessions=byDow[dow]||[];
+      const blocks=sessions.length>0
+        ? sessions.map(s=>{
+          if(s.type==='separator'){
+            return`<div class="cal-rich separator" data-session-id="${s.id}" onclick="openReadSession('${s.id}','session')">
+              <div class="cal-rich-actions" style="display:flex;position:absolute;top:2px;right:2px">
+                <button class="cal-action-btn" onclick="event.stopPropagation();editSession('${s.id}')">✏</button>
+                <button class="cal-action-btn" onclick="event.stopPropagation();deleteSession('${s.id}')">✕</button>
+              </div>
+              <div class="cal-rich-title">— ${escapeHtml(s.title||'Séparateur')} —</div>
+            </div>`;
+          }
+          const color=s.color||'#e8ff47';
+          const typeLabel=TYPE_LABELS[s.type]||s.type;
+          const rawContent=s.content||'';
+          const withCharges=renderContentWithCharges(rawContent);
+          const preview=stripHtml(withCharges).slice(0,160);
+          const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
+          const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
+          const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
+          return`<div class="cal-rich" data-session-id="${s.id}" onclick="openReadSession('${s.id}','session')">
+            <div class="cal-accent" style="background:${color}"></div>
+            <div class="cal-rich-head">
+              <span class="cal-rich-type" style="background:${color}22;color:${color}">${typeLabel}</span>
+              <div class="cal-rich-actions">
+                <button class="cal-action-btn" onclick="event.stopPropagation();editSession('${s.id}')">✏</button>
+                <button class="cal-action-btn" onclick="event.stopPropagation();duplicateSession('${s.id}')">📋</button>
+                <button class="cal-action-btn" onclick="event.stopPropagation();deleteSession('${s.id}')">✕</button>
+              </div>
+            </div>
+            <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
+            ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
+            <div class="cal-rich-meta">${intensity}${sets}${yt}</div>
+          </div>`;
+        }).join('')
+        : `<div class="cal-empty-day" onclick="quickAddSession(null,${weekNum},${dow})">+</div>`;
+      return`<div class="cal-day-col rich">${blocks}</div>`;
+    }).join('');
+    cal.innerHTML=`<div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div>`;
+    return;
+  }
+
+  // === MODE ABONNEMENT (classique) ===
   const dates=getWeekDates(adminWeekOffset);
   const wk=getWeekNum(dates[0]);
   document.getElementById('admin-cal-week-label').textContent=`Semaine ${wk} — ${MONTHS[dates[0].getMonth()]} ${dates[0].getFullYear()}`;
@@ -3128,7 +3299,17 @@ async function onCalDrop(event,targetDate){
   loadAdminCalendar();
 }
 
-function changeAdminWeek(dir){adminWeekOffset+=dir;loadAdminCalendar();}
+function changeAdminWeek(dir){
+  const progId=document.getElementById('admin-filter-prog')?.value;
+  const prog=getProgById(progId);
+  if(isOneshotProg(prog)){
+    const total=prog.total_weeks||8;
+    adminWeekOffset=Math.max(0,Math.min(total-1,adminWeekOffset+dir));
+  } else {
+    adminWeekOffset+=dir;
+  }
+  loadAdminCalendar();
+}
 
 function isLightColor(hex){
   const r=parseInt(hex.slice(1,3),16);const g=parseInt(hex.slice(3,5),16);const b=parseInt(hex.slice(5,7),16);
@@ -3147,6 +3328,16 @@ async function editSession(id){
   editingSessionId=id;
   document.getElementById('f-prog').value=data.programme_id;
   document.getElementById('f-date').value=data.date;
+  // One-shot : pré-remplir semaine + jour
+  onFProgChange();
+  if(data.week_number){
+    const wsel=document.getElementById('f-week');
+    if(wsel)wsel.value=data.week_number;
+  }
+  if(data.day_of_week!=null){
+    const dsel=document.getElementById('f-dow');
+    if(dsel)dsel.value=data.day_of_week;
+  }
   document.getElementById('f-type').value=data.type;
   document.getElementById('f-title').value=data.title||'';
   setEditorContent(data.content||'');
@@ -3227,11 +3418,22 @@ async function saveSession(){
   const multiScore=multiScoreEnabled;
   const scoreCount=multiScore?parseInt(document.getElementById('f-score-count')?.value)||2:0;
   const scoreLabels=multiScore?Array.from({length:scoreCount},(_,i)=>document.getElementById(`f-score-label-${i}`)?.value.trim()||`Score ${i+1}`):[];
-  if(!progId&&!personalAthleteId){showToast('⚠️ Programme et date requis');return;}
-  if(!date){showToast('⚠️ Date requise');return;}
+  // Mode one-shot : on lit semaine/jour au lieu de date
+  const prog=getProgById(progId);
+  const oneshot=!personalAthleteId&&isOneshotProg(prog);
+  const weekNumber=oneshot?(parseInt(document.getElementById('f-week').value)||1):null;
+  const dayOfWeek=oneshot?(parseInt(document.getElementById('f-dow').value)||0):null;
+  if(!progId&&!personalAthleteId){showToast('⚠️ Programme requis');return;}
+  if(!oneshot&&!date){showToast('⚠️ Date requise');return;}
 
+  // Pour one-shot: on stocke une date synthétique (1970+N) pour rester compatible NOT NULL,
+  // mais week_number/day_of_week sont la source de vérité.
+  const storedDate=oneshot?`2000-01-${String(((weekNumber-1)*7+dayOfWeek+1)%28+1).padStart(2,'0')}`:date;
   const payload={
-    date,type,title,content,intensity,
+    date:storedDate,
+    week_number:oneshot?weekNumber:null,
+    day_of_week:oneshot?dayOfWeek:null,
+    type,title,content,intensity,
     target:target||null,tips:tips||null,score_type:scoreType,
     youtube_url:youtube||null,youtube_label:ytlabel||null,sets,color,
     scaling_inter:scalingInter||null,scaling_scaled:scalingScaled||null,scaling_foundation:scalingFoundation||null,
@@ -4173,20 +4375,21 @@ async function renderPlans(){
     const icon=stripeCfg?.icon||p.icon||'💪';
     const name=stripeCfg?.name||p.name;
     const color=stripeCfg?.color||p.color||'#999';
-    const priceVal=p.price_monthly||(stripeCfg?.price?parseFloat(stripeCfg.price):null);
+    const isOneshot=p.type==='oneshot';
+    const priceVal=(isOneshot?p.price_oneshot:p.price_monthly)||(stripeCfg?.price?parseFloat(stripeCfg.price):null);
     const price=priceVal?priceVal+'€':'—';
-    const period=priceVal?'/mois':'';
+    const period=priceVal?(isOneshot?'':'/mois'):'';
     const desc=stripeCfg?.desc||p.description||'';
     const features=stripeCfg?.features||[];
     const stripePriceId=p.stripe_price_id||stripeCfg?.priceId;
     return`<div class="plan-card ${slug==='affiliate'?'featured':''}">
-      <div class="plan-header"><div><div style="font-size:28px;margin-bottom:4px">${icon}</div><div class="plan-name" style="color:${color}">${name}</div></div><div><div class="plan-price-val">${price}</div><div class="plan-price-period">${period}</div></div></div>
+      <div class="plan-header"><div><div class="plan-name" style="color:${color}">${name}</div></div><div><div class="plan-price-val">${price}</div><div class="plan-price-period">${period}</div></div></div>
       ${desc?`<div class="plan-desc">${desc}</div>`:''}
       ${features.length?`<div class="plan-features">${features.map(f=>`<div class="plan-feature">${f}</div>`).join('')}</div>`:''}
       ${hasAccess
         ?`<div class="access-badge">✓ Accès actif</div>`
         :stripePriceId
-          ?`<button class="btn-subscribe locked" onclick="subscribeToProg('${p.id}')">💳 S'abonner — ${price}${period}<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">14 jours d'essai gratuits</div></button>`
+          ?`<button class="btn-subscribe locked" onclick="subscribeToProg('${p.id}')">💳 ${isOneshot?'Acheter':"S'abonner"} — ${price}${period}${isOneshot?'':`<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">14 jours d'essai gratuits</div>`}</button>`
           :`<div style="text-align:center;padding:14px;background:rgba(255,140,71,.1);border:1px dashed rgba(255,140,71,.4);border-radius:10px;color:var(--orange);font-size:12px;font-weight:700">⚠️ Paiement non configuré</div>`
       }
     </div>`;
@@ -4719,11 +4922,23 @@ function resetSessionForm(){
   editingSessionId=null;
 }
 
-function quickAddSession(iso){
+function quickAddSession(iso,weekNum,dow){
   // Quand on clique sur un jour vide du calendrier admin (sessions classiques)
   adminTab('new-session',document.querySelector('.admin-tab-btn:nth-child(2)'));
   resetSessionForm();
-  document.getElementById('f-date').value=iso;
+  // Pré-sélectionner le programme du calendrier admin
+  const progId=document.getElementById('admin-filter-prog')?.value;
+  if(progId){
+    const fProg=document.getElementById('f-prog');
+    if(fProg)fProg.value=progId;
+    onFProgChange();
+  }
+  if(weekNum!=null){
+    const w=document.getElementById('f-week');if(w)w.value=weekNum;
+    const d=document.getElementById('f-dow');if(d&&dow!=null)d.value=dow;
+  } else {
+    document.getElementById('f-date').value=iso;
+  }
 }
 
 // ===================================================
