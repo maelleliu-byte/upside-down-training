@@ -25,11 +25,23 @@
   // Detect slug from path or ?studio= param
   const params = new URLSearchParams(location.search);
   let slug = params.get('studio');
+  let slugFromUrl = false;
   if (!slug) {
     const seg = location.pathname.split('/').filter(Boolean)[0];
-    slug = seg && /^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(seg) ? seg : 'upside';
+    if (seg && /^[a-z0-9][a-z0-9-]{1,30}[a-z0-9]$/.test(seg)) {
+      slug = seg;
+      slugFromUrl = true;
+    } else {
+      slug = 'upside';
+    }
+  } else {
+    slugFromUrl = true;
   }
   window.__STUDIO_SLUG__ = slug;
+
+  function showNotFound(msg) {
+    document.body.innerHTML = `<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080808;color:#f0f0f0;font-family:system-ui;text-align:center;padding:32px"><div style="font-size:72px;margin-bottom:16px">🥺</div><div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;margin-bottom:8px">STUDIO INTROUVABLE</div><div style="color:#aaa;max-width:340px;line-height:1.6">${msg}</div><a href="/" style="margin-top:24px;color:#e8ff47;text-decoration:none;border:1px solid #e8ff47;padding:10px 20px;border-radius:8px">← Retour</a></div>`;
+  }
 
   // Fetch studio config via REST (no auth needed - get_studio_by_slug is public)
   fetch(`${SUPABASE_URL}/rest/v1/rpc/get_studio_by_slug`, {
@@ -45,19 +57,25 @@
   .then(rows => {
     const studio = Array.isArray(rows) ? rows[0] : rows;
     if (!studio || !studio.id) {
-      document.body.innerHTML = `<div style="position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#080808;color:#f0f0f0;font-family:system-ui;text-align:center;padding:32px"><div style="font-size:72px;margin-bottom:16px">🥺</div><div style="font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;margin-bottom:8px">STUDIO INTROUVABLE</div><div style="color:#aaa;max-width:320px;line-height:1.6">Aucun studio nommé <code style="background:#222;padding:2px 8px;border-radius:4px;color:#e8ff47">${slug}</code> n'existe.</div><a href="/" style="margin-top:24px;color:#e8ff47;text-decoration:none;border:1px solid #e8ff47;padding:10px 20px;border-radius:8px">← Retour</a></div>`;
+      if (slugFromUrl) {
+        showNotFound(`Aucun studio nommé <code style="background:#222;padding:2px 8px;border-radius:4px;color:#e8ff47">${slug}</code> n'existe.`);
+        return;
+      }
+      // No slug in URL → silent fallback to defaults
+      window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
       return;
     }
     window.__STUDIO__ = studio;
-    // Apply branding
     if (studio.accent_color) document.documentElement.style.setProperty('--accent', studio.accent_color);
     if (studio.name) document.title = studio.name;
-    // Fire ready event so the app can react if needed
     window.dispatchEvent(new CustomEvent('studio:ready', { detail: studio }));
   })
   .catch(err => {
     console.error('[tenant] failed to load studio:', err);
-    // Fail open - keep app working with defaults (your own studio behavior)
+    if (slugFromUrl) {
+      showNotFound(`Impossible de charger le studio <code style="background:#222;padding:2px 8px;border-radius:4px;color:#e8ff47">${slug}</code>. Vérifie ta connexion.`);
+      return;
+    }
     window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
   });
 })();
