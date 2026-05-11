@@ -1380,7 +1380,27 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       </div>
       <button class="btn-modal-save" onclick="saveCycleChip()">Ajouter</button>
     </div>
+    <button class="btn-secondary" onclick="openDuplicateCellToCycle()" style="width:100%;margin-top:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);padding:10px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">📋 Dupliquer cette case vers un autre cycle</button>
     <button class="btn-modal-cancel" onclick="closeCycleCellModal()">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL DUPLIQUER VERS UN AUTRE CYCLE -->
+<div class="modal-overlay" id="dup-cycle-modal">
+  <div class="cycle-cell-modal">
+    <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px">Dupliquer vers…</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:14px">Copie les blocs de cette case dans un autre cycle</div>
+    <div class="form-group">
+      <label class="form-label">Cycle de destination</label>
+      <select class="form-select" id="dup-cycle-select"></select>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Semaine cible</label>
+      <input type="number" class="form-input" id="dup-cycle-week" min="1" value="1" style="width:100px">
+      <div style="font-size:11px;color:var(--muted);margin-top:4px">La colonne / ligne / jour est conservée à l'identique.</div>
+    </div>
+    <button class="btn-modal-save" onclick="confirmDuplicateCellToCycle()">Dupliquer</button>
+    <button class="btn-modal-cancel" onclick="closeDupCycleModal()">Annuler</button>
   </div>
 </div>
 
@@ -3836,6 +3856,17 @@ async function _dashEmbedExtras(){
     const card=aClone.querySelector('#dash-admin-athlete-card');if(card)card.style.display='none';
     aMount.innerHTML='<div style="font-family:Bebas Neue,sans-serif;font-size:18px;letter-spacing:2px;margin:0 0 12px;border-top:1px solid var(--border);padding-top:20px">👥 ATHLÈTES</div>';
     aMount.appendChild(aClone);
+    // Rendre les rows clonés cliquables : bascule sur l'onglet Athlètes + ouvre la fiche
+    aClone.querySelectorAll('.athlete-row').forEach(row=>{
+      row.style.cursor='pointer';
+      row.addEventListener('click',(e)=>{
+        if(e.target.closest('.btn-delete'))return;
+        const btn=row.querySelector('.btn-delete');
+        const m=btn&&btn.getAttribute('onclick')&&btn.getAttribute('onclick').match(/deleteAthlete\('([^']+)'/);
+        if(!m)return;
+        openAthleteFicheFromDash(m[1]);
+      });
+    });
   }
 }
 async function loadDashboard(){
@@ -4532,6 +4563,58 @@ function selectPreset(text,color){
 function closeCycleCellModal(){
   document.getElementById('cycle-cell-modal').classList.remove('open');
   cycleCellTarget=null;
+}
+
+// ===== DUPLIQUER UNE CASE VERS UN AUTRE CYCLE =====
+let _dupCellSource=null;
+function openDuplicateCellToCycle(){
+  if(!cycleCellTarget){showToast('⚠️ Aucune case sélectionnée');return;}
+  const t=cycleCellTarget;
+  const key=t.mode==='session'?`w${t.wk}-${t.ri}-${t.di}`:`${t.a}-${t.b}`;
+  const chips=(t.mode==='session'?cycleData.sessionCells[key]:cycleData.cells[key])||[];
+  if(!chips.length){showToast('⚠️ Cette case est vide');return;}
+  _dupCellSource={mode:t.mode,key,chips:JSON.parse(JSON.stringify(chips)),srcCycleId:cycleData.id||null};
+  // Construit la liste des cycles cibles (exclut le cycle courant)
+  const others=(allCycles||[]).filter(c=>c.id!==cycleData.id);
+  if(!others.length){showToast('⚠️ Aucun autre cycle disponible');return;}
+  const sel=document.getElementById('dup-cycle-select');
+  sel.innerHTML=others.map(c=>`<option value="${c.id}">${(c.name||'Sans nom').replace(/</g,'&lt;')}</option>`).join('');
+  document.getElementById('dup-cycle-week').value=(t.mode==='session'?t.wk:t.a)+1;
+  document.getElementById('dup-cycle-modal').classList.add('open');
+}
+function closeDupCycleModal(){
+  document.getElementById('dup-cycle-modal').classList.remove('open');
+  _dupCellSource=null;
+}
+async function confirmDuplicateCellToCycle(){
+  if(!_dupCellSource){closeDupCycleModal();return;}
+  const targetId=document.getElementById('dup-cycle-select').value;
+  const targetWeek=Math.max(1,parseInt(document.getElementById('dup-cycle-week').value)||1)-1;
+  if(!targetId){showToast('⚠️ Choisis un cycle');return;}
+  // Charge le cycle cible
+  const {data:tc,error}=await sb.from('cycle_plans').select('*').eq('id',targetId).single();
+  if(error||!tc){showToast('⚠️ Cycle introuvable');return;}
+  const cells=tc.cells||{};
+  const sessionCells=tc.session_cells||{};
+  const src=_dupCellSource;
+  if(src.mode==='session'){
+    // key src: w{wk}-{ri}-{di} → garde ri & di, change wk
+    const m=src.key.match(/^w(\d+)-(\d+)-(\d+)$/);
+    if(!m){showToast('⚠️ Clé invalide');return;}
+    const newKey=`w${targetWeek}-${m[2]}-${m[3]}`;
+    sessionCells[newKey]=(sessionCells[newKey]||[]).concat(src.chips.map(c=>({...c,done:false})));
+  } else {
+    // key src: {w}-{c} → garde c, change w
+    const m=src.key.match(/^(\d+)-(\d+)$/);
+    if(!m){showToast('⚠️ Clé invalide');return;}
+    const newKey=`${targetWeek}-${m[2]}`;
+    cells[newKey]=(cells[newKey]||[]).concat(src.chips.map(c=>({...c,done:false})));
+  }
+  const {error:upErr}=await sb.from('cycle_plans').update({cells,session_cells:sessionCells}).eq('id',targetId);
+  if(upErr){showToast('❌ Erreur: '+upErr.message);return;}
+  showToast('✅ Bloc dupliqué vers '+(tc.name||'cycle'));
+  closeDupCycleModal();
+  closeCycleCellModal();
 }
 
 function selectChipColor(color,el){
@@ -5555,6 +5638,22 @@ async function openAthleteCard(id){
 function closeAthleteCard(){
   document.getElementById('admin-athlete-card').style.display='none';
   document.getElementById('admin-athletes-list').style.display='';
+  const panel=document.getElementById('admin-athletes');
+  if(panel&&panel.dataset.returnTo==='dashboard'){
+    delete panel.dataset.returnTo;
+    const tabBtn=document.querySelector('.admin-tab-btn[onclick*="dashboard"]');
+    if(tabBtn)adminTab('dashboard',tabBtn);
+  }
+}
+// Ouvre la fiche athlète depuis le dashboard (sans onglet Athlètes)
+async function openAthleteFicheFromDash(id){
+  document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+  const panel=document.getElementById('admin-athletes');
+  panel.classList.add('active');
+  panel.dataset.returnTo='dashboard';
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+  if(typeof loadAdminAthletes==='function'){try{await loadAdminAthletes();}catch(e){}}
+  openAthleteCard(id);
 }
 
 async function _loadAthleteCardStats(id){
@@ -5892,7 +5991,7 @@ async function loadWellnessAdmin(){
     }
     const ic=r.sev==='red'?'🚨':(r.sev==='orange'?'⚠️':(r.sev==='green'?'✅':''));
     const chips=_wellnessChips(r.e);
-    return `<div class="well-alert ${r.sev}" onclick="(function(id){adminTab('athletes',document.querySelector('.admin-tab-btn[onclick*=\\'athletes\\']'));setTimeout(()=>openAthleteCard(id),50);})('${r.p.id}')">
+    return `<div class="well-alert ${r.sev}" onclick="openAthleteFicheFromDash('${r.p.id}')">
       <div class="av">${_initials(r.p.full_name||r.p.email)}</div>
       <div class="mid">
         <div class="nm">${escapeHtml(r.p.full_name||'—')}</div>
