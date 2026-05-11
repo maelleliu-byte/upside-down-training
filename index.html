@@ -1400,9 +1400,21 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
   <div class="modal">
     <div class="modal-title">📋 Dupliquer</div>
     <div class="modal-sub" id="dup-session-name">—</div>
-    <div class="form-group" style="margin-bottom:14px">
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Destination</label>
+      <div style="display:flex;gap:6px">
+        <button type="button" class="dup-dest-btn active" data-dest="prog" onclick="setDupDest('prog')" style="flex:1;padding:10px;border-radius:8px;background:var(--card2);border:1.5px solid var(--accent);color:var(--text);font-size:12px;font-weight:700;cursor:pointer">📅 Programme</button>
+        <button type="button" class="dup-dest-btn" data-dest="perso" onclick="setDupDest('perso')" style="flex:1;padding:10px;border-radius:8px;background:var(--card);border:1.5px solid var(--border2);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer">👤 Espace perso</button>
+      </div>
+    </div>
+    <div class="form-group" style="margin-bottom:14px" id="dup-prog-group">
       <label class="form-label">Programme destination</label>
       <select class="form-select" id="dup-prog"></select>
+    </div>
+    <div class="form-group" style="margin-bottom:14px;display:none" id="dup-athlete-group">
+      <label class="form-label">Athlète (prog mixte)</label>
+      <select class="form-select" id="dup-athlete"></select>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">La séance sera copiée dans son espace perso, sans rattachement à un programme.</div>
     </div>
     <div class="form-group" style="margin-bottom:16px">
       <label class="form-label">Nouvelle date</label>
@@ -3592,23 +3604,91 @@ async function duplicateSession(id){
 }
 
 let sessionToDuplicate=null;
-function openDuplicateModal(session){
+let dupDest='prog'; // 'prog' | 'perso'
+let dupMixedAthletesCache=null;
+
+function setDupDest(dest){
+  dupDest=dest;
+  document.querySelectorAll('.dup-dest-btn').forEach(b=>{
+    const on=b.dataset.dest===dest;
+    b.classList.toggle('active',on);
+    b.style.background=on?'var(--card2)':'var(--card)';
+    b.style.borderColor=on?'var(--accent)':'var(--border2)';
+    b.style.color=on?'var(--text)':'var(--muted)';
+  });
+  document.getElementById('dup-prog-group').style.display=dest==='prog'?'':'none';
+  document.getElementById('dup-athlete-group').style.display=dest==='perso'?'':'none';
+}
+
+async function loadMixedAthletes(){
+  // On charge TOUS les athlètes (le coach décide qui est en prog mixte).
+  // On compte les programmes assignés pour afficher un indicateur, mais on ne filtre pas.
+  let rows=[];
+  const r1=await sb.from('athlete_programmes').select('athlete_id');
+  if(!r1.error&&r1.data)rows=r1.data;
+  const r2=await sb.from('programme_access').select('athlete_id');
+  if(!r2.error&&r2.data)rows=rows.concat(r2.data);
+  const counts={};
+  rows.forEach(r=>{if(r.athlete_id)counts[r.athlete_id]=(counts[r.athlete_id]||0)+1;});
+  if(!persoAthletesCache.length){
+    const {data}=await sb.from('profiles').select('*').order('full_name');
+    persoAthletesCache=data||[];
+  }
+  // Tous les profils, athlètes mixtes (≥2 progs) en tête.
+  const list=persoAthletesCache
+    .filter(a=>a.role!=='admin')
+    .map(a=>({...a,_progCount:counts[a.id]||0}));
+  list.sort((a,b)=>{
+    const am=a._progCount>=2?0:1, bm=b._progCount>=2?0:1;
+    if(am!==bm)return am-bm;
+    return (a.full_name||'').localeCompare(b.full_name||'');
+  });
+  return list;
+}
+
+async function openDuplicateModal(session){
   sessionToDuplicate=session;
   document.getElementById('dup-session-name').textContent=session.title;
   document.getElementById('dup-date').value=new Date().toISOString().split('T')[0];
   document.getElementById('dup-prog').innerHTML=programmes.map(p=>`<option value="${p.id}" ${p.id===session.programme_id?'selected':''}>${p.icon||'💪'} ${p.name}</option>`).join('');
+  // Athlètes prog mixte
+  const athSel=document.getElementById('dup-athlete');
+  athSel.innerHTML='<option value="">Chargement…</option>';
+  setDupDest('prog');
   document.getElementById('dup-modal').classList.add('open');
+  const mixed=await loadMixedAthletes();
+  dupMixedAthletesCache=mixed;
+  if(!mixed.length){
+    athSel.innerHTML='<option value="">— Aucun athlète —</option>';
+  } else {
+    athSel.innerHTML=mixed.map(a=>{
+      const tag=a._progCount>=2?` · ${a._progCount} progs 🔀`:(a._progCount===1?` · 1 prog`:'');
+      return `<option value="${a.id}">${escapeHtml(a.full_name||a.email||'Athlète')}${tag}</option>`;
+    }).join('');
+  }
 }
 function closeDupModal(){document.getElementById('dup-modal').classList.remove('open');sessionToDuplicate=null;}
 async function confirmDuplicate(){
   if(!sessionToDuplicate)return;
-  const progId=document.getElementById('dup-prog').value;
   const date=document.getElementById('dup-date').value;
   if(!date){showToast('⚠️ Choisis une date');return;}
-  const {id,created_at,...rest}=sessionToDuplicate;
-  const {error}=await sb.from('sessions').insert({...rest,programme_id:progId,date,created_by:currentUser.id});
-  if(error){showToast('❌ '+error.message);return;}
-  showToast('✅ Séance dupliquée !');
+  const {id,created_at,programme_id,athlete_id,...rest}=sessionToDuplicate;
+  // Pour la cible perso, on neutralise les champs one-shot (semaine/jour) car les séances perso sont datées.
+  if(dupDest==='perso'){
+    const athId=document.getElementById('dup-athlete').value;
+    if(!athId){showToast('⚠️ Choisis un athlète en prog mixte');return;}
+    const payload={...rest,date,week_number:null,day_of_week:null,athlete_id:athId,created_by:currentUser.id};
+    const {error}=await sb.from('personal_sessions').insert(payload);
+    if(error){showToast('❌ '+error.message);return;}
+    const ath=(dupMixedAthletesCache||[]).find(a=>a.id===athId);
+    showToast('✅ Copiée dans l\'espace perso de '+(ath?.full_name||'l\'athlète'));
+  } else {
+    const progId=document.getElementById('dup-prog').value;
+    if(!progId){showToast('⚠️ Choisis un programme');return;}
+    const {error}=await sb.from('sessions').insert({...rest,programme_id:progId,date,created_by:currentUser.id});
+    if(error){showToast('❌ '+error.message);return;}
+    showToast('✅ Séance dupliquée !');
+  }
   closeDupModal();
   loadAdminSessions();
 }
