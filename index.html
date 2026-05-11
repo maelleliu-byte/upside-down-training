@@ -3672,12 +3672,12 @@ async function confirmDuplicate(){
   if(!sessionToDuplicate)return;
   const date=document.getElementById('dup-date').value;
   if(!date){showToast('⚠️ Choisis une date');return;}
-  const {id,created_at,programme_id,athlete_id,...rest}=sessionToDuplicate;
+  const {id,created_at,programme_id,athlete_id,is_benchmark,benchmark_id,week_number,day_of_week,...baseRest}=sessionToDuplicate;
   // Pour la cible perso, on neutralise les champs one-shot (semaine/jour) car les séances perso sont datées.
   if(dupDest==='perso'){
     const athId=document.getElementById('dup-athlete').value;
     if(!athId){showToast('⚠️ Choisis un athlète en prog mixte');return;}
-    const payload={...rest,date,week_number:null,day_of_week:null,athlete_id:athId,created_by:currentUser.id};
+    const payload={...baseRest,date,athlete_id:athId,created_by:currentUser.id};
     const {error}=await sb.from('personal_sessions').insert(payload);
     if(error){showToast('❌ '+error.message);return;}
     const ath=(dupMixedAthletesCache||[]).find(a=>a.id===athId);
@@ -3685,7 +3685,12 @@ async function confirmDuplicate(){
   } else {
     const progId=document.getElementById('dup-prog').value;
     if(!progId){showToast('⚠️ Choisis un programme');return;}
-    const {error}=await sb.from('sessions').insert({...rest,programme_id:progId,date,created_by:currentUser.id});
+    const restWithFlags={...baseRest};
+    if(typeof is_benchmark!=='undefined')restWithFlags.is_benchmark=is_benchmark;
+    if(typeof benchmark_id!=='undefined')restWithFlags.benchmark_id=benchmark_id;
+    if(typeof week_number!=='undefined')restWithFlags.week_number=week_number;
+    if(typeof day_of_week!=='undefined')restWithFlags.day_of_week=day_of_week;
+    const {error}=await sb.from('sessions').insert({...restWithFlags,programme_id:progId,date,created_by:currentUser.id});
     if(error){showToast('❌ '+error.message);return;}
     showToast('✅ Séance dupliquée !');
   }
