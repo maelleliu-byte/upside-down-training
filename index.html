@@ -2,7 +2,21 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<script src="https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.1/dist/drag-drop-touch.umd.min.js"></script>
+<!-- drag-drop-touch polyfill: lazy, silent — sandbox may block CDNs (non-critical) -->
+<script>
+(function(){
+  if(!('ontouchstart' in window))return;
+  const urls=['https://cdn.jsdelivr.net/npm/drag-drop-touch@1.3.1/dist/drag-drop-touch.umd.min.js','https://unpkg.com/drag-drop-touch@1.3.1/dist/drag-drop-touch.umd.min.js'];
+  let i=0;
+  function tryLoad(){
+    if(i>=urls.length)return;
+    fetch(urls[i++],{mode:'no-cors'}).then(r=>r.text()).then(code=>{
+      try{const s=document.createElement('script');s.textContent=code;document.head.appendChild(s);}catch(e){tryLoad();}
+    }).catch(()=>tryLoad());
+  }
+  tryLoad();
+})();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -1029,6 +1043,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
           <option value="rounds">Rounds + reps</option>
           <option value="weight">Charge (kg)</option>
           <option value="calories">Calories</option>
+          <option value="watt">Watt</option>
           <option value="text">Retour textuel</option>
         </select>
       </div>
@@ -1125,7 +1140,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <div class="admin-panel" id="admin-cycle">
       <!-- Header -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <input type="text" class="form-input" id="cycle-name" placeholder="Nom du cycle..." style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px">
+        <input type="text" class="form-input" id="cycle-name" placeholder="Nom du cycle..." oninput="scheduleAutoSaveCycle()" style="flex:1;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px">
         <button onclick="saveCycle()" style="padding:9px 14px;background:var(--orange);color:#000;border:none;border-radius:10px;font-weight:700;font-size:12px;cursor:pointer;white-space:nowrap">💾</button>
         <button onclick="newCycle()" style="padding:9px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:10px;font-size:12px;cursor:pointer">+</button>
       </div>
@@ -1153,9 +1168,10 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <!-- Config Vue Cycle -->
       <div id="cycle-config-cycle" style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
         <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Semaines</span>
-        <input type="number" class="form-input" id="cycle-weeks" min="1" max="52" value="8" onchange="renderCycleGrid()" style="width:70px;padding:8px 10px">
+        <input type="number" class="form-input" id="cycle-weeks" min="1" max="52" value="8" onchange="renderCycleGrid();scheduleAutoSaveCycle()" style="width:70px;padding:8px 10px">
         <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Début</span>
-        <input type="date" class="form-input" id="cycle-start-date" onchange="renderCycleGrid()" style="width:140px;padding:8px 10px">
+        <input type="date" class="form-input" id="cycle-start-date" onchange="renderCycleGrid();scheduleAutoSaveCycle()" style="width:140px;padding:8px 10px">
+        <span id="cycle-autosave-indicator" style="font-size:11px;color:var(--teal,#1e9b9b);opacity:0;transition:opacity .3s;margin-left:8px">✓ Enregistré</span>
         <button onclick="addCycleColumn()" style="padding:7px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:8px;font-size:12px;cursor:pointer">+ Colonne</button>
       </div>
 
@@ -1451,7 +1467,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       </div>
       <button class="btn-modal-save" onclick="saveCycleChip()">Ajouter</button>
     </div>
-    <button class="btn-secondary" onclick="openDuplicateCellToCycle()" style="width:100%;margin-top:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);padding:10px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">📋 Dupliquer cette case vers un autre cycle</button>
+    <button class="btn-secondary" onclick="openDuplicateCellSameCycle()" style="width:100%;margin-top:10px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);padding:10px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">🔁 Dupliquer dans ce cycle (autre semaine)</button>
+    <button class="btn-secondary" onclick="openDuplicateCellToCycle()" style="width:100%;margin-top:6px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);padding:10px;border-radius:10px;font-size:12px;font-weight:600;cursor:pointer">📋 Dupliquer cette case vers un autre cycle</button>
     <button class="btn-modal-cancel" onclick="closeCycleCellModal()">Annuler</button>
   </div>
 </div>
@@ -1530,6 +1547,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📝 Ma note de séance</div>
       <textarea id="session-note-input" style="width:100%;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;resize:none;outline:none;min-height:60px" placeholder="Comment s'est passée la séance ? Sensations, difficultés..."></textarea>
       <button onclick="saveSessionNote()" style="margin-top:6px;padding:6px 14px;background:var(--accent);color:#000;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">Sauvegarder</button>
+      <button onclick="deleteOwnSessionNote()" style="margin-top:6px;margin-left:6px;padding:6px 12px;background:transparent;color:var(--red);border:1px solid rgba(255,68,68,.3);border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">🗑️ Supprimer</button>
       <div id="session-notes-list" style="margin-top:12px"></div>
     </div>
     <div id="smodal-leaderboard"></div>
@@ -1553,7 +1571,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     </div>
     <div id="modal-history"></div>
     <button class="btn-modal-save" onclick="savePR()">Enregistrer</button>
-    <button class="btn-modal-cancel" onclick="closePRModal()">Annuler</button>
+    <button class="btn-modal-cancel" onclick="closePRModal()">Retour</button>
   </div>
 </div>
 
@@ -1601,7 +1619,7 @@ const TYPE_LABELS={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymn
 const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio / Mono',autre:'Autre'};
 const LEVEL_LABELS={rx:'RX',intermediate:'Inter',scaled:'Scaled',foundation:'Fond.'};
 const LEVEL_COLORS={rx:'#111',intermediate:'var(--red)',scaled:'var(--blue)',foundation:'var(--purple)'};
-const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétitions',rounds:'Ex: 12 + 5',weight:'Charge en kg (ex: 85)',calories:'Nombre de calories'};
+const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétitions',rounds:'Ex: 12 + 5',weight:'Charge en kg (ex: 85)',calories:'Nombre de calories',watt:'Puissance en watts (ex: 250)'};
 // STRIPE — clé publique LIVE + price IDs
 const STRIPE_PUBLIC_KEY='pk_live_51TTgoeGfW5FegIxCCDUZQvm2EakuXj3rC2UFYiRDXfvuaE42WwX3Hjys4734FK0p9Dqe5ngaCNKpR35ssPKRUVSH004VamRL0F';
 const STRIPE_PLANS={
@@ -2429,8 +2447,9 @@ async function renderScoresModal(sessionId, scoreType, sets){
         </div>
         ${noteHtml}
         <div class="score-actions">
-          <button class="react-btn ${''}" id="react-${sc.id}" onclick="toggleReactionModal('${sc.id}')">❤️ <span id="react-count-${sc.id}">0</span></button>
+          <button class="react-btn ${''}" id="react-${sc.id}" onclick="toggleReactionModal('${sc.id}')" oncontextmenu="showLikers('${sc.id}',event);return false">❤️ <span id="react-count-${sc.id}" onclick="showLikers('${sc.id}',event)" style="cursor:pointer">0</span></button>
           <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
+          ${isMe?`<button class="react-btn" onclick="deleteOwnScore('${sc.id}')" title="Supprimer" style="margin-left:auto;color:var(--red)">🗑️</button>`:''}
         </div>
         <div class="comments-area" id="comments-${sc.id}">
           <div id="comments-list-${sc.id}"></div>
@@ -2453,21 +2472,53 @@ async function toggleReactionModal(scoreId){
 
 // REACTIONS
 async function loadReactions(scoreId){
-  const {data,count}=await sb.from('score_reactions').select('athlete_id',{count:'exact'}).eq('score_id',scoreId);
+  const {data,count}=await sb.from('score_reactions').select('athlete_id,profiles(full_name)',{count:'exact'}).eq('score_id',scoreId);
   const countEl=document.getElementById(`react-count-${scoreId}`);
   const btn=document.getElementById(`react-${scoreId}`);
   if(countEl)countEl.textContent=count||0;
-  if(btn&&currentUser){
-    const liked=(data||[]).some(r=>r.athlete_id===currentUser.id);
-    btn.classList.toggle('liked',liked);
+  if(btn){
+    const names=(data||[]).map(r=>r.profiles?.full_name||'Athlète');
+    btn.dataset.likers=JSON.stringify(names);
+    btn.title=names.length?'❤️ '+names.join(', '):'';
+    if(currentUser){
+      const liked=(data||[]).some(r=>r.athlete_id===currentUser.id);
+      btn.classList.toggle('liked',liked);
+    }
   }
+}
+function showLikers(scoreId,ev){
+  if(ev){ev.stopPropagation();ev.preventDefault();}
+  const btn=document.getElementById(`react-${scoreId}`);
+  if(!btn)return;
+  let names=[];
+  try{names=JSON.parse(btn.dataset.likers||'[]');}catch(e){}
+  if(!names.length){showToast('Personne n\'a encore liké');return;}
+  showToast('❤️ '+names.join(', '));
 }
 async function toggleReaction(scoreId){
   const btn=document.getElementById(`react-${scoreId}`);
   const liked=btn?.classList.contains('liked');
-  if(liked){await sb.from('score_reactions').delete().eq('score_id',scoreId).eq('athlete_id',currentUser.id);}
-  else{await sb.from('score_reactions').insert({score_id:scoreId,athlete_id:currentUser.id});}
+  if(liked){const {error}=await sb.from('score_reactions').delete().eq('score_id',scoreId).eq('athlete_id',currentUser.id);if(error)showToast('❌ '+error.message);}
+  else{const {error}=await sb.from('score_reactions').insert({score_id:scoreId,athlete_id:currentUser.id});if(error)showToast('❌ '+error.message);}
   loadReactions(scoreId);
+}
+
+async function deleteOwnScore(scoreId){
+  if(!confirm('Supprimer définitivement ce score ?'))return;
+  const {error}=await sb.from('wod_scores').delete().eq('id',scoreId).eq('athlete_id',currentUser.id);
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('🗑️ Score supprimé');
+  if(currentScoresSession)await renderScoresModal(currentScoresSession.sessionId,currentScoresSession.scoreType,currentScoresSession.sets);
+}
+
+async function deleteOwnSessionNote(){
+  if(!currentScoresSession||!currentUser)return;
+  if(!confirm('Supprimer ta note de séance ?'))return;
+  const {error}=await sb.from('session_notes').delete().eq('session_id',currentScoresSession.sessionId).eq('athlete_id',currentUser.id);
+  if(error){showToast('❌ '+error.message);return;}
+  const ta=document.getElementById('session-note-input');if(ta)ta.value='';
+  showToast('🗑️ Note supprimée');
+  await renderScoresModal(currentScoresSession.sessionId,currentScoresSession.scoreType,currentScoresSession.sets);
 }
 
 // COMMENTS
@@ -4068,7 +4119,7 @@ function renderSessionRowsConfig(){
   const el=document.getElementById('session-rows-config');
   el.innerHTML=cycleData.rows.map((r,i)=>`
     <div style="display:flex;align-items:center;gap:8px">
-      <input type="text" class="form-input" value="${r}" oninput="cycleData.rows[${i}]=this.value;renderCycleGrid()" style="flex:1;padding:8px 12px;font-size:13px">
+      <input type="text" class="form-input" value="${r}" oninput="cycleData.rows[${i}]=this.value;renderCycleGrid();scheduleAutoSaveCycle()" style="flex:1;padding:8px 12px;font-size:13px">
       <button onclick="removeSessionRow(${i})" style="padding:8px 10px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:8px;font-size:12px;cursor:pointer">✕</button>
     </div>`).join('');
 }
@@ -4077,6 +4128,7 @@ function addSessionRow(){
   cycleData.rows.push('Nouvelle ligne');
   renderSessionRowsConfig();
   renderCycleGrid();
+  scheduleAutoSaveCycle();
 }
 function removeSessionRow(i){
   cycleData.rows.splice(i,1);
@@ -4344,6 +4396,7 @@ function addCycleColumn(){
   const name=prompt('Nom de la colonne ?')||'Nouveau';
   cycleData.columns.push(name);
   renderCycleGrid();
+  scheduleAutoSaveCycle();
 }
 
 function renderCycleGrid(){
@@ -4409,7 +4462,7 @@ function renderCycleGrid(){
   });
 }
 
-function renameColumn(ci,name){cycleData.columns[ci]=name;}
+function renameColumn(ci,name){cycleData.columns[ci]=name;scheduleAutoSaveCycle();}
 function moveColumn(ci,dir){
   const cols=cycleData.columns;
   const newCi=ci+dir;
@@ -4429,6 +4482,7 @@ function moveColumn(ci,dir){
   });
   cycleData.cells=newCells;
   renderCycleGrid();
+  scheduleAutoSaveCycle();
 }
 function removeColumn(ci){
   cycleData.columns.splice(ci,1);
@@ -4438,10 +4492,12 @@ function removeColumn(ci){
     if(c===ci)delete cycleData.cells[k];
   });
   renderCycleGrid();
+  scheduleAutoSaveCycle();
 }
 function removeChip(key,chi){
   if(cycleData.cells[key])cycleData.cells[key].splice(chi,1);
   renderCycleGrid();
+  scheduleAutoSaveCycle();
 }
 
 function renderSessionGrid(){
@@ -4461,7 +4517,7 @@ function renderSessionGrid(){
       html+=`<tr>
         <td class="session-row-label">
           <div class="session-row-label-inner">
-            <input type="text" value="${row}" oninput="cycleData.rows[${ri}]=this.value">
+            <input type="text" value="${row}" oninput="cycleData.rows[${ri}]=this.value;scheduleAutoSaveCycle()">
             ${rows.length>1?`<button class="session-row-del" onclick="removeSessionRow(${ri})">✕</button>`:''}
           </div>
         </td>
@@ -4520,6 +4576,7 @@ async function toggleChipDone(key,chi){
 function removeSessionChip(key,chi){
   if(cycleData.sessionCells[key])cycleData.sessionCells[key].splice(chi,1);
   renderSessionGrid();
+  scheduleAutoSaveCycle();
 }
 
 // Options prédéfinies par catégorie de ligne
@@ -4629,6 +4686,7 @@ function selectPreset(text,color){
       renderSessionGrid();
     }
   }
+  scheduleAutoSaveCycle();
 }
 
 function closeCycleCellModal(){
@@ -4638,6 +4696,63 @@ function closeCycleCellModal(){
 
 // ===== DUPLIQUER UNE CASE VERS UN AUTRE CYCLE =====
 let _dupCellSource=null;
+
+// ===== DUPLIQUER UNE CASE DANS LE MÊME CYCLE (autre semaine) =====
+function openDuplicateCellSameCycle(){
+  if(!cycleCellTarget){showToast('⚠️ Aucune case sélectionnée');return;}
+  const t=cycleCellTarget;
+  const key=t.mode==='session'?`w${t.wk}-${t.ri}-${t.di}`:`${t.a}-${t.b}`;
+  const chips=(t.mode==='session'?cycleData.sessionCells[key]:cycleData.cells[key])||[];
+  if(!chips.length){showToast('⚠️ Cette case est vide');return;}
+  const totalWeeks=parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
+  const currentWeek=(t.mode==='session'?t.wk:t.a)+1;
+  const input=prompt(`Dupliquer ce bloc vers quelle(s) semaine(s) ? (1-${totalWeeks})\nEx: 2  ou  2,3,5  ou  2-4`,String(Math.min(currentWeek+1,totalWeeks)));
+  if(!input)return;
+  const targets=new Set();
+  input.split(',').forEach(part=>{
+    const p=part.trim();if(!p)return;
+    const range=p.match(/^(\d+)\s*-\s*(\d+)$/);
+    if(range){const a=parseInt(range[1]),b=parseInt(range[2]);for(let i=Math.min(a,b);i<=Math.max(a,b);i++)targets.add(i);}
+    else {const n=parseInt(p);if(!isNaN(n))targets.add(n);}
+  });
+  let added=0;
+  targets.forEach(wkOneBased=>{
+    if(wkOneBased<1||wkOneBased>totalWeeks)return;
+    if(wkOneBased===currentWeek)return;
+    const targetW=wkOneBased-1;
+    const cloned=JSON.parse(JSON.stringify(chips)).map(c=>({...c,done:false}));
+    if(t.mode==='session'){const newKey=`w${targetW}-${t.ri}-${t.di}`;cycleData.sessionCells[newKey]=(cycleData.sessionCells[newKey]||[]).concat(cloned);}
+    else {const newKey=`${targetW}-${t.b}`;cycleData.cells[newKey]=(cycleData.cells[newKey]||[]).concat(cloned);}
+    added++;
+  });
+  if(!added){showToast('⚠️ Aucune semaine valide');return;}
+  closeCycleCellModal();
+  renderCycleGrid();
+  scheduleAutoSaveCycle();
+  showToast(`✅ Bloc dupliqué sur ${added} semaine${added>1?'s':''}`);
+}
+
+// ===== AUTO-SAVE CYCLE (silencieux, débouncé) =====
+let _autoSaveCycleTimer=null;
+function scheduleAutoSaveCycle(){
+  if(!cycleData)return;
+  if(_autoSaveCycleTimer)clearTimeout(_autoSaveCycleTimer);
+  _autoSaveCycleTimer=setTimeout(autoSaveCycleNow,700);
+}
+async function autoSaveCycleNow(){
+  if(!currentUser)return;
+  const name=(document.getElementById('cycle-name')?.value||'').trim()||cycleData.name||'Cycle sans nom';
+  const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
+  cycleData.name=name;cycleData.weeks=weeks;
+  const startDate=document.getElementById('cycle-start-date')?.value||null;
+  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id};
+  try {
+    if(cycleData.id){await sb.from('cycle_plans').update(payload).eq('id',cycleData.id);}
+    else {const {data,error}=await sb.from('cycle_plans').insert(payload).select('id').single();if(!error&&data){cycleData.id=data.id;await loadAllCycles();const sel=document.getElementById('cycle-selector');if(sel)sel.value=cycleData.id;}}
+    const ind=document.getElementById('cycle-autosave-indicator');
+    if(ind){ind.textContent='✓ Enregistré';ind.style.opacity='1';setTimeout(()=>{if(ind)ind.style.opacity='0';},1400);}
+  } catch(e){console.warn('autoSaveCycle',e);}
+}
 function openDuplicateCellToCycle(){
   if(!cycleCellTarget){showToast('⚠️ Aucune case sélectionnée');return;}
   const t=cycleCellTarget;
@@ -4750,6 +4865,7 @@ function saveCycleChip(){
     closeCycleCellModal();
     renderCycleGrid();
   }
+  scheduleAutoSaveCycle();
 }
 
 // ===== VIDEO PICKER =====
