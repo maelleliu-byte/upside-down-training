@@ -1107,6 +1107,26 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     <!-- BENCHMARKS ADMIN -->
     <div class="admin-panel" id="admin-benchmarks">
       <div class="pr-hist-title" style="margin-bottom:8px">Mouvements (PR)</div>
+      <!-- Création nouveau mouvement -->
+      <div style="background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:12px;margin-bottom:12px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">+ Nouveau mouvement</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px">
+          <input type="text" class="form-input" id="new-mv-name" placeholder="Nom (ex: Split Jerk)" style="flex:1;min-width:160px">
+          <select class="form-input" id="new-mv-cat" style="flex:1;min-width:140px">
+            <option value="haltero">Haltérophilie</option>
+            <option value="force">Force</option>
+            <option value="gymnastic">Gymnastics</option>
+            <option value="cardio">Cardio / Mono</option>
+            <option value="autre">Autre</option>
+          </select>
+          <input type="text" class="form-input" id="new-mv-unit" placeholder="Unité (kg, reps…)" value="kg" style="width:120px">
+        </div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">
+          <input type="text" class="form-input" id="new-mv-formats" placeholder="Formats (ex: 1RM,3RM,5RM,10RM,Max Reps)" style="flex:1;min-width:200px">
+          <button onclick="addNewMovement()" style="padding:9px 14px;background:var(--accent);color:#000;border:none;border-radius:8px;font-weight:700;font-size:12px;cursor:pointer">Ajouter</button>
+        </div>
+        <div style="font-size:10px;color:var(--muted);margin-top:6px">💡 Astuce : pour Haltéro/Force, mets <b>1RM,3RM,5RM,10RM</b>. Pour Gym, <b>Max Reps,Max Hold</b>. Sépare par virgules.</div>
+      </div>
       <div style="position:relative;margin-bottom:10px">
         <input type="text" class="form-input" id="admin-mv-search" placeholder="Rechercher un mouvement…" oninput="loadAdminMovements()" style="padding-left:12px">
       </div>
@@ -1617,6 +1637,31 @@ const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
 const TYPE_LABELS={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymnastics:'Gymnastics',renforcement:'Renforcement',bodybuilding:'Bodybuilding',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité',engine:'Engine',run:'Run',separator:'Séparateur'};
 const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio / Mono',autre:'Autre'};
+const HALTERO_SUBCATS=[
+  {key:'snatch',  label:'SNATCH',   match:n=>/snatch/i.test(n)},
+  {key:'clean',   label:'CLEAN',    match:n=>/clean/i.test(n) && !/jerk/i.test(n)},
+  {key:'jerk',    label:'JERK',     match:n=>/jerk/i.test(n)},
+  {key:'squat',   label:'SQUAT',    match:n=>/squat/i.test(n) && !/clean|snatch/i.test(n)},
+  {key:'deadlift',label:'DEADLIFT', match:n=>/deadlift|soulev/i.test(n)},
+  {key:'press',   label:'PRESS',    match:n=>/press|bench/i.test(n) && !/jerk/i.test(n)},
+  {key:'autre',   label:'AUTRE',    match:_=>true}
+];
+function getHalteroSubCat(name){
+  for(const s of HALTERO_SUBCATS){if(s.match(name||''))return s.key;}
+  return 'autre';
+}
+const FORCE_SUBCATS=[
+  {key:'squat',   label:'SQUAT',    match:n=>/squat/i.test(n)},
+  {key:'bench',   label:'BENCH',    match:n=>/bench/i.test(n)},
+  {key:'deadlift',label:'DEADLIFT', match:n=>/deadlift|soulev/i.test(n)},
+  {key:'press',   label:'PRESS',    match:n=>/press|jerk/i.test(n)},
+  {key:'pull',    label:'PULL / ROW',match:n=>/pull[\s-]?up|chin[\s-]?up|row|tirage|traction/i.test(n)},
+  {key:'autre',   label:'AUTRE',    match:_=>true}
+];
+function getForceSubCat(name){
+  for(const s of FORCE_SUBCATS){if(s.match(name||''))return s.key;}
+  return 'autre';
+}
 const LEVEL_LABELS={rx:'RX',intermediate:'Inter',scaled:'Scaled',foundation:'Fond.'};
 const LEVEL_COLORS={rx:'#111',intermediate:'var(--red)',scaled:'var(--blue)',foundation:'var(--purple)'};
 const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétitions',rounds:'Ex: 12 + 5',weight:'Charge en kg (ex: 85)',calories:'Nombre de calories',watt:'Puissance en watts (ex: 250)'};
@@ -2059,8 +2104,13 @@ async function buildSessionCard(s){
         </div>`).join('')}
     </div>`;
   } else if(s.score_type==='time'){
-    // Temps + option WOD non terminé → reps réalisées
-    scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" type="text" placeholder="${getScorePlaceholder('time')}"></div>
+    // Temps : champs minutes + secondes séparés + option WOD non terminé → reps réalisées
+    scoreInputHtml=`<div class="rounds-inputs">
+        <div class="rounds-field"><div class="rounds-lbl">Minutes</div><input class="score-input" id="time-min-${s.id}" type="number" inputmode="numeric" min="0" placeholder="14"></div>
+        <div class="rounds-plus">:</div>
+        <div class="rounds-field"><div class="rounds-lbl">Secondes</div><input class="score-input" id="time-sec-${s.id}" type="number" inputmode="numeric" min="0" max="59" placeholder="32"></div>
+      </div>
+      <input type="hidden" id="score-input-${s.id}">
       <label class="dnf-toggle"><input type="checkbox" id="dnf-${s.id}" onchange="onDnfToggle('${s.id}')"> <span>WOD non terminé</span></label>
       <div class="score-input-row dnf-reps-row" id="dnf-reps-row-${s.id}" style="display:none"><input class="score-input" id="dnf-reps-${s.id}" type="number" inputmode="numeric" placeholder="Reps réalisées"></div>`;
   } else if(s.score_type==='rounds'){
@@ -2292,22 +2342,19 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     scoreText=values.join(' | ');
     scoreValue=parseFloat(values[0])||0;
   } else if(scoreType==='time'){
-    const input=document.getElementById(`score-input-${sessionId}`);
     const dnf=document.getElementById(`dnf-${sessionId}`)?.checked;
-    const timeVal=input?.value.trim();
+    const mins=parseInt(document.getElementById(`time-min-${sessionId}`)?.value)||0;
+    const secs=parseInt(document.getElementById(`time-sec-${sessionId}`)?.value)||0;
     if(dnf){
       const reps=parseInt(document.getElementById(`dnf-reps-${sessionId}`)?.value)||0;
       if(!reps){showToast('⚠️ Entre le nombre de reps réalisées');return;}
-      // DNF : on encode "DNF — N reps" en texte, score_value = reps (négatif pour trier sous les finishers)
       scoreText=`DNF · ${reps} reps`;
-      scoreValue=-1000+reps; // garde l'ordre par reps mais sous les finishers (val>=0)
+      scoreValue=-1000+reps;
     } else {
-      if(!timeVal){showToast('⚠️ Entre ton temps');return;}
-      scoreText=timeVal;
-      // convertir mm:ss en secondes pour tri ASC plus tard ; on stocke en positif
-      const parts=timeVal.split(':');
-      const secs=parts.length===2?(parseInt(parts[0])||0)*60+(parseInt(parts[1])||0):(parseFloat(timeVal)||0);
-      scoreValue=secs;
+      if(!mins&&!secs){showToast('⚠️ Entre ton temps (min/sec)');return;}
+      const ss=String(secs).padStart(2,'0');
+      scoreText=`${mins}:${ss}`;
+      scoreValue=mins*60+secs;
     }
   } else if(scoreType==='rounds'){
     const rounds=parseInt(document.getElementById(`rounds-${sessionId}`)?.value)||0;
@@ -2532,10 +2579,23 @@ async function loadComments(scoreId){
   const listEl=document.getElementById(`comments-list-${scoreId}`);
   if(!listEl)return;
   if(!data||data.length===0){listEl.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0">Pas encore de commentaire.</div>';return;}
-  listEl.innerHTML=data.map(c=>`<div class="comment-item">
-    <div class="comment-author">${c.profiles?.full_name||'Athlète'}</div>
-    <div class="comment-text">${c.content}</div>
-  </div>`).join('');
+  listEl.innerHTML=data.map(c=>{
+    const isMine=c.athlete_id===currentUser?.id;
+    const delBtn=isMine?`<button onclick="deleteComment('${c.id}','${scoreId}')" title="Supprimer" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px;margin-left:6px;opacity:.6">🗑️</button>`:'';
+    return `<div class="comment-item" style="display:flex;align-items:flex-start;gap:6px">
+      <div style="flex:1;min-width:0">
+        <div class="comment-author">${c.profiles?.full_name||'Athlète'}</div>
+        <div class="comment-text">${escapeHtml(c.content||'')}</div>
+      </div>
+      ${delBtn}
+    </div>`;
+  }).join('');
+}
+async function deleteComment(commentId,scoreId){
+  if(!confirm('Supprimer ce commentaire ?'))return;
+  const {error}=await sb.from('score_comments').delete().eq('id',commentId).eq('athlete_id',currentUser.id);
+  if(error){showToast('❌ '+error.message);return;}
+  loadComments(scoreId);
 }
 async function sendComment(scoreId){
   const input=document.getElementById(`comment-input-${scoreId}`);
@@ -2571,50 +2631,81 @@ function renderAll(){
   let html='';
 
   // --- MOUVEMENTS ---
+  // Helper: render a single movement (returns HTML string)
+  const renderMovementCard=(m)=>{
+    const prs=myPRs[m.id]||[];
+    const formats=[...new Set((m.available_formats||'').split(',').map(f=>f.trim()).filter(Boolean))];
+    if(formats.length>0){
+      // Une seule carte par mouvement : on affiche le PR du format primaire (1RM si présent, sinon le 1er format)
+      const primary=formats.find(f=>/^1\s*RM$/i.test(f))||formats[0];
+      const primaryPRs=prs.filter(p=>(p.format||'')===primary);
+      const mode=getPRModeFor(m,primary);
+      // Compteur : nombre de formats avec au moins 1 PR
+      const filledFmts=formats.filter(f=>prs.some(p=>(p.format||'')===f)).length;
+      const fmtBadge=`<span style="color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.5px">· ${filledFmts}/${formats.length} formats</span>`;
+      let prHtml;
+      if(primaryPRs.length>0){
+        const best=mode==='time'?primaryPRs.reduce((a,b)=>b.value<a.value?b:a):primaryPRs.reduce((a,b)=>b.value>a.value?b:a);
+        const display=mode==='number'?best.value:formatPRValue(best.value,mode);
+        const unitDisplay=mode==='time'?'temps':(mode==='rounds'?'rounds + reps':(mode==='run'?'km/h':(mode==='watt'?'W':m.unit)));
+        prHtml=`<div style="text-align:right"><div class="mv-pr-val">${display}</div><div class="mv-pr-unit">${primary} · ${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
+      } else {
+        prHtml=`<div class="mv-no-pr">+ Ajouter</div>`;
+      }
+      return`<div class="movement-item" onclick="openPRModal('${m.id}')">
+        <div><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category} ${fmtBadge}</div></div>${prHtml}
+      </div>`;
+    }
+    if(prs.length===0){
+      return`<div class="movement-item" onclick="openPRModal('${m.id}')">
+        <div><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>
+        <div class="mv-no-pr">+ Ajouter</div>
+      </div>`;
+    }
+    const sample=prs[0];
+    const mode=getPRModeFor(m,sample.format);
+    const best=mode==='time'?prs.reduce((a,b)=>b.value<a.value?b:a):prs.reduce((a,b)=>b.value>a.value?b:a);
+    const display=mode==='number'?best.value:formatPRValue(best.value,mode);
+    const unitDisplay=mode==='time'?'temps':(mode==='rounds'?'rounds + reps':m.unit);
+    const prHtml=`<div><div class="mv-pr-val">${display}</div><div class="mv-pr-unit">${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
+    return`<div class="movement-item" onclick="openPRModal('${m.id}')">
+      <div><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>${prHtml}
+    </div>`;
+  };
+
+  const subHeader=(label)=>`<div style="padding:10px 20px 4px;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--accent);opacity:.85;border-top:1px dashed var(--border);margin-top:6px">${label}</div>`;
+
   if(isAll||!isBenchCat){
     let filtered=movements;
     if(!isAll)filtered=filtered.filter(m=>m.category===currentCat);
     if(searchQuery)filtered=filtered.filter(m=>m.name.toLowerCase().includes(searchQuery));
     if(filtered.length>0){
       if(isAll)html+=`<div style="padding:12px 20px 4px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted)">RECORDS PERSONNELS</div>`;
-      html+=filtered.map(m=>{
-        const prs=myPRs[m.id]||[];
-        const formats=[...new Set((m.available_formats||'').split(',').map(f=>f.trim()).filter(Boolean).map(f=>f))];
-        // Si le mouvement a des formats → une ligne par format (jaune)
-        if(formats.length>0){
-          return formats.map(fmt=>{
-            const fmtPRs=prs.filter(p=>(p.format||'')===fmt);
-            const mode=getPRModeFor(m,fmt);
-            let prHtml;
-            if(fmtPRs.length>0){
-              const best=mode==='time'
-                ? fmtPRs.reduce((a,b)=>b.value<a.value?b:a)
-                : fmtPRs.reduce((a,b)=>b.value>a.value?b:a);
-              const display=mode==='number'?best.value:formatPRValue(best.value,mode);
-              const unitDisplay=mode==='time'?'temps':(mode==='rounds'?'rounds + reps':(mode==='run'?'km/h':(mode==='watt'?'W':m.unit)));
-              prHtml=`<div><div class="mv-pr-val">${display}</div><div class="mv-pr-unit">${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
-            } else {
-              prHtml=`<div class="mv-no-pr">+ Ajouter</div>`;
-            }
-            return`<div class="movement-item" onclick="openPRModal('${m.id}','${fmt.replace(/'/g,"\\'")}')">
-              <div><div class="mv-name">${m.name} <span style="color:var(--accent);font-size:11px;font-weight:600">· ${fmt}</span></div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>${prHtml}
-            </div>`;
-          }).join('');
-        }
-        // Mouvements sans format : afficher SEULEMENT s'ils ont au moins un PR
-        if(prs.length===0)return '';
-        const sample=prs[0];
-        const mode=getPRModeFor(m,sample.format);
-        const best=mode==='time'
-          ? prs.reduce((a,b)=>b.value<a.value?b:a)
-          : prs.reduce((a,b)=>b.value>a.value?b:a);
-        const display=mode==='number'?best.value:formatPRValue(best.value,mode);
-        const unitDisplay=mode==='time'?'temps':(mode==='rounds'?'rounds + reps':m.unit);
-        const prHtml=`<div><div class="mv-pr-val">${display}</div><div class="mv-pr-unit">${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
-        return`<div class="movement-item" onclick="openPRModal('${m.id}')">
-          <div><div class="mv-name">${m.name}</div><div class="mv-cat">${CAT_LABELS[m.category]||m.category}</div></div>${prHtml}
-        </div>`;
-      }).join('');
+
+      // Group haltero & force by sub-category
+      const halteroMovs=filtered.filter(m=>m.category==='haltero');
+      const forceMovs=filtered.filter(m=>m.category==='force');
+      const otherMovs=filtered.filter(m=>m.category!=='haltero'&&m.category!=='force');
+
+      const renderGrouped=(movs,subcats,getSub,catLabel)=>{
+        if(!movs.length)return;
+        if(isAll)html+=`<div style="padding:8px 20px 2px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--muted)">${catLabel.toUpperCase()}</div>`;
+        const grouped={};
+        movs.forEach(m=>{const k=getSub(m.name);(grouped[k]=grouped[k]||[]).push(m);});
+        subcats.forEach(sc=>{
+          const list=grouped[sc.key];
+          if(!list||!list.length)return;
+          html+=subHeader(sc.label);
+          html+=list.map(renderMovementCard).join('');
+        });
+      };
+
+      renderGrouped(halteroMovs,HALTERO_SUBCATS,getHalteroSubCat,CAT_LABELS.haltero);
+      renderGrouped(forceMovs,FORCE_SUBCATS,getForceSubCat,CAT_LABELS.force);
+
+      if(otherMovs.length>0){
+        html+=otherMovs.map(renderMovementCard).join('');
+      }
     }
   }
 
@@ -3866,17 +3957,58 @@ async function loadAdminMovements(){
         <div class="sli-meta">${m.category||'—'}</div>
       </div>
       <div style="display:flex;gap:6px;flex-shrink:0">
+        <button class="btn-delete" onclick="openEditMovement('${m.id}')" title="Modifier" style="background:transparent;border:1px solid var(--border2);color:var(--accent);padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer">✎</button>
         <button class="btn-delete" onclick="toggleMovementActive('${m.id}',${!inactive})" title="${inactive?'Réactiver':'Masquer'}" style="background:transparent;border:1px solid var(--border2);color:var(--muted);padding:6px 10px;border-radius:6px;font-size:11px;cursor:pointer">${inactive?'Réact.':'Masquer'}</button>
         <button class="btn-delete" onclick="deleteMovement('${m.id}','${m.name.replace(/'/g,"\\'")}')">✕</button>
       </div>
     </div>`;
   }).join('');
 }
+async function addNewMovement(){
+  const name=document.getElementById('new-mv-name')?.value.trim();
+  const category=document.getElementById('new-mv-cat')?.value||'autre';
+  const unit=document.getElementById('new-mv-unit')?.value.trim()||'kg';
+  let formats=document.getElementById('new-mv-formats')?.value.trim()||'';
+  // Auto-fill formats par défaut selon catégorie si vide
+  if(!formats){
+    if(category==='haltero'||category==='force')formats='1RM,3RM,5RM,10RM';
+    else if(category==='gymnastic')formats='Max Reps,Max Hold';
+  }
+  if(!name){showToast('⚠️ Nom requis');return;}
+  const {error}=await sb.from('movements').insert({name,category,unit,available_formats:formats||null,is_active:true});
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Mouvement ajouté !');
+  document.getElementById('new-mv-name').value='';
+  document.getElementById('new-mv-formats').value='';
+  await loadMovements();
+  loadAdminMovements();
+}
 async function toggleMovementActive(id,deactivate){
   const {error}=await sb.from('movements').update({is_active:!deactivate}).eq('id',id);
   if(error){showToast('❌ '+error.message);return;}
   showToast(deactivate?'🙈 Mouvement masqué':'✅ Mouvement réactivé');
   await loadMovements();loadAdminMovements();
+}
+
+let _editingMovementId=null;
+async function openEditMovement(id){
+  const m=movements.find(x=>x.id===id);
+  if(!m){showToast('⚠️ Mouvement introuvable');return;}
+  _editingMovementId=id;
+  const name=prompt('Nom du mouvement :',m.name||'');
+  if(name===null)return;
+  const category=prompt('Catégorie (haltero / force / gymnastic / cardio / autre) :',m.category||'autre');
+  if(category===null)return;
+  const unit=prompt('Unité (kg, reps, m, s…) :',m.unit||'kg');
+  if(unit===null)return;
+  const formats=prompt('Formats (séparés par virgules, ex: 1RM,3RM,5RM,10RM) :',m.available_formats||'');
+  if(formats===null)return;
+  const {error}=await sb.from('movements').update({name:name.trim(),category:category.trim()||'autre',unit:unit.trim()||'kg',available_formats:formats.trim()||null}).eq('id',id);
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('✅ Mouvement modifié');
+  await loadMovements();
+  loadAdminMovements();
+  if(document.getElementById('page-pr')?.classList.contains('active'))renderAll();
 }
 async function deleteMovement(id,name){
   if(!confirm(`Supprimer définitivement « ${name} » ?\n\nLes PR liés seront aussi supprimés.`))return;
@@ -5775,9 +5907,11 @@ function onDnfToggle(sid){
   const cb=document.getElementById('dnf-'+sid);
   const row=document.getElementById('dnf-reps-row-'+sid);
   const inp=document.getElementById('score-input-'+sid);
+  const minEl=document.getElementById('time-min-'+sid);
+  const secEl=document.getElementById('time-sec-'+sid);
   if(!row)return;
-  if(cb&&cb.checked){row.style.display='';if(inp){inp.value='';inp.disabled=true;inp.style.opacity=.4;}}
-  else{row.style.display='none';if(inp){inp.disabled=false;inp.style.opacity=1;}}
+  if(cb&&cb.checked){row.style.display='';if(inp){inp.value='';inp.disabled=true;inp.style.opacity=.4;}[minEl,secEl].forEach(e=>{if(e){e.value='';e.disabled=true;e.style.opacity=.4;}});}
+  else{row.style.display='none';if(inp){inp.disabled=false;inp.style.opacity=1;}[minEl,secEl].forEach(e=>{if(e){e.disabled=false;e.style.opacity=1;}});}
 }
 
 // --- Helpers ---
