@@ -97,10 +97,23 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <style>
 :root{--black:#080808;--dark:#101010;--card:#161616;--card2:#1e1e1e;--border:#252525;--border2:#333;--accent:#e8ff47;--red:#ff4444;--blue:#47c8ff;--orange:#ff8c47;--purple:#c847ff;--green:#47ff8c;--text:#f0f0f0;--text2:#aaa;--muted:#666;--safe-bottom:env(safe-area-inset-bottom,0px)}
-:root[data-theme="light"]{--black:#fafaf7;--dark:#f3f3ee;--card:#ffffff;--card2:#f6f6f1;--border:#e5e5dd;--border2:#d4d4cb;--accent:#7a8a18;--red:#d33;--blue:#0d7fb3;--orange:#c95a0e;--purple:#7a1fb3;--green:#1e8a4a;--text:#1a1a1a;--text2:#444;--muted:#888}
-:root[data-theme="light"] .info-block-text{color:#333}
-:root[data-theme="light"] .comment-text{color:#333}
+:root[data-theme="light"]{--black:#fafaf7;--dark:#f3f3ee;--card:#ffffff;--card2:#f6f6f1;--border:#dcdcd2;--border2:#bdbdb1;--accent:#5a6810;--red:#b71c1c;--blue:#0b5e94;--orange:#a8470a;--purple:#5b1690;--green:#15703a;--text:#0a0a0a;--text2:#1a1a1a;--muted:#3d3d3d}
+:root[data-theme="light"] .info-block-text{color:#0a0a0a}
+:root[data-theme="light"] .comment-text{color:#0a0a0a}
 :root[data-theme="light"] .btn-auth,:root[data-theme="light"] .btn-primary,:root[data-theme="light"] .btn-score{color:#fff}
+:root[data-theme="light"] .form-label{color:#1a1a1a;font-weight:700}
+:root[data-theme="light"] .form-input,:root[data-theme="light"] .form-select,:root[data-theme="local"] .form-textarea,:root[data-theme="light"] .form-textarea,:root[data-theme="light"] textarea,:root[data-theme="light"] input,:root[data-theme="light"] select{color:#0a0a0a}
+:root[data-theme="light"] .rich-content{color:#0a0a0a}
+:root[data-theme="light"] .menu-item-label,:root[data-theme="light"] .session-title,:root[data-theme="light"] .session-content{color:#0a0a0a}
+:root[data-theme="light"] .stat-val,:root[data-theme="light"] .profil-name,:root[data-theme="light"] .season-stat-n,:root[data-theme="light"] .afiche-name,:root[data-theme="light"] .afiche-stat-num{color:#0a0a0a}
+:root[data-theme="light"] [style*="color:var(--muted)"],:root[data-theme="light"] [style*="color: var(--muted)"]{color:#3d3d3d !important}
+:root[data-theme="light"] [style*="color:var(--text2)"],:root[data-theme="light"] [style*="color: var(--text2)"]{color:#1a1a1a !important}
+:root[data-theme="light"] .scaling-text{color:#0a0a0a}
+:root[data-theme="light"] .scaling-label{color:#0a0a0a !important}
+:root[data-theme="light"] .scaling-block-inter{background:rgba(183,28,28,.07);border-color:rgba(183,28,28,.35)}
+:root[data-theme="light"] .scaling-block-scaled{background:rgba(11,94,148,.07);border-color:rgba(11,94,148,.35)}
+:root[data-theme="light"] .scaling-block-found{background:rgba(91,22,144,.07);border-color:rgba(91,22,144,.35)}
+:root[data-theme="light"] #f-scaling-inter,:root[data-theme="light"] #f-scaling-scaled,:root[data-theme="light"] #f-scaling-foundation{color:#0a0a0a;background:#fff}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);max-width:430px;margin:0 auto;position:relative}
@@ -945,6 +958,27 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
     <!-- NOUVELLE SÉANCE -->
     <div class="admin-panel" id="admin-new-session">
+
+      <!-- TEMPLATES DE SÉANCE -->
+      <div id="session-templates-block" style="background:linear-gradient(135deg,rgba(232,255,71,.06),rgba(71,200,255,.04));border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px">
+          <div style="display:flex;align-items:center;gap:8px;min-width:0">
+            <span style="font-size:14px">📋</span>
+            <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">Templates de séance</div>
+          </div>
+          <button type="button" id="tpl-toggle-btn" onclick="toggleSessionTemplates()" style="background:transparent;border:1px solid var(--border2);color:var(--text2);font-size:11px;font-weight:700;padding:4px 9px;border-radius:7px;cursor:pointer">Afficher</button>
+        </div>
+        <div id="session-templates-body" style="display:none">
+          <div id="session-templates-list" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;min-height:4px"></div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button type="button" onclick="saveAsSessionTemplate()" style="flex:1;min-width:140px;padding:9px 12px;background:var(--card2);border:1.5px solid var(--accent);color:var(--accent);border-radius:9px;font-size:12px;font-weight:700;cursor:pointer">💾 Enregistrer comme template</button>
+            <button type="button" onclick="exportSessionTemplates()" title="Exporter en JSON" style="padding:9px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:9px;font-size:12px;font-weight:600;cursor:pointer">⇩</button>
+            <button type="button" onclick="importSessionTemplates()" title="Importer un JSON" style="padding:9px 12px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:9px;font-size:12px;font-weight:600;cursor:pointer">⇧</button>
+          </div>
+          <div style="font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5">Sauvegarde le contenu du formulaire (titre, type, contenu, scaling, vidéos, scores…) pour le redéployer en 1 clic. La date et le programme ne sont pas inclus.</div>
+        </div>
+      </div>
+
       <div id="form-perso-banner" style="display:none;background:linear-gradient(135deg,#e8ff4722,#47c8ff22);border:1px solid #e8ff4744;border-radius:12px;padding:12px 14px;margin-bottom:14px;align-items:center;gap:12px">
         <div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#e8ff47,#47c8ff);color:#000;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:13px" id="form-perso-avatar">?</div>
         <div style="flex:1">
@@ -1383,7 +1417,6 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
     </div>
     <div class="menu-item" onclick="toggleTheme()"><span class="menu-item-label" id="theme-label">🌙 Mode clair</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('pr')"><span class="menu-item-label">📊 Mes records (PR)</span><span>›</span></div>
-    <div class="menu-item" onclick="goPage('bench')"><span class="menu-item-label">🏆 Mes benchmarks</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('abos')"><span class="menu-item-label">💳 Mes abonnements</span><span>›</span></div>
     <div class="menu-item" id="admin-menu-item" style="display:none" onclick="goPage('admin')"><span class="menu-item-label">⚙️ Administration</span><span>›</span></div>
     <button class="btn-logout" onclick="doLogout()">Se déconnecter</button>
@@ -3413,6 +3446,168 @@ function selectSessionColor(color,el){
   selectedSessionColor=color;
   document.querySelectorAll('#f-colors .color-swatch').forEach(s=>s.classList.remove('selected'));
   el.classList.add('selected');
+}
+
+// ===== TEMPLATES DE SÉANCE (localStorage par coach) =====
+function _tplKey(){
+  try{return 'upside:session_templates:'+(currentUser&&currentUser.id?currentUser.id:'anon');}catch(e){return 'upside:session_templates:anon';}
+}
+function getSessionTemplates(){
+  try{return JSON.parse(localStorage.getItem(_tplKey())||'[]');}catch(e){return [];}
+}
+function setSessionTemplates(arr){
+  try{localStorage.setItem(_tplKey(),JSON.stringify(arr||[]));}catch(e){}
+}
+function toggleSessionTemplates(){
+  const body=document.getElementById('session-templates-body');
+  const btn=document.getElementById('tpl-toggle-btn');
+  if(!body)return;
+  const show=body.style.display==='none';
+  body.style.display=show?'block':'none';
+  if(btn)btn.textContent=show?'Masquer':'Afficher';
+  if(show)renderSessionTemplates();
+}
+function renderSessionTemplates(){
+  const list=document.getElementById('session-templates-list');
+  if(!list)return;
+  const tpls=getSessionTemplates();
+  if(!tpls.length){
+    list.innerHTML='<div style="font-size:11px;color:var(--muted);padding:6px 2px;font-style:italic">Aucun template — sauvegarde ta première séance type ci-dessous</div>';
+    return;
+  }
+  list.innerHTML=tpls.map((t,i)=>`
+    <div class="tpl-chip" data-i="${i}" style="display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border2);border-left:3px solid ${t.color||'#e8ff47'};border-radius:8px;padding:6px 4px 6px 10px;max-width:100%">
+      <button type="button" onclick="applySessionTemplate(${i})" style="background:none;border:none;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;padding:0;text-align:left;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Charger ce template">${(t.name||t.title||'Sans titre').replace(/</g,'&lt;')}</button>
+      <span style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">${(t.type||'').slice(0,6)}</span>
+      <button type="button" onclick="renameSessionTemplate(${i})" title="Renommer" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:11px;padding:2px 4px">✎</button>
+      <button type="button" onclick="deleteSessionTemplate(${i})" title="Supprimer" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:13px;padding:2px 6px;opacity:.7">✕</button>
+    </div>
+  `).join('');
+}
+function _collectSessionFormSnapshot(){
+  syncLegacyVideoFields&&syncLegacyVideoFields();
+  let videos=[];
+  try{videos=getFormVideos?getFormVideos():[];}catch(e){videos=[];}
+  return {
+    type:document.getElementById('f-type').value,
+    title:document.getElementById('f-title').value.trim(),
+    content:getEditorContent(),
+    intensity:parseInt(document.getElementById('f-intensity').value)||7,
+    target:document.getElementById('f-target').value,
+    tips:document.getElementById('f-tips').value,
+    score_type:document.getElementById('f-score-type').value,
+    sets:document.getElementById('f-sets')?document.getElementById('f-sets').value:'',
+    color:selectedSessionColor||'#e8ff47',
+    scaling_inter:document.getElementById('f-scaling-inter').value,
+    scaling_scaled:document.getElementById('f-scaling-scaled').value,
+    scaling_foundation:document.getElementById('f-scaling-foundation').value,
+    multi_score:!!(typeof multiScoreEnabled!=='undefined'&&multiScoreEnabled),
+    score_count:(typeof multiScoreEnabled!=='undefined'&&multiScoreEnabled)?parseInt(document.getElementById('f-score-count')?.value)||2:0,
+    score_labels:(()=>{
+      if(typeof multiScoreEnabled==='undefined'||!multiScoreEnabled)return [];
+      const c=parseInt(document.getElementById('f-score-count')?.value)||2;
+      return Array.from({length:c},(_,i)=>document.getElementById(`f-score-label-${i}`)?.value||`Score ${i+1}`);
+    })(),
+    videos
+  };
+}
+async function saveAsSessionTemplate(){
+  const snap=_collectSessionFormSnapshot();
+  if(!snap.title&&!snap.content){showToast('⚠️ Remplis au moins un titre');return;}
+  const defaultName=snap.title||(snap.type+' — '+new Date().toLocaleDateString('fr-FR'));
+  const name=prompt('Nom du template ?',defaultName);
+  if(!name)return;
+  const tpls=getSessionTemplates();
+  tpls.unshift({...snap,name:name.trim(),savedAt:Date.now()});
+  // limit 50 templates
+  if(tpls.length>50)tpls.length=50;
+  setSessionTemplates(tpls);
+  renderSessionTemplates();
+  // ouvrir si replié
+  const body=document.getElementById('session-templates-body');
+  if(body&&body.style.display==='none'){toggleSessionTemplates();}
+  showToast('✅ Template sauvegardé');
+}
+function applySessionTemplate(i){
+  const tpls=getSessionTemplates();
+  const t=tpls[i];if(!t)return;
+  // Type d'abord (déclenche affichage sets)
+  document.getElementById('f-type').value=t.type||'wod';
+  if(typeof toggleSetsField==='function')toggleSetsField();
+  if(t.type==='strength'&&document.getElementById('f-sets'))document.getElementById('f-sets').value=t.sets||'';
+  document.getElementById('f-title').value=t.title||'';
+  setEditorContent(t.content||'');
+  document.getElementById('f-intensity').value=t.intensity||7;
+  document.getElementById('f-int-val').textContent=t.intensity||7;
+  document.getElementById('f-target').value=t.target||'';
+  document.getElementById('f-tips').value=t.tips||'';
+  document.getElementById('f-score-type').value=t.score_type||'reps';
+  document.getElementById('f-scaling-inter').value=t.scaling_inter||'';
+  document.getElementById('f-scaling-scaled').value=t.scaling_scaled||'';
+  document.getElementById('f-scaling-foundation').value=t.scaling_foundation||'';
+  // Vidéos
+  try{if(typeof setFormVideos==='function')setFormVideos(t.videos||[]);}catch(e){}
+  // Couleur
+  if(t.color){
+    selectedSessionColor=t.color;
+    document.querySelectorAll('#f-colors .color-swatch').forEach(s=>s.classList.toggle('selected',s.dataset.color===t.color));
+  }
+  // Multi-score
+  if(t.multi_score){
+    multiScoreEnabled=true;
+    document.getElementById('multi-score-toggle')?.classList.add('on');
+    document.getElementById('multi-score-fields').style.display='block';
+    const sel=document.getElementById('f-score-count');
+    if(sel)sel.value=t.score_count||2;
+    if(typeof renderScoreLabels==='function')renderScoreLabels();
+    (t.score_labels||[]).forEach((lbl,idx)=>{const el=document.getElementById(`f-score-label-${idx}`);if(el)el.value=lbl;});
+  } else {
+    multiScoreEnabled=false;
+    document.getElementById('multi-score-toggle')?.classList.remove('on');
+    document.getElementById('multi-score-fields').style.display='none';
+  }
+  showToast('📋 Template "'+(t.name||'').slice(0,30)+'" chargé — choisis la date');
+  document.getElementById('f-title')?.scrollIntoView({block:'center',behavior:'smooth'});
+}
+function renameSessionTemplate(i){
+  const tpls=getSessionTemplates();const t=tpls[i];if(!t)return;
+  const n=prompt('Nouveau nom :',t.name||t.title||'');
+  if(!n)return;
+  t.name=n.trim();setSessionTemplates(tpls);renderSessionTemplates();
+}
+function deleteSessionTemplate(i){
+  const tpls=getSessionTemplates();const t=tpls[i];if(!t)return;
+  if(!confirm('Supprimer le template "'+(t.name||t.title||'')+'" ?'))return;
+  tpls.splice(i,1);setSessionTemplates(tpls);renderSessionTemplates();
+}
+function exportSessionTemplates(){
+  const tpls=getSessionTemplates();
+  if(!tpls.length){showToast('⚠️ Aucun template');return;}
+  const blob=new Blob([JSON.stringify(tpls,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;a.download='upside-templates-seances.json';
+  document.body.appendChild(a);a.click();a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+function importSessionTemplates(){
+  const inp=document.createElement('input');inp.type='file';inp.accept='.json,application/json';
+  inp.onchange=()=>{
+    const f=inp.files&&inp.files[0];if(!f)return;
+    const r=new FileReader();
+    r.onload=()=>{
+      try{
+        const arr=JSON.parse(r.result);
+        if(!Array.isArray(arr))throw new Error('Format invalide');
+        const cur=getSessionTemplates();
+        setSessionTemplates([...arr,...cur].slice(0,50));
+        renderSessionTemplates();
+        showToast('✅ '+arr.length+' template(s) importé(s)');
+      }catch(e){showToast('❌ Fichier invalide');}
+    };
+    r.readAsText(f);
+  };
+  inp.click();
 }
 
 let adminWeekOffset=0;
