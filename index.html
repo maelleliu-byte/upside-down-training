@@ -2788,18 +2788,37 @@ function renderAll(){
     const formats=[...new Set((m.available_formats||'').split(',').map(f=>f.trim()).filter(Boolean))];
     if(formats.length>0){
       // Une seule carte par mouvement : on affiche le PR du format primaire (1RM si présent, sinon le 1er format)
+      // FALLBACK : si le format primaire n'a pas de PR mais qu'un autre format en a, on affiche celui-là.
       const primary=formats.find(f=>/^1\s*RM$/i.test(f))||formats[0];
-      const primaryPRs=prs.filter(p=>(p.format||'')===primary);
-      const mode=getPRModeFor(m,primary);
+      // Normalise la comparaison (casse + espaces) + traite les PR sans format comme appartenant au primaire
+      const _norm=s=>(s||'').toString().trim().toLowerCase().replace(/\s+/g,'');
+      const matchFmt=(prFmt,targetFmt)=>{
+        const pn=_norm(prFmt);
+        const tn=_norm(targetFmt);
+        // PR sans format → on l'attribue au format primaire (legacy)
+        if(!pn)return _norm(targetFmt)===_norm(primary);
+        return pn===tn;
+      };
+      let displayFmt=primary;
+      let primaryPRs=prs.filter(p=>matchFmt(p.format,primary));
+      if(primaryPRs.length===0){
+        // Cherche le format renseigné le plus récent
+        const filledFmt=formats
+          .map(f=>{const fp=prs.filter(p=>matchFmt(p.format,f));return fp.length?{f,last:fp.reduce((a,b)=>((a.recorded_at||'')>(b.recorded_at||'')?a:b)).recorded_at||''}:null;})
+          .filter(Boolean)
+          .sort((a,b)=>(b.last||'').localeCompare(a.last||''))[0];
+        if(filledFmt){displayFmt=filledFmt.f;primaryPRs=prs.filter(p=>matchFmt(p.format,displayFmt));}
+      }
+      const mode=getPRModeFor(m,displayFmt);
       // Compteur : nombre de formats avec au moins 1 PR
-      const filledFmts=formats.filter(f=>prs.some(p=>(p.format||'')===f)).length;
+      const filledFmts=formats.filter(f=>prs.some(p=>matchFmt(p.format,f))).length;
       const fmtBadge=`<span style="color:var(--muted);font-size:10px;font-weight:600;letter-spacing:.5px">· ${filledFmts}/${formats.length} formats</span>`;
       let prHtml;
       if(primaryPRs.length>0){
         const best=mode==='time'?primaryPRs.reduce((a,b)=>b.value<a.value?b:a):primaryPRs.reduce((a,b)=>b.value>a.value?b:a);
         const display=mode==='number'?best.value:formatPRValue(best.value,mode);
         const unitDisplay=mode==='time'?'temps':(mode==='rounds'?'rounds + reps':(mode==='run'?'km/h':(mode==='watt'?'W':m.unit)));
-        prHtml=`<div style="text-align:right"><div class="mv-pr-val">${display}</div><div class="mv-pr-unit">${primary} · ${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
+        prHtml=`<div style="text-align:right"><div class="mv-pr-val">${display}</div><div class="mv-pr-unit">${displayFmt} · ${unitDisplay}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`;
       } else {
         prHtml=`<div class="mv-no-pr">+ Ajouter</div>`;
       }
@@ -5866,7 +5885,10 @@ async function renderPersoCalendar(){
           </div>
         </div>`;
       }).join(''):`<div class="cal-empty-day" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}',null)" onclick="persoNewSessionOn('${iso}')">+</div>`;
-      return`<div class="cal-day-col rich" data-date="${iso}" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}',null)">${blocks}</div>`;
+      const addMore=sessions.length>0
+        ? `<button class="cal-add-more" onclick="persoNewSessionOn('${iso}')" title="Ajouter une séance perso"><span class="plus">+</span>Séance</button>`
+        : '';
+      return`<div class="cal-day-col rich" data-date="${iso}" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}',null)">${blocks}${addMore}</div>`;
     }).join('');
     area.innerHTML=`<div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div>`;
   } else {
