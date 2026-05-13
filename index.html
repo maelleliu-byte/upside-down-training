@@ -471,6 +471,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cal-session-block:hover .cal-session-actions{display:flex}
 .cal-action-btn{width:16px;height:16px;border-radius:3px;border:none;background:rgba(0,0,0,.4);color:#fff;font-size:9px;cursor:pointer;display:flex;align-items:center;justify-content:center}
 .cal-empty-day{height:40px;border-radius:6px;border:1px dashed var(--border);display:flex;align-items:center;justify-content:center;font-size:16px;color:var(--border2)}
+.cal-add-more{height:28px;margin-top:2px;border-radius:6px;border:1px dashed var(--border);background:transparent;display:flex;align-items:center;justify-content:center;gap:5px;font-size:11px;font-weight:700;letter-spacing:.5px;color:var(--muted);cursor:pointer;transition:all .15s}
+.cal-add-more:hover{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,.06)}
+.cal-add-more .plus{font-size:14px;line-height:1}
 
 .format-btn{padding:6px 12px;border-radius:8px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:12px;font-weight:700;cursor:pointer;transition:all .2s}
 .format-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(232,255,71,.1)}
@@ -3793,7 +3796,10 @@ async function loadAdminCalendar(){
           </div>`;
         }).join('')
         : `<div class="cal-empty-day" onclick="quickAddSession(null,${weekNum},${dow})">+</div>`;
-      return`<div class="cal-day-col rich">${blocks}</div>`;
+      const addMore=sessions.length>0
+        ? `<button class="cal-add-more" onclick="quickAddSession(null,${weekNum},${dow})" title="Ajouter une séance"><span class="plus">+</span>Séance</button>`
+        : '';
+      return`<div class="cal-day-col rich">${blocks}${addMore}</div>`;
     }).join('');
     cal.innerHTML=`<div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div>`;
     return;
@@ -3871,11 +3877,14 @@ async function loadAdminCalendar(){
         </div>`;
       }).join('')
       :`<div class="cal-empty-day" onclick="quickAddSession('${iso}')">+</div>`;
+    const addMore=sessions.length>0
+      ? `<button class="cal-add-more" onclick="quickAddSession('${iso}')" title="Ajouter une séance"><span class="plus">+</span>Séance</button>`
+      : '';
     return`<div class="cal-day-col rich"
       data-date="${iso}"
       ondragover="onCalDragOver(event)"
       ondragleave="onCalDragLeave(event)"
-      ondrop="onCalDrop(event,'${iso}')">${blocks}</div>`;
+      ondrop="onCalDrop(event,'${iso}')">${blocks}${addMore}</div>`;
   }).join('');
 
   cal.innerHTML=`<div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div>`;
@@ -4136,7 +4145,15 @@ async function saveSession(){
       openPersoFiche(persoAthlete);
     }
   } else {
-    loadAdminSessions();
+    // Si on est arrivé depuis l'onglet "Séances" via le bouton +, on y retourne
+    if(window._returnToSessionsAfterSave){
+      window._returnToSessionsAfterSave=false;
+      const sessionsTabBtn=document.querySelector('.admin-tab-btn:nth-child(3)');
+      adminTab('sessions',sessionsTabBtn);
+      loadAdminCalendar();
+    } else {
+      loadAdminSessions();
+    }
   }
 }
 
@@ -4377,6 +4394,8 @@ async function deleteAthlete(id,name){
   loadAdminAthletes();
 }
 function adminTab(tab,btn){
+  // Si l'utilisateur quitte le formulaire "+ Séance" sans valider, on annule le retour auto
+  if(tab!=='new-session')window._returnToSessionsAfterSave=false;
   document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');
   document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
   document.getElementById(`admin-${tab}`).classList.add('active');
@@ -6103,7 +6122,9 @@ function resetSessionForm(){
 }
 
 function quickAddSession(iso,weekNum,dow){
-  // Quand on clique sur un jour vide du calendrier admin (sessions classiques)
+  // Quand on clique sur un jour vide (ou sur "+ Séance" sous des blocs existants) du calendrier admin
+  // Mémorise qu'on doit revenir à l'onglet "Séances" après publication
+  window._returnToSessionsAfterSave=true;
   adminTab('new-session',document.querySelector('.admin-tab-btn:nth-child(2)'));
   resetSessionForm();
   // Pré-sélectionner le programme du calendrier admin
