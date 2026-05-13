@@ -874,7 +874,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
 .wod-cal-detail{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:10px}
 .wod-cal-day-label{font-size:11px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
-.wod-cal-session{display:flex;align-items:center;gap:10px;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px}
+.wod-cal-session{display:flex;align-items:center;gap:10px;padding:10px;background:var(--card2);border:1px solid var(--border);border-radius:10px;margin-bottom:8px;cursor:pointer;transition:border-color .15s,background .15s}
+.wod-cal-session:hover{border-color:var(--accent);background:var(--card)}
+.wod-cal-session.upcoming{cursor:pointer}
+.wod-cal-session.no-link{cursor:default}
+.wod-cal-session.no-link:hover{border-color:var(--border);background:var(--card2)}
 .wod-cal-session .wcs-icon{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;font-weight:700}
 .wod-cal-session .wcs-body{flex:1;min-width:0}
 .wod-cal-session .wcs-title{font-size:13px;font-weight:600;line-height:1.3;word-break:break-word}
@@ -898,6 +902,30 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .wod-cal-textarea{resize:vertical;min-height:50px;font-size:12px}
 .wod-cal-btn-save{flex:2;padding:10px;background:var(--accent);color:#000;border:none;border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif}
 .wod-cal-btn-cancel{flex:1;padding:10px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif}
+
+/* Search box */
+.wod-cal-search{position:relative;margin-bottom:12px}
+.wod-cal-search input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:10px 34px 10px 14px;outline:none;box-sizing:border-box}
+.wod-cal-search input:focus{border-color:var(--accent)}
+.wod-cal-search input::placeholder{color:var(--muted);opacity:.7}
+.wod-cal-search button{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:50%;background:var(--card2);border:none;color:var(--muted);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;padding:0}
+.wod-cal-search button:hover{color:var(--red)}
+
+/* Search results */
+.wcsi-header{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.4px;font-weight:700;padding:2px 2px 10px}
+.wod-cal-search-item{display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;cursor:pointer;transition:border-color .12s,background .12s}
+.wod-cal-search-item:hover{border-color:var(--accent);background:var(--card2)}
+.wcsi-date{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;width:74px;flex-shrink:0;padding-top:3px;line-height:1.4}
+.wcsi-body{flex:1;min-width:0}
+.wcsi-title{font-size:13px;font-weight:600;line-height:1.3;word-break:break-word}
+.wcsi-meta{font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-top:4px;display:flex;gap:6px;flex-wrap:wrap}
+.wcsi-meta .pill{padding:1px 6px;border-radius:4px;background:var(--card2);border:1px solid var(--border)}
+.wcsi-meta .pill.manual{background:rgba(71,255,140,.10);border-color:rgba(71,255,140,.30);color:var(--green)}
+.wcsi-snippet{font-size:11px;color:var(--text);opacity:.75;margin-top:6px;line-height:1.5;word-break:break-word}
+.wcsi-snippet mark{background:rgba(232,255,71,.28);color:var(--accent);padding:0 3px;border-radius:3px}
+.wcsi-score{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;color:var(--orange);flex-shrink:0;padding-top:1px}
+.wod-cal-search-empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:12px;line-height:1.6}
+.wod-cal-search-empty strong{color:var(--text)}
 
 </style>
 </head>
@@ -6653,6 +6681,15 @@ async function openWodCalendar(){
   if(!currentUser){showToast('Connecte-toi pour voir ton calendrier');return;}
   const now=new Date();
   wodCalState={y:now.getFullYear(),m:now.getMonth(),selectedKey:wcIso(now),data:null};
+  // Reset recherche
+  const inp=document.getElementById('wod-cal-search-input');
+  if(inp)inp.value='';
+  const cb=document.getElementById('wod-cal-search-clear');
+  if(cb)cb.style.display='none';
+  const cal=document.getElementById('wod-cal-cal-area');
+  if(cal)cal.style.display='';
+  const res=document.getElementById('wod-cal-search-results');
+  if(res){res.style.display='none';res.innerHTML='';}
   document.getElementById('wod-cal-modal').classList.add('open');
   await renderWodCalendar();
 }
@@ -6794,23 +6831,23 @@ function renderWodCalDetail(){
     const prog=sess.programmes||{};
     const color=sess.color||prog.color||'var(--accent)';
     const score=s.score_text||s.score_value||'';
-    html+=`<div class="wod-cal-session"><div class="wcs-icon" style="background:${color}22;color:${color}">${wcEsc(prog.icon||'✓')}</div>
+    html+=`<div class="wod-cal-session" onclick="openReadSession('${sess.id}','session')"><div class="wcs-icon" style="background:${color}22;color:${color}">${wcEsc(prog.icon||'✓')}</div>
       <div class="wcs-body"><div class="wcs-title">${wcEsc(sess.title||'Séance')}</div>
       <div class="wcs-meta">${wcEsc(prog.name||(sess.type||'').toUpperCase())} · <span style="color:var(--accent)">FAIT</span></div></div>
       ${score?`<div class="wcs-score">${wcEsc(score)}</div>`:''}</div>`;
   }
   // 2) Séances perso (manuelles)
   for(const p of perso){
-    html+=`<div class="wod-cal-session"><div class="wcs-icon" style="background:rgba(71,255,140,.16);color:var(--green)">●</div>
+    html+=`<div class="wod-cal-session" onclick="openReadSession('${p.id}','personal')"><div class="wcs-icon" style="background:rgba(71,255,140,.16);color:var(--green)">●</div>
       <div class="wcs-body"><div class="wcs-title">${wcEsc(p.title||'Séance perso')}</div>
       <div class="wcs-meta">${wcEsc((p.type||'wod').toUpperCase())} · <span style="color:var(--green)">MANUEL</span></div></div>
-      <button class="wcs-del" onclick="deleteWodCalManual('${p.id}')" title="Supprimer">✕</button></div>`;
+      <button class="wcs-del" onclick="event.stopPropagation();deleteWodCalManual('${p.id}')" title="Supprimer">✕</button></div>`;
   }
   // 3) Séances programmées non faites (passé/aujourd'hui)
   if(!done.length && !isFuture){
     for(const s of prog){
       const pInfo=s.programmes||{};
-      html+=`<div class="wod-cal-session skipped"><div class="wcs-icon" style="background:rgba(255,68,68,.12);color:var(--red)">✕</div>
+      html+=`<div class="wod-cal-session skipped" onclick="openReadSession('${s.id}','session')"><div class="wcs-icon" style="background:rgba(255,68,68,.12);color:var(--red)">✕</div>
         <div class="wcs-body"><div class="wcs-title">${wcEsc(s.title||'Séance')}</div>
         <div class="wcs-meta">${wcEsc(pInfo.name||'Programme')} · <span style="color:var(--red)">NON FAIT</span></div></div></div>`;
     }
@@ -6819,7 +6856,7 @@ function renderWodCalDetail(){
   if(isFuture && prog.length){
     for(const s of prog){
       const pInfo=s.programmes||{};
-      html+=`<div class="wod-cal-session upcoming"><div class="wcs-icon" style="background:var(--card2);color:var(--muted)">○</div>
+      html+=`<div class="wod-cal-session upcoming" onclick="openReadSession('${s.id}','session')"><div class="wcs-icon" style="background:var(--card2);color:var(--muted)">○</div>
         <div class="wcs-body"><div class="wcs-title">${wcEsc(s.title||'Séance')}</div>
         <div class="wcs-meta">${wcEsc(pInfo.name||'Programme')} · <span style="color:var(--muted)">À VENIR</span></div></div></div>`;
     }
@@ -6903,6 +6940,185 @@ async function deleteWodCalManual(id){
   await renderWodCalendar();
 }
 
+/* ============================================================
+ * WOD CALENDAR — Search engine
+ * Cherche dans tous les WOD faits + séances perso (titre + content)
+ * ============================================================ */
+let wodCalSearchTimer=null;
+let wodCalSearchToken=0;
+
+function onWodCalSearch(){
+  const input=document.getElementById('wod-cal-search-input');
+  const clearBtn=document.getElementById('wod-cal-search-clear');
+  const q=(input.value||'').trim();
+  if(clearBtn)clearBtn.style.display=q?'flex':'none';
+  clearTimeout(wodCalSearchTimer);
+  if(!q){
+    // Retour vue calendrier
+    document.getElementById('wod-cal-cal-area').style.display='';
+    document.getElementById('wod-cal-search-results').style.display='none';
+    return;
+  }
+  // Pas de recherche si moins de 2 caractères
+  if(q.length<2){
+    const out=document.getElementById('wod-cal-search-results');
+    document.getElementById('wod-cal-cal-area').style.display='none';
+    out.style.display='block';
+    out.innerHTML=`<div class="wod-cal-search-empty">Tape <strong>2 caractères</strong> minimum<br/><span style="font-size:11px;opacity:.7">ex: muscle up, snatch, Fran, 5km…</span></div>`;
+    return;
+  }
+  wodCalSearchTimer=setTimeout(()=>runWodCalSearch(q),220);
+}
+
+function clearWodCalSearch(){
+  const input=document.getElementById('wod-cal-search-input');
+  if(input)input.value='';
+  document.getElementById('wod-cal-search-clear').style.display='none';
+  document.getElementById('wod-cal-cal-area').style.display='';
+  document.getElementById('wod-cal-search-results').style.display='none';
+}
+
+function wcHighlight(text,terms){
+  if(!text)return '';
+  let safe=wcEsc(text);
+  for(const t of terms){
+    if(!t)continue;
+    const re=new RegExp('('+t.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','ig');
+    safe=safe.replace(re,'<mark>$1</mark>');
+  }
+  return safe;
+}
+
+function wcSnippet(content,terms,maxLen=160){
+  if(!content)return '';
+  const lower=content.toLowerCase();
+  let pos=-1;
+  for(const t of terms){
+    if(!t)continue;
+    const p=lower.indexOf(t.toLowerCase());
+    if(p!==-1&&(pos===-1||p<pos))pos=p;
+  }
+  if(pos===-1){
+    return wcHighlight(content.length>maxLen?content.slice(0,maxLen)+'…':content,terms);
+  }
+  const start=Math.max(0,pos-50);
+  const end=Math.min(content.length,pos+110);
+  let snip=(start>0?'…':'')+content.slice(start,end)+(end<content.length?'…':'');
+  return wcHighlight(snip,terms);
+}
+
+function wcFormatShortDate(iso){
+  if(!iso)return '';
+  const [Y,M,D]=iso.split('-').map(Number);
+  const dt=new Date(Y,M-1,D);
+  return `${String(D).padStart(2,'0')} ${WC_MONTHS[M-1].slice(0,3)}.<br>${Y}`;
+}
+
+async function runWodCalSearch(query){
+  if(!currentUser)return;
+  const out=document.getElementById('wod-cal-search-results');
+  document.getElementById('wod-cal-cal-area').style.display='none';
+  out.style.display='block';
+  out.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted);font-size:12px">Recherche…</div>';
+
+  const q=(query||'').trim();
+  if(!q){clearWodCalSearch();return;}
+  const token=++wodCalSearchToken;
+  // Termes : on split sur espaces, chaque mot doit matcher (AND)
+  const terms=q.split(/\s+/).filter(Boolean);
+  const like=`%${q.replace(/[%_]/g,'\\$&')}%`;
+
+  try{
+    // 1) Scores faits : on tire tous les scores de l'athlète puis on joint sessions
+    // Pour rester efficace on filtre côté DB via or() sur sessions.title/content
+    // mais Supabase n'expose pas le filtre sur relation ; on fait donc 2 passes :
+    //  a) récupérer toutes les session_id de l'athlète
+    //  b) charger ces sessions filtrées par ilike sur title/content
+    const scoresRes=await sb.from('wod_scores')
+      .select('id,session_id,score_value,score_text,created_at')
+      .eq('athlete_id',currentUser.id);
+    if(token!==wodCalSearchToken)return;
+    const scores=scoresRes.data||[];
+    const sessionIds=Array.from(new Set(scores.map(s=>s.session_id).filter(Boolean)));
+    let sessions=[];
+    if(sessionIds.length){
+      // Supabase a une limite ~1000 d'IDs dans .in() — ici on est largement en-dessous
+      const sRes=await sb.from('sessions')
+        .select('id,date,title,content,type,color,programme_id,programmes(name,icon,color)')
+        .in('id',sessionIds)
+        .or(`title.ilike.${like},content.ilike.${like}`);
+      sessions=sRes.data||[];
+    }
+    if(token!==wodCalSearchToken)return;
+    const sessionById={};sessions.forEach(s=>sessionById[s.id]=s);
+    const doneHits=scores.filter(sc=>sessionById[sc.session_id]).map(sc=>{
+      const sess=sessionById[sc.session_id];
+      return {kind:'done',date:sess.date,session:sess,score:sc,scoreId:sc.id};
+    });
+
+    // 2) Séances perso (manuelles ou coach)
+    const persoRes=await sb.from('personal_sessions')
+      .select('id,date,title,content,type,color')
+      .eq('athlete_id',currentUser.id)
+      .or(`title.ilike.${like},content.ilike.${like}`);
+    if(token!==wodCalSearchToken)return;
+    const persoHits=(persoRes.data||[]).map(p=>({kind:'perso',date:p.date,perso:p}));
+
+    // Combine + tri date desc
+    const all=[...doneHits,...persoHits].sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    if(!all.length){
+      out.innerHTML=`<div class="wod-cal-search-empty">
+        Aucun résultat pour <strong>« ${wcEsc(q)} »</strong><br/>
+        <span style="font-size:11px;opacity:.7">Essaie un autre mot-clé, ou vérifie l'orthographe.</span>
+      </div>`;
+      return;
+    }
+
+    // Regroupement par année
+    const byYear={};
+    for(const h of all){
+      const y=(h.date||'').slice(0,4)||'—';
+      (byYear[y]=byYear[y]||[]).push(h);
+    }
+    const years=Object.keys(byYear).sort((a,b)=>b.localeCompare(a));
+
+    let html=`<div class="wcsi-header">${all.length} résultat${all.length>1?'s':''} pour « ${wcEsc(q)} »</div>`;
+    for(const y of years){
+      if(years.length>1)html+=`<div class="wcsi-header" style="padding-top:14px">${y}</div>`;
+      for(const h of byYear[y]){
+        if(h.kind==='done'){
+          const s=h.session,p=s.programmes||{};
+          const score=h.score.score_text||h.score.score_value||'';
+          const color=s.color||p.color||'#e8ff47';
+          html+=`<div class="wod-cal-search-item" onclick="openReadSession('${s.id}','session')">
+            <div class="wcsi-date">${wcFormatShortDate(h.date)}</div>
+            <div class="wcsi-body">
+              <div class="wcsi-title">${wcHighlight(s.title||'Séance',terms)}</div>
+              <div class="wcsi-meta">${wcEsc(p.icon||'')} ${wcEsc(p.name||(s.type||'').toUpperCase())} · <span style="color:var(--accent)">FAIT</span></div>
+              ${s.content?`<div class="wcsi-snippet">${wcSnippet(s.content,terms)}</div>`:''}
+            </div>
+            ${score?`<div class="wcsi-score">${wcEsc(score)}</div>`:''}
+          </div>`;
+        } else {
+          const p=h.perso;
+          html+=`<div class="wod-cal-search-item" onclick="openReadSession('${p.id}','personal')">
+            <div class="wcsi-date">${wcFormatShortDate(h.date)}</div>
+            <div class="wcsi-body">
+              <div class="wcsi-title">${wcHighlight(p.title||'Séance perso',terms)}</div>
+              <div class="wcsi-meta">${wcEsc((p.type||'wod').toUpperCase())} · <span style="color:var(--green)">MANUEL</span></div>
+              ${p.content?`<div class="wcsi-snippet">${wcSnippet(p.content,terms)}</div>`:''}
+            </div>
+          </div>`;
+        }
+      }
+    }
+    out.innerHTML=html;
+  }catch(e){
+    console.error('wod cal search',e);
+    out.innerHTML=`<div class="wod-cal-search-empty" style="color:var(--red)">Erreur : ${wcEsc(e.message||'recherche impossible')}</div>`;
+  }
+}
+
 </script>
 <!-- WOD CALENDAR MODAL (profil → clic stat WODs) -->
 <div class="modal-overlay" id="wod-cal-modal" onclick="if(event.target===this)closeWodCalendar()">
@@ -6921,6 +7137,12 @@ async function deleteWodCalManual(id){
       <div class="wcs-stat skip"><div class="v" id="wod-cal-skip">0</div><div class="l">Manqués</div></div>
     </div>
 
+    <div class="wod-cal-search">
+      <input type="text" id="wod-cal-search-input" placeholder="🔍 Rechercher — muscle up, snatch, Fran…" oninput="onWodCalSearch()" autocomplete="off" />
+      <button id="wod-cal-search-clear" onclick="clearWodCalSearch()" style="display:none" aria-label="Effacer">✕</button>
+    </div>
+
+    <div id="wod-cal-cal-area">
     <div class="wod-cal-nav">
       <button onclick="wodCalPrev()" aria-label="Mois précédent">‹</button>
       <div id="wod-cal-month-label">—</div>
@@ -6938,6 +7160,9 @@ async function deleteWodCalManual(id){
     </div>
 
     <div class="wod-cal-detail" id="wod-cal-detail"></div>
+    </div>
+
+    <div id="wod-cal-search-results" style="display:none;min-height:240px"></div>
 
     <button class="btn-modal-cancel" onclick="closeWodCalendar()">Fermer</button>
   </div>
