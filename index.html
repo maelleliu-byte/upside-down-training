@@ -5667,6 +5667,14 @@ async function openReadSession(id, source){
   } else {
     body.innerHTML=await buildSessionCard(data);
   }
+  // Bouton "Éditer" : visible uniquement si admin (toutes séances)
+  // OU athlète propriétaire d'une séance perso (manuelle/coach-poussée)
+  const editBtn=document.getElementById('read-modal-edit-btn');
+  if(editBtn){
+    const isAdmin=currentProfile?.role==='admin';
+    const isOwnPerso=readModalIsPerso && currentUser && data.athlete_id===currentUser.id;
+    editBtn.style.display=(isAdmin||isOwnPerso)?'':'none';
+  }
   document.getElementById('read-modal').classList.add('open');
 }
 function closeReadModal(){
