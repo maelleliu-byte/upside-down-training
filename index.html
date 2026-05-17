@@ -2387,10 +2387,32 @@ function renderContentWithCharges(content){
 function findMovementByName(name){
   if(!movements||movements.length===0)return null;
   const norm=name.toLowerCase().replace(/\s+/g,'');
-  return movements.find(m=>{
+  // 1) Match exact normalisé (Squat Clean === SQUAT CLEAN === squatclean)
+  const exact=movements.find(m=>m.name.toLowerCase().replace(/\s+/g,'')===norm);
+  if(exact)return exact;
+  // 2) Match par "mots" : tous les mots de la recherche doivent apparaître
+  //    comme mots dans le mouvement (évite que "Squat Clean" tombe sur "Clean").
+  const queryWords=name.toLowerCase().trim().split(/\s+/).filter(Boolean);
+  let best=null,bestScore=-1;
+  for(const m of movements){
     const mn=m.name.toLowerCase().replace(/\s+/g,'');
-    return mn===norm||mn.includes(norm)||norm.includes(mn);
-  })||null;
+    const mWords=m.name.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    let score=-1;
+    // a) Tous les mots de la query sont dans le mouvement
+    if(queryWords.every(w=>mWords.includes(w))){
+      // Bonus pour les noms les plus spécifiques (le plus de mots match)
+      // et pénalité légère pour les mots en trop côté mouvement
+      score=1000+queryWords.length*10-(mWords.length-queryWords.length);
+    } else if(mn===norm){
+      score=900;
+    } else if(mn.includes(norm)||norm.includes(mn)){
+      // Fallback flou : on garde le candidat dont le nom est le plus long
+      // (= le plus spécifique). "Squat Clean" (11) gagne sur "Clean" (5).
+      score=mn.length;
+    }
+    if(score>bestScore){bestScore=score;best=m;}
+  }
+  return best;
 }
 
 function findPRByName(name){
@@ -4061,12 +4083,22 @@ async function editSession(id){
     };
     btn.insertAdjacentElement('afterend',cancelBtn);
   }
-  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
-  document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
-  document.getElementById('admin-new-session').classList.add('active');
-  document.querySelector('.admin-tab-btn:nth-child(2)').classList.add('active');
+  // Bascule fiable vers l'onglet « + Séance » (Séance+) via la fonction
+  // officielle adminTab() — assure que tous les effets de bord se déclenchent
+  // (panels wellness, etc.) et pas seulement les classes CSS.
+  const newSessionTabBtn=document.querySelector('.admin-tab-btn[onclick*="new-session"]')
+    ||document.querySelector('.admin-tab-btn:nth-child(2)');
+  if(newSessionTabBtn&&typeof adminTab==='function'){
+    adminTab('new-session',newSessionTabBtn);
+  } else {
+    document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+    document.getElementById('admin-new-session').classList.add('active');
+    if(newSessionTabBtn)newSessionTabBtn.classList.add('active');
+  }
   // Scroll en haut du formulaire
-  document.getElementById('page-admin').scrollTop=0;
+  const pageAdmin=document.getElementById('page-admin');
+  if(pageAdmin)pageAdmin.scrollTop=0;
   showToast('✏️ Mode édition — modifie et sauvegarde');
 }
 
