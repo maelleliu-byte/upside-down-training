@@ -301,10 +301,15 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
 /* REACTIONS */
 .score-actions{display:flex;align-items:center;gap:10px;margin-top:8px;padding-top:8px;border-top:1px solid rgba(255,255,255,.05)}
-.react-btn{display:flex;align-items:center;gap:5px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:4px 8px;border-radius:6px;transition:all .2s;font-family:'DM Sans',sans-serif}
+.react-btn{display:flex;align-items:center;gap:6px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:8px 10px;border-radius:8px;transition:background .15s,color .15s;font-family:inherit;min-height:36px;-webkit-tap-highlight-color:transparent;user-select:none}
+.react-btn:hover{background:rgba(255,255,255,.04)}
 .react-btn.liked{color:var(--red)}
-.react-btn:active{transform:scale(.9)}
-.comment-btn{flex:1;text-align:left;font-size:12px}
+.react-btn .heart{display:inline-block;font-size:15px;line-height:1;transition:transform .18s cubic-bezier(.34,1.56,.64,1);transform-origin:center}
+.react-btn.liked .heart{transform:scale(1.18)}
+.react-btn.pop .heart{animation:heartPop .42s cubic-bezier(.34,1.56,.64,1)}
+@keyframes heartPop{0%{transform:scale(1)}30%{transform:scale(1.55)}60%{transform:scale(.9)}100%{transform:scale(1.18)}}
+.react-btn:disabled{opacity:.6;cursor:wait}
+.react-btn.comment-btn{flex:1;text-align:left;font-size:12px}
 .comments-area{margin-top:8px;display:none}
 .comments-area.open{display:block}
 .comment-item{padding:8px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:13px}
@@ -1709,8 +1714,11 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
 <!-- SCORES MODAL -->
 <div class="modal-overlay" id="scores-modal">
-  <div class="modal">
-    <div class="scores-modal-title" id="smodal-title">Classement</div>
+  <div class="modal" style="position:relative">
+    <div style="position:sticky;top:0;height:0;z-index:5;text-align:right;pointer-events:none;margin:0 -8px">
+      <button onclick="closeScoresModal()" aria-label="Fermer" title="Fermer" style="pointer-events:auto;width:34px;height:34px;border-radius:50%;border:1px solid var(--border2);background:var(--card);color:var(--text);font-size:16px;line-height:1;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;padding:0;box-shadow:0 4px 12px rgba(0,0,0,.45),0 0 0 4px var(--dark)">✕</button>
+    </div>
+    <div class="scores-modal-title" id="smodal-title" style="padding-right:40px;margin-top:-26px">Classement</div>
     <div class="scores-modal-sub" id="smodal-sub">—</div>
     <div id="smodal-gender-tabs" style="display:flex;gap:6px;margin:10px 0 4px">
       <button class="cls-gtab active" data-g="all" onclick="setLeaderboardGender('all')">Tous</button>
@@ -1961,8 +1969,11 @@ async function initApp(){
   await loadMovements();
   await loadBenchmarks();
   await loadVideos();
-  await loadProgrammes();
+  // Charger les PR AVANT les programmes : loadProgrammes() déclenche le premier
+  // rendu des séances (renderSessions), qui a besoin de myPRs pour calculer les
+  // charges (% × 1RM). Sinon les % n'apparaissent qu'au changement de jour.
   await loadMyPRs();
+  await loadProgrammes();
   const d=new Date();
   document.getElementById('prog-topbar-date').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
 }
@@ -2281,6 +2292,16 @@ async function buildSessionCard(s){
   // Couleur de la séance
   const cardColor=s.color||'#e8ff47';
 
+  // Nb de scores déjà enregistrés pour cette séance (head:true → on récupère juste le count)
+  let scoreCount=0;
+  try{
+    const {count}=await sb.from('wod_scores').select('id',{count:'exact',head:true}).eq('session_id',s.id);
+    scoreCount=count||0;
+  }catch(e){}
+  const scoreCountBadge=scoreCount>0
+    ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;margin-left:8px;border-radius:11px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'};font-size:12px;font-weight:700;line-height:1">${scoreCount}</span>`
+    : `<span style="margin-left:8px;font-size:12px;color:var(--muted);font-weight:500">· 0 score</span>`;
+
   return `<div class="session-card fade-up" id="sc-${s.id}" style="border-color:${cardColor}33">
     <div class="session-header" style="border-bottom-color:${cardColor}22">
       <span class="badge badge-${s.type}" style="background:${cardColor}18;color:${cardColor}">${TYPE_LABELS[s.type]||s.type}</span>
@@ -2303,7 +2324,7 @@ async function buildSessionCard(s){
         <button class="btn-score" style="width:100%;margin-top:6px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'}" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0},${!!isMulti},${isText?'true':'false'},${s.score_count||0})">✓ Valider</button>
       </div>
       <button class="btn-open-scores" onclick="openScoresModal('${s.id}','${s.score_type||'reps'}',${s.sets||0})">
-        🏆 Voir le classement
+        🏆 Voir le classement${scoreCountBadge}
       </button>
     </div>
   </div>`;
@@ -2470,7 +2491,7 @@ async function loadScores(sessionId,scoreType,sets){
       </div>
     </div>
     <div class="score-actions">
-      <button class="react-btn" id="react-${sc.id}" onclick="toggleReaction('${sc.id}')">❤️ <span id="react-count-${sc.id}">0</span></button>
+      <button class="react-btn" id="react-${sc.id}" onclick="toggleReaction('${sc.id}')" oncontextmenu="showLikers('${sc.id}',event);return false"><span class="heart">🤍</span> <span id="react-count-${sc.id}">0</span></button>
       <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
     </div>
     <div class="comments-area" id="comments-${sc.id}">
@@ -2670,7 +2691,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
         </div>
         ${noteHtml}
         <div class="score-actions">
-          <button class="react-btn ${''}" id="react-${sc.id}" onclick="toggleReactionModal('${sc.id}')" oncontextmenu="showLikers('${sc.id}',event);return false">❤️ <span id="react-count-${sc.id}" onclick="showLikers('${sc.id}',event)" style="cursor:pointer">0</span></button>
+          <button class="react-btn" id="react-${sc.id}" onclick="toggleReactionModal('${sc.id}')" oncontextmenu="showLikers('${sc.id}',event);return false"><span class="heart">🤍</span> <span id="react-count-${sc.id}" onclick="showLikers('${sc.id}',event)" style="cursor:pointer">0</span></button>
           <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
           ${isMe?`<button class="react-btn" onclick="deleteOwnScore('${sc.id}')" title="Supprimer" style="margin-left:auto;color:var(--red)">🗑️</button>`:''}
         </div>
@@ -2706,6 +2727,8 @@ async function loadReactions(scoreId){
     if(currentUser){
       const liked=(data||[]).some(r=>r.athlete_id===currentUser.id);
       btn.classList.toggle('liked',liked);
+      const heart=btn.querySelector('.heart');
+      if(heart)heart.textContent=liked?'❤️':'🤍';
     }
   }
 }
@@ -2720,9 +2743,48 @@ function showLikers(scoreId,ev){
 }
 async function toggleReaction(scoreId){
   const btn=document.getElementById(`react-${scoreId}`);
-  const liked=btn?.classList.contains('liked');
-  if(liked){const {error}=await sb.from('score_reactions').delete().eq('score_id',scoreId).eq('athlete_id',currentUser.id);if(error)showToast('❌ '+error.message);}
-  else{const {error}=await sb.from('score_reactions').insert({score_id:scoreId,athlete_id:currentUser.id});if(error)showToast('❌ '+error.message);}
+  if(!btn||!currentUser)return;
+  // Lock anti-double-clic (l'aller-retour DB peut prendre 200-500ms en 4G)
+  if(btn.dataset.pending==='1')return;
+  btn.dataset.pending='1';
+  btn.disabled=true;
+  const wasLiked=btn.classList.contains('liked');
+  const countEl=document.getElementById(`react-count-${scoreId}`);
+  const heart=btn.querySelector('.heart');
+  const prevCount=parseInt(countEl?.textContent||'0',10)||0;
+  // === UI OPTIMISTE : on bascule l'état immédiatement ===
+  const nextLiked=!wasLiked;
+  btn.classList.toggle('liked',nextLiked);
+  if(heart)heart.textContent=nextLiked?'❤️':'🤍';
+  if(countEl)countEl.textContent=Math.max(0,prevCount+(nextLiked?1:-1));
+  // Animation cœur uniquement quand on ajoute un like
+  if(nextLiked){
+    btn.classList.remove('pop');
+    void btn.offsetWidth; // reflow pour rejouer l'animation
+    btn.classList.add('pop');
+    setTimeout(()=>btn.classList.remove('pop'),450);
+  }
+  // === Sync DB en arrière-plan ===
+  let dbErr=null;
+  if(wasLiked){
+    const {error}=await sb.from('score_reactions').delete().eq('score_id',scoreId).eq('athlete_id',currentUser.id);
+    dbErr=error;
+  } else {
+    const {error}=await sb.from('score_reactions').insert({score_id:scoreId,athlete_id:currentUser.id});
+    // L'erreur 23505 (doublon) = like déjà présent côté serveur, on l'ignore : l'état optimiste est correct
+    if(error&&error.code!=='23505')dbErr=error;
+  }
+  btn.dataset.pending='';
+  btn.disabled=false;
+  if(dbErr){
+    // Revert UI
+    btn.classList.toggle('liked',wasLiked);
+    if(heart)heart.textContent=wasLiked?'❤️':'🤍';
+    if(countEl)countEl.textContent=prevCount;
+    showToast('❌ '+dbErr.message);
+    return;
+  }
+  // Resync silencieuse pour récupérer la liste à jour des likers (tooltip / showLikers)
   loadReactions(scoreId);
 }
 
@@ -3429,6 +3491,16 @@ async function deleteProgramme(id,name,sessionCount){
   }
   // Récupérer les IDs Stripe AVANT suppression DB
   const {data:progBeforeDelete}=await sb.from('programmes').select('stripe_product_id,stripe_price_id').eq('id',id).maybeSingle();
+  // Cascade manuelle scores + notes pour toutes les séances (prog + perso) liées à ce programme
+  const sessIds=[];
+  const r1=await sb.from('sessions').select('id').eq('programme_id',id);
+  if(r1.data)sessIds.push(...r1.data.map(s=>s.id));
+  const r2=await sb.from('personal_sessions').select('id').eq('programme_id',id);
+  if(r2.data)sessIds.push(...r2.data.map(s=>s.id));
+  if(sessIds.length){
+    await sb.from('wod_scores').delete().in('session_id',sessIds).then(r=>r.error&&console.warn('cascade wod_scores',r.error.message));
+    await sb.from('session_notes').delete().in('session_id',sessIds).then(r=>r.error&&console.warn('cascade session_notes',r.error.message));
+  }
   // Nettoyer toutes les FK possibles (silencieux si table absente)
   await sb.from('athlete_programmes').delete().eq('programme_id',id).then(r=>r.error&&console.warn('athlete_programmes',r.error.message));
   await sb.from('programme_access').delete().eq('programme_id',id).then(r=>r.error&&console.warn('programme_access',r.error.message));
@@ -3572,7 +3644,16 @@ async function loadAdminSessions(){
     </div>
   </div>`).join('');
 }
-async function deleteSession(id){const {error}=await sb.from('sessions').delete().eq('id',id);if(error){showToast('❌ '+error.message);return;}showToast('🗑 Supprimée');loadAdminSessions();}
+async function deleteSession(id){
+  // Cascade manuelle (la FK wod_scores.session_id / session_notes.session_id a été retirée
+  // pour autoriser les séances perso, donc on nettoie nous-mêmes)
+  await sb.from('wod_scores').delete().eq('session_id',id).then(r=>r.error&&console.warn('cascade wod_scores',r.error.message));
+  await sb.from('session_notes').delete().eq('session_id',id).then(r=>r.error&&console.warn('cascade session_notes',r.error.message));
+  const {error}=await sb.from('sessions').delete().eq('id',id);
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('🗑 Supprimée');
+  loadAdminSessions();
+}
 
 let multiScoreEnabled=false;
 function onScoreTypeChange(){
@@ -6036,8 +6117,9 @@ async function renderPersoCalendar(){
           <div class="cal-rich-head">
             <span class="cal-rich-type" style="background:${color}22;color:${color}">${typeLabel}</span>
             <div class="cal-rich-actions">
-              <button class="cal-action-btn" onclick="event.stopPropagation();persoEditSession('${s.id}','${currentPersoAthlete.id}')">✏</button>
-              <button class="cal-action-btn" onclick="event.stopPropagation();persoDeleteSession('${s.id}')">✕</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();persoEditSession('${s.id}','${currentPersoAthlete.id}')" title="Modifier">✏</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();persoDuplicateSession('${s.id}')" title="Dupliquer">📋</button>
+              <button class="cal-action-btn" onclick="event.stopPropagation();persoDeleteSession('${s.id}')" title="Supprimer">✕</button>
             </div>
           </div>
           <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
@@ -6247,9 +6329,33 @@ async function persoEditSession(id, athleteId){
 
 async function persoDeleteSession(id){
   if(!confirm('Supprimer cette séance perso ?'))return;
+  // Cascade manuelle (pas de FK car session_id peut référencer sessions OU personal_sessions)
+  await sb.from('wod_scores').delete().eq('session_id',id).then(r=>r.error&&console.warn('cascade wod_scores',r.error.message));
+  await sb.from('session_notes').delete().eq('session_id',id).then(r=>r.error&&console.warn('cascade session_notes',r.error.message));
   const {error}=await sb.from('personal_sessions').delete().eq('id',id);
   if(error){showToast('❌ '+error.message);return;}
   showToast('🗑 Séance supprimée');
+  renderPersoCalendar();
+}
+
+async function persoDuplicateSession(id){
+  const {data,error:e1}=await sb.from('personal_sessions').select('*').eq('id',id).single();
+  if(e1||!data){showToast('❌ Séance introuvable');return;}
+  // On retire les champs auto/uniques et on insère une copie sur la même date / même athlète
+  const {id:_id,created_at,...rest}=data;
+  // Place la copie juste après l'originale dans la journée
+  const sameDay=persoSessionsCache.filter(s=>s.date===data.date).sort((a,b)=>(a.sort_order??999)-(b.sort_order??999));
+  const idx=sameDay.findIndex(s=>s.id===id);
+  const newOrder=idx>=0?(sameDay[idx].sort_order??idx)+1:9999;
+  const payload={...rest,sort_order:newOrder,created_by:currentUser.id};
+  // Re-décaler les séances suivantes pour laisser la place
+  if(idx>=0){
+    const toShift=sameDay.slice(idx+1);
+    await Promise.all(toShift.map((s,i)=>sb.from('personal_sessions').update({sort_order:newOrder+1+i}).eq('id',s.id)));
+  }
+  const {error}=await sb.from('personal_sessions').insert(payload);
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('📋 Séance dupliquée');
   renderPersoCalendar();
 }
 
