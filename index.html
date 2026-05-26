@@ -96,6 +96,16 @@
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
+<style>
+/* PATCH: blocs séances en mode clair */
+:root[data-theme="light"] .cal-rich{background:#ffffff !important}
+:root[data-theme="light"] .cal-rich-content::after{background:linear-gradient(to bottom,transparent,#ffffff) !important}
+:root[data-theme="light"] .cal-rich-actions{background:rgba(0,0,0,.08) !important;border:1px solid #dcdcd2}
+:root[data-theme="light"] .cal-rich-nav .cal-action-btn{background:rgba(0,0,0,.06) !important}
+:root[data-theme="light"] .perso-search input{background:#ffffff !important}
+:root[data-theme="light"] .perso-view-toggle{background:#ffffff !important}
+:root[data-theme="light"] .perso-month-cell{background:#ffffff !important}
+</style>
 </head>
 <body>
 
@@ -1036,5 +1046,41 @@ function _loadScript(src) {
   </div>
 </div>
 
+
+<script>
+/* PATCH: openPersoFiche conserve la semaine après save */
+(function(){
+  const _orig = window.openPersoFiche;
+  window.openPersoFiche = async function(athleteId, targetDate){
+    // Calculer l'offset avant d'appeler l'original
+    if(targetDate && typeof targetDate === 'string'){
+      const now=new Date(); const day=now.getDay();
+      const monNow=new Date(now); monNow.setDate(now.getDate()-(day===0?6:day-1)); monNow.setHours(0,0,0,0);
+      const tgt=new Date(targetDate+'T12:00:00'); const tgtDay=tgt.getDay();
+      const monTgt=new Date(tgt); monTgt.setDate(tgt.getDate()-(tgtDay===0?6:tgtDay-1)); monTgt.setHours(0,0,0,0);
+      window.persoOffset = Math.round((monTgt-monNow)/(7*24*60*60*1000));
+    }
+    return _orig ? _orig(athleteId) : undefined;
+  };
+})();
+
+/* PATCH: saveSession passe la date à openPersoFiche */
+(function(){
+  const _origSave = window.saveSession;
+  if(!_origSave) return;
+  window.saveSession = async function(){
+    // Capturer la date AVANT le save (le form sera resetté après)
+    const dateEl = document.getElementById('f-date');
+    const savedDate = dateEl ? dateEl.value : null;
+    // Intercepter openPersoFiche pour passer la date
+    const _origOpen = window.openPersoFiche;
+    window.openPersoFiche = async function(athleteId, td){
+      window.openPersoFiche = _origOpen; // restore
+      return _origOpen(athleteId, savedDate||td);
+    };
+    return _origSave.apply(this, arguments);
+  };
+})();
+</script>
 </body>
 </html>
