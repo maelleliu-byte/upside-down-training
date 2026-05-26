@@ -16,6 +16,13 @@
 :root[data-theme="light"] .scaling-block-scaled{background:rgba(11,94,148,.07);border-color:rgba(11,94,148,.35)}
 :root[data-theme="light"] .scaling-block-found{background:rgba(91,22,144,.07);border-color:rgba(91,22,144,.35)}
 :root[data-theme="light"] #f-scaling-inter,:root[data-theme="light"] #f-scaling-scaled,:root[data-theme="light"] #f-scaling-foundation{color:#0a0a0a;background:#fff}
+:root[data-theme="light"] .cal-action-btn{background:rgba(0,0,0,.08);color:#333}
+:root[data-theme="light"] .cal-rich-content em{color:#4a4a4a}
+:root[data-theme="light"] .cal-rich-content b{color:#1a1a1a}
+:root[data-theme="light"] .note-text{color:#0a0a0a}
+:root[data-theme="light"] .video-card-desc{color:#3d3d3d}
+:root[data-theme="light"] .level-btn.rx.active{border-color:#222;color:#fff;background:#222}
+:root[data-theme="light"] .lbadge-rx{background:#333;color:#fff;border-color:#555}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);max-width:430px;margin:0 auto;position:relative}
