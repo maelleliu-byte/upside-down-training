@@ -987,19 +987,12 @@
 <script src="planning.js"></script>
 <script src="admin.js"></script>
 <script src="abos.js"></script>
+<script src="wellness.js"></script>
 <script>
-/* Lazy-load des modules de pages restants (wellness) */
-const _pageModules = {prog:true, pr:true, videos:true, admin:true, abos:true};
+/* Tous les modules sont chargés en amont - lazy-load désactivé */
+const _pageModules = {prog:true, pr:true, videos:true, admin:true, abos:true, profil:true};
 const _origGoPage = window.goPage;
 window.goPage = async function(page) {
-  if (!_pageModules[page]) {
-    try {
-      if (page === 'profil') {
-        await _loadScript('wellness.js');
-        _pageModules['profil'] = true;
-      }
-    } catch(e) { console.warn('Module load error', e); }
-  }
   return _origGoPage(page);
 };
 
