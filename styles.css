@@ -16,13 +16,6 @@
 :root[data-theme="light"] .scaling-block-scaled{background:rgba(11,94,148,.07);border-color:rgba(11,94,148,.35)}
 :root[data-theme="light"] .scaling-block-found{background:rgba(91,22,144,.07);border-color:rgba(91,22,144,.35)}
 :root[data-theme="light"] #f-scaling-inter,:root[data-theme="light"] #f-scaling-scaled,:root[data-theme="light"] #f-scaling-foundation{color:#0a0a0a;background:#fff}
-:root[data-theme="light"] .cal-action-btn{background:rgba(0,0,0,.08);color:#333}
-:root[data-theme="light"] .cal-rich-content em{color:#4a4a4a}
-:root[data-theme="light"] .cal-rich-content b{color:#1a1a1a}
-:root[data-theme="light"] .note-text{color:#0a0a0a}
-:root[data-theme="light"] .video-card-desc{color:#3d3d3d}
-:root[data-theme="light"] .level-btn.rx.active{border-color:#222;color:#fff;background:#222}
-:root[data-theme="light"] .lbadge-rx{background:#333;color:#fff;border-color:#555}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{height:100%;overflow:hidden}
 body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);max-width:430px;margin:0 auto;position:relative}
@@ -843,4 +836,72 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .wcsi-score{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1px;color:var(--orange);flex-shrink:0;padding-top:1px}
 .wod-cal-search-empty{text-align:center;padding:36px 16px;color:var(--muted);font-size:12px;line-height:1.6}
 .wod-cal-search-empty strong{color:var(--text)}
+
+/* ============================================
+   MODE CLAIR — BLOCS SÉANCES (admin & espace perso)
+   ============================================ */
+html[data-theme="light"] .cal-rich,
+:root[data-theme="light"] .cal-rich{background:#ffffff !important;border-color:#dcdcd2 !important}
+html[data-theme="light"] .cal-rich:hover,
+:root[data-theme="light"] .cal-rich:hover{border-color:#bdbdb1 !important}
+html[data-theme="light"] .cal-rich .cal-rich-title,
+:root[data-theme="light"] .cal-rich .cal-rich-title{color:#0a0a0a !important}
+html[data-theme="light"] .cal-rich .cal-rich-content,
+:root[data-theme="light"] .cal-rich .cal-rich-content{color:#3d3d3d !important}
+html[data-theme="light"] .cal-rich .cal-rich-content em,
+:root[data-theme="light"] .cal-rich .cal-rich-content em{color:#1a1a1a !important}
+html[data-theme="light"] .cal-rich .cal-rich-content b,
+html[data-theme="light"] .cal-rich .cal-rich-content strong,
+:root[data-theme="light"] .cal-rich .cal-rich-content b,
+:root[data-theme="light"] .cal-rich .cal-rich-content strong{color:#0a0a0a !important}
+html[data-theme="light"] .cal-rich .cal-rich-content::after,
+:root[data-theme="light"] .cal-rich .cal-rich-content::after{background:linear-gradient(to bottom,transparent,#ffffff) !important}
+html[data-theme="light"] .cal-rich .cal-rich-meta,
+:root[data-theme="light"] .cal-rich .cal-rich-meta{color:#3d3d3d !important}
+html[data-theme="light"] .cal-rich .cal-rich-meta .dot,
+:root[data-theme="light"] .cal-rich .cal-rich-meta .dot{background:#bdbdb1 !important}
+html[data-theme="light"] .cal-rich .cal-rich-actions,
+:root[data-theme="light"] .cal-rich .cal-rich-actions{background:rgba(0,0,0,.06) !important;border:1px solid #dcdcd2 !important}
+html[data-theme="light"] .cal-rich .cal-rich-nav .cal-action-btn,
+:root[data-theme="light"] .cal-rich .cal-rich-nav .cal-action-btn{background:rgba(0,0,0,.06) !important;color:#0a0a0a !important;border-color:#dcdcd2 !important}
+html[data-theme="light"] .cal-rich .cal-rich-actions .cal-action-btn,
+:root[data-theme="light"] .cal-rich .cal-rich-actions .cal-action-btn{background:rgba(0,0,0,.55) !important;color:#fff !important}
+html[data-theme="light"] .cal-rich.separator,
+:root[data-theme="light"] .cal-rich.separator{background:transparent !important;border:none !important}
+html[data-theme="light"] .cal-rich.separator .cal-rich-title,
+:root[data-theme="light"] .cal-rich.separator .cal-rich-title{color:#5a6810 !important}
+html[data-theme="light"] .cal-day-date,
+:root[data-theme="light"] .cal-day-date{color:#3d3d3d !important}
+html[data-theme="light"] .cal-day-date.today,
+:root[data-theme="light"] .cal-day-date.today{background:rgba(90,104,16,.14) !important;color:#3d4609 !important}
+html[data-theme="light"] .cal-day-header,
+:root[data-theme="light"] .cal-day-header{color:#3d3d3d !important}
+html[data-theme="light"] .sessions-list-item,
+:root[data-theme="light"] .sessions-list-item{background:#ffffff !important;border-color:#dcdcd2 !important}
+html[data-theme="light"] .sli-title,
+:root[data-theme="light"] .sli-title{color:#0a0a0a !important}
+html[data-theme="light"] .sli-meta,
+:root[data-theme="light"] .sli-meta{color:#3d3d3d !important}
+html[data-theme="light"] .perso-search input,
+:root[data-theme="light"] .perso-search input{background:#ffffff !important;color:#0a0a0a !important;border-color:#dcdcd2 !important}
+html[data-theme="light"] .perso-view-toggle,
+:root[data-theme="light"] .perso-view-toggle{background:#ffffff !important;border:1px solid #dcdcd2 !important}
+html[data-theme="light"] .perso-view-toggle button,
+:root[data-theme="light"] .perso-view-toggle button{color:#3d3d3d !important}
+html[data-theme="light"] .perso-view-toggle button.active,
+:root[data-theme="light"] .perso-view-toggle button.active{color:#fff !important;background:#5a6810 !important}
+html[data-theme="light"] .perso-month-cell,
+:root[data-theme="light"] .perso-month-cell{background:#ffffff !important;border-color:#dcdcd2 !important}
+html[data-theme="light"] .perso-month-cell .num,
+:root[data-theme="light"] .perso-month-cell .num{color:#3d3d3d !important}
+html[data-theme="light"] .perso-month-cell .more,
+:root[data-theme="light"] .perso-month-cell .more{color:#3d3d3d !important}
+html[data-theme="light"] .perso-month-grid .h,
+:root[data-theme="light"] .perso-month-grid .h{color:#3d3d3d !important}
+html[data-theme="light"] .perso-month-label,
+:root[data-theme="light"] .perso-month-label{color:#0a0a0a !important}
+html[data-theme="light"] .perso-back,
+:root[data-theme="light"] .perso-back{color:#3d3d3d !important}
+html[data-theme="light"] .perso-add-btn,
+:root[data-theme="light"] .perso-add-btn{color:#fff !important;background:#5a6810 !important}
 
