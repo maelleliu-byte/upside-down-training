@@ -2,5 +2,5 @@
   functions = "netlify/functions"
 
 [build.environment]
-  SECRETS_SCAN_OMIT_PATHS = "index.html,core.js,admin.js,planning.js,wellness.js,abos.js,styles.css"
+  SECRETS_SCAN_OMIT_PATHS = "index.html,core.js,admin.js,planning.js,wellness.js,abos.js,styles.css,debug.html"
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_SERVICE_KEY"
