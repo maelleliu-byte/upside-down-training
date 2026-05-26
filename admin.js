@@ -837,7 +837,6 @@ async function saveSession(){
     if(persoAthlete){
       currentPersoAthlete=persoAthletesCache.find(a=>a.id===persoAthlete)||currentPersoAthlete;
       adminTab('perso',document.querySelector('.admin-tab-btn:last-child'));
-      // Passer la date de la séance pour rester sur la bonne semaine
       openPersoFiche(persoAthlete, date||null);
     }
   } else {

@@ -137,22 +137,12 @@ async function openPersoFiche(athleteId, targetDate){
   document.getElementById('perso-fiche-name').textContent=currentPersoAthlete.full_name||'—';
   document.getElementById('perso-fiche-sub').textContent=currentPersoAthlete.email||'';
   persoView='week';
-  // Si une date cible est fournie (post-save), calculer l'offset pour afficher la bonne semaine
   if(targetDate){
-    // Trouver le lundi de la semaine courante
-    const now=new Date();
-    const day=now.getDay();
-    const monNow=new Date(now);
-    monNow.setDate(now.getDate()-(day===0?6:day-1));
-    monNow.setHours(0,0,0,0);
-    // Trouver le lundi de la semaine de la date cible
-    const target=new Date(targetDate+'T12:00:00');
-    const targetDay=target.getDay();
-    const monTarget=new Date(target);
-    monTarget.setDate(target.getDate()-(targetDay===0?6:targetDay-1));
-    monTarget.setHours(0,0,0,0);
-    // Offset en semaines
-    persoOffset=Math.round((monTarget-monNow)/(7*24*60*60*1000));
+    const now=new Date(); const day=now.getDay();
+    const monNow=new Date(now); monNow.setDate(now.getDate()-(day===0?6:day-1)); monNow.setHours(0,0,0,0);
+    const tgt=new Date(targetDate+'T12:00:00'); const tgtDay=tgt.getDay();
+    const monTgt=new Date(tgt); monTgt.setDate(tgt.getDate()-(tgtDay===0?6:tgtDay-1)); monTgt.setHours(0,0,0,0);
+    persoOffset=Math.round((monTgt-monNow)/(7*24*60*60*1000));
   } else {
     persoOffset=0;
   }
