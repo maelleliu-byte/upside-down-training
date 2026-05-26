@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Debug Upside Down</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  body{font-family:system-ui,sans-serif;max-width:700px;margin:0 auto;padding:16px;background:#0a0a0a;color:#eee;font-size:14px}
+  h1{font-size:18px;margin:0 0 12px}
+  .box{background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:12px;margin-bottom:10px;word-break:break-word}
+  .ok{color:#4ade80}
+  .err{color:#f87171}
+  .lbl{color:#999;font-size:11px;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px}
+  pre{white-space:pre-wrap;font-size:12px;margin:0}
+  button{background:#e8ff47;color:#000;border:none;padding:12px 16px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin:8px 4px 0 0}
+  input{width:100%;padding:10px;border:1px solid #333;background:#0a0a0a;color:#eee;border-radius:6px;margin-bottom:8px;box-sizing:border-box}
+</style>
+</head>
+<body>
+<h1>🔍 Diagnostic Upside Down</h1>
+
+<div class="box" id="step1">
+  <div class="lbl">1. Client Supabase</div>
+  <div id="r1">…</div>
+</div>
+
+<div class="box" id="step2">
+  <div class="lbl">2. Session active</div>
+  <div id="r2">…</div>
+</div>
+
+<div class="box">
+  <div class="lbl">3. Connexion (si pas de session)</div>
+  <input id="email" type="email" placeholder="ton email" autocomplete="username">
+  <input id="pwd" type="password" placeholder="ton mot de passe" autocomplete="current-password">
+  <button onclick="doLogin()">Se connecter</button>
+  <div id="r3"></div>
+</div>
+
+<div class="box" id="step4">
+  <div class="lbl">4. Test SELECT programmes</div>
+  <button onclick="testProgrammes()">Tester maintenant</button>
+  <div id="r4"></div>
+</div>
+
+<div class="box" id="step5">
+  <div class="lbl">5. Test profil</div>
+  <button onclick="testProfile()">Voir mon profil</button>
+  <div id="r5"></div>
+</div>
+
+<script>
+const SUPABASE_URL='https://tltqtpbaaxiwwpvuzszt.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDA5NTQsImV4cCI6MjA5MzUxNjk1NH0.5LVedQ-ktLcTC6z2X0XIoqY-mqP9_tw-gzrt-KNfuuY';
+
+let sb;
+try {
+  sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  document.getElementById('r1').innerHTML = '<span class="ok">✓ Client OK</span>';
+} catch(e) {
+  document.getElementById('r1').innerHTML = '<span class="err">✗ ' + e.message + '</span>';
+}
+
+(async () => {
+  try {
+    const {data:{session}, error} = await sb.auth.getSession();
+    if (error) {
+      document.getElementById('r2').innerHTML = '<span class="err">✗ ' + error.message + '</span>';
+    } else if (session) {
+      document.getElementById('r2').innerHTML = '<span class="ok">✓ Connecté en tant que ' + session.user.email + '</span><br><span style="color:#999;font-size:11px">user_id: ' + session.user.id + '</span>';
+    } else {
+      document.getElementById('r2').innerHTML = '<span class="err">✗ Aucune session — connecte-toi via le formulaire ci-dessous</span>';
+    }
+  } catch(e) {
+    document.getElementById('r2').innerHTML = '<span class="err">✗ ' + e.message + '</span>';
+  }
+})();
+
+async function doLogin() {
+  const email = document.getElementById('email').value.trim();
+  const pwd = document.getElementById('pwd').value;
+  const r3 = document.getElementById('r3');
+  r3.innerHTML = '<span style="color:#999">Connexion en cours…</span>';
+  try {
+    const {data, error} = await sb.auth.signInWithPassword({email, password:pwd});
+    if (error) {
+      r3.innerHTML = '<span class="err">✗ ' + error.message + '</span>';
+    } else {
+      r3.innerHTML = '<span class="ok">✓ Connecté ! user_id: ' + data.user.id + '</span>';
+      // Refresh session display
+      document.getElementById('r2').innerHTML = '<span class="ok">✓ Connecté en tant que ' + data.user.email + '</span>';
+    }
+  } catch(e) {
+    r3.innerHTML = '<span class="err">✗ ' + e.message + '</span>';
+  }
+}
+
+async function testProgrammes() {
+  const r4 = document.getElementById('r4');
+  r4.innerHTML = '<span style="color:#999">Requête en cours…</span>';
+  try {
+    const {data, error, status, statusText} = await sb.from('programmes').select('*').eq('is_active', true).order('name');
+    if (error) {
+      r4.innerHTML = '<span class="err">✗ Erreur : ' + error.message + '</span><pre>' + JSON.stringify(error, null, 2) + '</pre>';
+    } else if (!data || data.length === 0) {
+      r4.innerHTML = '<span class="err">✗ 0 programme retourné (status ' + status + ')</span><pre>data = ' + JSON.stringify(data) + '</pre>';
+    } else {
+      r4.innerHTML = '<span class="ok">✓ ' + data.length + ' programmes reçus :</span><pre>' + data.map(p => '• ' + p.name + ' (' + p.slug + ')').join('\n') + '</pre>';
+    }
+  } catch(e) {
+    r4.innerHTML = '<span class="err">✗ ' + e.message + '</span>';
+  }
+}
+
+async function testProfile() {
+  const r5 = document.getElementById('r5');
+  r5.innerHTML = '<span style="color:#999">Requête en cours…</span>';
+  try {
+    const {data:{session}} = await sb.auth.getSession();
+    if (!session) {
+      r5.innerHTML = '<span class="err">✗ Pas connecté</span>';
+      return;
+    }
+    const {data, error} = await sb.from('profiles').select('*').eq('id', session.user.id).single();
+    if (error) {
+      r5.innerHTML = '<span class="err">✗ ' + error.message + '</span>';
+    } else {
+      r5.innerHTML = '<span class="ok">✓ Profil :</span><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+    }
+  } catch(e) {
+    r5.innerHTML = '<span class="err">✗ ' + e.message + '</span>';
+  }
+}
+</script>
+</body>
+</html>
