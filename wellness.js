@@ -121,7 +121,7 @@ function renderPersoAthletes(){
   }).join('');
 }
 
-async function openPersoFiche(athleteId){
+async function openPersoFiche(athleteId, targetDate){
   currentPersoAthlete=persoAthletesCache.find(a=>a.id===athleteId);
   if(!currentPersoAthlete){
     // Au cas où on arrive directement (post-save), reload
@@ -137,7 +137,25 @@ async function openPersoFiche(athleteId){
   document.getElementById('perso-fiche-name').textContent=currentPersoAthlete.full_name||'—';
   document.getElementById('perso-fiche-sub').textContent=currentPersoAthlete.email||'';
   persoView='week';
-  persoOffset=0;
+  // Si une date cible est fournie (post-save), calculer l'offset pour afficher la bonne semaine
+  if(targetDate){
+    // Trouver le lundi de la semaine courante
+    const now=new Date();
+    const day=now.getDay();
+    const monNow=new Date(now);
+    monNow.setDate(now.getDate()-(day===0?6:day-1));
+    monNow.setHours(0,0,0,0);
+    // Trouver le lundi de la semaine de la date cible
+    const target=new Date(targetDate+'T12:00:00');
+    const targetDay=target.getDay();
+    const monTarget=new Date(target);
+    monTarget.setDate(target.getDate()-(targetDay===0?6:targetDay-1));
+    monTarget.setHours(0,0,0,0);
+    // Offset en semaines
+    persoOffset=Math.round((monTarget-monNow)/(7*24*60*60*1000));
+  } else {
+    persoOffset=0;
+  }
   document.getElementById('perso-view-week').classList.add('active');
   document.getElementById('perso-view-month').classList.remove('active');
   await renderPersoCalendar();

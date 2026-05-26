@@ -417,19 +417,19 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
 /* CALENDRIER ADMIN — BLOCS RICHES */
 .cal-day-col.rich{min-height:120px;gap:8px}
-.cal-rich{position:relative;border-radius:10px;padding:10px;background:#0d0e0f;border:1px solid var(--border);cursor:pointer;overflow:hidden;transition:transform .15s,border-color .15s}
+.cal-rich{position:relative;border-radius:10px;padding:10px;background:var(--card);border:1px solid var(--border);cursor:pointer;overflow:hidden;transition:transform .15s,border-color .15s}
 .cal-rich:hover{transform:translateY(-1px);border-color:var(--border2)}
 .cal-rich .cal-accent{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:10px 0 0 10px}
 .cal-rich-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
 .cal-rich-type{font-family:'Bebas Neue',sans-serif;font-size:10px;letter-spacing:1.5px;padding:2px 6px;border-radius:4px}
 .cal-rich-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;line-height:1.15;color:var(--text);margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
 .cal-rich-content{font-size:10px;color:var(--muted);line-height:1.4;max-height:48px;overflow:hidden;position:relative}
-.cal-rich-content::after{content:'';position:absolute;bottom:0;left:0;right:0;height:18px;background:linear-gradient(to bottom,transparent,#0d0e0f)}
+.cal-rich-content::after{content:'';position:absolute;bottom:0;left:0;right:0;height:18px;background:linear-gradient(to bottom,transparent,var(--card))}
 .cal-rich-content em{color:#bdbfc2;font-style:normal}
 .cal-rich-content b{color:#e6e7ea;font-weight:700}
 .cal-rich-meta{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
 .cal-rich-meta .dot{width:3px;height:3px;border-radius:50%;background:var(--border2)}
-.cal-rich-actions{position:absolute;top:6px;right:6px;display:none;gap:3px;background:rgba(0,0,0,.55);padding:3px;border-radius:6px;backdrop-filter:blur(6px)}
+.cal-rich-actions{position:absolute;top:6px;right:6px;display:none;gap:3px;background:var(--card2);padding:3px;border-radius:6px;backdrop-filter:blur(6px);border:1px solid var(--border)}
 .cal-rich:hover .cal-rich-actions{display:flex}
 @media (hover:none){.cal-rich-actions{display:flex!important}}
 .cal-rich-nav{display:flex;gap:4px;margin:6px 0 4px;justify-content:flex-start}
@@ -454,7 +454,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .perso-back{display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;color:var(--muted);font-size:13px;cursor:pointer;padding:8px 0;margin-bottom:8px}
 .perso-back:hover{color:var(--text)}
 .perso-search{margin-bottom:12px}
-.perso-search input{width:100%;background:#0d0e0f;border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:14px}
+.perso-search input{width:100%;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:14px}
 .perso-athlete-card{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:8px;cursor:pointer;transition:border-color .15s}
 .perso-athlete-card:hover{border-color:var(--accent)}
 .perso-athlete-card .athlete-avatar{width:40px;height:40px;border-radius:50%;background:linear-gradient(135deg,#e8ff47,#47c8ff);color:#000;display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px;flex-shrink:0}
@@ -470,7 +470,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .perso-fiche-head .perso-sub{font-size:11px;color:var(--muted);margin-top:4px;letter-spacing:.5px}
 
 .perso-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:12px;flex-wrap:wrap}
-.perso-view-toggle{display:inline-flex;background:#0d0e0f;border:1px solid var(--border);border-radius:8px;padding:2px}
+.perso-view-toggle{display:inline-flex;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:2px}
 .perso-view-toggle button{background:transparent;border:none;color:var(--muted);font-family:'DM Sans',sans-serif;font-size:11px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;padding:6px 12px;border-radius:6px;cursor:pointer}
 .perso-view-toggle button.active{background:var(--accent);color:#000}
 .perso-week-nav{display:inline-flex;align-items:center;gap:6px}
@@ -480,7 +480,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .perso-month{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
 .perso-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
 .perso-month-grid .h{text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 0}
-.perso-month-cell{aspect-ratio:1;border-radius:8px;border:1px solid var(--border);background:#0d0e0f;padding:5px;display:flex;flex-direction:column;gap:3px;cursor:pointer;position:relative;transition:border-color .15s}
+.perso-month-cell{aspect-ratio:1;border-radius:8px;border:1px solid var(--border);background:var(--card);padding:5px;display:flex;flex-direction:column;gap:3px;cursor:pointer;position:relative;transition:border-color .15s}
 .perso-month-cell:hover{border-color:var(--border2)}
 .perso-month-cell.other{opacity:.3}
 .perso-month-cell.today{border-color:var(--accent)}
