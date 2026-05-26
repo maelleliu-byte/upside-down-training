@@ -984,24 +984,18 @@
  * ============================================================ */
 </script>
 <script src="core.js"></script>
+<script src="planning.js"></script>
+<script src="admin.js"></script>
 <script>
-/* Lazy-load des modules de pages */
-const _pageModules = {};
+/* Lazy-load des modules de pages restants (wellness, abos) */
+const _pageModules = {prog:true, pr:true, videos:true, admin:true};
 const _origGoPage = window.goPage;
 window.goPage = async function(page) {
   if (!_pageModules[page]) {
     try {
-      if (page === 'prog' || page === 'pr' || page === 'videos') {
-        await _loadScript('planning.js');
-        _pageModules['prog'] = true;
-        _pageModules['pr'] = true;
-        _pageModules['videos'] = true;
-      } else if (page === 'profil') {
+      if (page === 'profil') {
         await _loadScript('wellness.js');
         _pageModules['profil'] = true;
-      } else if (page === 'admin') {
-        await _loadScript('admin.js');
-        _pageModules['admin'] = true;
       } else if (page === 'abos') {
         await _loadScript('abos.js');
         _pageModules['abos'] = true;
