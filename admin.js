@@ -837,7 +837,7 @@ async function saveSession(){
     if(persoAthlete){
       currentPersoAthlete=persoAthletesCache.find(a=>a.id===persoAthlete)||currentPersoAthlete;
       adminTab('perso',document.querySelector('.admin-tab-btn:last-child'));
-      openPersoFiche(persoAthlete, date||null);
+      openPersoFiche(persoAthlete,date);
     }
   } else {
     // Si on est arrivé depuis l'onglet "Séances" via le bouton +, on y retourne

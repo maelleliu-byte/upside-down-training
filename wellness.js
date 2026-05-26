@@ -121,7 +121,7 @@ function renderPersoAthletes(){
   }).join('');
 }
 
-async function openPersoFiche(athleteId, targetDate){
+async function openPersoFiche(athleteId,targetDate){
   currentPersoAthlete=persoAthletesCache.find(a=>a.id===athleteId);
   if(!currentPersoAthlete){
     // Au cas où on arrive directement (post-save), reload
@@ -138,14 +138,12 @@ async function openPersoFiche(athleteId, targetDate){
   document.getElementById('perso-fiche-sub').textContent=currentPersoAthlete.email||'';
   persoView='week';
   if(targetDate){
-    const now=new Date(); const day=now.getDay();
-    const monNow=new Date(now); monNow.setDate(now.getDate()-(day===0?6:day-1)); monNow.setHours(0,0,0,0);
-    const tgt=new Date(targetDate+'T12:00:00'); const tgtDay=tgt.getDay();
-    const monTgt=new Date(tgt); monTgt.setDate(tgt.getDate()-(tgtDay===0?6:tgtDay-1)); monTgt.setHours(0,0,0,0);
+    const now=new Date(),day=now.getDay();
+    const monNow=new Date(now);monNow.setDate(now.getDate()-(day===0?6:day-1));monNow.setHours(0,0,0,0);
+    const tgt=new Date(targetDate+'T12:00:00'),tgtDay=tgt.getDay();
+    const monTgt=new Date(tgt);monTgt.setDate(tgt.getDate()-(tgtDay===0?6:tgtDay-1));monTgt.setHours(0,0,0,0);
     persoOffset=Math.round((monTgt-monNow)/(7*24*60*60*1000));
-  } else {
-    persoOffset=0;
-  }
+  }else{persoOffset=0;}
   document.getElementById('perso-view-week').classList.add('active');
   document.getElementById('perso-view-month').classList.remove('active');
   await renderPersoCalendar();
