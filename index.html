@@ -98,13 +98,24 @@
 <link rel="stylesheet" href="styles.css">
 <style>
 /* PATCH: blocs séances en mode clair */
-:root[data-theme="light"] .cal-rich{background:#ffffff !important}
+:root[data-theme="light"] .cal-rich{background:#ffffff !important;border-color:#dcdcd2 !important}
+:root[data-theme="light"] .cal-rich-title{color:#0a0a0a !important}
+:root[data-theme="light"] .cal-rich-meta{color:#3d3d3d !important}
+:root[data-theme="light"] .cal-rich-content{color:#3d3d3d !important}
 :root[data-theme="light"] .cal-rich-content::after{background:linear-gradient(to bottom,transparent,#ffffff) !important}
-:root[data-theme="light"] .cal-rich-actions{background:rgba(0,0,0,.08) !important;border:1px solid #dcdcd2}
-:root[data-theme="light"] .cal-rich-nav .cal-action-btn{background:rgba(0,0,0,.06) !important}
-:root[data-theme="light"] .perso-search input{background:#ffffff !important}
+:root[data-theme="light"] .cal-rich-content em{color:#4a4a4a !important}
+:root[data-theme="light"] .cal-rich-content b{color:#1a1a1a !important}
+:root[data-theme="light"] .cal-rich-actions{background:rgba(0,0,0,.07) !important;border:1px solid #dcdcd2 !important}
+:root[data-theme="light"] .cal-action-btn{background:rgba(0,0,0,.08) !important;color:#333333 !important;border-color:#dcdcd2 !important}
+:root[data-theme="light"] .cal-rich-nav .cal-action-btn{background:rgba(0,0,0,.06) !important;color:#333333 !important}
+:root[data-theme="light"] .cal-day-date{color:#3d3d3d !important}
+:root[data-theme="light"] .cal-day-date.today{color:#5a6810 !important}
+:root[data-theme="light"] .perso-search input{background:#ffffff !important;color:#0a0a0a !important}
 :root[data-theme="light"] .perso-view-toggle{background:#ffffff !important}
-:root[data-theme="light"] .perso-month-cell{background:#ffffff !important}
+:root[data-theme="light"] .perso-month-cell{background:#ffffff !important;border-color:#dcdcd2 !important}
+:root[data-theme="light"] .perso-month-cell .num{color:#3d3d3d !important}
+:root[data-theme="light"] .cal-add-more{background:rgba(0,0,0,.06) !important;color:#3d3d3d !important;border-color:#dcdcd2 !important}
+:root[data-theme="light"] .cal-empty-day{color:#3d3d3d !important;border-color:#dcdcd2 !important}
 </style>
 </head>
 <body>
