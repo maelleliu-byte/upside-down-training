@@ -180,6 +180,9 @@ async function renderPersoCalendar(){
     persoSessionsCache=data||[];
     const byDate={};isos.forEach(iso=>byDate[iso]=[]);
     (data||[]).forEach(s=>{if(byDate[s.date])byDate[s.date].push(s);});
+    // === RETOURS ATHLÈTE : scores + notes + wellness pour la semaine ===
+    const _sidsW=(data||[]).filter(s=>s.type!=='separator').map(s=>s.id);
+    await loadPersoRetours(_sidsW,currentPersoAthlete.id,isos);
     const today=new Date().toISOString().split('T')[0];
     const headers=dates.map(d=>`<div class="cal-day-header">${DAYS[d.getDay()]}</div>`).join('');
     const dateRow=dates.map(d=>{
@@ -224,6 +227,7 @@ async function renderPersoCalendar(){
             <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveSession('${s.id}',1)" title="Descendre">↓</button>
             <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveToDay('${s.id}',1)" title="Jour suivant">›</button>
           </div>
+          ${persoRetourBlock(s.id, iso)}
         </div>`;
       }).join(''):`<div class="cal-empty-day" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}',null)" onclick="persoNewSessionOn('${iso}')">+</div>`;
       const addMore=sessions.length>0
@@ -250,6 +254,9 @@ async function renderPersoCalendar(){
     const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
     const byDate={};isos.forEach(iso=>byDate[iso]=[]);
     (data||[]).forEach(s=>{if(byDate[s.date])byDate[s.date].push(s);});
+    // === RETOURS ATHLÈTE : indicateurs sur les pills du mois ===
+    const _sidsM=(data||[]).filter(s=>s.type!=='separator').map(s=>s.id);
+    await loadPersoRetours(_sidsM,currentPersoAthlete.id,isos);
     const tNow=new Date();const today=`${tNow.getFullYear()}-${String(tNow.getMonth()+1).padStart(2,'0')}-${String(tNow.getDate()).padStart(2,'0')}`;
     const headers=['L','M','M','J','V','S','D'].map(h=>`<div class="h">${h}</div>`).join('');
     const cellsHtml=cells.map(d=>{
@@ -259,7 +266,9 @@ async function renderPersoCalendar(){
       const sess=byDate[iso]||[];
       const pills=sess.map(s=>{
         const c=s.color||'#e8ff47';
-        return`<div class="pill" style="background:${c}22;color:${c}" onclick="event.stopPropagation();openReadSession('${s.id}','personal')">${escapeHtml(s.title||'—').slice(0,18)}</div>`;
+        const _hasR=!!(_persoRetoursCache.scoresBySid[s.id]||_persoRetoursCache.notesBySid[s.id]);
+        const _rdot=_hasR?'<span class="perso-pill-dot"></span>':'';
+        return`<div class="pill" style="background:${c}22;color:${c}" onclick="event.stopPropagation();openReadSession('${s.id}','personal')">${_rdot}${escapeHtml(s.title||'—').slice(0,18)}</div>`;
       }).join('');
       const more='';
       return`<div class="perso-month-cell ${isOther?'other':''} ${isToday?'today':''}" onclick="persoMonthCellClick('${iso}')">
@@ -272,6 +281,129 @@ async function renderPersoCalendar(){
   if(persoSessionsCache?.length===0&&persoView==='week'){
     // Pas vide totalement — on a déjà rendu les colonnes
   }
+}
+
+/* ============================================================
+ * RETOURS ATHLÈTE — Espace perso (Option 01 : IN SITU)
+ * Strip de badges + drawer inline sous chaque bloc séance
+ * Sources : wod_scores · session_notes · wellness_entries
+ * ============================================================ */
+let _persoRetoursCache={scoresBySid:{},notesBySid:{},wellnessByDate:{}};
+
+async function loadPersoRetours(sessionIds,athleteId,isos){
+  _persoRetoursCache={scoresBySid:{},notesBySid:{},wellnessByDate:{}};
+  if(!athleteId)return;
+  try{
+    if(sessionIds&&sessionIds.length){
+      const {data:scores}=await sb.from('wod_scores')
+        .select('id,session_id,score_value,score_text,score_type,level,sets_data,created_at')
+        .eq('athlete_id',athleteId).in('session_id',sessionIds);
+      (scores||[]).forEach(sc=>{_persoRetoursCache.scoresBySid[sc.session_id]=sc;});
+      const {data:notes}=await sb.from('session_notes')
+        .select('id,session_id,content,created_at')
+        .eq('athlete_id',athleteId).in('session_id',sessionIds);
+      (notes||[]).forEach(n=>{_persoRetoursCache.notesBySid[n.session_id]=n;});
+    }
+    if(isos&&isos.length){
+      const {data:well}=await sb.from('wellness_entries')
+        .select('date,sleep_quality,energy,fatigue,soreness,motivation,stress,notes')
+        .eq('athlete_id',athleteId).in('date',isos);
+      (well||[]).forEach(w=>{_persoRetoursCache.wellnessByDate[w.date]=w;});
+    }
+  }catch(e){console.warn('perso retours load',e);}
+}
+
+function _persoWellMean(e){
+  if(!e)return null;
+  const inv={fatigue:1,soreness:1,stress:1};
+  const vals=[];
+  ['sleep_quality','energy','fatigue','soreness','motivation','stress'].forEach(k=>{
+    if(typeof e[k]==='number')vals.push(inv[k]?11-e[k]:e[k]);
+  });
+  if(!vals.length)return null;
+  return vals.reduce((a,b)=>a+b,0)/vals.length;
+}
+function _persoWellTone(e){
+  if(!e)return '';
+  const red=['fatigue','soreness','stress'].some(k=>typeof e[k]==='number'&&e[k]>=8)
+         ||['energy','motivation','sleep_quality'].some(k=>typeof e[k]==='number'&&e[k]<=3);
+  if(red)return 'red';
+  const ora=['fatigue','soreness','stress'].some(k=>typeof e[k]==='number'&&e[k]>=6)
+         ||['energy','motivation','sleep_quality'].some(k=>typeof e[k]==='number'&&e[k]<=5);
+  return ora?'ora':'';
+}
+
+function persoRetourBlock(sid,iso){
+  const sc=_persoRetoursCache.scoresBySid[sid];
+  const nt=_persoRetoursCache.notesBySid[sid];
+  const w =_persoRetoursCache.wellnessByDate[iso];
+  if(!sc&&!nt&&!w){
+    return `<div class="perso-retour-strip empty" onclick="event.stopPropagation()"><span class="perso-r-pill miss">— pas encore de retour</span></div>`;
+  }
+  const pills=[];
+  if(sc){
+    let v=sc.score_text||(typeof sc.score_value==='number'?sc.score_value:'');
+    v=String(v||'').slice(0,16);
+    pills.push(`<span class="perso-r-pill score" title="Score athlète">✓ <span class="v">${escapeHtml(v)||'fait'}</span></span>`);
+  }
+  if(nt)pills.push(`<span class="perso-r-pill note" title="Note de séance">📝 note</span>`);
+  if(w){
+    const mean=_persoWellMean(w);
+    const tone=_persoWellTone(w);
+    if(mean!=null)pills.push(`<span class="perso-r-pill well ${tone}" title="Wellness du jour">💪 <span class="v">${mean.toFixed(1)}</span></span>`);
+  }
+  return `
+    <div class="perso-retour-strip" onclick="event.stopPropagation();togglePersoRetour('${sid}')">
+      ${pills.join('')}
+      <span class="perso-r-tog">›</span>
+    </div>
+    <div class="perso-r-drawer" id="perso-r-d-${sid}" onclick="event.stopPropagation()">
+      ${_persoDrawerInner(sc,nt,w)}
+    </div>`;
+}
+
+function _persoDrawerInner(sc,nt,w){
+  const rows=[];
+  if(sc){
+    let scoreV=sc.score_text||(typeof sc.score_value==='number'?sc.score_value:'—');
+    let scoreHtml=`<b>${escapeHtml(String(scoreV))}</b>`;
+    if(sc.level)scoreHtml+=` <span class="lvl">${escapeHtml(String(sc.level).toUpperCase())}</span>`;
+    let setsHtml='';
+    try{
+      const sd=sc.sets_data?(typeof sc.sets_data==='string'?JSON.parse(sc.sets_data):sc.sets_data):null;
+      if(Array.isArray(sd)&&sd.length){
+        setsHtml=`<div class="sets">${sd.map(s=>`S${s.set}: ${s.value}${s.unit||'kg'}`).join(' · ')}</div>`;
+      }
+    }catch(e){}
+    rows.push(`<div class="perso-r-row"><div class="lbl">Score</div><div class="val">${scoreHtml}${setsHtml}</div></div>`);
+  }
+  if(nt){
+    rows.push(`<div class="perso-r-row"><div class="lbl">Note</div><div class="val note">${escapeHtml(nt.content||'')}</div></div>`);
+  }
+  if(w){
+    const tone=(k,inv)=>{
+      const v=w[k];if(typeof v!=='number')return '';
+      if(inv){if(v>=7)return 'r';if(v>=5)return 'o';return 'g';}
+      if(v<=3)return 'r';if(v<=5)return 'o';return 'g';
+    };
+    const meta=[['sleep_quality','😴',false],['energy','🔥',false],['fatigue','💤',true],['soreness','🤕',true],['motivation','🎯',false],['stress','😰',true]];
+    const chips=meta.filter(m=>typeof w[m[0]]==='number')
+                    .map(([k,ic,inv])=>`<span class="c ${tone(k,inv)}">${ic} ${w[k]}</span>`).join('');
+    const wnotes=w.notes?`<div class="wnotes">« ${escapeHtml(w.notes)} »</div>`:'';
+    rows.push(`<div class="perso-r-row"><div class="lbl">Wellness</div><div class="val"><div class="perso-well-chips">${chips}</div>${wnotes}</div></div>`);
+  }
+  if(!rows.length){
+    rows.push(`<div class="perso-r-row"><div class="val" style="color:var(--muted);font-style:italic">Pas encore de retour pour cette séance.</div></div>`);
+  }
+  return `<div class="perso-r-eb">Retour athlète</div>${rows.join('')}`;
+}
+
+function togglePersoRetour(sid){
+  const el=document.getElementById('perso-r-d-'+sid);
+  if(!el)return;
+  const open=el.classList.toggle('open');
+  const strip=el.previousElementSibling;
+  if(strip&&strip.classList.contains('perso-retour-strip'))strip.classList.toggle('open',open);
 }
 
 let _persoDrag=null;
