@@ -82,6 +82,9 @@ let persoSessionsCache=[];
 let personalAthleteId=null;   // si non-null → form en mode perso
 let personalEditingId=null;
 let personalSessionCounts={}; // map athlete_id → count
+let personalLastDate={};      // map athlete_id → ISO date dernière séance perso
+let persoChip=(()=>{try{return localStorage.getItem('perso_chip')||'all';}catch(e){return 'all';}})();
+let persoCollapsed=(()=>{try{return JSON.parse(localStorage.getItem('perso_collapsed')||'{"inactive":true}');}catch(e){return {inactive:true};}})();
 
 async function loadPersoAthletes(){
   // Reset à la vue liste
@@ -91,34 +94,168 @@ async function loadPersoAthletes(){
 
   const {data}=await sb.from('profiles').select('*').order('full_name');
   persoAthletesCache=data||[];
-  // Compter les séances perso par athlète
-  const {data:counts}=await sb.from('personal_sessions').select('athlete_id');
+  // Compter + tracker la dernière date par athlète
+  const {data:rows}=await sb.from('personal_sessions').select('athlete_id,date');
   personalSessionCounts={};
-  (counts||[]).forEach(r=>{personalSessionCounts[r.athlete_id]=(personalSessionCounts[r.athlete_id]||0)+1;});
+  personalLastDate={};
+  (rows||[]).forEach(r=>{
+    personalSessionCounts[r.athlete_id]=(personalSessionCounts[r.athlete_id]||0)+1;
+    if(!personalLastDate[r.athlete_id] || r.date>personalLastDate[r.athlete_id]){
+      personalLastDate[r.athlete_id]=r.date;
+    }
+  });
   renderPersoAthletes();
 }
 function filterPersoAthletes(){renderPersoAthletes();}
 function renderPersoAthletes(){
-  const q=(document.getElementById('perso-search')?.value||'').toLowerCase();
-  const list=persoAthletesCache.filter(a=>!q||(a.full_name||'').toLowerCase().includes(q)||(a.email||'').toLowerCase().includes(q));
+  const q=(document.getElementById('perso-search')?.value||'').trim().toLowerCase();
   const el=document.getElementById('perso-athletes-list');
-  if(!list.length){el.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
-  el.innerHTML=list.map(a=>{
-    const init=(a.full_name||a.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  if(!el)return;
+
+  const all=persoAthletesCache.filter(a=>a.role!=='admin');
+
+  // 3 buckets
+  const favs=[]; const actifs=[]; const inactifs=[];
+  all.forEach(a=>{
     const cnt=personalSessionCounts[a.id]||0;
-    return`<div class="perso-athlete-card" onclick="openPersoFiche('${a.id}')">
-      <div class="athlete-avatar">${init}</div>
-      <div class="perso-meta">
-        <div class="perso-name">${escapeHtml(a.full_name||'—')}</div>
-        <div class="perso-sub">${escapeHtml(a.email||'')}</div>
+    if(a.coach_favorite) favs.push(a);
+    else if(cnt>0)       actifs.push(a);
+    else                 inactifs.push(a);
+  });
+  const byName=(a,b)=>(a.full_name||'').localeCompare(b.full_name||'');
+  favs.sort(byName);
+  actifs.sort((a,b)=>{
+    const da=personalLastDate[a.id]||'';
+    const db=personalLastDate[b.id]||'';
+    if(da!==db) return db.localeCompare(da);
+    return byName(a,b);
+  });
+  inactifs.sort(byName);
+
+  // Mode recherche : liste à plat, pas de sections
+  if(q){
+    const match=a=>(a.full_name||'').toLowerCase().includes(q)||(a.email||'').toLowerCase().includes(q);
+    const flat=all.filter(match).sort((a,b)=>{
+      if(!!b.coach_favorite - !!a.coach_favorite) return !!b.coach_favorite - !!a.coach_favorite;
+      return byName(a,b);
+    });
+    el.innerHTML = _persoChipsHTML(favs.length,actifs.length,inactifs.length) +
+      (flat.length ? flat.map(_renderPersoCard).join('')
+                   : '<div class="empty"><p>Aucun athlète trouvé.</p></div>');
+    return;
+  }
+
+  // Filtre par chip
+  const visible=new Set();
+  if(persoChip==='all'||persoChip==='fav') favs.forEach(a=>visible.add(a.id));
+  if(persoChip==='all'||persoChip==='actifs') actifs.forEach(a=>visible.add(a.id));
+  if(persoChip==='all'||persoChip==='inactifs') inactifs.forEach(a=>visible.add(a.id));
+
+  const sec=(key,lbl,ic,icCls,list)=>{
+    if(!list.length || !list.some(a=>visible.has(a.id))) return '';
+    const collapsed=!!persoCollapsed[key];
+    const body=collapsed?'':list.filter(a=>visible.has(a.id)).map(_renderPersoCard).join('');
+    return `<div class="perso-section">
+      <div class="perso-sec-bar ${collapsed?'collapsed':''} ${key}" onclick="togglePersoSection('${key}')">
+        <span class="perso-sec-ic ${icCls}">${ic}</span>
+        <span class="perso-sec-lb">${lbl}</span>
+        <span class="perso-sec-ct">${list.length}</span>
+        <span class="perso-sec-arr">▾</span>
       </div>
-      <div style="text-align:right">
-        <div class="perso-count">${cnt}</div>
-        <div style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">séance${cnt>1?'s':''}</div>
-      </div>
-      <div class="chev">›</div>
+      <div class="perso-sec-body">${body}</div>
     </div>`;
-  }).join('');
+  };
+
+  let html =
+    _persoChipsHTML(favs.length,actifs.length,inactifs.length) +
+    sec('fav',     'Favoris',          '★', 'fav', favs) +
+    sec('actifs',  'Actifs récents',   '🔥','act', actifs) +
+    sec('inactive','Sans séance perso','○', 'oth', inactifs);
+
+  if(!favs.length && !actifs.length && !inactifs.length){
+    html += '<div class="empty"><p>Aucun athlète.</p></div>';
+  }
+  el.innerHTML = html;
+}
+
+function _persoChipsHTML(nFav,nAct,nIna){
+  const c=(key,lbl,n,extra='')=>`<span class="perso-chip ${extra} ${persoChip===key?'on':''}" onclick="setPersoChip('${key}')">${lbl} <span class="n">${n}</span></span>`;
+  return `<div class="perso-chips">
+    ${c('all','Tous',nFav+nAct+nIna)}
+    ${c('fav','★ Favoris',nFav,'fav')}
+    ${c('actifs','Actifs',nAct)}
+    ${c('inactifs','Sans séance',nIna)}
+  </div>`;
+}
+
+function setPersoChip(chip){
+  persoChip=chip;
+  try{localStorage.setItem('perso_chip',chip);}catch(e){}
+  if(chip!=='all'){
+    const key = chip==='fav'?'fav':chip==='actifs'?'actifs':'inactive';
+    persoCollapsed[key]=false;
+    try{localStorage.setItem('perso_collapsed',JSON.stringify(persoCollapsed));}catch(e){}
+  }
+  renderPersoAthletes();
+}
+
+function togglePersoSection(key){
+  persoCollapsed[key]=!persoCollapsed[key];
+  try{localStorage.setItem('perso_collapsed',JSON.stringify(persoCollapsed));}catch(e){}
+  renderPersoAthletes();
+}
+
+async function togglePersoFavorite(athleteId, ev){
+  if(ev){ev.stopPropagation();ev.preventDefault();}
+  const a=persoAthletesCache.find(x=>x.id===athleteId);
+  if(!a)return;
+  const next=!a.coach_favorite;
+  a.coach_favorite=next;          // optimistic
+  renderPersoAthletes();
+  const {error}=await sb.from('profiles').update({coach_favorite:next}).eq('id',athleteId);
+  if(error){
+    a.coach_favorite=!next;       // rollback
+    renderPersoAthletes();
+    if(typeof showToast==='function') showToast('❌ '+error.message);
+    return;
+  }
+  if(typeof showToast==='function') showToast(next?'★ Ajouté aux favoris':'Retiré des favoris');
+}
+
+function _renderPersoCard(a){
+  const init=(a.full_name||a.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
+  const cnt=personalSessionCounts[a.id]||0;
+  const last=personalLastDate[a.id];
+  const fav=!!a.coach_favorite;
+  let pill='';
+  if(last){
+    const d=_persoDaysAgo(last);
+    pill=`<span class="perso-activity-pill ${d>=15?'warn':''}">${_persoRelLabel(d)}</span>`;
+  }
+  const sub = cnt>0
+    ? `${cnt} séance${cnt>1?'s':''}${last?' · '+_persoRelLabel(_persoDaysAgo(last),true):''}`
+    : escapeHtml(a.email||'aucune séance perso');
+  return `<div class="perso-athlete-card${fav?' fav':''}" onclick="openPersoFiche('${a.id}')">
+    <div class="athlete-avatar">${init}</div>
+    <div class="perso-meta">
+      <div class="perso-name">${escapeHtml(a.full_name||'—')}</div>
+      <div class="perso-sub">${sub}</div>
+    </div>
+    ${pill}
+    <button class="perso-fav-btn${fav?' on':''}" onclick="togglePersoFavorite('${a.id}',event)" aria-label="${fav?'Retirer des favoris':'Mettre en favori'}">${fav?'★':'☆'}</button>
+    <div class="chev">›</div>
+  </div>`;
+}
+
+function _persoDaysAgo(iso){
+  const d=new Date(iso+'T12:00:00');
+  return Math.floor((Date.now()-d.getTime())/86400000);
+}
+function _persoRelLabel(d,long){
+  if(d<=0) return long?'aujourd\'hui':'auj.';
+  if(d===1) return long?'hier':'1j';
+  if(d<30)  return long?'il y a '+d+'j':d+'j';
+  return long?'> 30j':'30+';
 }
 
 async function openPersoFiche(athleteId,targetDate){

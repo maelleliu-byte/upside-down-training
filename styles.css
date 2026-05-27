@@ -1038,3 +1038,59 @@ html[data-theme="light"] .perso-add-btn,
 :root[data-theme="light"] .perso-r-row .val .lvl{background:#eeece2;color:#3d3d3d}
 :root[data-theme="light"] .perso-well-chips .c{background:#eeece2;color:#3d3d3d}
 :root[data-theme="light"] .perso-pill-dot{background:#5a6810;box-shadow:0 0 0 1.5px rgba(90,104,16,.25)}
+
+/* ============================================================
+   Favoris & sections Espace perso (V3)
+   ============================================================ */
+.perso-chips{display:flex;gap:6px;margin-bottom:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.perso-chips::-webkit-scrollbar{display:none}
+.perso-chip{flex-shrink:0;padding:6px 11px;border-radius:14px;background:var(--card2);border:1px solid var(--border);font-size:11.5px;font-weight:600;color:var(--muted);display:inline-flex;align-items:center;gap:6px;white-space:nowrap;cursor:pointer;user-select:none;transition:background .12s, color .12s, border-color .12s}
+.perso-chip:hover{color:var(--text2)}
+.perso-chip .n{font-family:'JetBrains Mono',monospace;font-size:9.5px;background:var(--card3);padding:1px 5px;border-radius:5px;color:var(--text2);letter-spacing:.3px}
+.perso-chip.on{background:var(--orange);border-color:var(--orange);color:#000}
+.perso-chip.on .n{background:rgba(0,0,0,.18);color:#000}
+.perso-chip.fav.on{background:var(--accent);border-color:var(--accent);color:#000}
+
+.perso-section{margin-bottom:14px}
+.perso-sec-bar{display:flex;align-items:center;gap:8px;padding:8px 4px;border-bottom:1px solid var(--border);margin-bottom:8px;cursor:pointer;user-select:none}
+.perso-sec-bar:hover{border-color:var(--border2)}
+.perso-sec-ic{font-size:12px;line-height:1}
+.perso-sec-ic.fav{color:var(--accent)}
+.perso-sec-ic.act{color:var(--orange)}
+.perso-sec-ic.oth{color:var(--muted)}
+.perso-sec-lb{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.7px;flex:1}
+.perso-sec-bar.fav .perso-sec-lb{color:var(--accent)}
+.perso-sec-ct{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:.5px}
+.perso-sec-arr{color:var(--muted);font-size:12px;transition:transform .15s}
+.perso-sec-bar.collapsed .perso-sec-arr{transform:rotate(-90deg)}
+.perso-sec-bar.collapsed{border-bottom-color:transparent;margin-bottom:0}
+
+.perso-athlete-card{position:relative;padding-right:42px}
+.perso-athlete-card.fav{background:linear-gradient(180deg,rgba(232,255,71,.05),var(--card));border-color:rgba(232,255,71,.22)}
+.perso-athlete-card.fav:hover{border-color:rgba(232,255,71,.45)}
+.perso-fav-btn{position:absolute;top:8px;right:9px;width:26px;height:26px;border-radius:7px;background:transparent;border:none;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;display:flex;align-items:center;justify-content:center;transition:color .12s, background .12s;padding:0}
+.perso-fav-btn:hover{background:var(--card3);color:var(--text2)}
+.perso-fav-btn.on{color:var(--accent)}
+.perso-fav-btn.on:hover{background:rgba(232,255,71,.12)}
+
+.perso-activity-pill{display:inline-flex;align-items:center;gap:3px;font-size:9.5px;font-weight:700;letter-spacing:.5px;padding:2px 7px;border-radius:9px;background:rgba(255,140,71,.13);color:var(--orange);text-transform:uppercase;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.perso-activity-pill::before{content:'●';font-size:6px;margin-right:1px}
+.perso-activity-pill.warn{background:rgba(255,68,68,.14);color:var(--red)}
+
+.perso-athlete-card .chev{margin-left:2px}
+
+/* Light mode */
+html[data-theme="light"] .perso-chip,
+:root[data-theme="light"] .perso-chip{background:#ffffff !important;border-color:#dcdcd2 !important;color:#3d3d3d !important}
+html[data-theme="light"] .perso-chip .n,
+:root[data-theme="light"] .perso-chip .n{background:#f0ede4 !important;color:#0a0a0a !important}
+html[data-theme="light"] .perso-chip.on,
+:root[data-theme="light"] .perso-chip.on{background:#ff8c47 !important;color:#fff !important;border-color:#ff8c47 !important}
+html[data-theme="light"] .perso-chip.fav.on,
+:root[data-theme="light"] .perso-chip.fav.on{background:#c9a700 !important;color:#fff !important;border-color:#c9a700 !important}
+html[data-theme="light"] .perso-sec-bar,
+:root[data-theme="light"] .perso-sec-bar{border-color:#dcdcd2 !important}
+html[data-theme="light"] .perso-fav-btn:hover,
+:root[data-theme="light"] .perso-fav-btn:hover{background:#f0ede4 !important}
+html[data-theme="light"] .perso-athlete-card.fav,
+:root[data-theme="light"] .perso-athlete-card.fav{background:linear-gradient(180deg,rgba(201,167,0,.08),#fff) !important;border-color:rgba(201,167,0,.35) !important}
