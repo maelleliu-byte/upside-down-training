@@ -1806,3 +1806,4 @@ async function runWodCalSearch(query){
     out.innerHTML=`<div class="wod-cal-search-empty" style="color:var(--red)">Erreur : ${wcEsc(e.message||'recherche impossible')}</div>`;
   }
 }
+

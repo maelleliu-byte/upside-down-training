@@ -2411,3 +2411,4 @@ async function loadSessionNotes(sessionId){
   const ta=document.getElementById('session-note-input');
   if(ta&&data&&data[0])ta.value=data[0].content;
 }
+
