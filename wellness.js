@@ -92,7 +92,10 @@ async function loadPersoAthletes(){
   document.getElementById('perso-fiche-view').style.display='none';
   document.getElementById('perso-form-view').style.display='none';
 
-  const {data}=await sb.from('profiles').select('*').order('full_name');
+  const _studioId=window.__STUDIO__?.id||null;
+  let _pq=sb.from('profiles').select('*').order('full_name');
+  if(_studioId)_pq=_pq.eq('studio_id',_studioId);else _pq=_pq.is('studio_id',null);
+  const {data}=await _pq;
   persoAthletesCache=data||[];
   // Compter + tracker la dernière date par athlète
   const {data:rows}=await sb.from('personal_sessions').select('athlete_id,date');
@@ -1803,4 +1806,3 @@ async function runWodCalSearch(query){
     out.innerHTML=`<div class="wod-cal-search-empty" style="color:var(--red)">Erreur : ${wcEsc(e.message||'recherche impossible')}</div>`;
   }
 }
-
