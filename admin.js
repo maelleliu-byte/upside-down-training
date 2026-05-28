@@ -1164,11 +1164,23 @@ async function loadDashboard(){
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
 
+  // Récupérer les IDs athlètes du studio pour filtrer tous les scores/PR
+  const _dashStudioId=window.__STUDIO__?.id||null;
+  let _studioAthleteIds=null;
+  if(_dashStudioId){
+    const {data:_sa}=await sb.from('profiles').select('id').eq('studio_id',_dashStudioId).eq('role','athlete');
+    _studioAthleteIds=(_sa||[]).map(a=>a.id);
+  }
+  const _inAthletes=(q)=>_studioAthleteIds?q.in('athlete_id',_studioAthleteIds):q;
+
+  let _profQ=sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete');
+  if(_dashStudioId)_profQ=_profQ.eq('studio_id',_dashStudioId);else _profQ=_profQ.is('studio_id',null);
+
   const [athletesRes,scoresRes,prsRes,activeRes]=await Promise.all([
-    (()=>{const studioId=window.__STUDIO__?.id||null;let q=sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete');if(studioId)q=q.eq('studio_id',studioId);else q=q.is('studio_id',null);return q;})(),
-    sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
-    sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
-    sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo)
+    _profQ,
+    _inAthletes(sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo)),
+    _inAthletes(sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo)),
+    _inAthletes(sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo))
   ]);
 
   const activeIds=new Set((activeRes.data||[]).map(s=>s.athlete_id));
