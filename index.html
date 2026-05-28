@@ -75,18 +75,11 @@
         showNotFound(`Aucun studio nommé <code style="background:#222;padding:2px 8px;border-radius:4px;color:#e8ff47">${slug}</code> n'existe.`);
         return;
       }
-      // No slug in URL → silent fallback to defaults
-      window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
-      window.dispatchEvent(new CustomEvent('studio:ready', { detail: window.__STUDIO__ }));
+      // No slug in URL → fallback upside avec ID hardcodé pour éviter le filtre studio_id null
+      window.__STUDIO__ = { id: 'd67ef8fe-b4e6-470f-9415-e85b7285bf56', slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
       return;
     }
-    // Studio 'upside' = Upside Down Training original, données avec studio_id IS NULL
-    // On retire l'id pour que le code utilise le filtre IS NULL comme avant
-    if (studio.slug === 'upside') {
-      window.__STUDIO__ = { slug: 'upside', name: studio.name || 'Upside Down Training', accent_color: studio.accent_color || '#e8ff47' };
-    } else {
-      window.__STUDIO__ = studio;
-    }
+    window.__STUDIO__ = studio;
     if (studio.accent_color) document.documentElement.style.setProperty('--accent', studio.accent_color);
     if (studio.name) document.title = studio.name;
     window.dispatchEvent(new CustomEvent('studio:ready', { detail: studio }));
@@ -97,8 +90,7 @@
       showNotFound(`Impossible de charger le studio <code style="background:#222;padding:2px 8px;border-radius:4px;color:#e8ff47">${slug}</code>. Vérifie ta connexion.`);
       return;
     }
-    window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
-    window.dispatchEvent(new CustomEvent('studio:ready', { detail: window.__STUDIO__ }));
+    window.__STUDIO__ = { id: 'd67ef8fe-b4e6-470f-9415-e85b7285bf56', slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
   });
 })();
 </script>
