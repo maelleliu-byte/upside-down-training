@@ -170,6 +170,10 @@ async function initApp(){
   if(tlbl){const cur=document.documentElement.getAttribute('data-theme')||'dark';tlbl.textContent=cur==='dark'?'🌙 Mode clair':'☀️ Mode sombre';}
   document.getElementById('profil-name').textContent=currentProfile?.full_name||'Athlète';
   document.getElementById('profil-email').textContent=currentUser.email;
+  // Afficher le nom du studio dans le topbar de la programmation
+  if(window.__STUDIO__?.name){
+    document.getElementById('prog-topbar-title').textContent=window.__STUDIO__.name.toUpperCase();
+  }
   refreshMyGenderUI();
   const isUpsideAdmin=currentProfile?.role==='admin';
   const isCoach=currentProfile?.is_coach===true;
