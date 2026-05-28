@@ -1201,7 +1201,9 @@ async function loadDashboard(){
   }
 
   // Top performers (plus de PR ce mois)
-  const {data:topPRs}=await sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
+  let _tpQ=sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
+  if(_studioAthleteIds)_tpQ=_tpQ.in('athlete_id',_studioAthleteIds);
+  const {data:topPRs}=await _tpQ;
   const prCount={};
   (topPRs||[]).forEach(p=>{prCount[p.athlete_id]=(prCount[p.athlete_id]||{count:0,name:p.profiles?.full_name||'—'});prCount[p.athlete_id].count++;});
   const topList=Object.values(prCount).sort((a,b)=>b.count-a.count).slice(0,5);
@@ -1210,7 +1212,9 @@ async function loadDashboard(){
     :topList.map((t,i)=>`<div class="inactive-row"><div class="inactive-name">${i===0?'🥇':i===1?'🥈':'🥉'} ${t.name}</div><div style="font-size:12px;color:var(--accent);font-weight:700">${t.count} PR</div></div>`).join('');
 
   // Derniers scores
-  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name,avatar_url),sessions(title)').order('created_at',{ascending:false}).limit(8);
+  let _rsQ=sb.from('wod_scores').select('*,profiles(full_name,avatar_url),sessions(title)').order('created_at',{ascending:false}).limit(8);
+  if(_studioAthleteIds)_rsQ=_rsQ.in('athlete_id',_studioAthleteIds);
+  const {data:recentScores}=await _rsQ;
   document.getElementById('dash-recent').innerHTML=(recentScores||[]).map(s=>`<div class="recent-score-row">
     ${avatarHtml(s.profiles)}
     <div class="recent-score-info">
@@ -1316,7 +1320,10 @@ async function initCyclePlanner(){
 
 let cycleYearFilter='all'; // 'all' or 4-digit year as string
 async function loadAllCycles(){
-  const {data}=await sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
+  const studioId=window.__STUDIO__?.id||null;
+  let cq=sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
+  if(studioId){cq=cq.eq('studio_id',studioId);}else{cq=cq.is('studio_id',null);}
+  const {data}=await cq;
   allCycles=data||[];
   renderCycleYearTabs();
   renderCycleSelector();
@@ -2280,7 +2287,25 @@ function syncLegacyVideoFields(){
 let allVideos=[];let currentVCat='all';let videoSearch='';
 
 async function loadVideos(){
-  const {data}=await sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
+  const studioId=window.__STUDIO__?.id||null;
+  let vq=sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
+  if(studioId){
+    // Filtrer via les mouvements du studio
+    const {data:studioMvs}=await sb.from('movements').select('id').eq('studio_id',studioId);
+    const mvIds=(studioMvs||[]).map(m=>m.id);
+    if(mvIds.length){vq=vq.in('movement_id',mvIds);}
+    else{
+      // Studio sans mouvements encore — retourner vide
+      window._allVideos=[];
+      return;
+    }
+  } else {
+    // Upside Down : mouvements sans studio_id
+    const {data:studioMvs}=await sb.from('movements').select('id').is('studio_id',null);
+    const mvIds=(studioMvs||[]).map(m=>m.id);
+    if(mvIds.length){vq=vq.in('movement_id',mvIds);}
+  }
+  const {data}=await vq;
   allVideos=data||[];
 }
 
