@@ -171,9 +171,8 @@ async function initApp(){
   document.getElementById('profil-name').textContent=currentProfile?.full_name||'Athlète';
   document.getElementById('profil-email').textContent=currentUser.email;
   // Afficher le nom du studio dans le topbar de la programmation
-  const _titleEl=document.getElementById('prog-topbar-title');
-  if(_titleEl&&window.__STUDIO__?.name){
-    _titleEl.textContent=window.__STUDIO__.name.toUpperCase();
+  if(window.__STUDIO__?.name){
+    document.getElementById('prog-topbar-title').textContent=window.__STUDIO__.name.toUpperCase();
   }
   refreshMyGenderUI();
   const isUpsideAdmin=currentProfile?.role==='admin';
