@@ -170,14 +170,8 @@ async function initApp(){
   if(tlbl){const cur=document.documentElement.getAttribute('data-theme')||'dark';tlbl.textContent=cur==='dark'?'🌙 Mode clair':'☀️ Mode sombre';}
   document.getElementById('profil-name').textContent=currentProfile?.full_name||'Athlète';
   document.getElementById('profil-email').textContent=currentUser.email;
-  // Afficher le nom du studio dans le topbar de la programmation
-  if(window.__STUDIO__?.name){
-    document.getElementById('prog-topbar-title').textContent=window.__STUDIO__.name.toUpperCase();
-  }
   refreshMyGenderUI();
-  const isUpsideAdmin=currentProfile?.role==='admin';
-  const isCoach=currentProfile?.is_coach===true;
-  if(isUpsideAdmin||isCoach){
+  if(currentProfile?.role==='admin'){
     document.getElementById('admin-menu-item').style.display='flex';
     if(!document.querySelector('[data-page="admin"]')){
       const nav=document.getElementById('bottom-nav');
@@ -187,11 +181,6 @@ async function initApp(){
       btn.onclick=()=>goPage('admin');
       nav.appendChild(btn);
     }
-  }
-  // Bouton Mon Studio : visible si coach avec son propre studio
-  if(isCoach&&currentProfile?.own_studio_id){
-    const ms=document.getElementById('my-studio-menu-item');
-    if(ms)ms.style.display='flex';
   }
   await loadMovements();
   await loadBenchmarks();
@@ -222,17 +211,7 @@ async function goPage(page){
 
 // PROGRAMMES
 async function loadProgrammes(){
-  // Filtrer par le studio de l'URL courante
-  const studioId=window.__STUDIO__?.id||null;
-  const studioSlug=window.__STUDIO__?.slug||null;
-  let q=sb.from('programmes').select('*').eq('is_active',true);
-  if(studioId){
-    // Inclure aussi studio_id IS NULL pour compat programmes anciens sans studio_id
-    q=q.or(`studio_id.eq.${studioId},studio_id.is.null`);
-  } else {
-    q=q.is('studio_id',null);
-  }
-  const {data}=await q.order('name');
+  const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
   programmes=data||[];
 
   // Gérer retour Stripe ici, après chargement des programmes
@@ -273,14 +252,10 @@ async function loadProgrammes(){
   await loadMyAccess();
   renderProgTabs();
   if(programmes.length>0){
-    const isAdmin=currentProfile?.role==='admin'&&!currentProfile?.own_studio_id;
-    const isCoach=currentProfile?.is_coach===true;
+    const isAdmin=currentProfile?.role==='admin';
     let first;
     if(isAdmin){
       first=programmes.find(p=>p.slug==='training')||programmes[0];
-    } else if(isCoach){
-      // Coach sur son propre studio : premier programme de son studio
-      first=programmes.find(p=>p.studio_id===currentProfile.own_studio_id)||programmes.find(p=>hasAccess(p))||programmes[0];
     } else {
       first=programmes.find(p=>hasAccess(p))||programmes[0];
     }
@@ -297,10 +272,10 @@ function renderProgTabs(){
 
   // Trier : accessibles en premier, puis verrouillés
   // Pour admins : Training en premier
-  const isAdmin=currentProfile?.role==='admin'&&!currentProfile?.own_studio_id;
+  const isAdmin=currentProfile?.role==='admin';
   const sorted=[...programmes].sort((a,b)=>{
     if(isAdmin){
-      // Training en premier pour les admins Upside Down
+      // Training en premier pour les admins
       if(a.slug==='training')return -1;
       if(b.slug==='training')return 1;
       return a.name.localeCompare(b.name);
@@ -412,10 +387,3 @@ function changeWeek(dir){
   renderDayStrip();renderSessions();
 }
 
-// MON STUDIO — redirige vers le studio du coach
-function goToMyStudio(){
-  if(!currentProfile?.own_studio_id)return;
-  if(window.__STUDIO__?.id===currentProfile.own_studio_id){goPage('admin');return;}
-  sb.from('studios').select('slug').eq('id',currentProfile.own_studio_id).single()
-    .then(({data})=>{if(data?.slug)window.location.href='/'+data.slug;});
-}

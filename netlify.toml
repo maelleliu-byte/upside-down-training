@@ -2,30 +2,14 @@
   functions = "netlify/functions"
 
 [build.environment]
-  SECRETS_SCAN_OMIT_PATHS = "index.html,core.js,admin.js,planning.js,wellness.js,abos.js,styles.css,debug.html,register.html,studio-settings.html"
+  SECRETS_SCAN_OMIT_PATHS = "index.html,core.js,admin.js,planning.js,wellness.js,abos.js,styles.css,debug.html"
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_SERVICE_KEY"
-
-# ── Page d'inscription coach ──
 [[redirects]]
   from = "/register"
   to = "/register.html"
   status = 200
 
-# ── Paramètres studio ──
 [[redirects]]
   from = "/:studio/settings"
   to = "/studio-settings.html"
   status = 200
-
-# ── Multi-tenant : /:slug → index.html ──
-[[redirects]]
-  from = "/:studio"
-  to = "/index.html"
-  status = 200
-  force = false
-
-[[redirects]]
-  from = "/:studio/*"
-  to = "/index.html"
-  status = 200
-  force = false

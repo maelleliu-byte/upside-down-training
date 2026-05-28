@@ -75,8 +75,8 @@
         showNotFound(`Aucun studio nommé <code style="background:#222;padding:2px 8px;border-radius:4px;color:#e8ff47">${slug}</code> n'existe.`);
         return;
       }
-      // No slug in URL → fallback upside avec ID hardcodé pour éviter le filtre studio_id null
-      window.__STUDIO__ = { id: 'd67ef8fe-b4e6-470f-9415-e85b7285bf56', slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
+      // No slug in URL → silent fallback to defaults
+      window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
       return;
     }
     window.__STUDIO__ = studio;
@@ -90,7 +90,7 @@
       showNotFound(`Impossible de charger le studio <code style="background:#222;padding:2px 8px;border-radius:4px;color:#e8ff47">${slug}</code>. Vérifie ta connexion.`);
       return;
     }
-    window.__STUDIO__ = { id: 'd67ef8fe-b4e6-470f-9415-e85b7285bf56', slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
+    window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
   });
 })();
 </script>
@@ -736,7 +736,6 @@
     <div class="menu-item" onclick="goPage('pr')"><span class="menu-item-label">📊 Mes records (PR)</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('abos')"><span class="menu-item-label">💳 Mes abonnements</span><span>›</span></div>
     <div class="menu-item" id="admin-menu-item" style="display:none" onclick="goPage('admin')"><span class="menu-item-label">⚙️ Administration</span><span>›</span></div>
-    <div class="menu-item" id="my-studio-menu-item" style="display:none" onclick="goToMyStudio()"><span class="menu-item-label">🏋️ Mon studio</span><span>›</span></div>
     <button class="btn-logout" onclick="doLogout()">Se déconnecter</button>
   </div>
 
@@ -987,22 +986,13 @@
 <script src="core.js"></script>
 <script src="planning.js"></script>
 <script src="admin.js"></script>
+<script src="abos.js"></script>
+<script src="wellness.js"></script>
 <script>
-/* Lazy-load des modules de pages restants (wellness, abos) */
-const _pageModules = {prog:true, pr:true, videos:true, admin:true};
+/* Tous les modules sont chargés en amont - lazy-load désactivé */
+const _pageModules = {prog:true, pr:true, videos:true, admin:true, abos:true, profil:true};
 const _origGoPage = window.goPage;
 window.goPage = async function(page) {
-  if (!_pageModules[page]) {
-    try {
-      if (page === 'profil') {
-        await _loadScript('wellness.js');
-        _pageModules['profil'] = true;
-      } else if (page === 'abos') {
-        await _loadScript('abos.js');
-        _pageModules['abos'] = true;
-      }
-    } catch(e) { console.warn('Module load error', e); }
-  }
   return _origGoPage(page);
 };
 

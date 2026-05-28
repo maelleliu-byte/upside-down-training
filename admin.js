@@ -143,7 +143,7 @@ async function saveNewProg(){
       slug=slug+'-'+i;
     }
   }
-  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id,studio_id:window.__STUDIO__?.id||null}).select().single();
+  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id}).select().single();
   if(error){
     showToast('❌ '+error.message);
     // Restaurer le bouton "+ Nouveau programme" même en cas d'erreur
@@ -188,12 +188,7 @@ function toggleSetsField(){
 async function loadAdminSessions(){
   const progId=document.getElementById('admin-filter-prog').value;
   let q=sb.from('sessions').select('*,programmes(name,icon)').order('date',{ascending:false}).limit(50);
-  // Filtrer par les programmes du studio courant (évite d'afficher les séances d'autres studios)
-  if(progId){
-    q=q.eq('programme_id',progId);
-  } else if(programmes&&programmes.length>0){
-    q=q.in('programme_id',programmes.map(p=>p.id));
-  }
+  if(progId)q=q.eq('programme_id',progId);
   const {data}=await q;
   const list=document.getElementById('admin-sessions-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucune séance.</p></div>';return;}
@@ -891,10 +886,7 @@ async function loadMixedAthletes(){
   const counts={};
   rows.forEach(r=>{if(r.athlete_id)counts[r.athlete_id]=(counts[r.athlete_id]||0)+1;});
   if(!persoAthletesCache.length){
-    const _studioId=window.__STUDIO__?.id||null;
-    let _pq=sb.from('profiles').select('*').order('full_name');
-    if(_studioId)_pq=_pq.eq('studio_id',_studioId);else _pq=_pq.is('studio_id',null);
-    const {data}=await _pq;
+    const {data}=await sb.from('profiles').select('*').order('full_name');
     persoAthletesCache=data||[];
   }
   // Tous les profils, athlètes mixtes (≥2 progs) en tête.
@@ -962,10 +954,7 @@ async function confirmDuplicate(){
 }
 async function loadAdminBenchmarks(){
   loadAdminMovements();
-  const studioId=window.__STUDIO__?.id||null;
-  let bq=sb.from('benchmarks').select('*').order('category,name');
-  if(studioId){bq=bq.eq('studio_id',studioId);}else{bq=bq.is('studio_id',null);}
-  const {data}=await bq;
+  const {data}=await sb.from('benchmarks').select('*').order('category,name');
   const el=document.getElementById('admin-bench-list');
   if(!data||data.length===0){el.innerHTML='';return;}
   el.innerHTML=`<div class="pr-hist-title">${data.length} benchmarks actifs</div>`+data.map(b=>`<div class="sessions-list-item"><div><div class="sli-title">${b.name}</div><div class="sli-meta">${b.category} · ${b.score_type}</div></div></div>`).join('');
@@ -974,10 +963,7 @@ async function loadAdminMovements(){
   const el=document.getElementById('admin-mv-list');
   if(!el)return;
   const q=(document.getElementById('admin-mv-search')?.value||'').toLowerCase().trim();
-  const studioId=window.__STUDIO__?.id||null;
-  let mq=sb.from('movements').select('*').order('category,name');
-  if(studioId){mq=mq.eq('studio_id',studioId);}else{mq=mq.is('studio_id',null);}
-  const {data}=await mq;
+  const {data}=await sb.from('movements').select('*').order('category,name');
   let list=data||[];
   // Détection des doublons (même nom normalisé)
   const norm=s=>s.toLowerCase().replace(/\s+/g,' ').trim();
@@ -1067,11 +1053,7 @@ async function saveBenchmark(){
   await loadBenchmarks();loadAdminBenchmarks();
 }
 async function loadAdminAthletes(){
-  const studioId=window.__STUDIO__?.id||null;
-  let q=sb.from('profiles').select('*').order('full_name');
-  if(studioId){q=q.eq('studio_id',studioId);}
-  else{q=q.is('studio_id',null);}
-  const {data}=await q;
+  const {data}=await sb.from('profiles').select('*').order('full_name');
   const list=document.getElementById('admin-athletes-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
   list.innerHTML=data.map(p=>{
@@ -1169,23 +1151,11 @@ async function loadDashboard(){
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
 
-  // Récupérer les IDs athlètes du studio pour filtrer tous les scores/PR
-  const _dashStudioId=window.__STUDIO__?.id||null;
-  let _studioAthleteIds=null;
-  if(_dashStudioId){
-    const {data:_sa}=await sb.from('profiles').select('id').eq('studio_id',_dashStudioId).eq('role','athlete');
-    _studioAthleteIds=(_sa||[]).map(a=>a.id);
-  }
-  const _inAthletes=(q)=>_studioAthleteIds?q.in('athlete_id',_studioAthleteIds):q;
-
-  let _profQ=sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete');
-  if(_dashStudioId)_profQ=_profQ.eq('studio_id',_dashStudioId);else _profQ=_profQ.is('studio_id',null);
-
   const [athletesRes,scoresRes,prsRes,activeRes]=await Promise.all([
-    _profQ,
-    _inAthletes(sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo)),
-    _inAthletes(sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo)),
-    _inAthletes(sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo))
+    sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete'),
+    sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
+    sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
+    sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo)
   ]);
 
   const activeIds=new Set((activeRes.data||[]).map(s=>s.athlete_id));
@@ -1196,10 +1166,7 @@ async function loadDashboard(){
     <div class="dash-stat-box"><div class="dash-stat-val">${prsRes.count||0}</div><div class="dash-stat-lbl">PR 30j</div></div>`;
 
   // Athlètes inactifs
-  const _dashStudioId=window.__STUDIO__?.id||null;
-  let _athQ=sb.from('profiles').select('id,full_name,email').eq('role','athlete');
-  if(_dashStudioId)_athQ=_athQ.eq('studio_id',_dashStudioId);else _athQ=_athQ.is('studio_id',null);
-  const {data:allAthletes}=await _athQ;
+  const {data:allAthletes}=await sb.from('profiles').select('id,full_name,email').eq('role','athlete');
   const inactiveAthletes=(allAthletes||[]).filter(a=>!activeIds.has(a.id));
   const inactiveEl=document.getElementById('dash-inactive');
   if(inactiveAthletes.length===0){inactiveEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Tous les athlètes sont actifs 💪</div>';}
@@ -1218,9 +1185,7 @@ async function loadDashboard(){
   }
 
   // Top performers (plus de PR ce mois)
-  let _tpQ=sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
-  if(_studioAthleteIds)_tpQ=_tpQ.in('athlete_id',_studioAthleteIds);
-  const {data:topPRs}=await _tpQ;
+  const {data:topPRs}=await sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
   const prCount={};
   (topPRs||[]).forEach(p=>{prCount[p.athlete_id]=(prCount[p.athlete_id]||{count:0,name:p.profiles?.full_name||'—'});prCount[p.athlete_id].count++;});
   const topList=Object.values(prCount).sort((a,b)=>b.count-a.count).slice(0,5);
@@ -1229,9 +1194,7 @@ async function loadDashboard(){
     :topList.map((t,i)=>`<div class="inactive-row"><div class="inactive-name">${i===0?'🥇':i===1?'🥈':'🥉'} ${t.name}</div><div style="font-size:12px;color:var(--accent);font-weight:700">${t.count} PR</div></div>`).join('');
 
   // Derniers scores
-  let _rsQ=sb.from('wod_scores').select('*,profiles(full_name,avatar_url),sessions(title)').order('created_at',{ascending:false}).limit(8);
-  if(_studioAthleteIds)_rsQ=_rsQ.in('athlete_id',_studioAthleteIds);
-  const {data:recentScores}=await _rsQ;
+  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name,avatar_url),sessions(title)').order('created_at',{ascending:false}).limit(8);
   document.getElementById('dash-recent').innerHTML=(recentScores||[]).map(s=>`<div class="recent-score-row">
     ${avatarHtml(s.profiles)}
     <div class="recent-score-info">
@@ -1337,10 +1300,7 @@ async function initCyclePlanner(){
 
 let cycleYearFilter='all'; // 'all' or 4-digit year as string
 async function loadAllCycles(){
-  const studioId=window.__STUDIO__?.id||null;
-  let cq=sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
-  if(studioId){cq=cq.eq('studio_id',studioId);}else{cq=cq.is('studio_id',null);}
-  const {data}=await cq;
+  const {data}=await sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
   allCycles=data||[];
   renderCycleYearTabs();
   renderCycleSelector();
@@ -2304,25 +2264,7 @@ function syncLegacyVideoFields(){
 let allVideos=[];let currentVCat='all';let videoSearch='';
 
 async function loadVideos(){
-  const studioId=window.__STUDIO__?.id||null;
-  let vq=sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
-  if(studioId){
-    // Filtrer via les mouvements du studio
-    const {data:studioMvs}=await sb.from('movements').select('id').eq('studio_id',studioId);
-    const mvIds=(studioMvs||[]).map(m=>m.id);
-    if(mvIds.length){vq=vq.in('movement_id',mvIds);}
-    else{
-      // Studio sans mouvements encore — retourner vide
-      window._allVideos=[];
-      return;
-    }
-  } else {
-    // Upside Down : mouvements sans studio_id
-    const {data:studioMvs}=await sb.from('movements').select('id').is('studio_id',null);
-    const mvIds=(studioMvs||[]).map(m=>m.id);
-    if(mvIds.length){vq=vq.in('movement_id',mvIds);}
-  }
-  const {data}=await vq;
+  const {data}=await sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
   allVideos=data||[];
 }
 

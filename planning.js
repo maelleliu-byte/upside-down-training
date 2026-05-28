@@ -1,11 +1,7 @@
 // SESSIONS
 function hasAccess(prog){
   if(!prog)return false;
-  // Admin Upside Down pur (pas coach d'un autre studio) -> accès à tout
-  if(currentProfile?.role==='admin'&&!currentProfile?.own_studio_id)return true;
-  // Coach sur son propre studio -> accès à ses programmes
-  if(currentProfile?.is_coach&&prog.studio_id===currentProfile?.own_studio_id)return true;
-  // Accès athlète classique via abonnement
+  if(currentProfile?.role==='admin')return true;
   return myAccessIds.has(prog.id)||myAccess.has(prog.slug);
 }
 
