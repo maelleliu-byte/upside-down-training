@@ -336,17 +336,24 @@ body { display: flex; align-items: flex-start; justify-content: center; min-heig
       <label class="form-label">Adresse email</label>
       <input type="email" class="form-input" id="reg-email" placeholder="coach@monsalle.fr" autocomplete="email">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="pwd-group">
       <label class="form-label">Mot de passe</label>
       <input type="password" class="form-input" id="reg-pwd" placeholder="8 caractères minimum" autocomplete="new-password">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="pwd2-group">
       <label class="form-label">Confirmer le mot de passe</label>
       <input type="password" class="form-input" id="reg-pwd2" placeholder="Même mot de passe" autocomplete="new-password">
     </div>
 
+    <!-- Mode "compte existant" : affiche uniquement le mot de passe pour se connecter -->
+    <div class="form-group" id="existing-pwd-group" style="display:none">
+      <label class="form-label">Ton mot de passe habituel</label>
+      <input type="password" class="form-input" id="reg-existing-pwd" placeholder="Ton mot de passe Upside Down" autocomplete="current-password">
+      <div class="form-hint">On va relier ton compte existant à ton nouveau studio.</div>
+    </div>
+
     <div class="error-box" id="err-1"></div>
-    <button class="btn-primary" onclick="goStep2()">Continuer →</button>
+    <button class="btn-primary" onclick="goStep2()" id="btn-step1">Continuer →</button>
 
     <div class="already-link">
       Déjà un compte ? <a href="/">Me connecter</a>
@@ -634,19 +641,57 @@ function setStep(n){
 
 function backStep(n){ clearErr(n+1); setStep(n); }
 
-function goStep2(){
+/* ============================================================
+ * MODE COMPTE EXISTANT
+ * ============================================================ */
+let existingAccountMode = false;
+
+async function goStep2(){
   clearErr(1);
   const name = document.getElementById('reg-name').value.trim();
   const email = document.getElementById('reg-email').value.trim();
-  const pwd = document.getElementById('reg-pwd').value;
-  const pwd2 = document.getElementById('reg-pwd2').value;
   if(!name){ showErr(1,'Saisis ton prénom et nom.'); return; }
   if(!email || !email.includes('@')){ showErr(1,'Email invalide.'); return; }
+
+  if(existingAccountMode){
+    // Mode compte existant : on vérifie le mot de passe
+    const pwd = document.getElementById('reg-existing-pwd').value;
+    if(!pwd){ showErr(1,'Saisis ton mot de passe.'); return; }
+    // Tenter une connexion pour vérifier
+    const btn = document.getElementById('btn-step1');
+    btn.disabled = true; btn.textContent = '⏳ Vérification...';
+    const { error } = await sb.auth.signInWithPassword({ email, password: pwd });
+    btn.disabled = false; btn.textContent = 'Continuer →';
+    if(error){ showErr(1,'❌ Mot de passe incorrect.'); return; }
+    setStep(2); updatePreview(); return;
+  }
+
+  // Mode normal : vérifier si l'email existe déjà
+  const btn = document.getElementById('btn-step1');
+  btn.disabled = true; btn.textContent = '⏳ Vérification...';
+  const { data: exists } = await sb.from('profiles').select('id').eq('email', email).maybeSingle();
+  btn.disabled = false; btn.textContent = 'Continuer →';
+
+  if(exists){
+    // Email déjà utilisé → basculer en mode compte existant
+    existingAccountMode = true;
+    document.getElementById('pwd-group').style.display = 'none';
+    document.getElementById('pwd2-group').style.display = 'none';
+    document.getElementById('existing-pwd-group').style.display = 'block';
+    document.getElementById('reg-name').closest('.form-group').style.display = 'none';
+    showErr(1, '👋 On a trouvé un compte avec cet email. Entre ton mot de passe habituel pour relier ton studio à ton compte existant.');
+    document.getElementById('err-1').style.background = 'rgba(232,255,71,.08)';
+    document.getElementById('err-1').style.borderColor = 'rgba(232,255,71,.3)';
+    document.getElementById('err-1').style.color = 'var(--accent)';
+    return;
+  }
+
+  // Email libre → mode normal, vérifier le mot de passe
+  const pwd = document.getElementById('reg-pwd').value;
+  const pwd2 = document.getElementById('reg-pwd2').value;
   if(pwd.length < 8){ showErr(1,'Mot de passe trop court (8 caractères min).'); return; }
   if(pwd !== pwd2){ showErr(1,'Les mots de passe ne correspondent pas.'); return; }
-  setStep(2);
-  // Pré-remplir la prévisualisation
-  updatePreview();
+  setStep(2); updatePreview();
 }
 
 async function goStep3(){
@@ -674,22 +719,36 @@ async function createStudio(){
 
   const name = document.getElementById('reg-name').value.trim();
   const email = document.getElementById('reg-email').value.trim();
-  const pwd = document.getElementById('reg-pwd').value;
+  const pwd = existingAccountMode ? document.getElementById('reg-existing-pwd').value : document.getElementById('reg-pwd').value;
   const studioName = document.getElementById('reg-studio-name').value.trim();
   const slug = document.getElementById('reg-slug').value.trim();
   const accent = selectedColor;
 
-  // ── 1. Inscription Supabase Auth ──
-  const { data: authData, error: authErr } = await sb.auth.signUp({
-    email, password: pwd,
-    options: { data: { full_name: name } }
-  });
-  if(authErr){
-    showErr(3, '❌ ' + authErr.message);
-    resetBtn(); return;
+  // ── 1. Compte : nouveau ou existant ──
+  let userId = null;
+
+  if(existingAccountMode){
+    // Compte existant : déjà connecté après vérification à l'étape 1
+    const { data: { session } } = await sb.auth.getSession();
+    userId = session?.user?.id;
+    if(!userId){
+      // Re-connecter si session expirée
+      const existingPwd = document.getElementById('reg-existing-pwd').value;
+      const { data: signInData, error: signInErr } = await sb.auth.signInWithPassword({ email, password: existingPwd });
+      if(signInErr){ showErr(3,'❌ Session expirée, reconnecte-toi.'); resetBtn(); return; }
+      userId = signInData.user?.id;
+    }
+  } else {
+    // Nouveau compte
+    const { data: authData, error: authErr } = await sb.auth.signUp({
+      email, password: pwd,
+      options: { data: { full_name: name } }
+    });
+    if(authErr){ showErr(3, '❌ ' + authErr.message); resetBtn(); return; }
+    userId = authData.user?.id;
   }
-  const userId = authData.user?.id;
-  if(!userId){ showErr(3,'❌ Erreur lors de la création du compte.'); resetBtn(); return; }
+
+  if(!userId){ showErr(3,'❌ Impossible de récupérer le compte.'); resetBtn(); return; }
 
   // ── 2. Appel Edge Function create-studio ──
   // (Si tu n'as pas cette Edge Function, utilise le fallback direct ci-dessous)
@@ -731,14 +790,21 @@ async function createStudio(){
     studioId = studioData.id;
   }
 
-  // ── 3. Mettre à jour le profil : role admin + studio_id ──
-  const { error: profileErr } = await sb.from('profiles').upsert({
+  // ── 3. Mettre à jour le profil ──
+  // is_coach = true + own_studio_id = son studio
+  // On NE TOUCHE PAS à role ni studio_id (pour ne pas casser ses accès athlète)
+  const profileUpdate = {
     id: userId,
-    full_name: name,
-    email: email,
-    role: 'admin',
-    studio_id: studioId
-  }, { onConflict: 'id' });
+    is_coach: true,
+    own_studio_id: studioId,
+  };
+  // Si nouveau compte : on set aussi le nom et le role
+  if(!existingAccountMode){
+    profileUpdate.full_name = name;
+    profileUpdate.email = email;
+    profileUpdate.role = 'admin';
+  }
+  const { error: profileErr } = await sb.from('profiles').upsert(profileUpdate, { onConflict: 'id' });
   if(profileErr) console.warn('Profile update:', profileErr.message);
 
   // ── 4. Créer les programmes ──
