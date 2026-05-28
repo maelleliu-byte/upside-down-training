@@ -2,54 +2,8 @@
   functions = "netlify/functions"
 
 [build.environment]
-  SECRETS_SCAN_OMIT_PATHS = "index.html,core.js,admin.js,planning.js,wellness.js,abos.js,styles.css,register.html,studio-settings.html"
+  SECRETS_SCAN_OMIT_PATHS = "index.html,core.js,admin.js,planning.js,wellness.js,abos.js,styles.css,debug.html,register.html,studio-settings.html"
   SECRETS_SCAN_OMIT_KEYS = "SUPABASE_URL,SUPABASE_SERVICE_KEY"
-
-# ── Fichiers statiques : NE JAMAIS rediriger ──
-[[redirects]]
-  from = "/*.js"
-  to = "/:splat.js"
-  status = 200
-
-[[redirects]]
-  from = "/*.css"
-  to = "/:splat.css"
-  status = 200
-
-[[redirects]]
-  from = "/*.html"
-  to = "/:splat.html"
-  status = 200
-
-[[redirects]]
-  from = "/*.json"
-  to = "/:splat.json"
-  status = 200
-
-[[redirects]]
-  from = "/*.ico"
-  to = "/:splat.ico"
-  status = 200
-
-[[redirects]]
-  from = "/*.png"
-  to = "/:splat.png"
-  status = 200
-
-[[redirects]]
-  from = "/*.jpg"
-  to = "/:splat.jpg"
-  status = 200
-
-[[redirects]]
-  from = "/*.svg"
-  to = "/:splat.svg"
-  status = 200
-
-[[redirects]]
-  from = "/*.woff2"
-  to = "/:splat.woff2"
-  status = 200
 
 # ── Page d'inscription coach ──
 [[redirects]]
@@ -63,13 +17,15 @@
   to = "/studio-settings.html"
   status = 200
 
-# ── Toutes les autres URLs /:slug → index.html (multi-tenant) ──
+# ── Multi-tenant : /:slug → index.html ──
 [[redirects]]
   from = "/:studio"
   to = "/index.html"
   status = 200
+  force = false
 
 [[redirects]]
   from = "/:studio/*"
   to = "/index.html"
   status = 200
+  force = false
