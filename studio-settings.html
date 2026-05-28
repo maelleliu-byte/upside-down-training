@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Paramètres studio</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+:root {
+  --black:#080808; --dark:#101010; --card:#161616; --card2:#1e1e1e;
+  --border:#252525; --border2:#333;
+  --accent:#e8ff47; --red:#ff4444; --blue:#47c8ff;
+  --orange:#ff8c47; --purple:#c847ff; --green:#47ff8c;
+  --text:#f0f0f0; --text2:#aaa; --muted:#666;
+  --studio-accent: #e8ff47;
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--black);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100%}
+body{max-width:480px;margin:0 auto}
+
+/* ── TOPBAR ── */
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:var(--black);
+  border-bottom:1px solid var(--border);
+  padding:16px 20px 14px;
+  display:flex;align-items:center;gap:12px;
+}
+.topbar-back{
+  background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;
+  padding:4px;line-height:1;
+}
+.topbar-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px}
+.topbar-save{
+  margin-left:auto;
+  background:var(--studio-accent);color:#000;
+  border:none;border-radius:8px;
+  padding:8px 16px;font-size:13px;font-weight:700;
+  cursor:pointer;transition:opacity .2s;font-family:'DM Sans',sans-serif;
+}
+.topbar-save:active{opacity:.8}
+.topbar-save:disabled{opacity:.4;cursor:not-allowed}
+
+/* ── SECTIONS ── */
+.section{
+  margin:0 16px 8px;
+  background:var(--card);
+  border:1px solid var(--border2);
+  border-radius:14px;
+  overflow:hidden;
+}
+.section:first-of-type{margin-top:16px}
+.section-header{
+  padding:14px 16px 10px;
+  border-bottom:1px solid var(--border);
+}
+.section-title{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:16px;letter-spacing:2px;color:var(--text);
+}
+.section-sub{font-size:12px;color:var(--muted);margin-top:2px;line-height:1.4}
+.section-body{padding:16px}
+
+/* ── FORMS ── */
+.form-group{margin-bottom:14px}
+.form-group:last-child{margin-bottom:0}
+.form-label{
+  display:block;font-size:10px;font-weight:700;
+  color:var(--muted);letter-spacing:1.5px;
+  text-transform:uppercase;margin-bottom:7px;
+}
+.form-input,.form-select{
+  width:100%;background:var(--dark);
+  border:1.5px solid var(--border2);
+  border-radius:10px;color:var(--text);
+  font-family:'DM Sans',sans-serif;font-size:14px;
+  padding:11px 14px;outline:none;
+  transition:border-color .2s;
+}
+.form-input:focus,.form-select:focus{border-color:var(--studio-accent)}
+.form-input::placeholder{color:var(--muted)}
+.form-hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
+.form-hint.ok{color:var(--green)}
+.form-hint.err{color:var(--red)}
+.form-row{display:flex;gap:10px}
+.form-row .form-group{flex:1}
+
+/* ── COULEURS ── */
+.color-grid{display:flex;gap:8px;flex-wrap:wrap;margin-top:4px}
+.color-swatch{
+  width:34px;height:34px;border-radius:8px;
+  border:2.5px solid transparent;cursor:pointer;
+  transition:transform .15s,border-color .15s;position:relative;
+}
+.color-swatch:hover{transform:scale(1.1)}
+.color-swatch.selected{border-color:#fff;transform:scale(1.12)}
+.color-swatch.selected::after{
+  content:'✓';position:absolute;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:800;color:#000;
+}
+.color-custom-row{display:flex;align-items:center;gap:10px;margin-top:10px}
+.color-custom-row label{font-size:12px;color:var(--muted)}
+input[type=color]{
+  width:34px;height:34px;border-radius:8px;
+  border:none;padding:0;cursor:pointer;background:none;
+}
+
+/* ── PREVIEW LIVE ── */
+.preview-card{
+  background:var(--card2);
+  border:1px solid var(--border2);
+  border-radius:12px;padding:14px 16px;
+  margin-top:14px;position:relative;overflow:hidden;
+}
+.preview-card::before{
+  content:'';position:absolute;
+  top:0;left:0;right:0;height:3px;
+  background:var(--studio-accent);
+  transition:background .2s;
+}
+.preview-label{font-size:9px;letter-spacing:2px;font-weight:700;color:var(--muted);text-transform:uppercase;margin-bottom:8px}
+.preview-logo-row{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.preview-logo-circle{
+  width:44px;height:44px;border-radius:50%;
+  background:var(--studio-accent);
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Bebas Neue',sans-serif;font-size:18px;color:#000;
+  transition:background .2s;overflow:hidden;
+}
+.preview-logo-circle img{width:100%;height:100%;object-fit:cover;border-radius:50%}
+.preview-studio-name{
+  font-family:'Bebas Neue',sans-serif;
+  font-size:20px;letter-spacing:3px;
+  color:var(--studio-accent);transition:color .2s;
+}
+.preview-url{font-size:11px;color:var(--muted);font-family:monospace;margin-top:2px}
+.preview-tabs{
+  display:flex;gap:6px;margin-top:10px;
+  padding-top:10px;border-top:1px solid var(--border);
+}
+.preview-tab{
+  padding:5px 10px;border-radius:6px;font-size:11px;font-weight:700;
+  background:rgba(255,255,255,.07);color:var(--muted);
+}
+.preview-tab.active{
+  background:var(--studio-accent);color:#000;
+  transition:background .2s,color .2s;
+}
+
+/* ── LOGO UPLOAD ── */
+.logo-upload-wrap{
+  display:flex;align-items:center;gap:14px;margin-bottom:14px;
+}
+.logo-preview{
+  width:64px;height:64px;border-radius:12px;
+  background:var(--dark);border:1.5px solid var(--border2);
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;cursor:pointer;overflow:hidden;
+  transition:border-color .2s;flex-shrink:0;
+}
+.logo-preview:hover{border-color:var(--studio-accent)}
+.logo-preview img{width:100%;height:100%;object-fit:cover;border-radius:10px}
+.logo-upload-info{flex:1}
+.logo-upload-btn{
+  display:inline-block;
+  padding:8px 14px;
+  background:var(--card2);
+  border:1.5px solid var(--border2);
+  border-radius:8px;font-size:12px;font-weight:600;
+  cursor:pointer;color:var(--text2);transition:border-color .2s,color .2s;
+}
+.logo-upload-btn:hover{border-color:var(--studio-accent);color:var(--text)}
+.logo-upload-hint{font-size:11px;color:var(--muted);margin-top:5px;line-height:1.4}
+
+/* ── STRIPE CONNECT ── */
+.stripe-status{
+  display:flex;align-items:center;gap:12px;
+  padding:14px;background:var(--dark);
+  border:1.5px solid var(--border2);
+  border-radius:12px;margin-bottom:14px;
+}
+.stripe-status-icon{font-size:28px;flex-shrink:0}
+.stripe-status-info{flex:1}
+.stripe-status-name{font-size:14px;font-weight:700;color:var(--text)}
+.stripe-status-detail{font-size:12px;color:var(--muted);margin-top:2px}
+.stripe-badge{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:4px 10px;border-radius:20px;
+  font-size:11px;font-weight:700;letter-spacing:.5px;
+}
+.badge-connected{background:rgba(71,255,140,.12);color:var(--green)}
+.badge-pending{background:rgba(255,140,71,.12);color:var(--orange)}
+.badge-not-connected{background:rgba(255,68,68,.08);color:var(--red)}
+
+.stripe-info-box{
+  background:rgba(99,91,255,.08);
+  border:1px solid rgba(99,91,255,.2);
+  border-radius:10px;padding:12px 14px;
+  margin-bottom:14px;
+}
+.stripe-info-title{font-size:12px;font-weight:700;color:#a08bff;margin-bottom:6px}
+.stripe-info-text{font-size:12px;color:var(--text2);line-height:1.6}
+.stripe-info-text li{margin-left:14px;margin-top:3px}
+
+.btn-stripe{
+  width:100%;padding:14px 16px;
+  background:#635BFF;color:#fff;
+  border:none;border-radius:12px;
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;transition:background .2s;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.btn-stripe:hover{background:#7c75ff}
+.btn-stripe:disabled{opacity:.4;cursor:not-allowed}
+.btn-stripe-secondary{
+  width:100%;padding:12px 16px;
+  background:transparent;color:#635BFF;
+  border:1.5px solid #635BFF;
+  border-radius:12px;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:700;
+  cursor:pointer;transition:background .2s;margin-top:8px;
+}
+.btn-stripe-secondary:hover{background:rgba(99,91,255,.08)}
+
+/* ── PROGRAMMES ── */
+.prog-item{
+  background:var(--dark);border:1.5px solid var(--border2);
+  border-radius:12px;padding:14px;margin-bottom:10px;
+  position:relative;
+}
+.prog-item:last-child{margin-bottom:0}
+.prog-item-header{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.prog-item-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.prog-item-name{font-size:14px;font-weight:700;flex:1}
+.prog-item-price{font-size:12px;font-weight:700;color:var(--muted)}
+.prog-stripe-row{
+  display:flex;align-items:center;gap:8px;
+  padding:8px 10px;
+  background:var(--card2);border-radius:8px;
+  margin-top:8px;
+}
+.prog-stripe-label{font-size:11px;color:var(--muted);flex:1}
+.prog-stripe-id{font-size:11px;font-family:monospace;color:var(--blue);word-break:break-all}
+.prog-stripe-ok{font-size:11px;color:var(--green)}
+.prog-stripe-warn{font-size:11px;color:var(--orange)}
+
+/* ── BOUTONS ── */
+.btn-primary{
+  width:100%;padding:14px;
+  background:var(--studio-accent);color:#000;
+  border:none;border-radius:12px;
+  font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;
+  cursor:pointer;transition:opacity .2s;
+}
+.btn-primary:active{opacity:.8}
+.btn-secondary{
+  width:100%;padding:12px;
+  background:transparent;color:var(--text2);
+  border:1.5px solid var(--border2);border-radius:12px;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;transition:border-color .2s;margin-top:8px;
+}
+.btn-secondary:hover{border-color:var(--text2)}
+.btn-danger{
+  width:100%;padding:12px;
+  background:transparent;color:var(--red);
+  border:1.5px solid rgba(255,68,68,.3);border-radius:12px;
+  font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;
+  cursor:pointer;transition:border-color .2s;margin-top:8px;
+}
+.btn-danger:hover{border-color:var(--red)}
+
+/* ── TOAST ── */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--card2);border:1px solid var(--border2);
+  border-radius:10px;padding:11px 18px;
+  font-size:13px;font-weight:600;color:var(--text);
+  white-space:nowrap;z-index:999;
+  opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;
+  max-width:90vw;text-align:center;
+}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* ── SPINNER ── */
+.spin{
+  display:inline-block;width:14px;height:14px;
+  border:2px solid rgba(0,0,0,.2);border-top-color:#000;
+  border-radius:50%;animation:rot .7s linear infinite;
+  vertical-align:middle;margin-right:6px;
+}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* ── SECTION PIED ── */
+.page-footer{
+  text-align:center;padding:24px;
+  font-size:11px;color:var(--muted);line-height:1.6;
+}
+.page-footer a{color:var(--studio-accent);text-decoration:none}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <button class="topbar-back" onclick="goBack()">←</button>
+  <div class="topbar-title">Paramètres studio</div>
+  <button class="topbar-save" id="btn-save" onclick="saveStudio()">Enregistrer</button>
+</div>
+
+<!-- ════════════════════════════════════
+     SECTION 1 : IDENTITÉ VISUELLE
+     ════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">🎨 Identité visuelle</div>
+    <div class="section-sub">Nom, logo et couleur principale de ton studio</div>
+  </div>
+  <div class="section-body">
+
+    <!-- Logo -->
+    <div class="form-group">
+      <label class="form-label">Logo</label>
+      <div class="logo-upload-wrap">
+        <div class="logo-preview" id="logo-preview" onclick="document.getElementById('logo-input').click()">
+          <span id="logo-initials">UD</span>
+        </div>
+        <div class="logo-upload-info">
+          <div class="logo-upload-btn" onclick="document.getElementById('logo-input').click()">📁 Choisir un logo</div>
+          <div class="logo-upload-hint">PNG ou JPG · Max 2 Mo · Carré recommandé</div>
+        </div>
+      </div>
+      <input type="file" id="logo-input" accept="image/*" style="display:none" onchange="handleLogoUpload(event)">
+    </div>
+
+    <!-- Nom -->
+    <div class="form-group">
+      <label class="form-label">Nom du studio</label>
+      <input type="text" class="form-input" id="studio-name" placeholder="Ex: Iron Forge CrossFit" oninput="livePreview()">
+    </div>
+
+    <!-- Slug -->
+    <div class="form-group">
+      <label class="form-label">URL de ton studio</label>
+      <input type="text" class="form-input" id="studio-slug" placeholder="iron-forge" oninput="onSlugInput()">
+      <div class="form-hint" id="hint-slug"> </div>
+    </div>
+
+    <!-- Description -->
+    <div class="form-group">
+      <label class="form-label">Slogan / description courte</label>
+      <input type="text" class="form-input" id="studio-desc" placeholder="Ex: CrossFit & Hyrox à Paris" oninput="livePreview()">
+    </div>
+
+    <!-- Couleur -->
+    <div class="form-group">
+      <label class="form-label">Couleur principale</label>
+      <div class="color-grid" id="color-swatches"></div>
+      <div class="color-custom-row">
+        <input type="color" id="color-custom" value="#e8ff47" oninput="pickCustomColor(this.value)">
+        <label for="color-custom">Couleur personnalisée</label>
+        <span id="color-hex" style="font-family:monospace;font-size:12px;color:var(--muted)">#e8ff47</span>
+      </div>
+    </div>
+
+    <!-- Prévisualisation live -->
+    <div class="preview-card" id="preview-card">
+      <div class="preview-label">Aperçu de ton app</div>
+      <div class="preview-logo-row">
+        <div class="preview-logo-circle" id="prev-logo-circle">
+          <span id="prev-logo-initials">UD</span>
+        </div>
+        <div>
+          <div class="preview-studio-name" id="prev-name">MON STUDIO</div>
+          <div class="preview-url">app.coachapp.fr/<span id="prev-slug">mon-studio</span></div>
+        </div>
+      </div>
+      <div class="preview-tabs">
+        <div class="preview-tab active" id="prev-tab-prog">Programme</div>
+        <div class="preview-tab">PR</div>
+        <div class="preview-tab">Abos</div>
+        <div class="preview-tab">Profil</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     SECTION 2 : STRIPE CONNECT
+     ════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">💳 Paiements — Stripe Connect</div>
+    <div class="section-sub">Relie ton propre compte Stripe pour recevoir les paiements directement</div>
+  </div>
+  <div class="section-body">
+
+    <!-- Status actuel -->
+    <div class="stripe-status" id="stripe-status-block">
+      <div class="stripe-status-icon" id="stripe-status-icon">🔗</div>
+      <div class="stripe-status-info">
+        <div class="stripe-status-name" id="stripe-status-name">Non connecté</div>
+        <div class="stripe-status-detail" id="stripe-status-detail">Tes athlètes ne peuvent pas encore s'abonner</div>
+      </div>
+      <div class="stripe-badge badge-not-connected" id="stripe-badge">Inactif</div>
+    </div>
+
+    <!-- Explication -->
+    <div class="stripe-info-box">
+      <div class="stripe-info-title">💡 Comment ça marche ?</div>
+      <div class="stripe-info-text">
+        Stripe Connect permet à chaque coach de recevoir l'argent <strong style="color:var(--text)">directement sur son compte bancaire</strong>, indépendamment des autres studios.
+        <ul>
+          <li>Tes athlètes paient → l'argent va sur <strong style="color:var(--text)">ton compte Stripe</strong></li>
+          <li>Tu gardes <strong style="color:var(--text)">100%</strong> des revenus (hors frais Stripe ~1,4%)</li>
+          <li>Tableau de bord Stripe dédié pour tes factures et virements</li>
+          <li>Aucune carte bancaire requise pour commencer</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bouton connexion -->
+    <button class="btn-stripe" id="btn-connect-stripe" onclick="connectStripe()">
+      <svg width="18" height="18" viewBox="0 0 32 32" fill="none"><path d="M16 0C7.163 0 0 7.163 0 16s7.163 16 16 16 16-7.163 16-16S24.837 0 16 0z" fill="#fff"/><path d="M22.5 13.9c0-1.5-1.2-2.9-3.7-2.9-2.7 0-4.3 1.4-4.3 3.2 0 2.1 1.6 2.8 3.5 3.3 1.5.4 2.1.7 2.1 1.3 0 .7-.7 1.1-1.8 1.1-1.4 0-2.5-.6-3.3-1.4l-1.5 2c1 1 2.5 1.7 4.7 1.7 2.8 0 4.6-1.4 4.6-3.4 0-2-1.6-2.8-3.6-3.3-1.4-.4-2-.6-2-1.2 0-.5.5-.9 1.5-.9 1.2 0 2.1.5 2.8 1.2l1.5-1.7z" fill="#635BFF"/></svg>
+      Connecter mon compte Stripe
+    </button>
+
+    <!-- Si déjà connecté : bouton dashboard -->
+    <button class="btn-stripe-secondary" id="btn-stripe-dashboard" style="display:none" onclick="openStripeDashboard()">
+      📊 Ouvrir mon tableau de bord Stripe
+    </button>
+    <button class="btn-stripe-secondary" id="btn-stripe-disconnect" style="display:none" onclick="disconnectStripe()" style="color:var(--red);border-color:rgba(255,68,68,.3)">
+      Déconnecter Stripe
+    </button>
+
+    <!-- Infos compte connecté -->
+    <div id="stripe-account-details" style="display:none;margin-top:14px">
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-transform:uppercase;letter-spacing:1.5px;font-weight:700">Compte connecté</div>
+      <div style="background:var(--dark);border:1px solid var(--border2);border-radius:10px;padding:12px 14px">
+        <div style="font-size:13px;font-weight:700" id="stripe-acct-name">—</div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px;font-family:monospace" id="stripe-acct-id">—</div>
+        <div style="font-size:11px;color:var(--green);margin-top:6px" id="stripe-acct-status">✅ Virements activés</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     SECTION 3 : PROGRAMMES & TARIFS
+     ════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">📋 Programmes & tarifs</div>
+    <div class="section-sub">Configure le prix et la connexion Stripe pour chaque programme payant</div>
+  </div>
+  <div class="section-body">
+
+    <div id="programmes-list">
+      <div style="text-align:center;padding:24px;color:var(--muted);font-size:13px">
+        <div style="font-size:28px;margin-bottom:8px">⏳</div>
+        Chargement des programmes...
+      </div>
+    </div>
+
+    <button class="btn-secondary" onclick="openApp('admin')">
+      ➕ Gérer mes programmes dans l'app →
+    </button>
+
+  </div>
+</div>
+
+
+<!-- ════════════════════════════════════
+     SECTION 4 : PARAMÈTRES AVANCÉS
+     ════════════════════════════════════ -->
+<div class="section">
+  <div class="section-header">
+    <div class="section-title">⚙️ Paramètres avancés</div>
+  </div>
+  <div class="section-body">
+
+    <div class="form-group">
+      <label class="form-label">Email de contact (affiché aux athlètes)</label>
+      <input type="email" class="form-input" id="studio-contact-email" placeholder="contact@monsalle.fr">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Réseaux sociaux</label>
+      <input type="text" class="form-input" id="studio-instagram" placeholder="@monsalle (Instagram)" style="margin-bottom:8px">
+      <input type="url" class="form-input" id="studio-website" placeholder="https://monsalle.fr">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Langue / Région</label>
+      <select class="form-select" id="studio-lang">
+        <option value="fr">🇫🇷 Français</option>
+        <option value="en">🇬🇧 English</option>
+        <option value="es">🇪🇸 Español</option>
+      </select>
+    </div>
+
+    <div style="margin-top:20px;padding-top:16px;border-top:1px solid var(--border)">
+      <button class="btn-danger" onclick="confirmDeleteStudio()">🗑 Supprimer mon studio</button>
+    </div>
+
+  </div>
+</div>
+
+<div class="page-footer">
+  Besoin d'aide ? <a href="mailto:support@coachapp.fr">support@coachapp.fr</a><br>
+  <span id="studio-id-display" style="font-family:monospace;font-size:10px;color:var(--border2)"></span>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- ════════════════════════════════════
+     SCRIPT
+     ════════════════════════════════════ -->
+<script>
+/* ── CONFIG ── */
+const SUPABASE_URL = 'https://tltqtpbaaxiwwpvuzszt.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDA5NTQsImV4cCI6MjA5MzUxNjk1NH0.5LVedQ-ktLcTC6z2X0XIoqY-mqP9_tw-gzrt-KNfuuY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ── ÉTAT ── */
+let currentUser = null, currentProfile = null;
+let studio = null;
+let programmes = [];
+let selectedColor = '#e8ff47';
+let logoFile = null;
+let slugAvailable = null;
+let slugCheckTimer = null;
+
+const PRESET_COLORS = [
+  '#e8ff47','#ff4444','#47c8ff','#ff8c47',
+  '#c847ff','#47ff8c','#ff47c8','#ffffff',
+  '#ff6b35','#00d4aa','#ffd700','#ff1744',
+];
+
+/* ── INIT ── */
+(async function init(){
+  // Couleurs preset
+  const wrap = document.getElementById('color-swatches');
+  PRESET_COLORS.forEach(c => {
+    const s = document.createElement('div');
+    s.className = 'color-swatch';
+    s.style.background = c;
+    s.onclick = () => pickColor(c);
+    wrap.appendChild(s);
+  });
+
+  // Auth check
+  const { data: { session } } = await sb.auth.getSession();
+  if(!session){ window.location.href = '/'; return; }
+  currentUser = session.user;
+
+  const { data: prof } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  currentProfile = prof;
+  if(prof?.role !== 'admin'){ showToast('❌ Accès réservé aux coachs'); return; }
+
+  // Charger le studio
+  if(prof?.studio_id){
+    const { data } = await sb.from('studios').select('*').eq('id', prof.studio_id).single();
+    studio = data;
+  } else {
+    // Fallback : chercher par slug depuis l'URL
+    const slug = window.__STUDIO_SLUG__ || location.pathname.split('/').filter(Boolean)[0];
+    if(slug){
+      const { data } = await sb.from('studios').select('*').eq('slug', slug).single();
+      studio = data;
+    }
+  }
+
+  if(!studio){ showToast('⚠️ Studio introuvable'); return; }
+
+  // Remplir les champs
+  fillForm();
+
+  // Vérifier Stripe Connect
+  await checkStripeStatus();
+
+  // Charger les programmes
+  await loadProgrammes();
+
+  // Afficher l'ID studio en bas
+  document.getElementById('studio-id-display').textContent = 'Studio ID: ' + studio.id;
+
+  // Vérifier retour Stripe Connect
+  checkStripeReturn();
+})();
+
+/* ── REMPLIR LE FORM ── */
+function fillForm(){
+  if(!studio) return;
+  document.getElementById('studio-name').value = studio.name || '';
+  document.getElementById('studio-slug').value = studio.slug || '';
+  document.getElementById('studio-desc').value = studio.description || '';
+  document.getElementById('studio-contact-email').value = studio.contact_email || '';
+  document.getElementById('studio-instagram').value = studio.instagram || '';
+  document.getElementById('studio-website').value = studio.website || '';
+  if(studio.lang) document.getElementById('studio-lang').value = studio.lang;
+
+  // Couleur
+  const color = studio.accent_color || '#e8ff47';
+  selectedColor = color;
+  document.getElementById('color-custom').value = color;
+  setAccentVar(color);
+  document.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('selected', s.style.background === color || s.style.background === hexToRgb(color));
+  });
+
+  // Logo
+  if(studio.logo_url){
+    const img = document.createElement('img');
+    img.src = studio.logo_url;
+    const prev = document.getElementById('logo-preview');
+    prev.innerHTML = '';
+    prev.appendChild(img);
+    // Aperçu circle
+    const circle = document.getElementById('prev-logo-circle');
+    circle.innerHTML = `<img src="${studio.logo_url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  }
+
+  livePreview();
+}
+
+/* ── COULEUR ── */
+function setAccentVar(hex){
+  document.documentElement.style.setProperty('--studio-accent', hex);
+  document.getElementById('color-hex').textContent = hex;
+}
+function pickColor(hex){
+  selectedColor = hex;
+  document.querySelectorAll('.color-swatch').forEach(s => {
+    s.classList.toggle('selected', s.style.background === hex || s.style.background === hexToRgb(hex));
+  });
+  document.getElementById('color-custom').value = hex;
+  setAccentVar(hex);
+  livePreview();
+}
+function pickCustomColor(hex){
+  selectedColor = hex;
+  document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('selected'));
+  setAccentVar(hex);
+  livePreview();
+}
+function hexToRgb(hex){
+  const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+  return `rgb(${r}, ${g}, ${b})`;
+}
+
+/* ── PREVIEW LIVE ── */
+function livePreview(){
+  const name = (document.getElementById('studio-name').value.trim() || studio?.name || 'Mon Studio').toUpperCase();
+  const slug = document.getElementById('studio-slug').value.trim() || studio?.slug || 'mon-studio';
+  const color = selectedColor;
+
+  document.getElementById('prev-name').textContent = name;
+  document.getElementById('prev-name').style.color = color;
+  document.getElementById('prev-slug').textContent = slug;
+  document.getElementById('prev-tab-prog').style.background = color;
+  document.getElementById('prev-tab-prog').style.color = '#000';
+  document.getElementById('prev-logo-circle').style.background = color;
+  document.getElementById('preview-card').style.setProperty('--studio-accent', color);
+
+  // Initiales dans le cercle (si pas de logo)
+  if(!studio?.logo_url && !logoFile){
+    const parts = name.split(/[\s-]+/).filter(Boolean);
+    const initials = parts.map(p=>p[0]).join('').slice(0,2);
+    document.getElementById('prev-logo-initials').textContent = initials;
+    document.getElementById('logo-initials').textContent = initials;
+  }
+}
+
+/* ── SLUG ── */
+function toSlug(s){
+  return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
+}
+function onSlugInput(){
+  const f = document.getElementById('studio-slug');
+  f.value = toSlug(f.value.replace(/-$/,''));
+  livePreview();
+  clearTimeout(slugCheckTimer);
+  slugCheckTimer = setTimeout(checkSlug, 600);
+}
+async function checkSlug(){
+  const slug = document.getElementById('studio-slug').value.trim();
+  const hint = document.getElementById('hint-slug');
+  if(slug === studio?.slug){ hint.className='form-hint ok'; hint.textContent='✅ Slug actuel'; slugAvailable=true; return; }
+  if(!slug || slug.length < 3){ hint.className='form-hint err'; hint.textContent='3 caractères minimum'; slugAvailable=false; return; }
+  hint.className='form-hint'; hint.textContent='⏳ Vérification...'; slugAvailable=null;
+  const { data } = await sb.rpc('get_studio_by_slug', { p_slug: slug });
+  const taken = Array.isArray(data) ? data.length > 0 : !!data?.id;
+  if(taken){ hint.className='form-hint err'; hint.textContent='❌ Déjà pris'; slugAvailable=false; }
+  else { hint.className='form-hint ok'; hint.textContent='✅ Disponible'; slugAvailable=true; }
+}
+
+/* ── LOGO ── */
+function handleLogoUpload(ev){
+  const file = ev.target.files?.[0];
+  if(!file) return;
+  if(file.size > 2*1024*1024){ showToast('❌ Image trop lourde (max 2 Mo)'); return; }
+  logoFile = file;
+  const url = URL.createObjectURL(file);
+  const prev = document.getElementById('logo-preview');
+  prev.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:10px">`;
+  const circle = document.getElementById('prev-logo-circle');
+  circle.innerHTML = `<img src="${url}" style="width:100%;height:100%;object-fit:cover;border-radius:50%">`;
+  showToast('📸 Logo sélectionné — clique Enregistrer');
+}
+
+/* ── SAUVEGARDER ── */
+async function saveStudio(){
+  if(!studio){ showToast('⚠️ Studio non chargé'); return; }
+  const slug = document.getElementById('studio-slug').value.trim();
+  if(slugAvailable === false){ showToast('⚠️ Slug invalide ou déjà pris'); return; }
+
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Enregistrement...';
+
+  // Upload logo si nouveau fichier
+  let logoUrl = studio.logo_url || null;
+  if(logoFile){
+    const ext = logoFile.name.split('.').pop() || 'jpg';
+    const path = `${studio.id}/logo.${ext}`;
+    const { error: upErr } = await sb.storage.from('studio-logos').upload(path, logoFile, { upsert: true, contentType: logoFile.type });
+    if(upErr){ showToast('❌ Upload logo : ' + upErr.message); }
+    else {
+      const { data: pub } = sb.storage.from('studio-logos').getPublicUrl(path);
+      logoUrl = pub.publicUrl + '?t=' + Date.now();
+    }
+    logoFile = null;
+  }
+
+  const updates = {
+    name: document.getElementById('studio-name').value.trim() || studio.name,
+    slug: slug || studio.slug,
+    accent_color: selectedColor,
+    description: document.getElementById('studio-desc').value.trim() || null,
+    contact_email: document.getElementById('studio-contact-email').value.trim() || null,
+    instagram: document.getElementById('studio-instagram').value.trim() || null,
+    website: document.getElementById('studio-website').value.trim() || null,
+    lang: document.getElementById('studio-lang').value,
+    logo_url: logoUrl,
+  };
+
+  const { error } = await sb.from('studios').update(updates).eq('id', studio.id);
+  btn.disabled = false; btn.textContent = 'Enregistrer';
+
+  if(error){ showToast('❌ ' + error.message); return; }
+  studio = { ...studio, ...updates };
+  showToast('✅ Paramètres enregistrés !');
+  // Mettre à jour le titre de la page
+  if(updates.name) document.title = 'Paramètres — ' + updates.name;
+}
+
+/* ════════════════════════════════════
+   STRIPE CONNECT
+   ════════════════════════════════════ */
+async function checkStripeStatus(){
+  if(!studio) return;
+  const acctId = studio.stripe_account_id;
+  const icon = document.getElementById('stripe-status-icon');
+  const name = document.getElementById('stripe-status-name');
+  const detail = document.getElementById('stripe-status-detail');
+  const badge = document.getElementById('stripe-badge');
+  const btnConnect = document.getElementById('btn-connect-stripe');
+  const btnDash = document.getElementById('btn-stripe-dashboard');
+  const btnDisc = document.getElementById('btn-stripe-disconnect');
+  const acctDetails = document.getElementById('stripe-account-details');
+
+  if(!acctId){
+    // Pas connecté
+    icon.textContent = '🔗'; name.textContent = 'Non connecté';
+    detail.textContent = 'Tes athlètes ne peuvent pas encore s\'abonner';
+    badge.className = 'stripe-badge badge-not-connected'; badge.textContent = 'Inactif';
+    btnConnect.style.display = 'flex'; btnDash.style.display = 'none'; btnDisc.style.display = 'none';
+    acctDetails.style.display = 'none';
+    return;
+  }
+
+  // Vérifier le statut via Edge Function
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(SUPABASE_URL + '/functions/v1/stripe-account-status', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ stripe_account_id: acctId })
+    });
+    const d = await res.json();
+
+    if(d.charges_enabled && d.payouts_enabled){
+      icon.textContent = '✅'; name.textContent = d.email || d.display_name || 'Compte Stripe';
+      detail.textContent = 'Paiements et virements activés';
+      badge.className = 'stripe-badge badge-connected'; badge.textContent = 'Actif';
+      document.getElementById('stripe-acct-name').textContent = d.display_name || d.email || '—';
+      document.getElementById('stripe-acct-id').textContent = acctId;
+      document.getElementById('stripe-acct-status').textContent = '✅ Virements activés · ' + (d.currency || 'EUR').toUpperCase();
+      acctDetails.style.display = 'block';
+      btnConnect.style.display = 'none'; btnDash.style.display = 'block'; btnDisc.style.display = 'block';
+    } else {
+      icon.textContent = '⚠️'; name.textContent = 'Vérification incomplète';
+      detail.textContent = 'Finalise la configuration de ton compte Stripe';
+      badge.className = 'stripe-badge badge-pending'; badge.textContent = 'En attente';
+      btnConnect.innerHTML = '⚠️ Finaliser la configuration Stripe';
+      btnConnect.style.display = 'flex'; btnDash.style.display = 'none'; btnDisc.style.display = 'none';
+      acctDetails.style.display = 'none';
+    }
+  } catch(e) {
+    // Edge function absente : afficher l'ID brut
+    icon.textContent = '🔗'; name.textContent = 'Connecté (non vérifié)';
+    detail.textContent = acctId;
+    badge.className = 'stripe-badge badge-pending'; badge.textContent = 'Connecté';
+    btnConnect.style.display = 'none'; btnDash.style.display = 'block'; btnDisc.style.display = 'block';
+    document.getElementById('stripe-acct-id').textContent = acctId;
+    acctDetails.style.display = 'block';
+  }
+}
+
+async function connectStripe(){
+  if(!studio){ showToast('⚠️ Studio non chargé'); return; }
+  const btn = document.getElementById('btn-connect-stripe');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Connexion à Stripe...';
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    const returnUrl = window.location.href + '?stripe_return=1';
+    const res = await fetch(SUPABASE_URL + '/functions/v1/stripe-connect-onboard', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        studio_id: studio.id,
+        return_url: returnUrl,
+        refresh_url: returnUrl
+      })
+    });
+    const d = await res.json();
+    if(d.error){ showToast('❌ ' + d.error); btn.disabled=false; btn.textContent='Connecter mon compte Stripe'; return; }
+    if(d.url){ window.location.href = d.url; }
+  } catch(e) {
+    showToast('❌ Edge Function non disponible. Déploie stripe-connect-onboard d\'abord.');
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="18" height="18" viewBox="0 0 32 32" fill="none"><path d="M16 0C7.163 0 0 7.163 0 16s7.163 16 16 16 16-7.163 16-16S24.837 0 16 0z" fill="#fff"/><path d="M22.5 13.9c0-1.5-1.2-2.9-3.7-2.9-2.7 0-4.3 1.4-4.3 3.2 0 2.1 1.6 2.8 3.5 3.3 1.5.4 2.1.7 2.1 1.3 0 .7-.7 1.1-1.8 1.1-1.4 0-2.5-.6-3.3-1.4l-1.5 2c1 1 2.5 1.7 4.7 1.7 2.8 0 4.6-1.4 4.6-3.4 0-2-1.6-2.8-3.6-3.3-1.4-.4-2-.6-2-1.2 0-.5.5-.9 1.5-.9 1.2 0 2.1.5 2.8 1.2l1.5-1.7z" fill="#635BFF"/></svg> Connecter mon compte Stripe';
+  }
+}
+
+function checkStripeReturn(){
+  const params = new URLSearchParams(location.search);
+  if(params.get('stripe_return') === '1'){
+    window.history.replaceState({}, '', location.pathname);
+    showToast('✅ Retour de Stripe — vérification en cours...');
+    setTimeout(() => checkStripeStatus(), 1500);
+  }
+}
+
+function openStripeDashboard(){
+  const acctId = studio?.stripe_account_id;
+  if(acctId){
+    window.open(`https://dashboard.stripe.com/${acctId}`, '_blank');
+  } else {
+    window.open('https://dashboard.stripe.com/', '_blank');
+  }
+}
+
+async function disconnectStripe(){
+  if(!confirm('Déconnecter Stripe ? Tes programmes payants deviendront inaccessibles.')) return;
+  const { error } = await sb.from('studios').update({ stripe_account_id: null }).eq('id', studio.id);
+  if(error){ showToast('❌ ' + error.message); return; }
+  studio.stripe_account_id = null;
+  showToast('🔌 Stripe déconnecté');
+  await checkStripeStatus();
+}
+
+/* ════════════════════════════════════
+   PROGRAMMES & TARIFS
+   ════════════════════════════════════ */
+async function loadProgrammes(){
+  const { data } = await sb.from('programmes')
+    .select('*')
+    .eq('studio_id', studio.id)
+    .eq('is_active', true)
+    .order('name');
+  programmes = data || [];
+  renderProgrammes();
+}
+
+function renderProgrammes(){
+  const container = document.getElementById('programmes-list');
+  if(!programmes.length){
+    container.innerHTML = '<div style="text-align:center;padding:20px;color:var(--muted);font-size:13px">Aucun programme — crée-en un depuis l\'app ⚙️ Admin</div>';
+    return;
+  }
+  const stripeConnected = !!studio?.stripe_account_id;
+  container.innerHTML = programmes.map(p => {
+    const price = p.price_monthly ? p.price_monthly + '€/mois' : (p.price_oneshot ? p.price_oneshot + '€ (one-shot)' : 'Gratuit');
+    const hasStripe = !!p.stripe_price_id;
+    const stripeRow = p.price_monthly || p.price_oneshot
+      ? `<div class="prog-stripe-row">
+           <span class="prog-stripe-label">Stripe price ID</span>
+           ${hasStripe
+             ? `<span class="prog-stripe-ok">✅ Configuré</span>`
+             : stripeConnected
+               ? `<button onclick="createStripeProduct('${p.id}')" style="background:rgba(99,91,255,.15);color:#a08bff;border:1px solid rgba(99,91,255,.3);border-radius:6px;padding:4px 10px;font-size:11px;font-weight:700;cursor:pointer">⚡ Créer sur Stripe</button>`
+               : `<span class="prog-stripe-warn">⚠️ Connecte Stripe d'abord</span>`
+           }
+         </div>`
+      : '';
+    return `<div class="prog-item">
+      <div class="prog-item-header">
+        <div class="prog-item-dot" style="background:${p.color||'#666'}"></div>
+        <div class="prog-item-name">${p.name}</div>
+        <div class="prog-item-price">${price}</div>
+      </div>
+      <div class="form-row">
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">Prix / mois (€)</label>
+          <input type="number" class="form-input" id="price-${p.id}" value="${p.price_monthly||''}" placeholder="0 = gratuit" min="0" style="font-size:13px;padding:9px 12px" onchange="updateProgPrice('${p.id}')">
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+          <label class="form-label">One-shot (€)</label>
+          <input type="number" class="form-input" id="oneshot-${p.id}" value="${p.price_oneshot||''}" placeholder="—" min="0" style="font-size:13px;padding:9px 12px" onchange="updateProgPrice('${p.id}')">
+        </div>
+      </div>
+      ${stripeRow}
+    </div>`;
+  }).join('');
+}
+
+async function updateProgPrice(progId){
+  const monthly = parseFloat(document.getElementById('price-' + progId)?.value || '0') || null;
+  const oneshot = parseFloat(document.getElementById('oneshot-' + progId)?.value || '0') || null;
+  const { error } = await sb.from('programmes').update({
+    price_monthly: monthly,
+    price_oneshot: oneshot,
+    type: monthly ? 'subscription' : oneshot ? 'oneshot' : 'free'
+  }).eq('id', progId);
+  if(error){ showToast('❌ ' + error.message); return; }
+  showToast('✅ Prix mis à jour');
+  const prog = programmes.find(p => p.id === progId);
+  if(prog){ prog.price_monthly = monthly; prog.price_oneshot = oneshot; }
+  renderProgrammes();
+}
+
+async function createStripeProduct(progId){
+  const prog = programmes.find(p => p.id === progId);
+  if(!prog){ showToast('❌ Programme introuvable'); return; }
+  showToast('⏳ Création sur Stripe...');
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    const res = await fetch(SUPABASE_URL + '/functions/v1/create-stripe-product', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({
+        programme_id: progId,
+        name: prog.name,
+        description: prog.description || '',
+        price_monthly: prog.price_monthly,
+        currency: 'eur',
+        stripe_account_id: studio.stripe_account_id
+      })
+    });
+    const d = await res.json();
+    if(d.error){ showToast('❌ ' + d.error); return; }
+    showToast('✅ Produit Stripe créé !');
+    await loadProgrammes();
+  } catch(e) {
+    showToast('❌ ' + e.message);
+  }
+}
+
+/* ── SUPPRIMER STUDIO ── */
+async function confirmDeleteStudio(){
+  if(!confirm('⚠️ ATTENTION\n\nSupprimer ton studio supprimera TOUTES tes données (programmes, séances, athlètes).\n\nCette action est irréversible.\n\nÉcris DELETE dans la prochaine boîte pour confirmer.')) return;
+  const confirm2 = prompt('Tape DELETE pour confirmer :');
+  if(confirm2 !== 'DELETE'){ showToast('Suppression annulée'); return; }
+  showToast('⏳ Suppression en cours...');
+  const { error } = await sb.from('studios').update({ is_active: false }).eq('id', studio.id);
+  if(error){ showToast('❌ ' + error.message); return; }
+  await sb.auth.signOut();
+  window.location.href = '/';
+}
+
+/* ── NAVIGATION ── */
+function goBack(){
+  const slug = studio?.slug || window.__STUDIO_SLUG__;
+  if(slug) window.location.href = '/' + slug;
+  else window.location.href = '/';
+}
+function openApp(page){
+  const slug = studio?.slug || window.__STUDIO_SLUG__;
+  window.location.href = (slug ? '/' + slug : '/') + (page ? '#' + page : '');
+}
+
+/* ── TOAST ── */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
