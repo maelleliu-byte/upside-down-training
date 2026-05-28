@@ -1,7 +1,8 @@
 // SESSIONS
 function hasAccess(prog){
-  if(!prog)return false;
-  if(currentProfile?.role==='admin')return true;
+  if(!prog) return false;
+  if(currentProfile?.role==='admin' && !currentProfile?.own_studio_id) return true;
+  if(currentProfile?.is_coach && prog.studio_id===currentProfile?.own_studio_id) return true;
   return myAccessIds.has(prog.id)||myAccess.has(prog.slug);
 }
 
