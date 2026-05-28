@@ -188,7 +188,12 @@ function toggleSetsField(){
 async function loadAdminSessions(){
   const progId=document.getElementById('admin-filter-prog').value;
   let q=sb.from('sessions').select('*,programmes(name,icon)').order('date',{ascending:false}).limit(50);
-  if(progId)q=q.eq('programme_id',progId);
+  // Filtrer par les programmes du studio courant (évite d'afficher les séances d'autres studios)
+  if(progId){
+    q=q.eq('programme_id',progId);
+  } else if(programmes&&programmes.length>0){
+    q=q.in('programme_id',programmes.map(p=>p.id));
+  }
   const {data}=await q;
   const list=document.getElementById('admin-sessions-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucune séance.</p></div>';return;}
