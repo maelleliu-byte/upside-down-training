@@ -1268,4 +1268,3 @@ async function loadProfilStats(){
   document.getElementById('stat-wod').textContent=scores.count||0;
   document.getElementById('stat-bench').textContent=bench.count||0;
 }
-
