@@ -79,7 +79,13 @@
       window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
       return;
     }
-    window.__STUDIO__ = studio;
+    // Pour le studio 'upside' (Upside Down Training), on force id=null
+    // pour rester compatible avec les données existantes (studio_id IS NULL)
+    if (studio.slug === 'upside') {
+      window.__STUDIO__ = { slug: 'upside', name: studio.name || 'Upside Down Training', accent_color: studio.accent_color || '#e8ff47' };
+    } else {
+      window.__STUDIO__ = studio;
+    }
     if (studio.accent_color) document.documentElement.style.setProperty('--accent', studio.accent_color);
     if (studio.name) document.title = studio.name;
     window.dispatchEvent(new CustomEvent('studio:ready', { detail: studio }));
