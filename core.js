@@ -60,23 +60,10 @@ window.addEventListener('load',()=>{
   },2000);
 });
 
-// INIT — attend que le studio soit résolu avant de démarrer
-async function startApp(){
+// INIT
+window.onload=async()=>{
   const {data:{session}}=await sb.auth.getSession();
   if(session){currentUser=session.user;await loadProfile();await initApp();}
-}
-window.onload=()=>{
-  // Si __STUDIO__ déjà défini (fetch rapide), on démarre directement
-  if(window.__STUDIO__){startApp();return;}
-  // Sinon on attend l'event studio:ready ou un timeout de sécurité (1s)
-  let started=false;
-  const go=()=>{if(!started){started=true;startApp();}};
-  window.addEventListener('studio:ready',go,{once:true});
-  // Fallback : si le fetch prend trop longtemps, on démarre quand même
-  setTimeout(()=>{
-    if(!window.__STUDIO__){window.__STUDIO__={slug:'upside',name:'Upside Down Training',accent_color:'#e8ff47'};}
-    go();
-  },1500);
 };
 
 // AUTH
@@ -237,11 +224,13 @@ async function goPage(page){
 async function loadProgrammes(){
   // Filtrer par le studio de l'URL courante
   const studioId=window.__STUDIO__?.id||null;
+  const studioSlug=window.__STUDIO__?.slug||null;
   let q=sb.from('programmes').select('*').eq('is_active',true);
   if(studioId){
-    q=q.eq('studio_id',studioId);
+    // Inclure aussi studio_id IS NULL pour compat programmes anciens sans studio_id
+    q=q.or(`studio_id.eq.${studioId},studio_id.is.null`);
   } else {
-    q=q.is('studio_id',null); // backward compat Upside Down sans studio_id
+    q=q.is('studio_id',null);
   }
   const {data}=await q.order('name');
   programmes=data||[];
