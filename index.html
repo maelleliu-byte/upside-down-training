@@ -77,6 +77,7 @@
       }
       // No slug in URL → silent fallback to defaults
       window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
+      window.dispatchEvent(new CustomEvent('studio:ready', { detail: window.__STUDIO__ }));
       return;
     }
     // Studio 'upside' = Upside Down Training original, données avec studio_id IS NULL
@@ -97,6 +98,7 @@
       return;
     }
     window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
+    window.dispatchEvent(new CustomEvent('studio:ready', { detail: window.__STUDIO__ }));
   });
 })();
 </script>

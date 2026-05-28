@@ -60,10 +60,23 @@ window.addEventListener('load',()=>{
   },2000);
 });
 
-// INIT
-window.onload=async()=>{
+// INIT — attend que le studio soit résolu avant de démarrer
+async function startApp(){
   const {data:{session}}=await sb.auth.getSession();
   if(session){currentUser=session.user;await loadProfile();await initApp();}
+}
+window.onload=()=>{
+  // Si __STUDIO__ déjà défini (fetch rapide), on démarre directement
+  if(window.__STUDIO__){startApp();return;}
+  // Sinon on attend l'event studio:ready ou un timeout de sécurité (1s)
+  let started=false;
+  const go=()=>{if(!started){started=true;startApp();}};
+  window.addEventListener('studio:ready',go,{once:true});
+  // Fallback : si le fetch prend trop longtemps, on démarre quand même
+  setTimeout(()=>{
+    if(!window.__STUDIO__){window.__STUDIO__={slug:'upside',name:'Upside Down Training',accent_color:'#e8ff47'};}
+    go();
+  },1500);
 };
 
 // AUTH
