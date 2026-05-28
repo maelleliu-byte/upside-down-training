@@ -1863,6 +1863,7 @@ function openCycleCellModal(a,b,c,mode){
   document.getElementById('cycle-cell-input').value='';
   selectedChipColor='#e8ff47';
   document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color==='#e8ff47'));
+  setTimeout(()=>autoResizeCycleInput(document.getElementById('cycle-cell-input')),0);
   if(!options)setTimeout(()=>document.getElementById('cycle-cell-input').focus(),300);
 }
 
@@ -2026,6 +2027,14 @@ function selectChipColor(color,el){
   flushAutoSaveCycleChip();
 }
 
+// ===== AUTO-RESIZE DU TEXTAREA DU BLOC CYCLE =====
+function autoResizeCycleInput(el){
+  if(!el)return;
+  el.style.height='auto';
+  const newH=Math.min(el.scrollHeight+2,300);
+  el.style.height=newH+'px';
+}
+
 // ===== AUTO-SAVE CHIP DANS MODAL CYCLE/SESSION =====
 let _autoSaveChipTimer=null;
 function _setChipAutoSaveStatus(state){
@@ -2106,6 +2115,7 @@ function editCycleChip(w,ci,chi){
   selectedChipColor=chip.color;
   document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color===chip.color));
   document.getElementById('cycle-cell-modal').classList.add('open');
+  setTimeout(()=>autoResizeCycleInput(document.getElementById('cycle-cell-input')),0);
   _setChipAutoSaveStatus('idle');
 }
 
@@ -2121,6 +2131,7 @@ function editSessionChip(wk,ri,di,chi){
   selectedChipColor=chip.color;
   document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color===chip.color));
   document.getElementById('cycle-cell-modal').classList.add('open');
+  setTimeout(()=>autoResizeCycleInput(document.getElementById('cycle-cell-input')),0);
   _setChipAutoSaveStatus('idle');
 }
 
