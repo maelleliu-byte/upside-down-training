@@ -79,8 +79,8 @@
       window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
       return;
     }
-    // Pour le studio 'upside' (Upside Down Training), on force id=null
-    // pour rester compatible avec les données existantes (studio_id IS NULL)
+    // Studio 'upside' = Upside Down Training original, données avec studio_id IS NULL
+    // On retire l'id pour que le code utilise le filtre IS NULL comme avant
     if (studio.slug === 'upside') {
       window.__STUDIO__ = { slug: 'upside', name: studio.name || 'Upside Down Training', accent_color: studio.accent_color || '#e8ff47' };
     } else {
