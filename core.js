@@ -171,7 +171,9 @@ async function initApp(){
   document.getElementById('profil-name').textContent=currentProfile?.full_name||'Athlète';
   document.getElementById('profil-email').textContent=currentUser.email;
   refreshMyGenderUI();
-  if(currentProfile?.role==='admin'){
+  const isUpsideAdmin=currentProfile?.role==='admin';
+  const isCoach=currentProfile?.is_coach===true;
+  if(isUpsideAdmin||isCoach){
     document.getElementById('admin-menu-item').style.display='flex';
     if(!document.querySelector('[data-page="admin"]')){
       const nav=document.getElementById('bottom-nav');
@@ -181,6 +183,11 @@ async function initApp(){
       btn.onclick=()=>goPage('admin');
       nav.appendChild(btn);
     }
+  }
+  // Bouton Mon Studio : visible si coach avec son propre studio
+  if(isCoach&&currentProfile?.own_studio_id){
+    const ms=document.getElementById('my-studio-menu-item');
+    if(ms)ms.style.display='flex';
   }
   await loadMovements();
   await loadBenchmarks();
@@ -252,10 +259,14 @@ async function loadProgrammes(){
   await loadMyAccess();
   renderProgTabs();
   if(programmes.length>0){
-    const isAdmin=currentProfile?.role==='admin';
+    const isAdmin=currentProfile?.role==='admin'&&!currentProfile?.own_studio_id;
+    const isCoach=currentProfile?.is_coach===true;
     let first;
     if(isAdmin){
       first=programmes.find(p=>p.slug==='training')||programmes[0];
+    } else if(isCoach){
+      // Coach sur son propre studio : premier programme de son studio
+      first=programmes.find(p=>p.studio_id===currentProfile.own_studio_id)||programmes.find(p=>hasAccess(p))||programmes[0];
     } else {
       first=programmes.find(p=>hasAccess(p))||programmes[0];
     }
@@ -272,10 +283,10 @@ function renderProgTabs(){
 
   // Trier : accessibles en premier, puis verrouillés
   // Pour admins : Training en premier
-  const isAdmin=currentProfile?.role==='admin';
+  const isAdmin=currentProfile?.role==='admin'&&!currentProfile?.own_studio_id;
   const sorted=[...programmes].sort((a,b)=>{
     if(isAdmin){
-      // Training en premier pour les admins
+      // Training en premier pour les admins Upside Down
       if(a.slug==='training')return -1;
       if(b.slug==='training')return 1;
       return a.name.localeCompare(b.name);
@@ -387,3 +398,10 @@ function changeWeek(dir){
   renderDayStrip();renderSessions();
 }
 
+// MON STUDIO — redirige vers le studio du coach
+function goToMyStudio(){
+  if(!currentProfile?.own_studio_id)return;
+  if(window.__STUDIO__?.id===currentProfile.own_studio_id){goPage('admin');return;}
+  sb.from('studios').select('slug').eq('id',currentProfile.own_studio_id).single()
+    .then(({data})=>{if(data?.slug)window.location.href='/'+data.slug;});
+}

@@ -736,6 +736,7 @@
     <div class="menu-item" onclick="goPage('pr')"><span class="menu-item-label">📊 Mes records (PR)</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('abos')"><span class="menu-item-label">💳 Mes abonnements</span><span>›</span></div>
     <div class="menu-item" id="admin-menu-item" style="display:none" onclick="goPage('admin')"><span class="menu-item-label">⚙️ Administration</span><span>›</span></div>
+    <div class="menu-item" id="my-studio-menu-item" style="display:none" onclick="goToMyStudio()"><span class="menu-item-label">🏋️ Mon studio</span><span>›</span></div>
     <button class="btn-logout" onclick="doLogout()">Se déconnecter</button>
   </div>
 
@@ -986,13 +987,22 @@
 <script src="core.js"></script>
 <script src="planning.js"></script>
 <script src="admin.js"></script>
-<script src="abos.js"></script>
-<script src="wellness.js"></script>
 <script>
-/* Tous les modules sont chargés en amont - lazy-load désactivé */
-const _pageModules = {prog:true, pr:true, videos:true, admin:true, abos:true, profil:true};
+/* Lazy-load des modules de pages restants (wellness, abos) */
+const _pageModules = {prog:true, pr:true, videos:true, admin:true};
 const _origGoPage = window.goPage;
 window.goPage = async function(page) {
+  if (!_pageModules[page]) {
+    try {
+      if (page === 'profil') {
+        await _loadScript('wellness.js');
+        _pageModules['profil'] = true;
+      } else if (page === 'abos') {
+        await _loadScript('abos.js');
+        _pageModules['abos'] = true;
+      }
+    } catch(e) { console.warn('Module load error', e); }
+  }
   return _origGoPage(page);
 };
 
