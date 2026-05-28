@@ -218,7 +218,15 @@ async function goPage(page){
 
 // PROGRAMMES
 async function loadProgrammes(){
-  const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
+  // Filtrer par le studio de l'URL courante
+  const studioId=window.__STUDIO__?.id||null;
+  let q=sb.from('programmes').select('*').eq('is_active',true);
+  if(studioId){
+    q=q.eq('studio_id',studioId);
+  } else {
+    q=q.is('studio_id',null); // backward compat Upside Down sans studio_id
+  }
+  const {data}=await q.order('name');
   programmes=data||[];
 
   // Gérer retour Stripe ici, après chargement des programmes
