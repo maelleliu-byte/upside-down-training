@@ -353,13 +353,16 @@ async function renderDayStrip(){
     const {data}=await sb.from('sessions').select('day_of_week').eq('programme_id',currentProg.id).eq('week_number',weekNum);
     const withContent=hasAccess(currentProg)?new Set((data||[]).map(s=>s.day_of_week)):new Set();
     const dayLabels=['LUN','MAR','MER','JEU','VEN','SAM','DIM'];
-    document.getElementById('day-strip').innerHTML=Array.from({length:7},(_,dow)=>{
+    const pillsHtml=Array.from({length:7},(_,dow)=>{
       const dateNum=weekDates?weekDates[dow].getDate():`J${dow+1}`;
       const isActive=selectedDate===`__w${weekNum}d${dow}`;
       return `<div class="day-pill ${isActive?'active':''} ${withContent.has(dow)?'has-content':''}" onclick="selectDateOneshot(${weekNum},${dow})">
         <div class="day-name">${dayLabels[dow]}</div><div class="day-num">${dateNum}</div>
       </div>`;
     }).join('');
+    document.getElementById('day-strip').innerHTML=pillsHtml+`<div class="day-pill day-pick-trigger" onclick="toggleDatePicker(event)" title="Choisir une semaine">
+      <div class="pick-cal">📅</div><div class="pick-arrow">▾</div>
+    </div>`;
     return;
   }
   const dates=getWeekDates(currentWeekOffset);
@@ -368,12 +371,15 @@ async function renderDayStrip(){
   const isos=dates.map(d=>d.toISOString().split('T')[0]);
   const {data}=await sb.from('sessions').select('date').eq('programme_id',currentProg.id).in('date',isos);
   const withContent=hasAccess(currentProg)?new Set((data||[]).map(s=>s.date)):new Set();
-  document.getElementById('day-strip').innerHTML=dates.map(d=>{
+  const pillsHtml=dates.map(d=>{
     const iso=d.toISOString().split('T')[0];
     return `<div class="day-pill ${iso===selectedDate?'active':''} ${withContent.has(iso)?'has-content':''}" onclick="selectDate('${iso}')">
       <div class="day-name">${DAYS[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>
     </div>`;
   }).join('');
+  document.getElementById('day-strip').innerHTML=pillsHtml+`<div class="day-pill day-pick-trigger" onclick="toggleDatePicker(event)" title="Choisir une date">
+    <div class="pick-cal">📅</div><div class="pick-arrow">▾</div>
+  </div>`;
 }
 function selectDate(iso){selectedDate=iso;renderDayStrip();renderSessions();}
 function selectDateOneshot(weekNum,dow){selectedDate=`__w${weekNum}d${dow}`;renderDayStrip();renderSessions();}
@@ -385,5 +391,154 @@ function changeWeek(dir){
     currentWeekOffset+=dir;
   }
   renderDayStrip();renderSessions();
+}
+
+// ====================================================================
+// SÉLECTEUR DE DATE RAPIDE (mini-calendrier déroulant)
+// ====================================================================
+let _dpState={year:null,month:null}; // mois affiché dans le picker
+
+function toggleDatePicker(ev){
+  if(ev){ev.stopPropagation();}
+  const pop=document.getElementById('date-picker-pop');
+  if(!pop)return;
+  const isOpen=pop.style.display!=='none';
+  if(isOpen){closeDatePicker();return;}
+  // Init : mois affiché = celui de la semaine courante
+  if(isOneshotProg(currentProg)){
+    _dpState.year=null;_dpState.month=null;
+  } else {
+    const dates=getWeekDates(currentWeekOffset);
+    const ref=dates[0];
+    _dpState.year=ref.getFullYear();
+    _dpState.month=ref.getMonth();
+  }
+  renderDatePicker();
+  pop.style.display='';
+  document.querySelectorAll('.day-pick-trigger').forEach(el=>el.classList.add('open'));
+  // Fermeture au clic ailleurs
+  setTimeout(()=>document.addEventListener('click',_dpOutsideClick),0);
+}
+
+function closeDatePicker(){
+  const pop=document.getElementById('date-picker-pop');
+  if(pop)pop.style.display='none';
+  document.querySelectorAll('.day-pick-trigger').forEach(el=>el.classList.remove('open'));
+  document.removeEventListener('click',_dpOutsideClick);
+}
+
+function _dpOutsideClick(e){
+  const pop=document.getElementById('date-picker-pop');
+  if(!pop)return;
+  if(pop.contains(e.target))return;
+  if(e.target.closest('.day-pick-trigger'))return;
+  closeDatePicker();
+}
+
+function _dpPad(n){return n<10?'0'+n:''+n;}
+function _dpIso(d){return d.getFullYear()+'-'+_dpPad(d.getMonth()+1)+'-'+_dpPad(d.getDate());}
+
+function dpChangeMonth(dir){
+  let m=_dpState.month+dir, y=_dpState.year;
+  if(m<0){m=11;y--;}
+  if(m>11){m=0;y++;}
+  _dpState.month=m;_dpState.year=y;
+  renderDatePicker();
+}
+
+function renderDatePicker(){
+  const pop=document.getElementById('date-picker-pop');
+  if(!pop)return;
+
+  // ===== MODE ONE-SHOT : liste des semaines du programme =====
+  if(isOneshotProg(currentProg)){
+    const total=currentProg.total_weeks||8;
+    const currentWeek=currentWeekOffset+1;
+    let sel=null;
+    if(typeof selectedDate==='string'&&selectedDate.startsWith('__w')){
+      const m=selectedDate.match(/^__w(\d+)d(\d+)$/);
+      if(m)sel=parseInt(m[1]);
+    }
+    let html=`<div class="dp-head"><div class="dp-title">${currentProg.name||'Programme'} — ${total} semaines</div></div>`;
+    html+='<div class="dp-weeks">';
+    for(let w=1;w<=total;w++){
+      const isActive=(sel===w)||(!sel&&w===currentWeek);
+      html+=`<button class="dp-week-btn ${isActive?'dp-active':''}" onclick="pickOneshotWeek(${w})">S${w}</button>`;
+    }
+    html+='</div>';
+    pop.innerHTML=html;
+    return;
+  }
+
+  // ===== MODE CALENDRIER NORMAL =====
+  const y=_dpState.year,m=_dpState.month;
+  const monthsLong=['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const dow=['L','M','M','J','V','S','D'];
+  const firstDow=new Date(y,m,1).getDay();
+  const startOffset=(firstDow+6)%7; // Lundi = 0
+  const daysInMonth=new Date(y,m+1,0).getDate();
+  const todayIso=_dpIso(new Date());
+  let html=`<div class="dp-head">
+    <button class="dp-arrow" onclick="dpChangeMonth(-1)">‹</button>
+    <div class="dp-title">${monthsLong[m]} ${y}</div>
+    <button class="dp-arrow" onclick="dpChangeMonth(1)">›</button>
+  </div>`;
+  html+='<div class="dp-grid">';
+  for(const d of dow)html+=`<div class="dp-dow">${d}</div>`;
+  // Cases du mois précédent (greyed)
+  for(let i=0;i<startOffset;i++){
+    const d=new Date(y,m,1-(startOffset-i));
+    html+=`<div class="dp-cell dp-other" onclick="pickCalendarDate('${_dpIso(d)}')">${d.getDate()}</div>`;
+  }
+  // Cases du mois courant
+  for(let day=1;day<=daysInMonth;day++){
+    const d=new Date(y,m,day);
+    const iso=_dpIso(d);
+    const isToday=iso===todayIso;
+    const isActive=iso===selectedDate;
+    html+=`<div class="dp-cell ${isToday?'dp-today':''} ${isActive?'dp-active':''}" onclick="pickCalendarDate('${iso}')">${day}</div>`;
+  }
+  // Cases du mois suivant (pour remplir la grille)
+  const used=startOffset+daysInMonth;
+  const trail=(7-(used%7))%7;
+  for(let i=1;i<=trail;i++){
+    const d=new Date(y,m+1,i);
+    html+=`<div class="dp-cell dp-other" onclick="pickCalendarDate('${_dpIso(d)}')">${i}</div>`;
+  }
+  html+='</div>';
+  html+=`<div class="dp-foot"><button class="dp-today-btn" onclick="pickCalendarDate('${todayIso}')">Aujourd'hui</button></div>`;
+  pop.innerHTML=html;
+}
+
+function pickCalendarDate(iso){
+  // Calcule l'offset de semaine entre aujourd'hui et la date choisie
+  const today=new Date();
+  const todayDay=today.getDay();
+  const todayMon=new Date(today);
+  todayMon.setDate(today.getDate()-(todayDay===0?6:todayDay-1));
+  todayMon.setHours(0,0,0,0);
+
+  const [yy,mm,dd]=iso.split('-').map(Number);
+  const picked=new Date(yy,mm-1,dd);
+  const pDay=picked.getDay();
+  const pMon=new Date(picked);
+  pMon.setDate(picked.getDate()-(pDay===0?6:pDay-1));
+  pMon.setHours(0,0,0,0);
+
+  const diffMs=pMon-todayMon;
+  currentWeekOffset=Math.round(diffMs/(7*86400000));
+  selectedDate=iso;
+  closeDatePicker();
+  renderDayStrip();
+  renderSessions();
+}
+
+function pickOneshotWeek(weekNum){
+  currentWeekOffset=weekNum-1;
+  // Sélectionne le 1er jour de la semaine choisie (lundi = dow 0 côté one-shot)
+  selectedDate=`__w${weekNum}d0`;
+  closeDatePicker();
+  renderDayStrip();
+  renderSessions();
 }
 

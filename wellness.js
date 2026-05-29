@@ -884,12 +884,15 @@ async function renderPersoDayStrip(){
   const isos=dates.map(d=>d.toISOString().split('T')[0]);
   const {data}=await sb.from('personal_sessions').select('date').eq('athlete_id',currentUser.id).in('date',isos);
   const withContent=new Set((data||[]).map(s=>s.date));
-  document.getElementById('day-strip').innerHTML=dates.map(d=>{
+  const pillsHtml=dates.map(d=>{
     const iso=d.toISOString().split('T')[0];
     return `<div class="day-pill ${iso===selectedDate?'active':''} ${withContent.has(iso)?'has-content':''}" onclick="selectDate('${iso}')">
       <div class="day-name">${DAYS[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>
     </div>`;
   }).join('');
+  document.getElementById('day-strip').innerHTML=pillsHtml+`<div class="day-pill day-pick-trigger" onclick="toggleDatePicker(event)" title="Choisir une date">
+    <div class="pick-cal">📅</div><div class="pick-arrow">▾</div>
+  </div>`;
 }
 
 async function renderPersoSessions(){
