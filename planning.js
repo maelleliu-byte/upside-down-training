@@ -148,6 +148,10 @@ async function buildSessionCard(s){
           <button class="level-btn found" onclick="selectLevel('${s.id}','foundation',this)">FOND.</button>
         </div>
         ${scoreInputHtml}
+        <div class="score-done-at-row" style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted)">
+          <label for="done-at-${s.id}" style="white-space:nowrap">Fait le</label>
+          <input type="date" id="done-at-${s.id}" value="${s.date||''}" max="${new Date().toISOString().slice(0,10)}" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px">
+        </div>
         <button class="btn-score" style="width:100%;margin-top:6px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'}" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0},${!!isMulti},${isText?'true':'false'},${s.score_count||0})">✓ Valider</button>
       </div>
       <button class="btn-open-scores" onclick="openScoresModal('${s.id}','${s.score_type||'reps'}',${s.sets||0})">
@@ -394,13 +398,34 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     scoreValue=parseFloat(scoreText.replace(':','').replace('+',''))||0;
   }
 
-  const {error}=await sb.from('wod_scores').upsert({
+  // Date "fait le" choisie par l'athlète (défaut = date programmée de la séance)
+  const doneAtEl=document.getElementById(`done-at-${sessionId}`);
+  let doneAt=doneAtEl?.value||null;
+  // Sécurité : pas de date future
+  if(doneAt){
+    const todayIso=new Date().toISOString().slice(0,10);
+    if(doneAt>todayIso)doneAt=todayIso;
+  }
+
+  const payload={
     session_id:sessionId,athlete_id:currentUser.id,
     score_type:scoreType,score_value:scoreValue,score_text:scoreText,
     level,sets_data:setsData?JSON.stringify(setsData):null
-  },{onConflict:'session_id,athlete_id'});
+  };
+  if(doneAt)payload.done_at=doneAt;
 
-  if(error){showToast('❌ '+error.message);return;}
+  const {error}=await sb.from('wod_scores').upsert(payload,{onConflict:'session_id,athlete_id'});
+
+  if(error){
+    // Si la colonne done_at n'existe pas encore, on retry sans
+    if(/done_at/.test(error.message||'')){
+      delete payload.done_at;
+      const r=await sb.from('wod_scores').upsert(payload,{onConflict:'session_id,athlete_id'});
+      if(r.error){showToast('❌ '+r.error.message);return;}
+    } else {
+      showToast('❌ '+error.message);return;
+    }
+  }
   showToast('✅ Score enregistré !');
   if(currentScoresSession?.sessionId===sessionId){
     await renderScoresModal(sessionId,scoreType,sets);

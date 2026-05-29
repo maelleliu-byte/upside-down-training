@@ -1010,36 +1010,48 @@ async function _loadAthleteCardStats(id){
   const wkStart=_weekStart(today);
   const monthStart=new Date(today.getFullYear(),today.getMonth(),1);
 
-  // wod_scores : on filtre sur created_at (la table n'a pas de colonne `date`)
+  // wod_scores : on récupère les 30 derniers jours en se basant sur done_at
+  // (date saisie par l'athlète) avec fallback sur created_at si la colonne
+  // n'existe pas encore.
   const isoWeek=_isoDate(wkStart);
+  const isoMonth=_isoDate(monthStart);
+  const last30=_addDays(today,-30);
+  const iso30=_isoDate(last30);
   let weekDone=[];
   let monthCount=0;
   let scores30=[];
   try{
-    // 30 derniers jours, sert à la fois pour mois/semaine et assiduité
-    const last30=_addDays(today,-30);
-    const {data:scores,error}=await sb.from('wod_scores').select('session_id,created_at')
+    // Tentative avec done_at
+    let res=await sb.from('wod_scores').select('session_id,created_at,done_at')
       .eq('athlete_id',id)
-      .gte('created_at',last30.toISOString());
-    if(error)console.warn('wod_scores fetch',error);
-    scores30=scores||[];
-    // map vers la date locale (YYYY-MM-DD) pour comparer à semaine/mois
-    const scoresWithDay=scores30.map(s=>({...s,_day:_isoDate(new Date(s.created_at))}));
-    const isoMonth=_isoDate(monthStart);
+      .or(`done_at.gte.${iso30},and(done_at.is.null,created_at.gte.${last30.toISOString()})`);
+    // Si done_at n'existe pas, fallback sur created_at uniquement
+    if(res.error && /done_at/.test(res.error.message||'')){
+      res=await sb.from('wod_scores').select('session_id,created_at')
+        .eq('athlete_id',id)
+        .gte('created_at',last30.toISOString());
+    }
+    if(res.error)console.warn('wod_scores fetch',res.error);
+    scores30=res.data||[];
+    // Date effective : done_at sinon date locale de created_at
+    const scoresWithDay=scores30.map(s=>({
+      ...s,
+      _day: s.done_at || (s.created_at ? _isoDate(new Date(s.created_at)) : null)
+    })).filter(s=>s._day);
     const monthScores=scoresWithDay.filter(s=>s._day>=isoMonth);
     monthCount=monthScores.length;
     weekDone=monthScores.filter(s=>s._day>=isoWeek);
+    // Pour l'assiduité on garde tous ceux dans la fenêtre 30j
+    scores30=scoresWithDay;
   }catch(e){console.warn('wod_scores fetch',e);}
 
   document.getElementById('ac-week').textContent=weekDone.length;
   document.getElementById('ac-month').textContent=monthCount;
   // assiduité : nb jours uniques avec au moins 1 wod / 30 derniers jours
-  let attendance='—';
+  let attendance='0%';
   if(scores30.length){
-    const days=new Set(scores30.map(s=>_isoDate(new Date(s.created_at))));
+    const days=new Set(scores30.map(s=>s._day));
     attendance=Math.round(days.size/30*100)+'%';
-  }else{
-    attendance='0%';
   }
   document.getElementById('ac-attendance').textContent=attendance;
 
@@ -1430,15 +1442,31 @@ async function loadWodCalData(){
   const lastDay=new Date(y,m+1,0).getDate();
   const lastIso=`${y}-${String(m+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
 
-  // 1) WOD scores de l'athlète sur le mois (via session.date)
-  const scoresRes=await sb.from('wod_scores')
-    .select('id,score_value,score_text,score_type,level,created_at,sessions(id,date,title,type,color,programme_id,programmes(name,icon,color))')
+  // 1) TOUS les scores WOD de l'athlète (on filtre côté JS sur la date réelle)
+  //    La date affichée prend done_at en priorité (saisi par l'athlète),
+  //    sinon sessions.date (date programmée), sinon created_at (fallback).
+  let scoresRes=await sb.from('wod_scores')
+    .select('id,score_value,score_text,score_type,level,created_at,done_at,session_id,sessions(id,date,title,type,color,programme_id,programmes(name,icon,color))')
     .eq('athlete_id',currentUser.id);
-  const doneByDate={};
+  // Fallback si la colonne done_at n'existe pas encore
+  if(scoresRes.error && /done_at/.test(scoresRes.error.message||'')){
+    scoresRes=await sb.from('wod_scores')
+      .select('id,score_value,score_text,score_type,level,created_at,session_id,sessions(id,date,title,type,color,programme_id,programmes(name,icon,color))')
+      .eq('athlete_id',currentUser.id);
+  }
+  const doneByDate={};         // indexé sur la date effective (done_at ou fallback)
+  const doneSessionIds=new Set();  // sessions effectivement réalisées (n'importe quel jour)
   for(const s of (scoresRes.data||[])){
-    const date=s.sessions?.date;
-    if(!date||date<firstIso||date>lastIso)continue;
-    (doneByDate[date]=doneByDate[date]||[]).push(s);
+    // Priorité : done_at (saisi par l'athlète) > sessions.date (programmé) > created_at
+    const doneIso = s.done_at
+      ? s.done_at
+      : (s.sessions?.date || (s.created_at ? wcIso(new Date(s.created_at)) : null));
+    if(!doneIso)continue;
+    s._doneIso=doneIso;
+    s._plannedIso=s.sessions?.date||null;
+    if(s.session_id)doneSessionIds.add(s.session_id);
+    if(doneIso<firstIso||doneIso>lastIso)continue;
+    (doneByDate[doneIso]=doneByDate[doneIso]||[]).push(s);
   }
 
   // 2) Séances programmées du mois sur les programmes accessibles
@@ -1450,6 +1478,8 @@ async function loadWodCalData(){
       .in('programme_id',progIds).gte('date',firstIso).lte('date',lastIso);
     for(const s of (sRes.data||[])){
       if(!s.date||s.type==='separator')continue;
+      // Marquer si cette session a été réalisée (peu importe le jour)
+      s._wasDone=doneSessionIds.has(s.id);
       (progByDate[s.date]=progByDate[s.date]||[]).push(s);
     }
   }
@@ -1462,7 +1492,7 @@ async function loadWodCalData(){
   for(const p of (pRes.data||[])){
     (persoByDate[p.date]=persoByDate[p.date]||[]).push(p);
   }
-  return {doneByDate,progByDate,persoByDate};
+  return {doneByDate,progByDate,persoByDate,doneSessionIds};
 }
 
 async function renderWodCalendar(){
@@ -1490,7 +1520,11 @@ async function renderWodCalendar(){
   for(const k in data.persoByDate)manualCount+=data.persoByDate[k].length;
   for(const k in data.progByDate){
     if(k>todayIso)continue;
-    if(!(data.doneByDate[k]&&data.doneByDate[k].length))skipCount++;
+    // Une séance programmée n'est "skipped" que si elle n'a JAMAIS été faite
+    // (même décalée à un autre jour).
+    for(const s of data.progByDate[k]){
+      if(!s._wasDone)skipCount++;
+    }
   }
   document.getElementById('wod-cal-done').textContent=doneCount;
   document.getElementById('wod-cal-manual').textContent=manualCount;
@@ -1504,13 +1538,16 @@ async function renderWodCalendar(){
     const isToday=iso===todayIso;
     const isFuture=iso>todayIso;
     const done=data.doneByDate[iso]||[];
-    const prog=data.progByDate[iso]||[];
+    const progAll=data.progByDate[iso]||[];
+    // Pour le calcul "skipped" sur cette case : on ne compte que les
+    // sessions programmées qui n'ont pas été réalisées (même un autre jour)
+    const progUnfinished=progAll.filter(s=>!s._wasDone);
     const perso=data.persoByDate[iso]||[];
     let cls='wod-cal-cell',dot='';
     if(done.length){cls+=' done';dot='<span class="wcd done"></span>';}
     else if(perso.length){cls+=' manual';dot='<span class="wcd manual"></span>';}
-    else if(prog.length&&!isFuture&&!isToday){cls+=' skipped';dot='<span class="wcd skip">✕</span>';}
-    else if(prog.length){cls+=' prog';dot='<span class="wcd prog"></span>';}
+    else if(progUnfinished.length&&!isFuture&&!isToday){cls+=' skipped';dot='<span class="wcd skip">✕</span>';}
+    else if(progAll.length){cls+=' prog';dot='<span class="wcd prog"></span>';}
     if(isToday)cls+=' today';
     if(iso===wodCalState.selectedKey)cls+=' selected';
     html+=`<div class="${cls}" onclick="selectWodCalDay('${iso}')"><div class="wcn">${dayNum}</div><div class="wcdot">${dot}</div></div>`;
@@ -1540,7 +1577,11 @@ function renderWodCalDetail(){
   if(!iso){wrap.innerHTML='';return;}
   const data=wodCalState.data;
   const done=data.doneByDate[iso]||[];
-  const prog=data.progByDate[iso]||[];
+  const progAll=data.progByDate[iso]||[];
+  // Séances programmées ce jour qui n'ont PAS été faites (ni ce jour, ni un autre)
+  const progUnfinished=progAll.filter(s=>!s._wasDone);
+  // Séances programmées ce jour mais faites un AUTRE jour (utile pour l'info "reportée")
+  const progDoneElsewhere=progAll.filter(s=>s._wasDone && !done.some(d=>d.session_id===s.id));
   const perso=data.persoByDate[iso]||[];
   const todayIso=wcIso(new Date());
   const isFuture=iso>todayIso;
@@ -1551,15 +1592,22 @@ function renderWodCalDetail(){
 
   let html=`<div class="wod-cal-day-label">${dayLabel}</div>`;
 
-  // 1) Séances faites (wod_scores)
+  // 1) Séances faites (wod_scores) ce jour-là (date de réalisation)
   for(const s of done){
     const sess=s.sessions||{};
     const prog=sess.programmes||{};
     const color=sess.color||prog.color||'var(--accent)';
     const score=s.score_text||s.score_value||'';
+    // Si la séance était programmée un autre jour, on l'indique
+    let extraMeta='';
+    if(s._plannedIso && s._plannedIso!==iso){
+      const [py,pm,pd]=s._plannedIso.split('-').map(Number);
+      const pdt=new Date(py,pm-1,pd);
+      extraMeta=` · <span style="color:var(--muted);font-size:11px">prévu ${WC_DAYS[pdt.getDay()].toLowerCase()} ${pd} ${WC_MONTHS[pm-1].slice(0,3)}</span>`;
+    }
     html+=`<div class="wod-cal-session" onclick="openReadSession('${sess.id}','session')"><div class="wcs-icon" style="background:${color}22;color:${color}">${wcEsc(prog.icon||'✓')}</div>
       <div class="wcs-body"><div class="wcs-title">${wcEsc(sess.title||'Séance')}</div>
-      <div class="wcs-meta">${wcEsc(prog.name||(sess.type||'').toUpperCase())} · <span style="color:var(--accent)">FAIT</span></div></div>
+      <div class="wcs-meta">${wcEsc(prog.name||(sess.type||'').toUpperCase())} · <span style="color:var(--accent)">FAIT</span>${extraMeta}</div></div>
       ${score?`<div class="wcs-score">${wcEsc(score)}</div>`:''}</div>`;
   }
   // 2) Séances perso (manuelles)
@@ -1569,26 +1617,33 @@ function renderWodCalDetail(){
       <div class="wcs-meta">${wcEsc((p.type||'wod').toUpperCase())} · <span style="color:var(--green)">MANUEL</span></div></div>
       <button class="wcs-del" onclick="event.stopPropagation();deleteWodCalManual('${p.id}')" title="Supprimer">✕</button></div>`;
   }
-  // 3) Séances programmées non faites (passé/aujourd'hui)
-  if(!done.length && !isFuture){
-    for(const s of prog){
+  // 3) Séances programmées ce jour mais faites un AUTRE jour (info "reportée")
+  for(const s of progDoneElsewhere){
+    const pInfo=s.programmes||{};
+    html+=`<div class="wod-cal-session" onclick="openReadSession('${s.id}','session')" style="opacity:.7"><div class="wcs-icon" style="background:rgba(71,200,255,.14);color:#47c8ff">↪</div>
+      <div class="wcs-body"><div class="wcs-title">${wcEsc(s.title||'Séance')}</div>
+      <div class="wcs-meta">${wcEsc(pInfo.name||'Programme')} · <span style="color:#47c8ff">FAITE UN AUTRE JOUR</span></div></div></div>`;
+  }
+  // 4) Séances programmées non faites (passé/aujourd'hui)
+  if(!isFuture){
+    for(const s of progUnfinished){
       const pInfo=s.programmes||{};
       html+=`<div class="wod-cal-session skipped" onclick="openReadSession('${s.id}','session')"><div class="wcs-icon" style="background:rgba(255,68,68,.12);color:var(--red)">✕</div>
         <div class="wcs-body"><div class="wcs-title">${wcEsc(s.title||'Séance')}</div>
         <div class="wcs-meta">${wcEsc(pInfo.name||'Programme')} · <span style="color:var(--red)">NON FAIT</span></div></div></div>`;
     }
   }
-  // 4) Programme à venir
-  if(isFuture && prog.length){
-    for(const s of prog){
+  // 5) Programme à venir
+  if(isFuture && progAll.length){
+    for(const s of progAll){
       const pInfo=s.programmes||{};
       html+=`<div class="wod-cal-session upcoming" onclick="openReadSession('${s.id}','session')"><div class="wcs-icon" style="background:var(--card2);color:var(--muted)">○</div>
         <div class="wcs-body"><div class="wcs-title">${wcEsc(s.title||'Séance')}</div>
         <div class="wcs-meta">${wcEsc(pInfo.name||'Programme')} · <span style="color:var(--muted)">À VENIR</span></div></div></div>`;
     }
   }
-  // 5) Rien
-  if(!done.length && !perso.length && !prog.length){
+  // 6) Rien
+  if(!done.length && !perso.length && !progAll.length){
     html+=`<div class="wod-cal-empty">Rien ce jour-là.</div>`;
   }
 
