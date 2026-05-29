@@ -836,7 +836,7 @@ async function saveSession(){
     document.getElementById('form-prog-group').style.display='';
     if(persoAthlete){
       currentPersoAthlete=persoAthletesCache.find(a=>a.id===persoAthlete)||currentPersoAthlete;
-      adminTab('perso',document.querySelector('.admin-tab-btn:last-child'));
+      adminTab('perso',document.querySelector('.admin-tab-btn[onclick*="perso"]'));
       openPersoFiche(persoAthlete,date);
     }
   } else {
@@ -1102,6 +1102,7 @@ function adminTab(tab,btn){
   if(tab==='videos'){loadAdminVideos();populateVideoMovementSelect();}
   if(tab==='perso')loadPersoAthletes();
   if(tab==='cycle')initCyclePlanner();
+  if(tab==='broadcast')initBroadcast();
 }
 
 // ===== DASHBOARD COACH =====
@@ -2377,3 +2378,190 @@ async function loadSessionNotes(sessionId){
   if(ta&&data&&data[0])ta.value=data[0].content;
 }
 
+
+// ===================================================
+// DIFFUSION — BROADCAST
+// ===================================================
+const BC_DAYS = ['LUN','MAR','MER','JEU','VEN','SAM','DIM'];
+const BC_TYPES = {wod:'WOD',strength:'Force',skill:'Skill',cardio:'Cardio',mobility:'Mobilité',rest:'Repos',separator:'—'};
+
+function initBroadcast(){
+  // Remplir le select programmes
+  const sel = document.getElementById('bc-prog');
+  if(!sel) return;
+  sel.innerHTML = programmes.map(p=>`<option value="${p.id}">${p.icon||''} ${p.name}</option>`).join('');
+  // Pré-sélectionner la semaine courante
+  const wkInput = document.getElementById('bc-week');
+  if(wkInput && !wkInput.value){
+    const now = new Date();
+    const y = now.getFullYear();
+    const jan4 = new Date(y, 0, 4);
+    const wk = Math.ceil(((now - jan4) / 86400000 + jan4.getDay() + 1) / 7);
+    wkInput.value = `${y}-W${String(wk).padStart(2,'0')}`;
+  }
+  bcRender();
+}
+
+function bcGetWeekDates(weekStr){
+  // "2025-W23" → tableau de 7 dates ISO (lun→dim)
+  if(!weekStr) return [];
+  const [ys, ws] = weekStr.split('-W');
+  const y = parseInt(ys), w = parseInt(ws);
+  // ISO week: lundi de la semaine W
+  const jan4 = new Date(y, 0, 4);
+  const startOfWeek = new Date(jan4);
+  startOfWeek.setDate(jan4.getDate() - (jan4.getDay() || 7) + 1 + (w - 1) * 7);
+  return Array.from({length:7}, (_, i) => {
+    const d = new Date(startOfWeek);
+    d.setDate(startOfWeek.getDate() + i);
+    return d.toISOString().split('T')[0];
+  });
+}
+
+async function bcRender(){
+  const progId = document.getElementById('bc-prog')?.value;
+  const weekStr = document.getElementById('bc-week')?.value;
+  const area = document.getElementById('bc-preview');
+  if(!area) return;
+  if(!progId || !weekStr){ area.innerHTML='<div style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">Sélectionne un programme et une semaine</div>'; return; }
+
+  area.innerHTML = '<div class="spinner"></div>';
+  const prog = programmes.find(p=>p.id===progId);
+  const isos = bcGetWeekDates(weekStr);
+
+  // Charger les sessions de la semaine
+  const {data:sessions} = await sb.from('sessions').select('date,title,type,target,day_of_week,week_number').eq('programme_id', progId).in('date', isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+
+  // Construire le HTML aperçu
+  const color = prog?.color || '#e8ff47';
+  const weekLabel = isos.length ? `${_bcFmtDate(isos[0])} — ${_bcFmtDate(isos[6])}` : weekStr;
+
+  let html = `<div style="font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:2px;color:${color};margin-bottom:10px;border-bottom:1px solid ${color}33;padding-bottom:8px">${prog?.icon||'📅'} ${prog?.name||'Programme'} — ${weekLabel}</div>`;
+
+  const byDate = {};
+  isos.forEach(iso => byDate[iso] = []);
+  (sessions||[]).forEach(s => { if(byDate[s.date]) byDate[s.date].push(s); });
+
+  let hasSessions = false;
+  isos.forEach((iso, i) => {
+    const daySessions = byDate[iso];
+    if(!daySessions.length) return;
+    hasSessions = true;
+    html += `<div style="margin-bottom:8px">`;
+    html += `<div style="font-size:11px;font-weight:700;color:${color};letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">${BC_DAYS[i]} ${iso.slice(8)}</div>`;
+    daySessions.forEach(s => {
+      const typeLabel = BC_TYPES[s.type] || s.type || '';
+      html += `<div style="display:flex;align-items:flex-start;gap:8px;padding:6px 8px;background:var(--card2);border-left:3px solid ${color};border-radius:0 6px 6px 0;margin-bottom:4px">
+        <span style="font-size:10px;color:${color};font-weight:700;min-width:38px;padding-top:1px;letter-spacing:.5px">${typeLabel}</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${s.title||'—'}</div>
+          ${s.target?`<div style="font-size:11px;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🎯 ${s.target}</div>`:''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  if(!hasSessions) html += `<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0">Aucune séance cette semaine</div>`;
+
+  area.innerHTML = html;
+}
+
+function _bcFmtDate(iso){
+  if(!iso) return '';
+  const d = new Date(iso+'T12:00:00');
+  return d.toLocaleDateString('fr-FR',{day:'numeric',month:'short'});
+}
+
+function _bcBuildText(){
+  const progId = document.getElementById('bc-prog')?.value;
+  const weekStr = document.getElementById('bc-week')?.value;
+  if(!progId || !weekStr) return '';
+  const prog = programmes.find(p=>p.id===progId);
+  const isos = bcGetWeekDates(weekStr);
+  const weekLabel = isos.length ? `${_bcFmtDate(isos[0])} → ${_bcFmtDate(isos[6])}` : weekStr;
+
+  // On reconstruit depuis le DOM aperçu pour ne pas refaire une requête
+  const area = document.getElementById('bc-preview');
+  const dayBlocks = area ? area.querySelectorAll('[style*="margin-bottom:8px"]') : [];
+
+  let lines = [];
+  lines.push(`📅 ${prog?.name||'Programme'} — ${weekLabel}`);
+  lines.push('');
+
+  dayBlocks.forEach(block => {
+    const dayHeader = block.querySelector('[style*="letter-spacing:1.5px"]');
+    if(dayHeader) lines.push(`▸ ${dayHeader.textContent.trim()}`);
+    block.querySelectorAll('[style*="border-left:3px"]').forEach(row => {
+      const type = row.querySelector('span')?.textContent?.trim() || '';
+      const title = row.querySelectorAll('div')[1]?.querySelector('div')?.textContent?.trim() || '';
+      const target = row.querySelectorAll('div div')[1]?.textContent?.replace('🎯 ','')?.trim() || '';
+      let line = `  ${type}  ${title}`;
+      if(target) line += ` — ${target}`;
+      lines.push(line);
+    });
+    lines.push('');
+  });
+
+  return lines.join('\n').trim();
+}
+
+function bcCopyText(){
+  const text = _bcBuildText();
+  if(!text){ _bcShowToast('⚠️ Rien à copier'); return; }
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(text).then(()=>_bcShowToast('✅ Texte copié !')).catch(()=>_bcFallbackCopy(text));
+  } else {
+    _bcFallbackCopy(text);
+  }
+}
+
+function _bcFallbackCopy(text){
+  const ta = document.createElement('textarea');
+  ta.value = text; ta.style.position='fixed'; ta.style.opacity='0';
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand('copy'); _bcShowToast('✅ Texte copié !'); } catch(e){ _bcShowToast('❌ Copie impossible'); }
+  document.body.removeChild(ta);
+}
+
+function _bcShowToast(msg){
+  const el = document.getElementById('bc-toast');
+  if(!el) return;
+  el.textContent = msg;
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(()=>{ el.style.display='none'; }, 2800);
+}
+
+async function bcDownloadImage(){
+  const area = document.getElementById('bc-preview');
+  if(!area){ _bcShowToast('⚠️ Rien à exporter'); return; }
+  // Vérifier si html2canvas est disponible, sinon charger
+  if(typeof html2canvas === 'undefined'){
+    await new Promise((res, rej) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
+      s.onload = res; s.onerror = () => { _bcShowToast('⚠️ Lib image indisponible'); rej(); };
+      document.head.appendChild(s);
+    }).catch(() => null);
+    if(typeof html2canvas === 'undefined') return;
+  }
+  _bcShowToast('⏳ Génération de l\'image...');
+  try{
+    const canvas = await html2canvas(area, {
+      backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--card').trim() || '#1a1a1a',
+      scale: 2,
+      useCORS: true,
+      logging: false
+    });
+    const link = document.createElement('a');
+    const progId = document.getElementById('bc-prog')?.value;
+    const prog = programmes.find(p=>p.id===progId);
+    link.download = `prog-${(prog?.name||'semaine').toLowerCase().replace(/\s+/g,'-')}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    _bcShowToast('✅ Image téléchargée !');
+  } catch(e){
+    _bcShowToast('❌ Erreur : '+e.message);
+  }
+}

@@ -176,10 +176,7 @@
         <button class="arrow-btn" onclick="changeWeek(1)">›</button>
       </div>
     </div>
-    <div class="day-strip-wrap">
-      <div class="day-strip" id="day-strip"></div>
-      <div class="date-picker-pop" id="date-picker-pop" style="display:none"></div>
-    </div>
+    <div class="day-strip" id="day-strip"></div>
     <div id="sessions-area"></div>
   </div>
 
@@ -216,6 +213,7 @@
       <button class="admin-tab-btn" onclick="adminTab('videos',this)">Vidéos</button>
       <button class="admin-tab-btn" onclick="adminTab('dashboard',this)">📊 Dashboard</button>
       <button class="admin-tab-btn" onclick="adminTab('perso',this)">👤 Espace perso</button>
+      <button class="admin-tab-btn" onclick="adminTab('broadcast',this)">📢 Diffusion</button>
     </div>
 
     <!-- PROGRAMMES -->
@@ -699,9 +697,33 @@
         <button class="btn-primary" onclick="saveVideo()">Ajouter la vidéo</button>
       </div>
     </div>
-  </div>
+    <!-- DIFFUSION PROGRAMMATION -->
+    <div class="admin-panel" id="admin-broadcast">
+      <div style="margin-bottom:16px">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px">Diffusion</div>
+        <div style="font-size:12px;color:var(--muted)">Génère un récapitulatif de la semaine à partager</div>
+      </div>
 
-  <!-- PAGE PROFIL -->
+      <!-- Filtres -->
+      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <select class="form-select" id="bc-prog" style="flex:1;min-width:120px" onchange="bcRender()"></select>
+        <input type="week" class="form-input" id="bc-week" style="flex:1;min-width:130px" onchange="bcRender()">
+      </div>
+
+      <!-- Aperçu -->
+      <div id="bc-preview" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;min-height:80px">
+        <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">Sélectionne un programme et une semaine</div>
+      </div>
+
+      <!-- Boutons d'action -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn-primary" style="flex:1" onclick="bcCopyText()">📋 Copier le texte</button>
+        <button class="btn-secondary" style="flex:1" onclick="bcDownloadImage()">🖼 Exporter image</button>
+      </div>
+      <div id="bc-toast" style="display:none;margin-top:10px;padding:10px 14px;background:var(--card2);border-radius:8px;font-size:13px;color:var(--accent);text-align:center;font-weight:600"></div>
+    </div>
+
+  </div>
   <div class="page" id="page-profil" style="display:none">
     <div class="topbar"><div><div class="topbar-title">PROFIL</div></div></div>
     <div class="profil-header">
@@ -1074,40 +1096,5 @@ function _loadScript(src) {
 </div>
 
 
-<script>
-/* PATCH: openPersoFiche conserve la semaine après save */
-(function(){
-  const _orig = window.openPersoFiche;
-  window.openPersoFiche = async function(athleteId, targetDate){
-    // Calculer l'offset avant d'appeler l'original
-    if(targetDate && typeof targetDate === 'string'){
-      const now=new Date(); const day=now.getDay();
-      const monNow=new Date(now); monNow.setDate(now.getDate()-(day===0?6:day-1)); monNow.setHours(0,0,0,0);
-      const tgt=new Date(targetDate+'T12:00:00'); const tgtDay=tgt.getDay();
-      const monTgt=new Date(tgt); monTgt.setDate(tgt.getDate()-(tgtDay===0?6:tgtDay-1)); monTgt.setHours(0,0,0,0);
-      window.persoOffset = Math.round((monTgt-monNow)/(7*24*60*60*1000));
-    }
-    return _orig ? _orig(athleteId) : undefined;
-  };
-})();
-
-/* PATCH: saveSession passe la date à openPersoFiche */
-(function(){
-  const _origSave = window.saveSession;
-  if(!_origSave) return;
-  window.saveSession = async function(){
-    // Capturer la date AVANT le save (le form sera resetté après)
-    const dateEl = document.getElementById('f-date');
-    const savedDate = dateEl ? dateEl.value : null;
-    // Intercepter openPersoFiche pour passer la date
-    const _origOpen = window.openPersoFiche;
-    window.openPersoFiche = async function(athleteId, td){
-      window.openPersoFiche = _origOpen; // restore
-      return _origOpen(athleteId, savedDate||td);
-    };
-    return _origSave.apply(this, arguments);
-  };
-})();
-</script>
 </body>
 </html>
