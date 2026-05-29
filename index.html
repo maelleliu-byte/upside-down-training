@@ -1145,9 +1145,15 @@ async function runDiagWod(){
   C.innerHTML='Chargement…';
   let h='';
 
-  if(!window.currentUser){C.innerHTML='<div class="ko">❌ Pas connecté à l\'app — connecte-toi d\'abord</div>';return;}
-  const userId=window.currentUser.id;
-  h+='<div class="sec"><div class="lab">User</div>user_id: <code>'+_diagEsc(userId)+'</code></div>';
+  // Récupère l'user via la session Supabase (currentUser est en `let`, pas sur window)
+  const sess=await sb.auth.getSession();
+  const userObj = sess?.data?.session?.user || (typeof currentUser!=='undefined'?currentUser:null);
+  if(!userObj){
+    C.innerHTML='<div class="ko">❌ Pas connecté — connecte-toi d\'abord à l\'app puis relance le diag</div>';
+    return;
+  }
+  const userId=userObj.id;
+  h+='<div class="sec"><div class="lab">User</div>user_id: <code>'+_diagEsc(userId)+'</code><br>email: <code>'+_diagEsc(userObj.email||'?')+'</code></div>';
 
   // 1. Colonne done_at
   h+='<div class="sec"><div class="lab">1. Colonne done_at en base</div>';
@@ -1191,14 +1197,29 @@ async function runDiagWod(){
   }
   h+='</div>';
 
-  // 3. Accès programmes
-  h+='<div class="sec"><div class="lab">3. Tes accès programmes (myAccessIds)</div>';
-  const accessIds=Array.from(window.myAccessIds||new Set());
-  h+='Nombre : <strong>'+accessIds.length+'</strong>';
-  if(accessIds.length){
-    h+='<div class="copybox">'+accessIds.map(x=>x.slice(0,12)+'…').join('\n')+'</div>';
+  // 3. Accès programmes — on relit la table directement (myAccessIds est en `let`)
+  h+='<div class="sec"><div class="lab">3. Tes accès programmes (table programme_access)</div>';
+  const accRes=await sb.from('programme_access').select('programme_id,programmes(name)').eq('athlete_id',userId);
+  let accessIds=[];
+  if(accRes.error){
+    h+='<span class="ko">❌ Erreur :</span> '+_diagEsc(accRes.error.message);
   } else {
-    h+='<br><span class="ko">⚠️ AUCUN programme accessible. C\'est probablement la cause.</span>';
+    accessIds=(accRes.data||[]).map(a=>a.programme_id);
+    h+='Nombre : <strong>'+accessIds.length+'</strong>';
+    if(accessIds.length){
+      h+='<table><tr><th>programme_id</th><th>nom</th></tr>';
+      for(const a of accRes.data){
+        h+='<tr><td>'+_diagEsc(a.programme_id.slice(0,12))+'…</td><td>'+_diagEsc(a.programmes?.name||'?')+'</td></tr>';
+      }
+      h+='</table>';
+    } else {
+      h+='<br><span class="ko">⚠️ AUCUN programme accessible dans la table programme_access.</span>';
+    }
+  }
+  // Compare aussi à window.myAccessIds si dispo
+  const winAccess = (typeof myAccessIds!=='undefined') ? Array.from(myAccessIds) : null;
+  if(winAccess){
+    h+='<br><span class="lab">myAccessIds en mémoire :</span> '+winAccess.length+' éléments';
   }
   h+='</div>';
 
@@ -1238,11 +1259,12 @@ async function runDiagWod(){
 
   // 6. wodCalState (si le calendrier a été ouvert)
   h+='<div class="sec"><div class="lab">6. État interne du calendrier (si déjà ouvert)</div>';
-  if(window.wodCalState && window.wodCalState.data){
-    h+='Mois affiché : '+window.wodCalState.y+'-'+(window.wodCalState.m+1)+'<br>';
-    h+='Sessions faites (IDs) : '+Array.from(window.wodCalState.data.doneSessionIds||[]).length+'<br>';
-    h+='doneByDate keys : '+Object.keys(window.wodCalState.data.doneByDate||{}).join(', ');
-    h+='<div class="copybox">'+_diagEsc(JSON.stringify(window.wodCalState.data.doneByDate,null,2))+'</div>';
+  const wcs=(typeof wodCalState!=='undefined')?wodCalState:null;
+  if(wcs && wcs.data){
+    h+='Mois affiché : '+wcs.y+'-'+(wcs.m+1)+'<br>';
+    h+='Sessions faites (IDs) : '+Array.from(wcs.data.doneSessionIds||[]).length+'<br>';
+    h+='doneByDate keys : '+Object.keys(wcs.data.doneByDate||{}).join(', ');
+    h+='<div class="copybox">'+_diagEsc(JSON.stringify(wcs.data.doneByDate,null,2))+'</div>';
   } else {
     h+='<span class="warn">⚠️ Calendrier pas encore ouvert dans cette session — ferme ce diag, ouvre le calendrier WOD une fois, puis relance le diag</span>';
   }
