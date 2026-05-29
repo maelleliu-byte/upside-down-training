@@ -1194,12 +1194,19 @@ async function loadDashboard(){
     :topList.map((t,i)=>`<div class="inactive-row"><div class="inactive-name">${i===0?'🥇':i===1?'🥈':'🥉'} ${t.name}</div><div style="font-size:12px;color:var(--accent);font-weight:700">${t.count} PR</div></div>`).join('');
 
   // Derniers scores
-  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name,avatar_url),sessions(title)').order('created_at',{ascending:false}).limit(8);
+  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name,avatar_url)').order('created_at',{ascending:false}).limit(8);
+  // Récupère les titres de session séparément (la FK wod_scores → sessions a été retirée)
+  const recSessIds=Array.from(new Set((recentScores||[]).map(s=>s.session_id).filter(Boolean)));
+  const recSessTitleById={};
+  if(recSessIds.length){
+    const {data:sessTitles}=await sb.from('sessions').select('id,title').in('id',recSessIds);
+    for(const x of (sessTitles||[]))recSessTitleById[x.id]=x.title;
+  }
   document.getElementById('dash-recent').innerHTML=(recentScores||[]).map(s=>`<div class="recent-score-row">
     ${avatarHtml(s.profiles)}
     <div class="recent-score-info">
       <div class="recent-score-name">${s.profiles?.full_name||'—'}</div>
-      <div class="recent-score-meta">${s.sessions?.title||'—'} · <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]||s.level}</span></div>
+      <div class="recent-score-meta">${recSessTitleById[s.session_id]||'—'} · <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]||s.level}</span></div>
     </div>
     <div class="recent-score-val">${s.score_text||s.score_value||'—'}</div>
   </div>`).join('');

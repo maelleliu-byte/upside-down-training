@@ -1442,22 +1442,51 @@ async function loadWodCalData(){
   const lastDay=new Date(y,m+1,0).getDate();
   const lastIso=`${y}-${String(m+1).padStart(2,'0')}-${String(lastDay).padStart(2,'0')}`;
 
-  // 1) TOUS les scores WOD de l'athlète (on filtre côté JS sur la date réelle)
-  //    La date affichée prend done_at en priorité (saisi par l'athlète),
-  //    sinon sessions.date (date programmée), sinon created_at (fallback).
+  // 1) Scores WOD de l'athlète
+  //    Pas de jointure SQL (la FK a été retirée pour autoriser les séances perso),
+  //    on récupère les sessions séparément puis on join côté JS.
   let scoresRes=await sb.from('wod_scores')
-    .select('id,score_value,score_text,score_type,level,created_at,done_at,session_id,sessions(id,date,title,type,color,programme_id,programmes(name,icon,color))')
+    .select('id,score_value,score_text,score_type,level,created_at,done_at,session_id')
     .eq('athlete_id',currentUser.id);
-  // Fallback si la colonne done_at n'existe pas encore
+  // Fallback si done_at n'existe pas (migration SQL pas passée)
   if(scoresRes.error && /done_at/.test(scoresRes.error.message||'')){
     scoresRes=await sb.from('wod_scores')
-      .select('id,score_value,score_text,score_type,level,created_at,session_id,sessions(id,date,title,type,color,programme_id,programmes(name,icon,color))')
+      .select('id,score_value,score_text,score_type,level,created_at,session_id')
       .eq('athlete_id',currentUser.id);
   }
-  const doneByDate={};         // indexé sur la date effective (done_at ou fallback)
-  const doneSessionIds=new Set();  // sessions effectivement réalisées (n'importe quel jour)
-  for(const s of (scoresRes.data||[])){
-    // Priorité : done_at (saisi par l'athlète) > sessions.date (programmé) > created_at
+  const scoresList=scoresRes.data||[];
+  if(scoresRes.error)console.warn('wod_scores fetch',scoresRes.error);
+
+  // 1b) Charger les sessions correspondantes (en 1 requête)
+  const sessIdsAll=Array.from(new Set(scoresList.map(s=>s.session_id).filter(Boolean)));
+  const sessById={};
+  if(sessIdsAll.length){
+    const sRes=await sb.from('sessions')
+      .select('id,date,title,type,color,programme_id')
+      .in('id',sessIdsAll);
+    for(const s of (sRes.data||[]))sessById[s.id]=s;
+  }
+  // 1c) Charger les programmes correspondants (en 1 requête)
+  const progIdsFromScores=Array.from(new Set(Object.values(sessById).map(s=>s.programme_id).filter(Boolean)));
+  const progById={};
+  if(progIdsFromScores.length){
+    const pRes=await sb.from('programmes').select('id,name,icon,color').in('id',progIdsFromScores);
+    for(const p of (pRes.data||[]))progById[p.id]=p;
+  }
+  // 1d) Reconstituer la forme attendue: s.sessions.programmes
+  for(const s of scoresList){
+    const sess=sessById[s.session_id];
+    if(sess){
+      s.sessions={...sess,programmes:progById[sess.programme_id]||null};
+    } else {
+      s.sessions=null;
+    }
+  }
+
+  // 1e) Indexer par date effective (done_at > sessions.date > created_at)
+  const doneByDate={};
+  const doneSessionIds=new Set();
+  for(const s of scoresList){
     const doneIso = s.done_at
       ? s.done_at
       : (s.sessions?.date || (s.created_at ? wcIso(new Date(s.created_at)) : null));
@@ -1474,17 +1503,24 @@ async function loadWodCalData(){
   const progByDate={};
   if(progIds.length){
     const sRes=await sb.from('sessions')
-      .select('id,date,title,type,color,programme_id,programmes(name,icon,color)')
+      .select('id,date,title,type,color,programme_id')
       .in('programme_id',progIds).gte('date',firstIso).lte('date',lastIso);
-    for(const s of (sRes.data||[])){
+    const sessionsList=sRes.data||[];
+    // récupérer les programmes manquants
+    const needProgIds=Array.from(new Set(sessionsList.map(s=>s.programme_id).filter(pid=>pid && !progById[pid])));
+    if(needProgIds.length){
+      const pRes=await sb.from('programmes').select('id,name,icon,color').in('id',needProgIds);
+      for(const p of (pRes.data||[]))progById[p.id]=p;
+    }
+    for(const s of sessionsList){
       if(!s.date||s.type==='separator')continue;
-      // Marquer si cette session a été réalisée (peu importe le jour)
+      s.programmes=progById[s.programme_id]||null;
       s._wasDone=doneSessionIds.has(s.id);
       (progByDate[s.date]=progByDate[s.date]||[]).push(s);
     }
   }
 
-  // 3) Séances personnelles (manuelles ou poussées par un coach)
+  // 3) Séances personnelles
   const pRes=await sb.from('personal_sessions')
     .select('id,date,title,type,color,content,score_type')
     .eq('athlete_id',currentUser.id).gte('date',firstIso).lte('date',lastIso);
