@@ -1010,40 +1010,44 @@ async function _loadAthleteCardStats(id){
   const wkStart=_weekStart(today);
   const monthStart=new Date(today.getFullYear(),today.getMonth(),1);
 
-  // wod_scores : tentative principale (inclut tous types de séances faites)
-  const isoMonth=_isoDate(monthStart);
+  // wod_scores : on filtre sur created_at (la table n'a pas de colonne `date`)
   const isoWeek=_isoDate(wkStart);
   let weekDone=[];
   let monthCount=0;
+  let scores30=[];
   try{
-    const {data:scores}=await sb.from('wod_scores').select('session_id,date,created_at')
+    // 30 derniers jours, sert à la fois pour mois/semaine et assiduité
+    const last30=_addDays(today,-30);
+    const {data:scores,error}=await sb.from('wod_scores').select('session_id,created_at')
       .eq('athlete_id',id)
-      .gte('date',isoMonth);
-    if(scores){
-      monthCount=scores.length;
-      weekDone=scores.filter(s=>s.date>=isoWeek);
-    }
+      .gte('created_at',last30.toISOString());
+    if(error)console.warn('wod_scores fetch',error);
+    scores30=scores||[];
+    // map vers la date locale (YYYY-MM-DD) pour comparer à semaine/mois
+    const scoresWithDay=scores30.map(s=>({...s,_day:_isoDate(new Date(s.created_at))}));
+    const isoMonth=_isoDate(monthStart);
+    const monthScores=scoresWithDay.filter(s=>s._day>=isoMonth);
+    monthCount=monthScores.length;
+    weekDone=monthScores.filter(s=>s._day>=isoWeek);
   }catch(e){console.warn('wod_scores fetch',e);}
 
   document.getElementById('ac-week').textContent=weekDone.length;
   document.getElementById('ac-month').textContent=monthCount;
   // assiduité : nb jours uniques avec au moins 1 wod / 30 derniers jours
-  const last30=_addDays(today,-30);
   let attendance='—';
-  try{
-    const {data:s30}=await sb.from('wod_scores').select('date').eq('athlete_id',id).gte('date',_isoDate(last30));
-    if(s30){
-      const days=new Set((s30||[]).map(x=>x.date));
-      attendance=Math.round(days.size/30*100)+'%';
-    }
-  }catch(e){}
+  if(scores30.length){
+    const days=new Set(scores30.map(s=>_isoDate(new Date(s.created_at))));
+    attendance=Math.round(days.size/30*100)+'%';
+  }else{
+    attendance='0%';
+  }
   document.getElementById('ac-attendance').textContent=attendance;
 
   // calendrier semaine
   const cal=document.getElementById('ac-cal');
   const labels=['L','M','M','J','V','S','D'];
   const todayIso=_isoDate(today);
-  const weekDoneSet=new Set(weekDone.map(x=>x.date));
+  const weekDoneSet=new Set(weekDone.map(s=>s._day));
   cal.innerHTML=labels.map((lab,i)=>{
     const d=_addDays(wkStart,i);
     const iso=_isoDate(d);
@@ -1056,36 +1060,40 @@ async function _loadAthleteCardStats(id){
 async function _loadAthleteCardPRs(id){
   const wrap=document.getElementById('ac-prs');
   wrap.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Chargement…</div>';
-  // Récupère tous les PR de l'athlète, joint au mouvement
+  // Récupère tous les PR de l'athlète (la colonne s'appelle recorded_at)
   let prs=[];
   try{
-    const {data}=await sb.from('athlete_prs').select('movement_id,value,unit,date,created_at').eq('athlete_id',id).order('date',{ascending:true,nullsFirst:false});
+    const {data,error}=await sb.from('athlete_prs')
+      .select('movement_id,value,recorded_at,format,created_at')
+      .eq('athlete_id',id)
+      .order('recorded_at',{ascending:true,nullsFirst:false});
+    if(error)console.warn('athlete_prs fetch',error);
     prs=data||[];
   }catch(e){console.warn(e);}
   if(!prs.length){wrap.innerHTML='<div style="color:var(--muted);font-size:12px;padding:8px 0">Aucun PR enregistré.</div>';return;}
   // grouper par mouvement
   const byMov={};
   prs.forEach(pr=>{(byMov[pr.movement_id]=byMov[pr.movement_id]||[]).push(pr);});
-  // trier par date DESC pour pickle dernier
   const movIds=Object.keys(byMov);
-  // résoudre noms mvt
+  // résoudre noms + unités des mouvements
   let movs={};
   if(movIds.length){
     try{
-      const {data:m}=await sb.from('movements').select('id,name').in('id',movIds);
-      (m||[]).forEach(x=>{movs[x.id]=x.name;});
+      const {data:m}=await sb.from('movements').select('id,name,unit').in('id',movIds);
+      (m||[]).forEach(x=>{movs[x.id]={name:x.name,unit:x.unit||''};});
     }catch(e){}
   }
   // garder top 6 mvts (par récence du dernier PR)
   const items=movIds.map(mid=>{
-    const series=byMov[mid].slice().sort((a,b)=>(a.date||a.created_at).localeCompare(b.date||b.created_at));
+    const series=byMov[mid].slice().sort((a,b)=>((a.recorded_at||a.created_at||'')+'').localeCompare((b.recorded_at||b.created_at||'')+''));
     return {mid,series,last:series[series.length-1]};
-  }).sort((a,b)=>(b.last.date||'').localeCompare(a.last.date||'')).slice(0,6);
+  }).sort((a,b)=>((b.last.recorded_at||b.last.created_at||'')+'').localeCompare((a.last.recorded_at||a.last.created_at||'')+'')).slice(0,6);
 
   wrap.innerHTML=items.map(it=>{
     const {series,last}=it;
-    const name=movs[it.mid]||'Mouvement';
-    const unit=last.unit||'';
+    const mov=movs[it.mid]||{};
+    const name=mov.name||'Mouvement';
+    const unit=mov.unit||'';
     const first=series[0]?.value;
     const lastV=last.value;
     const isTime=unit==='s'||unit==='min';
@@ -1100,7 +1108,7 @@ async function _loadAthleteCardPRs(id){
     return `<div class="afiche-pr">
       <div class="afiche-pr-head">
         <div>
-          <div class="afiche-pr-name">${escapeHtml(name)}</div>
+          <div class="afiche-pr-name">${escapeHtml(name)}${last.format?` <span style="color:var(--muted);font-size:11px">· ${escapeHtml(last.format)}</span>`:''}</div>
           ${deltaTxt?`<div class="afiche-pr-trend ${trend==='down'?'down':''}">${deltaTxt} sur ${series.length} entrée${series.length>1?'s':''}</div>`:''}
         </div>
         <div class="afiche-pr-val">${escapeHtml(String(valTxt))}</div>
