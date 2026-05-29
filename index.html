@@ -1093,17 +1093,7 @@ function _loadScript(src) {
    SECTION 1 — CONFETTIS & TOAST PR
    triggerPRCelebration() appelé depuis planning.js
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/* ============================================================
- * FUN FEATURES — fun-features.js
- * À inclure dans index.html juste avant </body>
- * <script src="fun-features.js"></script>
- *
- * Contient :
- *  1. CONFETTIS + TOAST PR — animation à chaque nouveau record
- *  2. SYSTÈME DE BADGES — 12 badges débloquables, modal de célébration
- *  3. THÈMES DE COULEUR — 8 accent colors avec persistance localStorage
- *  4. CARTE D'ATHLÈTE — profil visuel shareable (screenshot-friendly)
- * ============================================================ */
+/* FUN FEATURES */
 
 // ============================================================
 // SECTION 1 : CONFETTIS & TOAST PR
@@ -1661,23 +1651,7 @@ function _injectAthleteCardButton() {
    loadAdminBadgesTab() appelé depuis admin.js
    renderBadgesSection() appelé depuis core.js via _injectProfilExtras
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
-/* ============================================================
- * BADGES.JS — Système de badges custom créés par les admins
- *
- * INSTALLATION :
- *   1. Exécuter badges-migration.sql dans Supabase > SQL Editor
- *   2. Ajouter dans index.html juste avant </body> :
- *      <script src="badges.js"></script>
- *
- * CE QUE ÇA FAIT :
- *   — Onglet "🏅 Badges" dans le panel admin
- *   — Créer/modifier/supprimer des badges (emoji, nom, desc, rareté, type)
- *   — Attribuer manuellement à n'importe quel athlète avec note du coach
- *   — Badges auto vérifiés à chaque login et à chaque soumission de score
- *   — Célébration animée (confettis + modal) à la réception d'un nouveau badge
- *   — Section badges sur la page Profil de l'athlète
- *   — Carte d'athlète mise à jour automatiquement
- * ============================================================ */
+/* Badges — système admin */
 
 
 // ── Constantes ─────────────────────────────────────────────
