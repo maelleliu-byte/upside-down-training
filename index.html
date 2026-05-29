@@ -906,6 +906,21 @@
   </div>
 </div>
 
+<!-- MODAL DUPLICATION SÉANCE PERSO -->
+<div class="modal-overlay" id="dup-perso-modal">
+  <div class="modal">
+    <div class="modal-title">📋 Dupliquer la séance</div>
+    <div class="modal-sub" id="dup-perso-session-name">—</div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Date de destination</label>
+      <input type="date" class="modal-date" id="dup-perso-date">
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">La séance sera copiée à la date choisie, dans le même espace perso.</div>
+    </div>
+    <button class="btn-modal-save" onclick="confirmPersoDuplicate()">📋 Dupliquer</button>
+    <button class="btn-modal-cancel" onclick="closeDupPersoModal()">Annuler</button>
+  </div>
+</div>
+
 <!-- SCORES MODAL -->
 <div class="modal-overlay" id="scores-modal">
   <div class="modal" style="position:relative">
