@@ -1069,25 +1069,30 @@ function _loadScript(src) {
     <button class="btn-modal-cancel" onclick="closeWodCalendar()">Fermer</button>
   </div>
 </div>
+
 <!-- ============================================================
-     FUN FEATURES — confettis PR · thèmes couleur · carte athlète · badges
-     Fonctions appelées directement depuis core.js / planning.js / admin.js
+     FUN FEATURES — intégré directement dans index.html
+     Confettis PR · Thèmes couleur · Carte athlète · Badges admin
+     Les appels sont câblés dans core.js / planning.js / admin.js
      ============================================================ -->
 <script>
-// ── INIT COULEUR (appelé dès le chargement) ──────────────────
+/* ── Thème couleur appliqué immédiatement (avant auth) ── */
 (function(){
-  try{
-    const saved=localStorage.getItem('upside-color-theme');
-    if(saved){
-      const themes={yellow:'#e8ff47',blue:'#47c8ff',orange:'#ff8c47',red:'#ff4444',purple:'#c847ff',green:'#47ff8c',pink:'#ff47a0',white:'#f0f0f0'};
-      const lightThemes={yellow:'#5a6810',blue:'#0b5e94',orange:'#a8470a',red:'#b71c1c',purple:'#5b1690',green:'#15703a',pink:'#8b0045',white:'#333333'};
-      const isDark=(document.documentElement.getAttribute('data-theme')||'dark')!=='light';
-      const c=isDark?(themes[saved]||'#e8ff47'):(lightThemes[saved]||'#5a6810');
-      document.documentElement.style.setProperty('--accent',c);
-    }
-  }catch(e){}
+  try {
+    var saved = localStorage.getItem('upside-color-theme');
+    if (!saved) return;
+    var dark = { yellow:'#e8ff47', blue:'#47c8ff', orange:'#ff8c47', red:'#ff4444', purple:'#c847ff', green:'#47ff8c', pink:'#ff47a0', white:'#f0f0f0' };
+    var light = { yellow:'#5a6810', blue:'#0b5e94', orange:'#a8470a', red:'#b71c1c', purple:'#5b1690', green:'#15703a', pink:'#8b0045', white:'#333333' };
+    var isDark = (document.documentElement.getAttribute('data-theme') || 'dark') !== 'light';
+    var c = isDark ? (dark[saved] || '#e8ff47') : (light[saved] || '#5a6810');
+    document.documentElement.style.setProperty('--accent', c);
+  } catch(e) {}
 })();
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SECTION 1 — CONFETTIS & TOAST PR
+   triggerPRCelebration() appelé depuis planning.js
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 /* ============================================================
  * FUN FEATURES — fun-features.js
  * À inclure dans index.html juste avant </body>
@@ -1198,7 +1203,8 @@ function _showPRToast(movementName, value) {
   }, 2800);
 }
 
-// savePR confettis : intégré directement dans planning.js
+// Monkey-patch savePR pour déclencher les confettis automatiquement
+// (s'exécute après le chargement de planning.js)
 
 
 // ============================================================
@@ -1650,6 +1656,11 @@ function _injectAthleteCardButton() {
 // ============================================================
 
 
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SECTION 2 — BADGES ADMIN
+   loadAdminBadgesTab() appelé depuis admin.js
+   renderBadgesSection() appelé depuis core.js via _injectProfilExtras
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 /* ============================================================
  * BADGES.JS — Système de badges custom créés par les admins
  *
@@ -1668,7 +1679,6 @@ function _injectAthleteCardButton() {
  *   — Carte d'athlète mise à jour automatiquement
  * ============================================================ */
 
-'use strict';
 
 // ── Constantes ─────────────────────────────────────────────
 const RARITY_CONFIG = {
@@ -2364,48 +2374,43 @@ function _injectAdminBadgesTab() {
   adminPage.appendChild(panel);
 }
 
-// Hook adminTab pour charger les badges quand on clique sur l'onglet
-function _hookAdminTab() {
-  if (typeof adminTab !== 'function') return;
-  const _orig = adminTab;
-  window.adminTab = function (tab, btn) {
-    _orig.apply(this, arguments);
-    if (tab === 'badges') loadAdminBadgesTab();
-  };
-}
-
-// Hook goPage pour afficher les badges sur la page profil + vérifier les auto badges
-function _hookGoPage() {
-  if (typeof goPage !== 'function') return;
-  const _orig = goPage;
-  window.goPage = async function (page) {
-    await _orig.apply(this, arguments);
-    if (page === 'profil') {
-      renderBadgesSection();
-    }
-  };
-}
-
-// Hook submitScore pour re-vérifier les badges auto après chaque score
-function _hookSubmitScore() {
-  if (typeof submitScore !== 'function') return;
-  const _orig = submitScore;
-  window.submitScore = async function () {
-    await _orig.apply(this, arguments);
-    // Petite pause pour que Supabase traite le score avant qu'on requête
-    setTimeout(() => checkAutoBadges(), 1500);
-  };
-}
-
 // ── Init ───────────────────────────────────────────────────
 
 
-// ── Fonction centrale appelée par goPage('profil') via core.js ──
-function _injectProfilExtras(){
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   POINT D'ENTRÉE — appelé par core.js à chaque goPage('profil')
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function _injectProfilExtras() {
   _injectColorThemeButton();
   _injectAthleteCardButton();
   _injectBadgesSectionInProfil();
   renderBadgesSection();
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ONGLET BADGES ADMIN — injecté par core.js après login
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function _injectAdminBadgesTab() {
+  if (document.getElementById('admin-badges-tab-btn')) return;
+  const tabBar = document.querySelector('.admin-tabs');
+  if (!tabBar) return;
+  const btn = document.createElement('button');
+  btn.className = 'admin-tab-btn';
+  btn.id = 'admin-badges-tab-btn';
+  btn.textContent = '🏅 Badges';
+  btn.onclick = function() { adminTab('badges', this); };
+  tabBar.appendChild(btn);
+  const adminPage = document.getElementById('page-admin');
+  if (!adminPage) return;
+  const panel = document.createElement('div');
+  panel.className = 'admin-panel';
+  panel.id = 'admin-badges';
+  panel.innerHTML = '<div id="admin-badges-panel"><div class="spinner"></div></div>';
+  // Insérer après le dernier admin-panel existant
+  const panels = adminPage.querySelectorAll('.admin-panel');
+  const lastPanel = panels[panels.length - 1];
+  if (lastPanel) lastPanel.insertAdjacentElement('afterend', panel);
+  else adminPage.appendChild(panel);
 }
 </script>
 </body>
