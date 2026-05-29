@@ -213,7 +213,7 @@
       <button class="admin-tab-btn" onclick="adminTab('videos',this)">Vidéos</button>
       <button class="admin-tab-btn" onclick="adminTab('dashboard',this)">📊 Dashboard</button>
       <button class="admin-tab-btn" onclick="adminTab('perso',this)">👤 Espace perso</button>
-      <button class="admin-tab-btn" onclick="adminTab('broadcast',this)">📢 Diffusion</button>
+
     </div>
 
     <!-- PROGRAMMES -->
@@ -696,31 +696,6 @@
         </div>
         <button class="btn-primary" onclick="saveVideo()">Ajouter la vidéo</button>
       </div>
-    </div>
-    <!-- DIFFUSION PROGRAMMATION -->
-    <div class="admin-panel" id="admin-broadcast">
-      <div style="margin-bottom:16px">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px">Diffusion</div>
-        <div style="font-size:12px;color:var(--muted)">Génère un récapitulatif de la semaine à partager</div>
-      </div>
-
-      <!-- Filtres -->
-      <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <select class="form-select" id="bc-prog" style="flex:1;min-width:120px" onchange="bcRender()"></select>
-        <input type="week" class="form-input" id="bc-week" style="flex:1;min-width:130px" onchange="bcRender()">
-      </div>
-
-      <!-- Aperçu -->
-      <div id="bc-preview" style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px;min-height:80px">
-        <div style="color:var(--muted);font-size:13px;text-align:center;padding:20px 0">Sélectionne un programme et une semaine</div>
-      </div>
-
-      <!-- Boutons d'action -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <button class="btn-primary" style="flex:1" onclick="bcCopyText()">📋 Copier le texte</button>
-        <button class="btn-secondary" style="flex:1" onclick="bcDownloadImage()">🖼 Exporter image</button>
-      </div>
-      <div id="bc-toast" style="display:none;margin-top:10px;padding:10px 14px;background:var(--card2);border-radius:8px;font-size:13px;color:var(--accent);text-align:center;font-weight:600"></div>
     </div>
 
   </div>
