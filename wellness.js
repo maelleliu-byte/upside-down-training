@@ -94,6 +94,14 @@ async function loadPersoAthletes(){
 
   const {data}=await sb.from('profiles').select('*').order('full_name');
   persoAthletesCache=data||[];
+
+  // Charger les favoris depuis la table dédiée coach_favorites
+  const {data:favRows}=await sb.from('coach_favorites')
+    .select('athlete_id')
+    .eq('coach_id', currentUser.id);
+  const favSet=new Set((favRows||[]).map(r=>r.athlete_id));
+  persoAthletesCache.forEach(a=>{ a.coach_favorite=favSet.has(a.id); });
+
   // Compter + tracker la dernière date par athlète
   const {data:rows}=await sb.from('personal_sessions').select('athlete_id,date');
   personalSessionCounts={};
@@ -212,7 +220,17 @@ async function togglePersoFavorite(athleteId, ev){
   const next=!a.coach_favorite;
   a.coach_favorite=next;          // optimistic
   renderPersoAthletes();
-  const {error}=await sb.from('profiles').update({coach_favorite:next}).eq('id',athleteId);
+  let error;
+  if(next){
+    ({error}=await sb.from('coach_favorites').insert({
+      coach_id: currentUser.id,
+      athlete_id: athleteId
+    }));
+  } else {
+    ({error}=await sb.from('coach_favorites').delete()
+      .eq('coach_id', currentUser.id)
+      .eq('athlete_id', athleteId));
+  }
   if(error){
     a.coach_favorite=!next;       // rollback
     renderPersoAthletes();
@@ -884,15 +902,12 @@ async function renderPersoDayStrip(){
   const isos=dates.map(d=>d.toISOString().split('T')[0]);
   const {data}=await sb.from('personal_sessions').select('date').eq('athlete_id',currentUser.id).in('date',isos);
   const withContent=new Set((data||[]).map(s=>s.date));
-  const pillsHtml=dates.map(d=>{
+  document.getElementById('day-strip').innerHTML=dates.map(d=>{
     const iso=d.toISOString().split('T')[0];
     return `<div class="day-pill ${iso===selectedDate?'active':''} ${withContent.has(iso)?'has-content':''}" onclick="selectDate('${iso}')">
       <div class="day-name">${DAYS[d.getDay()]}</div><div class="day-num">${d.getDate()}</div>
     </div>`;
   }).join('');
-  document.getElementById('day-strip').innerHTML=pillsHtml+`<div class="day-pill day-pick-trigger" onclick="toggleDatePicker(event)" title="Choisir une date">
-    <div class="pick-cal">📅</div><div class="pick-arrow">▾</div>
-  </div>`;
 }
 
 async function renderPersoSessions(){
