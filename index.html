@@ -1369,16 +1369,19 @@ function renderBadgesOnProfil() {
 // Injection de la section badges dans la page profil (après profil-stats)
 function _injectBadgesSectionInProfil() {
   const profilPage = document.getElementById('page-profil');
-  if (!profilPage || document.getElementById('profil-badges-section')) return;
-
-  const statsDiv = profilPage.querySelector('.profil-stats');
-  if (!statsDiv) return;
-
-  const section = document.createElement('div');
-  section.id = 'profil-badges-section';
-  section.style.cssText = 'margin:0 20px 16px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:12px';
-  statsDiv.insertAdjacentElement('afterend', section);
-  renderBadgesOnProfil();
+  if (!profilPage) return;
+  // Recréer à chaque fois pour être sûr d'être à jour
+  let section = document.getElementById('profil-badges-section');
+  if (!section) {
+    const statsDiv = profilPage.querySelector('.profil-stats');
+    if (!statsDiv) return;
+    section = document.createElement('div');
+    section.id = 'profil-badges-section';
+    section.style.cssText = 'margin:0 20px 16px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:12px';
+    statsDiv.insertAdjacentElement('afterend', section);
+  }
+  // renderBadgesSection() lit depuis Supabase (pas localStorage)
+  renderBadgesSection();
 }
 
 // Hook sur goPage pour injecter au bon moment
@@ -1493,30 +1496,30 @@ async function openAthleteCard() {
   const existing = document.getElementById('athlete-card-modal');
   if (existing) { existing.remove(); return; }
 
-  // Collecter les données
-  const profile = window.currentProfile || {};
-  const name = profile.full_name || 'Athlète';
+  // Profil depuis Supabase (source fiable)
+  const { data: freshProfile } = await sb.from('profiles').select('*').eq('id', currentUser.id).single();
+  const profile = freshProfile || window.currentProfile || {};
+  const name = profile.full_name || currentProfile?.full_name || 'Athlète';
   const initials = name.split(' ').filter(Boolean).map(w => w[0]).join('').toUpperCase().slice(0, 2);
-  const avatarUrl = profile.avatar_url || null;
+  const avatarUrl = profile.avatar_url || currentProfile?.avatar_url || null;
 
   // Stats depuis Supabase
-  const [scores, prs, bench, access] = await Promise.all([
+  const [scores, prs, bench, access, myBadgesData] = await Promise.all([
     sb.from('wod_scores').select('id,level', { count: 'exact' }).eq('athlete_id', currentUser.id),
     sb.from('athlete_prs').select('id', { count: 'exact' }).eq('athlete_id', currentUser.id),
     sb.from('benchmark_scores').select('id', { count: 'exact' }).eq('athlete_id', currentUser.id),
     sb.from('programme_access').select('programme_id').eq('athlete_id', currentUser.id),
+    sb.from('athlete_badges').select('badge_id, badges(*)').eq('athlete_id', currentUser.id),
   ]);
 
   const wodCount = scores.count || 0;
   const prCount = prs.count || 0;
   const benchCount = bench.count || 0;
-  const progCount = (access.data || []).length;
   const rxCount = (scores.data || []).filter(s => s.level === 'rx').length;
   const rxPct = wodCount > 0 ? Math.round((rxCount / wodCount) * 100) : 0;
 
-  // Badges débloqués
-  const badgeStorage = _getBadgeStorage();
-  const unlockedBadges = BADGE_DEFINITIONS.filter(b => badgeStorage[b.id]);
+  // Badges depuis Supabase
+  const unlockedBadges = (myBadgesData.data || []).map(ab => ab.badges).filter(Boolean);
 
   // Programmes actifs
   const myProgs = (window.programmes || []).filter(p => {
@@ -1956,19 +1959,12 @@ function _launchColoredConfetti(color) {
 
 // ── Affichage profil athlète ──────────────────────────────
 async function renderBadgesSection() {
-  let container = document.getElementById('profil-badges-section');
-  if (!container) {
-    const profilPage = document.getElementById('page-profil');
-    if (!profilPage) return;
-    const statsDiv = profilPage.querySelector('.profil-stats');
-    if (!statsDiv) return;
-    container = document.createElement('div');
-    container.id = 'profil-badges-section';
-    container.style.cssText = 'margin:0 20px 16px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:12px';
-    statsDiv.insertAdjacentElement('afterend', container);
-  }
+  const container = document.getElementById('profil-badges-section');
+  if (!container) return;
 
-  const [allBadges, myBadges] = await Promise.all([loadAllBadges(), loadMyBadges(true)]);
+  container.innerHTML = '<div class="spinner"></div>';
+
+  const [allBadges, myBadges] = await Promise.all([loadAllBadges(true), loadMyBadges(true)]);
   const myBadgeIds = new Set(myBadges.map(ab => ab.badge_id));
   const unlocked = allBadges.filter(b => myBadgeIds.has(b.id));
   const locked   = allBadges.filter(b => !myBadgeIds.has(b.id));
@@ -1995,6 +1991,8 @@ async function renderBadgesSection() {
 
 // ── ADMIN : onglet badges ──────────────────────────────────
 async function loadAdminBadgesTab() {
+  // S'assurer que l'onglet et le panel existent
+  _injectAdminBadgesTab();
   const panel = document.getElementById('admin-badges-panel');
   if (!panel) return;
 
@@ -2358,7 +2356,9 @@ function _injectProfilExtras() {
   _injectColorThemeButton();
   _injectAthleteCardButton();
   _injectBadgesSectionInProfil();
-  renderBadgesSection();
+  // renderBadgesSection est déjà appelé dans _injectBadgesSectionInProfil
+  // Vérifier les badges non vus
+  if (typeof _showUnseenBadges === 'function') _showUnseenBadges();
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
