@@ -2034,11 +2034,31 @@ async function loadAdminBadgesTab() {
   _injectAdminBadgesTab();
   const panel = document.getElementById('admin-badges-panel');
   if (!panel) return;
+  panel.innerHTML = '<div class="spinner"></div>';
 
-  const [allBadges, allAthletes] = await Promise.all([
+  const [allBadges, allAthletes, attributionsRaw] = await Promise.all([
     loadAllBadges(true),
     sb.from('profiles').select('id,full_name,avatar_url').order('full_name'),
+    sb.from('athlete_badges')
+      .select('badge_id, athlete_id, coach_note, awarded_at, profiles(full_name)')
+      .order('awarded_at', { ascending: false }),
   ]);
+
+  // Index badge_id → liste athlètes
+  // Construire un map athlete_id → nom depuis allAthletes (fallback si join profiles échoue)
+  const athleteMap = {};
+  for (const a of (allAthletes.data || [])) athleteMap[a.id] = a.full_name;
+
+  const allAttributions = {};
+  for (const row of (attributionsRaw.data || [])) {
+    if (!allAttributions[row.badge_id]) allAttributions[row.badge_id] = [];
+    allAttributions[row.badge_id].push({
+      athlete_id: row.athlete_id,
+      full_name:  row.profiles?.full_name || athleteMap[row.athlete_id] || 'Athlète',
+      coach_note: row.coach_note,
+      awarded_at: row.awarded_at,
+    });
+  }
 
   panel.innerHTML = `
     <!-- Formulaire création badge -->
@@ -2170,6 +2190,16 @@ async function createBadge() {
   document.getElementById('nb-desc').value = '';
   document.getElementById('nb-emoji').value = '🏅';
   await loadAdminBadgesTab();
+}
+
+async function revokeAthlBadge(badgeId, badgeName, athleteId, athleteName) {
+  if (!confirm('Retirer le badge "' + badgeName + '" à ' + athleteName + ' ?')) return;
+  const { error } = await sb.from('athlete_badges')
+    .delete().eq('badge_id', badgeId).eq('athlete_id', athleteId);
+  if (error) { showToast('❌ ' + error.message); return; }
+  showToast('🗑️ Badge retiré à ' + athleteName);
+  _myBadgesCache = null;
+  loadAdminBadgesTab();
 }
 
 async function deleteBadge(id, name) {
