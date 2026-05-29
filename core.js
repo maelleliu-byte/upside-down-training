@@ -198,6 +198,7 @@ async function initApp(){
   if(typeof _injectAdminBadgesTab==='function')setTimeout(_injectAdminBadgesTab,400);
   if(typeof checkAutoBadges==='function')setTimeout(checkAutoBadges,2000);
   if(typeof _showUnseenBadges==='function')setTimeout(_showUnseenBadges,2200);
+  if(typeof _startBadgeRealtime==='function')setTimeout(_startBadgeRealtime,1000);
 }
 
 // NAVIGATION

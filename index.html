@@ -1679,13 +1679,14 @@ let _myBadgesCache = null;
 
 // ── Helpers ────────────────────────────────────────────────
 function _rarityBadgeHtml(rarity) {
-  const r = RARITY_CONFIG[rarity] || RARITY_CONFIG.bronze;
+  const r = RARITY_CONFIG[(rarity||'bronze').trim().toLowerCase()] || RARITY_CONFIG.bronze;
   const stars = '★'.repeat(r.stars) + '☆'.repeat(4 - r.stars);
   return `<span style="font-size:10px;font-weight:700;color:${r.color};letter-spacing:1px">${stars} ${r.label.toUpperCase()}</span>`;
 }
 
 function _badgeCardHtml(badge, opts = {}) {
-  const r = RARITY_CONFIG[badge.rarity] || RARITY_CONFIG.bronze;
+  const rarityKey = (badge.rarity || 'bronze').trim().toLowerCase();
+  const r = RARITY_CONFIG[rarityKey] || RARITY_CONFIG.bronze;
   const { compact = false, showActions = false, owned = false } = opts;
   const opacity = owned ? '1' : '0.35';
   const filter  = owned ? 'none' : 'grayscale(1)';
@@ -1825,6 +1826,46 @@ async function checkAutoBadges() {
   await _showUnseenBadges();
 }
 
+// ── Dot de notification sur le bouton Profil ──────────────────
+function _showBadgeNavDot(count) {
+  // Retirer l'existant
+  document.getElementById('badge-nav-dot')?.remove();
+  if (!count || count <= 0) return;
+
+  const profilBtn = document.querySelector('[data-page="profil"]');
+  if (!profilBtn) return;
+
+  // S'assurer que le bouton est en position relative
+  profilBtn.style.position = 'relative';
+
+  const dot = document.createElement('div');
+  dot.id = 'badge-nav-dot';
+  dot.textContent = count > 9 ? '9+' : String(count);
+  dot.style.cssText = `
+    position:absolute;top:4px;right:10px;
+    min-width:16px;height:16px;padding:0 4px;
+    background:var(--red);color:#fff;
+    border-radius:8px;font-size:10px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+    pointer-events:none;z-index:10;
+    animation:badgeDotPop 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  `;
+
+  // Injecter keyframe si pas encore là
+  if (!document.getElementById('badge-dot-style')) {
+    const s = document.createElement('style');
+    s.id = 'badge-dot-style';
+    s.textContent = '@keyframes badgeDotPop{0%{transform:scale(0)}70%{transform:scale(1.3)}100%{transform:scale(1)}}';
+    document.head.appendChild(s);
+  }
+
+  profilBtn.appendChild(dot);
+}
+
+function _hideBadgeNavDot() {
+  document.getElementById('badge-nav-dot')?.remove();
+}
+
 async function _showUnseenBadges() {
   if (!window.currentUser) return;
   const { data } = await sb.from('athlete_badges')
@@ -1834,17 +1875,23 @@ async function _showUnseenBadges() {
 
   if (!data || !data.length) return;
 
+  // Afficher le point rouge sur l'icône Profil
+  _showBadgeNavDot(data.length);
+
+  // Lancer les célébrations avec délai entre chaque
   for (let i = 0; i < data.length; i++) {
     setTimeout(() => _celebrateBadge(data[i]), i * 3800);
   }
 
-  // Marquer tous comme vus
-  await sb.from('athlete_badges')
-    .update({ seen: true })
-    .eq('athlete_id', currentUser.id)
-    .eq('seen', false);
-
-  _myBadgesCache = null;
+  // Marquer tous comme vus après la dernière célébration
+  setTimeout(async () => {
+    await sb.from('athlete_badges')
+      .update({ seen: true })
+      .eq('athlete_id', currentUser.id)
+      .eq('seen', false);
+    _myBadgesCache = null;
+    _hideBadgeNavDot();
+  }, data.length * 3800 + 500);
 }
 
 // ── Célébration badge ──────────────────────────────────────
@@ -1964,28 +2011,43 @@ async function renderBadgesSection() {
 
   container.innerHTML = '<div class="spinner"></div>';
 
-  const [allBadges, myBadges] = await Promise.all([loadAllBadges(true), loadMyBadges(true)]);
-  const myBadgeIds = new Set(myBadges.map(ab => ab.badge_id));
+  // Requêtes indépendantes avec logs pour déboguer
+  const allBadges = await loadAllBadges(true);
+
+  // Requête directe athlete_badges sans join pour éviter les problèmes RLS
+  const { data: myRaw, error: myErr } = await sb
+    .from('athlete_badges')
+    .select('badge_id, coach_note, awarded_at')
+    .eq('athlete_id', currentUser.id);
+
+  if (myErr) console.error('[Badges] athlete_badges error:', myErr);
+
+  const myBadgeIds = new Set((myRaw || []).map(ab => ab.badge_id));
   const unlocked = allBadges.filter(b => myBadgeIds.has(b.id));
   const locked   = allBadges.filter(b => !myBadgeIds.has(b.id));
   const total    = allBadges.length;
+
+  console.log('[Badges] allBadges:', allBadges.length, 'myRaw:', (myRaw||[]).length, 'myBadgeIds:', [...myBadgeIds], 'unlocked:', unlocked.length);
 
   if (total === 0) {
     container.innerHTML = `<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">Aucun badge créé par le coach pour l'instant.</div>`;
     return;
   }
 
+  const RARITY_ORDER = { legendary: 0, gold: 1, silver: 2, bronze: 3 };
+
   container.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase">
-        Badges
-      </div>
+      <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase">Badges</div>
       <div style="font-size:12px;font-weight:700;color:var(--accent)">${unlocked.length} / ${total}</div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px">
-      ${[...unlocked, ...locked].map(b => _badgeCardHtml(b, { compact: true, owned: myBadgeIds.has(b.id) })).join('')}
+      ${[
+        ...unlocked.sort((a,b) => (RARITY_ORDER[a.rarity]||3) - (RARITY_ORDER[b.rarity]||3)),
+        ...locked.sort((a,b)   => (RARITY_ORDER[a.rarity]||3) - (RARITY_ORDER[b.rarity]||3))
+      ].map(b => _badgeCardHtml(b, { compact: true, owned: myBadgeIds.has(b.id) })).join('')}
     </div>
-    ${unlocked.length === 0 ? `<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px 0">Aucun badge obtenu pour l'instant — continue !</div>` : ''}
+    ${unlocked.length === 0 ? `<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px 0">Continue — tes badges arrivent !</div>` : ''}
   `;
 }
 
@@ -2350,15 +2412,66 @@ function _injectAdminBadgesTab() {
 
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   REALTIME — écoute les nouveaux badges en temps réel
+   Déclenché dès le login via initApp() dans core.js
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+let _badgeRealtimeChannel = null;
+
+function _startBadgeRealtime() {
+  if (!window.currentUser) return;
+  if (_badgeRealtimeChannel) {
+    try { sb.removeChannel(_badgeRealtimeChannel); } catch(e) {}
+    _badgeRealtimeChannel = null;
+  }
+
+  _badgeRealtimeChannel = sb
+    .channel('badge-notif-' + currentUser.id)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'athlete_badges',
+        filter: 'athlete_id=eq.' + currentUser.id,
+      },
+      async (payload) => {
+        const newRow = payload.new;
+        if (!newRow || !newRow.badge_id) return;
+
+        // Récupérer les détails du badge
+        const { data: badgeData } = await sb
+          .from('badges').select('*').eq('id', newRow.badge_id).single();
+        if (!badgeData) return;
+
+        // Lancer la célébration avec la note du coach
+        _celebrateBadge({ ...newRow, badges: badgeData });
+
+        // Marquer comme vu après la célébration (3.8s)
+        setTimeout(async () => {
+          await sb.from('athlete_badges').update({ seen: true }).eq('id', newRow.id);
+          _myBadgesCache = null;
+          // Rafraîchir si la page Profil est ouverte
+          const pg = document.getElementById('page-profil');
+          if (pg && pg.classList.contains('active')) {
+            renderBadgesSection();
+          }
+        }, 4000);
+      }
+    )
+    .subscribe();
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    POINT D'ENTRÉE — appelé par core.js à chaque goPage('profil')
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 function _injectProfilExtras() {
   _injectColorThemeButton();
   _injectAthleteCardButton();
   _injectBadgesSectionInProfil();
-  // renderBadgesSection est déjà appelé dans _injectBadgesSectionInProfil
-  // Vérifier les badges non vus
-  if (typeof _showUnseenBadges === 'function') _showUnseenBadges();
+  // Masquer le point rouge quand on ouvre le profil
+  _hideBadgeNavDot();
+  // Vérifier les badges non vus → célébration si nécessaire
+  _showUnseenBadges();
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
