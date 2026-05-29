@@ -5,16 +5,100 @@ function hasAccess(prog){
   return myAccessIds.has(prog.id)||myAccess.has(prog.slug);
 }
 
+// ── DIFFUSION — aperçu semaine pour les non-abonnés ───────
+const SESSION_TYPE_LABELS={
+  wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymnastics:'Gymnastics',
+  renforcement:'Renforcement',bodybuilding:'Bodybuilding',skill:'Skill',
+  warmup:'Échauffement',mobility:'Mobilité',engine:'Engine',run:'Run'
+};
+const SESSION_TYPE_ICONS={
+  wod:'🔥',strength:'🏋️',weightlifting:'⚡',gymnastics:'🤸',
+  renforcement:'💪',bodybuilding:'💎',skill:'🎯',
+  warmup:'🌀',mobility:'🧘',engine:'🚀',run:'🏃'
+};
+
+async function renderProgramWeekBroadcast(prog, area) {
+  // Charger les séances de la semaine courante (sans contenu — juste titre et type)
+  const today = new Date();
+  const dow = today.getDay();
+  const mon = new Date(today);
+  mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+  const sun = new Date(mon);
+  sun.setDate(mon.getDate() + 6);
+  const toIso = d => d.toISOString().split('T')[0];
+
+  const { data: sessions } = await sb.from('sessions')
+    .select('date,title,type,color')
+    .eq('programme_id', prog.id)
+    .neq('type', 'separator')
+    .gte('date', toIso(mon))
+    .lte('date', toIso(sun))
+    .order('date').order('sort_order', { ascending: true, nullsFirst: false });
+
+  // Regrouper par jour
+  const byDate = {};
+  const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(mon);
+    d.setDate(mon.getDate() + i);
+    byDate[toIso(d)] = { label: DAY_NAMES[i], sessions: [] };
+  }
+  for (const s of (sessions || [])) {
+    if (byDate[s.date]) byDate[s.date].sessions.push(s);
+  }
+
+  const hasAny = (sessions || []).length > 0;
+  const todayIso = toIso(today);
+
+  const daysHtml = Object.entries(byDate).map(([iso, day]) => {
+    const isToday = iso === todayIso;
+    const hasSessions = day.sessions.length > 0;
+    const isPast = iso < todayIso;
+    return `<div style="
+      flex:0 0 auto;min-width:72px;border-radius:12px;padding:8px 6px 10px;text-align:center;
+      background:${isToday ? 'rgba(232,255,71,0.08)' : 'var(--card2)'};
+      border:1.5px solid ${isToday ? 'var(--accent)' : 'var(--border)'};
+      opacity:${isPast && !isToday ? '0.6' : '1'};
+    ">
+      <div style="font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:${isToday ? 'var(--accent)' : 'var(--muted)'};">${day.label}</div>
+      <div style="font-size:10px;color:var(--muted);margin-bottom:6px">${new Date(iso + 'T12:00:00').getDate()}</div>
+      ${hasSessions
+        ? day.sessions.map(s => `
+          <div style="
+            padding:4px 3px;margin-bottom:3px;border-radius:6px;
+            background:${s.color ? s.color + '22' : 'rgba(232,255,71,0.08)'};
+            border:1px solid ${s.color ? s.color + '44' : 'rgba(232,255,71,0.2)'};
+          ">
+            <div style="font-size:14px;line-height:1">${SESSION_TYPE_ICONS[s.type] || '📋'}</div>
+            <div style="font-size:8px;font-weight:700;color:var(--text2);line-height:1.2;margin-top:2px">${SESSION_TYPE_LABELS[s.type] || s.type || ''}</div>
+          </div>`).join('')
+        : `<div style="font-size:18px;opacity:0.25;margin-top:4px">—</div>`
+      }
+    </div>`;
+  }).join('');
+
+  area.innerHTML = `<div class="locked-screen">
+    <div class="locked-icon">🔒</div>
+    <div class="locked-title">${prog.name}</div>
+    <div class="locked-desc">Abonne-toi pour accéder à la programmation complète et voir le détail de chaque séance.</div>
+
+    ${hasAny ? `
+    <div style="width:100%;margin-bottom:16px">
+      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px;text-align:center">Aperçu · Cette semaine</div>
+      <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:4px;-ms-overflow-style:none;scrollbar-width:none">
+        ${daysHtml}
+      </div>
+    </div>` : ''}
+
+    <button class="btn-unlock" onclick="goPage('abos')">Voir les abonnements</button>
+  </div>`;
+}
+
 async function renderSessions(){
   if(!currentProg)return;
   const area=document.getElementById('sessions-area');
   if(!hasAccess(currentProg)){
-    area.innerHTML=`<div class="locked-screen">
-      <div class="locked-icon">🔒</div>
-      <div class="locked-title">${currentProg.name}</div>
-      <div class="locked-desc">Abonne-toi pour accéder à ce programme et voir la programmation complète.</div>
-      <button class="btn-unlock" onclick="goPage('abos')">Voir les abonnements</button>
-    </div>`;
+    await renderProgramWeekBroadcast(currentProg, area);
     return;
   }
 
