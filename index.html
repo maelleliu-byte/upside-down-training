@@ -1692,16 +1692,14 @@ function _badgeCardHtml(badge, opts = {}) {
   const filter  = owned ? 'none' : 'grayscale(1)';
 
   if (compact) {
-    const badgeJson = JSON.stringify(badge).replace(/'/g, "\\'").replace(/"/g, '&quot;');
-    return `<div title="${badge.name}" onclick="showBadgeDetail('${badge.id}',${owned})" style="
+    return `<div title="${badge.name} — ${badge.description || ''}\n${r.label}" style="
       display:flex;flex-direction:column;align-items:center;gap:4px;
-      padding:10px 6px;border-radius:14px;cursor:pointer;
+      padding:10px 6px;border-radius:14px;cursor:default;
       background:${owned ? `rgba(${_hexToRgb(r.color)},0.08)` : 'var(--card2)'};
       border:1px solid ${owned ? r.color + '55' : 'var(--border)'};
       opacity:${opacity};filter:${filter};transition:all 0.2s;
       min-width:64px;flex:0 0 auto;
-      -webkit-tap-highlight-color:transparent;
-    " onmouseenter="this.style.transform='scale(1.08)'" onmouseleave="this.style.transform=''">
+    ">
       <span style="font-size:28px;line-height:1">${badge.emoji}</span>
       <span style="font-size:9px;font-weight:700;text-align:center;line-height:1.3;color:var(--text2);max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${badge.name}</span>
       <span style="font-size:9px;color:${r.color}">${'★'.repeat(r.stars)}</span>
@@ -1869,31 +1867,8 @@ function _hideBadgeNavDot() {
 }
 
 async function _showUnseenBadges() {
-  if (!window.currentUser) return;
-  const { data } = await sb.from('athlete_badges')
-    .select('*, badges(*)')
-    .eq('athlete_id', currentUser.id)
-    .eq('seen', false);
-
-  if (!data || !data.length) return;
-
-  // Afficher le point rouge sur l'icône Profil
-  _showBadgeNavDot(data.length);
-
-  // Lancer les célébrations avec délai entre chaque
-  for (let i = 0; i < data.length; i++) {
-    setTimeout(() => _celebrateBadge(data[i]), i * 3800);
-  }
-
-  // Marquer tous comme vus après la dernière célébration
-  setTimeout(async () => {
-    await sb.from('athlete_badges')
-      .update({ seen: true })
-      .eq('athlete_id', currentUser.id)
-      .eq('seen', false);
-    _myBadgesCache = null;
-    _hideBadgeNavDot();
-  }, data.length * 3800 + 500);
+  // Déléguer au polling pour éviter les doublons
+  await _pollUnseenBadges();
 }
 
 // ── Célébration badge ──────────────────────────────────────
@@ -2051,126 +2026,6 @@ async function renderBadgesSection() {
     </div>
     ${unlocked.length === 0 ? `<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px 0">Continue — tes badges arrivent !</div>` : ''}
   `;
-}
-
-// ── Détail badge au clic depuis le profil ──────────────────
-async function showBadgeDetail(badgeId, owned) {
-  const existing = document.getElementById('badge-detail-modal');
-  if (existing) existing.remove();
-
-  // Charger le badge depuis le cache ou Supabase
-  const allBadges = await loadAllBadges();
-  const badge = allBadges.find(b => b.id === badgeId);
-  if (!badge) return;
-
-  const r = RARITY_CONFIG[(badge.rarity || 'bronze').trim().toLowerCase()] || RARITY_CONFIG.bronze;
-
-  // Si possédé, charger la date et la note coach
-  let awardedAt = null;
-  let coachNote = null;
-  if (owned && currentUser) {
-    const { data } = await sb.from('athlete_badges')
-      .select('awarded_at, coach_note')
-      .eq('athlete_id', currentUser.id)
-      .eq('badge_id', badgeId)
-      .maybeSingle();
-    if (data) {
-      awardedAt = data.awarded_at;
-      coachNote = data.coach_note;
-    }
-  }
-
-  const dateStr = awardedAt
-    ? new Date(awardedAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
-    : null;
-
-  const triggerInfo = badge.award_type === 'auto' && badge.auto_trigger
-    ? `<div style="margin-top:8px;padding:8px 10px;background:rgba(255,255,255,0.05);border-radius:8px;font-size:11px;color:var(--muted)">
-        ⚡ Débloqué automatiquement · ${badge.auto_threshold} ${AUTO_TRIGGERS[badge.auto_trigger]?.unit || ''}
-       </div>`
-    : `<div style="margin-top:8px;font-size:11px;color:var(--muted)">🎖️ Attribué manuellement par le coach</div>`;
-
-  const modal = document.createElement('div');
-  modal.id = 'badge-detail-modal';
-  modal.style.cssText = `
-    position:fixed;inset:0;z-index:9000;background:rgba(0,0,0,0.78);
-    display:flex;align-items:flex-end;justify-content:center;
-    padding:0 0 24px;backdrop-filter:blur(4px);
-  `;
-  modal.innerHTML = `
-    <div style="
-      background:var(--card2);border-radius:24px 24px 20px 20px;
-      border:1.5px solid ${r.color}55;
-      box-shadow:0 0 40px ${r.glow},0 -4px 40px rgba(0,0,0,0.5);
-      padding:28px 24px 20px;text-align:center;
-      max-width:360px;width:calc(100% - 32px);
-      animation:badgeDetailUp 0.32s cubic-bezier(0.34,1.56,0.64,1);
-    ">
-      <!-- Indicateur de glissement -->
-      <div style="width:32px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px"></div>
-
-      <!-- Emoji + glow -->
-      <div style="
-        font-size:64px;line-height:1;margin-bottom:12px;
-        display:inline-block;
-        filter:drop-shadow(0 0 18px ${r.glow});
-        animation:badgePop 0.5s cubic-bezier(0.34,1.56,0.64,1);
-      ">${owned ? badge.emoji : '🔒'}</div>
-
-      <!-- Rareté -->
-      <div style="margin-bottom:6px">${_rarityBadgeHtml(badge.rarity)}</div>
-
-      <!-- Nom -->
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--text);margin-bottom:4px">${badge.name}</div>
-
-      <!-- Description -->
-      ${badge.description ? `<div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:4px">${badge.description}</div>` : ''}
-
-      <!-- Trigger info -->
-      ${triggerInfo}
-
-      <!-- Statut -->
-      ${owned
-        ? `<div style="margin-top:12px;padding:10px 14px;background:rgba(${_hexToRgb(r.color)},0.1);border:1px solid ${r.color}55;border-radius:12px">
-            <div style="font-size:11px;font-weight:700;color:${r.color};letter-spacing:1px;text-transform:uppercase">✓ Débloqué</div>
-            ${dateStr ? `<div style="font-size:11px;color:var(--muted);margin-top:3px">Le ${dateStr}</div>` : ''}
-          </div>`
-        : `<div style="margin-top:12px;padding:10px 14px;background:var(--card);border:1px solid var(--border);border-radius:12px">
-            <div style="font-size:11px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase">🔒 Non débloqué</div>
-            <div style="font-size:11px;color:var(--muted);margin-top:3px">Continue tes efforts !</div>
-          </div>`
-      }
-
-      <!-- Note du coach -->
-      ${coachNote ? `
-        <div style="margin-top:10px;padding:10px 12px;background:rgba(232,255,71,0.06);border-left:2px solid var(--accent);border-radius:0 10px 10px 0;text-align:left">
-          <div style="font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--muted);margin-bottom:3px">MESSAGE DU COACH</div>
-          <div style="font-size:12px;color:var(--text2);line-height:1.5">${coachNote}</div>
-        </div>
-      ` : ''}
-
-      <!-- Bouton fermer -->
-      <button onclick="document.getElementById('badge-detail-modal').remove()" style="
-        width:100%;margin-top:16px;padding:13px;
-        background:${owned ? r.color : 'var(--card)'};
-        color:${owned ? (badge.rarity === 'silver' || badge.rarity === 'legendary' ? '#000' : '#000') : 'var(--text2)'};
-        border:${owned ? 'none' : '1px solid var(--border)'};
-        border-radius:14px;font-family:'DM Sans',sans-serif;
-        font-size:14px;font-weight:700;cursor:pointer;
-      ">Fermer</button>
-    </div>
-  `;
-
-  // Keyframe slide up
-  if (!document.getElementById('badge-detail-style')) {
-    const s = document.createElement('style');
-    s.id = 'badge-detail-style';
-    s.textContent = '@keyframes badgeDetailUp{0%{transform:translateY(100%);opacity:0}100%{transform:translateY(0);opacity:1}}';
-    document.head.appendChild(s);
-  }
-
-  modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
-  document.body.appendChild(modal);
 }
 
 // ── ADMIN : onglet badges ──────────────────────────────────
@@ -2539,48 +2394,63 @@ function _injectAdminBadgesTab() {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 let _badgeRealtimeChannel = null;
 
+let _badgePollingInterval = null;
+
 function _startBadgeRealtime() {
   if (!window.currentUser) return;
-  if (_badgeRealtimeChannel) {
-    try { sb.removeChannel(_badgeRealtimeChannel); } catch(e) {}
-    _badgeRealtimeChannel = null;
+
+  // Arrêter le polling précédent si actif
+  if (_badgePollingInterval) {
+    clearInterval(_badgePollingInterval);
+    _badgePollingInterval = null;
   }
 
-  _badgeRealtimeChannel = sb
-    .channel('badge-notif-' + currentUser.id)
-    .on(
-      'postgres_changes',
-      {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'athlete_badges',
-        filter: 'athlete_id=eq.' + currentUser.id,
-      },
-      async (payload) => {
-        const newRow = payload.new;
-        if (!newRow || !newRow.badge_id) return;
+  // Polling toutes les 20 secondes
+  // Simple, fiable avec RLS, pas de dépendance Realtime
+  _badgePollingInterval = setInterval(_pollUnseenBadges, 20000);
+}
 
-        // Récupérer les détails du badge
-        const { data: badgeData } = await sb
-          .from('badges').select('*').eq('id', newRow.badge_id).single();
-        if (!badgeData) return;
+let _isBadgePolling = false; // anti-doublon
 
-        // Lancer la célébration avec la note du coach
-        _celebrateBadge({ ...newRow, badges: badgeData });
+async function _pollUnseenBadges() {
+  if (!window.currentUser || _isBadgePolling) return;
+  _isBadgePolling = true;
 
-        // Marquer comme vu après la célébration (3.8s)
-        setTimeout(async () => {
-          await sb.from('athlete_badges').update({ seen: true }).eq('id', newRow.id);
-          _myBadgesCache = null;
-          // Rafraîchir si la page Profil est ouverte
-          const pg = document.getElementById('page-profil');
-          if (pg && pg.classList.contains('active')) {
-            renderBadgesSection();
-          }
-        }, 4000);
+  try {
+    const { data } = await sb
+      .from('athlete_badges')
+      .select('id, badge_id, coach_note, awarded_at, badges(*)')
+      .eq('athlete_id', currentUser.id)
+      .eq('seen', false);
+
+    if (!data || !data.length) return;
+
+    // Afficher le point rouge sur la nav
+    _showBadgeNavDot(data.length);
+
+    // Lancer les célébrations en séquence
+    for (let i = 0; i < data.length; i++) {
+      setTimeout(() => _celebrateBadge(data[i]), i * 3800);
+    }
+
+    // Marquer comme vus après la dernière célébration
+    const ids = data.map(ab => ab.id);
+    setTimeout(async () => {
+      for (const id of ids) {
+        await sb.from('athlete_badges').update({ seen: true }).eq('id', id);
       }
-    )
-    .subscribe();
+      _myBadgesCache = null;
+      _hideBadgeNavDot();
+      // Rafraîchir si profil ouvert
+      const pg = document.getElementById('page-profil');
+      if (pg && pg.classList.contains('active')) renderBadgesSection();
+    }, data.length * 3800 + 500);
+
+  } catch(e) {
+    console.error('[Badges polling]', e);
+  } finally {
+    _isBadgePolling = false;
+  }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
