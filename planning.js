@@ -427,6 +427,7 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     }
   }
   showToast('✅ Score enregistré !');
+  if(typeof checkAutoBadges==='function')setTimeout(checkAutoBadges,1500);
   if(currentScoresSession?.sessionId===sessionId){
     await renderScoresModal(sessionId,scoreType,sets);
   }
@@ -1204,9 +1205,26 @@ async function savePR(){
     editingPRId=null;
     document.querySelector('.btn-modal-save').textContent='Enregistrer';
   } else {
+    // Lire le meilleur PR AVANT insertion pour détecter un nouveau record
+    const _movId=currentModalMovement.id;
+    const _oldBest=(myPRs[_movId]||[]).reduce((m,p)=>Math.max(m,p.value),-Infinity);
     const {error}=await sb.from('athlete_prs').insert({athlete_id:currentUser.id,movement_id:currentModalMovement.id,value:val,recorded_at:date,format:format||null,note});
     if(error){showToast('❌ '+error.message);return;}
     showToast('🏆 PR enregistré !');
+    // Confettis si nouveau record absolu
+    await loadMyPRs();
+    const _newBest=(myPRs[_movId]||[]).reduce((m,p)=>Math.max(m,p.value),-Infinity);
+    if(_newBest>_oldBest&&typeof triggerPRCelebration==='function'){
+      let _disp=String(_newBest);
+      try{const _fmt=document.querySelector('.pr-format-btn.active')?.dataset?.fmt||null;const _mode=getPRModeFor(currentModalMovement,_fmt);_disp=_mode==='number'?_newBest+'':formatPRValue(_newBest,_mode);}catch(e){}
+      triggerPRCelebration(currentModalMovement.name,_disp);
+    }
+    // Vérifier badges auto
+    if(typeof checkAutoBadges==='function')setTimeout(checkAutoBadges,1500);
+    renderPRInputArea();
+    if(noteEl)noteEl.value='';
+    renderPRHistory(currentModalMovement.id);
+    return;
   }
   if(noteEl)noteEl.value='';
   renderPRInputArea();

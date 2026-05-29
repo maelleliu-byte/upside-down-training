@@ -1069,12 +1069,25 @@ function _loadScript(src) {
     <button class="btn-modal-cancel" onclick="closeWodCalendar()">Fermer</button>
   </div>
 </div>
-
 <!-- ============================================================
-     FUN FEATURES — confettis PR, thèmes couleur, carte athlète
-     Intégré directement dans index.html
+     FUN FEATURES — confettis PR · thèmes couleur · carte athlète · badges
+     Fonctions appelées directement depuis core.js / planning.js / admin.js
      ============================================================ -->
 <script>
+// ── INIT COULEUR (appelé dès le chargement) ──────────────────
+(function(){
+  try{
+    const saved=localStorage.getItem('upside-color-theme');
+    if(saved){
+      const themes={yellow:'#e8ff47',blue:'#47c8ff',orange:'#ff8c47',red:'#ff4444',purple:'#c847ff',green:'#47ff8c',pink:'#ff47a0',white:'#f0f0f0'};
+      const lightThemes={yellow:'#5a6810',blue:'#0b5e94',orange:'#a8470a',red:'#b71c1c',purple:'#5b1690',green:'#15703a',pink:'#8b0045',white:'#333333'};
+      const isDark=(document.documentElement.getAttribute('data-theme')||'dark')!=='light';
+      const c=isDark?(themes[saved]||'#e8ff47'):(lightThemes[saved]||'#5a6810');
+      document.documentElement.style.setProperty('--accent',c);
+    }
+  }catch(e){}
+})();
+
 /* ============================================================
  * FUN FEATURES — fun-features.js
  * À inclure dans index.html juste avant </body>
@@ -1185,39 +1198,7 @@ function _showPRToast(movementName, value) {
   }, 2800);
 }
 
-// Monkey-patch savePR pour déclencher les confettis automatiquement
-// (s'exécute après le chargement de planning.js)
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    if (typeof savePR === 'function') {
-      const _originalSavePR = savePR;
-      window.savePR = async function () {
-        // Lire la valeur AVANT la sauvegarde pour comparer
-        const movId = window.currentModalMovement?.id;
-        const movName = window.currentModalMovement?.name || '';
-        const oldPRs = (window.myPRs && movId) ? (window.myPRs[movId] || []) : [];
-        const oldBest = oldPRs.length > 0 ? Math.max(...oldPRs.map(p => p.value)) : null;
-
-        await _originalSavePR.apply(this, arguments);
-
-        // Après sauvegarde, comparer
-        const newPRs = (window.myPRs && movId) ? (window.myPRs[movId] || []) : [];
-        const newBest = newPRs.length > 0 ? Math.max(...newPRs.map(p => p.value)) : null;
-
-        if (newBest !== null && (oldBest === null || newBest > oldBest)) {
-          // Formatage de la valeur affichée
-          let displayVal = String(newBest);
-          if (typeof formatPRValue === 'function' && typeof getPRModeFor === 'function' && window.currentModalMovement) {
-            const fmt = document.querySelector('.pr-format-btn.active')?.dataset?.fmt || null;
-            const mode = getPRModeFor(window.currentModalMovement, fmt);
-            displayVal = mode === 'number' ? newBest + '' : formatPRValue(newBest, mode);
-          }
-          triggerPRCelebration(movName, displayVal);
-        }
-      };
-    }
-  }, 1000);
-});
+// savePR confettis : intégré directement dans planning.js
 
 
 // ============================================================
@@ -1405,28 +1386,6 @@ function _injectBadgesSectionInProfil() {
 }
 
 // Hook sur goPage pour injecter au bon moment
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    if (typeof goPage === 'function') {
-      const _originalGoPage = goPage;
-      window.goPage = async function (page) {
-        await _originalGoPage.apply(this, arguments);
-        if (page === 'profil') {
-          _injectBadgesSectionInProfil();
-          checkAndUnlockBadges();
-        }
-      };
-    }
-    // Check badges au démarrage après login
-    if (typeof initApp === 'function') {
-      const _origInit = initApp;
-      window.initApp = async function () {
-        await _origInit.apply(this, arguments);
-        setTimeout(() => checkAndUnlockBadges(), 2000);
-      };
-    }
-  }, 1000);
-});
 
 
 // ============================================================
@@ -1524,10 +1483,6 @@ function _injectColorThemeButton() {
 }
 
 // Init thème couleur au chargement
-document.addEventListener('DOMContentLoaded', () => {
-  initColorTheme();
-  setTimeout(_injectColorThemeButton, 1200);
-});
 
 
 // ============================================================
@@ -1688,38 +1643,13 @@ function _injectAthleteCardButton() {
 }
 
 // Hook goPage pour injecter les boutons sur profil
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    if (typeof goPage === 'function') {
-      // Déjà patché par les badges — on ajoute juste l'injection de la carte
-      const _existingGoPage = goPage;
-      window.goPage = async function (page) {
-        await _existingGoPage.apply(this, arguments);
-        if (page === 'profil') {
-          _injectAthleteCardButton();
-          _injectColorThemeButton();
-        }
-      };
-    }
-  }, 1200);
-});
 
 
 // ============================================================
 // INIT GLOBAL
 // ============================================================
-document.addEventListener('DOMContentLoaded', () => {
-  // Appliquer le thème couleur sauvegardé immédiatement
-  initColorTheme();
-});
 
-</script>
 
-<!-- ============================================================
-     BADGES — système de badges créés par les admins
-     Requiert : badges-migration.sql exécuté dans Supabase
-     ============================================================ -->
-<script>
 /* ============================================================
  * BADGES.JS — Système de badges custom créés par les admins
  *
@@ -2468,36 +2398,15 @@ function _hookSubmitScore() {
 }
 
 // ── Init ───────────────────────────────────────────────────
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(() => {
-    _injectAdminBadgesTab();
-    _hookAdminTab();
-    _hookGoPage();
-    _hookSubmitScore();
 
-    // Vérifier les badges auto au démarrage
-    if (window.currentUser) {
-      setTimeout(() => {
-        checkAutoBadges();
-        _showUnseenBadges();
-      }, 2500);
-    }
 
-    // Aussi après login
-    if (typeof initApp === 'function') {
-      const _origInit = initApp;
-      window.initApp = async function () {
-        await _origInit.apply(this, arguments);
-        setTimeout(() => {
-          checkAutoBadges();
-          _showUnseenBadges();
-        }, 2000);
-      };
-    }
-  }, 1000);
-});
-
+// ── Fonction centrale appelée par goPage('profil') via core.js ──
+function _injectProfilExtras(){
+  _injectColorThemeButton();
+  _injectAthleteCardButton();
+  _injectBadgesSectionInProfil();
+  renderBadgesSection();
+}
 </script>
-
 </body>
 </html>

@@ -192,6 +192,12 @@ async function initApp(){
   await loadProgrammes();
   const d=new Date();
   document.getElementById('prog-topbar-date').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  // FUN FEATURES — init après login
+  if(typeof initColorTheme==='function')initColorTheme();
+  if(typeof _injectColorThemeButton==='function')setTimeout(_injectColorThemeButton,400);
+  if(typeof _injectAdminBadgesTab==='function')setTimeout(_injectAdminBadgesTab,400);
+  if(typeof checkAutoBadges==='function')setTimeout(checkAutoBadges,2000);
+  if(typeof _showUnseenBadges==='function')setTimeout(_showUnseenBadges,2200);
 }
 
 // NAVIGATION
@@ -203,8 +209,8 @@ async function goPage(page){
   const btn=document.querySelector(`[data-page="${page}"]`);
   if(btn)btn.classList.add('active');
   if(page==='pr'){await loadMyPRs();await loadMyBenchScores();renderAll();}
-  if(page==='profil')loadProfilStats();
-  if(page==='admin'){loadAdminProgs();loadAdminSessions();loadAdminAthletes();loadAdminBenchmarks();}
+  if(page==='profil'){loadProfilStats();if(typeof _injectProfilExtras==='function')_injectProfilExtras();}
+  if(page==='admin'){loadAdminProgs();loadAdminSessions();loadAdminAthletes();loadAdminBenchmarks();if(typeof _injectAdminBadgesTab==='function')_injectAdminBadgesTab();}
   if(page==='abos')renderPlans();
   if(page==='videos'){await loadVideos();renderVideosAthlete();}
 }

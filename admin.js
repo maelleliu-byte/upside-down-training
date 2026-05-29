@@ -1102,6 +1102,7 @@ function adminTab(tab,btn){
   if(tab==='videos'){loadAdminVideos();populateVideoMovementSelect();}
   if(tab==='perso')loadPersoAthletes();
   if(tab==='cycle')initCyclePlanner();
+  if(tab==='badges'&&typeof loadAdminBadgesTab==='function')loadAdminBadgesTab();
 }
 
 // ===== DASHBOARD COACH =====
