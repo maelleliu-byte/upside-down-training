@@ -452,9 +452,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cal-rich .cal-accent{position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:10px 0 0 10px}
 .cal-rich-head{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-bottom:6px}
 .cal-rich-type{font-family:'Bebas Neue',sans-serif;font-size:10px;letter-spacing:1.5px;padding:2px 6px;border-radius:4px}
-.cal-rich-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;line-height:1.15;color:var(--text);margin-bottom:6px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical}
-.cal-rich-content{font-size:10px;color:var(--muted);line-height:1.5;max-height:100px;overflow:hidden;position:relative;white-space:pre-wrap;word-break:break-word}
-.cal-rich-content::after{content:'';position:absolute;bottom:0;left:0;right:0;height:24px;background:linear-gradient(to bottom,transparent,var(--card))}
+.cal-rich-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;line-height:1.15;color:var(--text);margin-bottom:6px}
+.cal-rich-content{font-size:10px;color:var(--muted);line-height:1.5;overflow:visible;position:relative;white-space:pre-wrap;word-break:break-word}
+.cal-rich-content::after{display:none}
 .cal-rich-content em{color:#bdbfc2;font-style:normal}
 .cal-rich-content b{color:#e6e7ea;font-weight:700}
 .cal-rich-meta{display:flex;align-items:center;gap:6px;margin-top:6px;font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
