@@ -723,6 +723,15 @@ async function toggleReaction(scoreId){
   }
   // Resync silencieuse pour récupérer la liste à jour des likers (tooltip / showLikers)
   loadReactions(scoreId);
+  // Notif push au propriétaire du score (uniquement quand on ajoute un like)
+  if(nextLiked){
+    const fromName=currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'Un athlète';
+    fetch('/.netlify/functions/notify-score-interaction',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({scoreId,type:'like',fromName,fromUserId:currentUser.id})
+    }).catch(()=>{});
+  }
 }
 
 async function deleteOwnScore(scoreId){
@@ -776,11 +785,19 @@ async function sendComment(scoreId){
   const input=document.getElementById(`comment-input-${scoreId}`);
   const content=input?.value.trim();
   if(!content)return;
-  await sb.from('score_comments').insert({score_id:scoreId,athlete_id:currentUser.id,content});
+  const {error}=await sb.from('score_comments').insert({score_id:scoreId,athlete_id:currentUser.id,content});
+  if(error){showToast('\u274c '+error.message);return;}
   input.value='';
   loadComments(scoreId);
   const area=document.getElementById(`comments-${scoreId}`);
   if(!area?.classList.contains('open'))area?.classList.add('open');
+  // Notif push au propriétaire du score
+  const fromName=currentUser.user_metadata?.full_name||currentUser.email?.split('@')[0]||'Un athlète';
+  fetch('/.netlify/functions/notify-score-interaction',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({scoreId,type:'comment',fromName,fromUserId:currentUser.id})
+  }).catch(()=>{});
 }
 
 // PR
