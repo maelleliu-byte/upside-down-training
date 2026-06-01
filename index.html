@@ -2439,11 +2439,14 @@ async function confirmAwardBadge() {
   if (error) { showToast('❌ ' + error.message); return; }
 
   document.getElementById('award-badge-modal')?.remove();
+
+  // Récupérer le badge AVANT de vider le cache
+  const badge = (_badgesCache || []).find(b => b.id === _awardingBadgeId);
+
   _myBadgesCache = null;
   showToast('✅ Badge attribué !');
 
   // Envoyer la notification push à l'athlète
-  const badge = (_badgesCache || []).find(b => b.id === _awardingBadgeId);
   if (badge) {
     sb.functions.invoke('send-push-notification', {
       body: {
