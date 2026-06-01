@@ -199,8 +199,6 @@ async function initApp(){
   if(typeof checkAutoBadges==='function')setTimeout(checkAutoBadges,2000);
   if(typeof _showUnseenBadges==='function')setTimeout(_showUnseenBadges,2200);
   if(typeof _startBadgeRealtime==='function')setTimeout(_startBadgeRealtime,1000);
-  // Push notifications
-  setTimeout(_initPushNotifications, 3000);
 }
 
 // ── Push Notifications ─────────────────────────────────────
