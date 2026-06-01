@@ -2653,6 +2653,8 @@ function _injectProfilExtras() {
   _injectAthleteCardButton();
   _injectBadgesSectionInProfil();
   _injectPushNotifButton();
+  // Toujours tenter d'enregistrer/rafraîchir la subscription push si permission déjà accordée
+  if (Notification.permission === 'granted') _initPushNotifications();
   // Masquer le point rouge quand on ouvre le profil
   _hideBadgeNavDot();
   // Vérifier les badges non vus → célébration si nécessaire
