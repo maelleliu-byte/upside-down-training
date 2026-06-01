@@ -1695,14 +1695,26 @@ function _badgeCardHtml(badge, opts = {}) {
   const filter  = owned ? 'none' : 'grayscale(1)';
 
   if (compact) {
-    return `<div title="${badge.name} — ${badge.description || ''}\n${r.label}" style="
-      display:flex;flex-direction:column;align-items:center;gap:4px;
-      padding:10px 6px;border-radius:14px;cursor:default;
-      background:${owned ? `rgba(${_hexToRgb(r.color)},0.08)` : 'var(--card2)'};
-      border:1px solid ${owned ? r.color + '55' : 'var(--border)'};
-      opacity:${opacity};filter:${filter};transition:all 0.2s;
-      min-width:64px;flex:0 0 auto;
-    ">
+    const ownedAt = opts.ownedAt ? new Date(opts.ownedAt).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' }) : null;
+    const safeId  = (badge.id || '').replace(/'/g, "\\'");
+    const safeName = (badge.name || '').replace(/'/g, "\\'");
+    const safeDesc = (badge.description || '').replace(/'/g, "\\'");
+    const safeEmoji = badge.emoji || '🏅';
+    const safeRarity = badge.rarity || 'bronze';
+    return `<div
+      onclick="_openBadgeDetail('${safeId}','${safeName}','${safeEmoji}','${safeDesc}','${safeRarity}',${owned},'${ownedAt || ''}')"
+      style="
+        display:flex;flex-direction:column;align-items:center;gap:4px;
+        padding:10px 6px;border-radius:14px;cursor:pointer;
+        background:${owned ? `rgba(${_hexToRgb(r.color)},0.08)` : 'var(--card2)'};
+        border:1px solid ${owned ? r.color + '55' : 'var(--border)'};
+        opacity:${opacity};filter:${filter};transition:all 0.15s;
+        min-width:64px;flex:0 0 auto;
+        -webkit-tap-highlight-color:transparent;
+      "
+      onmouseenter="this.style.transform='scale(1.06)'"
+      onmouseleave="this.style.transform='scale(1)'"
+    >
       <span style="font-size:28px;line-height:1">${badge.emoji}</span>
       <span style="font-size:9px;font-weight:700;text-align:center;line-height:1.3;color:var(--text2);max-width:60px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${badge.name}</span>
       <span style="font-size:9px;color:${r.color}">${'★'.repeat(r.stars)}</span>
@@ -2002,12 +2014,15 @@ async function renderBadgesSection() {
 
   if (myErr) console.error('[Badges] athlete_badges error:', myErr);
 
-  const myBadgeIds = new Set((myRaw || []).map(ab => ab.badge_id));
+  // Map badge_id → awarded_at
+  const myBadgeMap = {};
+  for (const ab of (myRaw || [])) myBadgeMap[ab.badge_id] = ab.awarded_at;
+  const myBadgeIds = new Set(Object.keys(myBadgeMap));
   const unlocked = allBadges.filter(b => myBadgeIds.has(b.id));
   const locked   = allBadges.filter(b => !myBadgeIds.has(b.id));
   const total    = allBadges.length;
 
-  console.log('[Badges] allBadges:', allBadges.length, 'myRaw:', (myRaw||[]).length, 'myBadgeIds:', [...myBadgeIds], 'unlocked:', unlocked.length);
+  console.log('[Badges] allBadges:', allBadges.length, 'myRaw:', (myRaw||[]).length, 'unlocked:', unlocked.length);
 
   if (total === 0) {
     container.innerHTML = `<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">Aucun badge créé par le coach pour l'instant.</div>`;
@@ -2015,17 +2030,25 @@ async function renderBadgesSection() {
   }
 
   const RARITY_ORDER = { legendary: 0, gold: 1, silver: 2, bronze: 3 };
+  const sorted = [
+    ...unlocked.sort((a,b) => (RARITY_ORDER[a.rarity]||3) - (RARITY_ORDER[b.rarity]||3)),
+    ...locked.sort((a,b)   => (RARITY_ORDER[a.rarity]||3) - (RARITY_ORDER[b.rarity]||3))
+  ];
 
   container.innerHTML = `
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
       <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase">Badges</div>
-      <div style="font-size:12px;font-weight:700;color:var(--accent)">${unlocked.length} / ${total}</div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent)">${unlocked.length} / ${total}</div>
+        <button onclick="_openAllBadgesList()" style="
+          font-size:10px;font-weight:700;color:var(--text2);background:var(--card2);
+          border:1px solid var(--border2);border-radius:8px;padding:4px 10px;cursor:pointer;
+          font-family:'DM Sans',sans-serif;letter-spacing:0.5px;
+        ">Voir tous →</button>
+      </div>
     </div>
     <div style="display:flex;flex-wrap:wrap;gap:8px">
-      ${[
-        ...unlocked.sort((a,b) => (RARITY_ORDER[a.rarity]||3) - (RARITY_ORDER[b.rarity]||3)),
-        ...locked.sort((a,b)   => (RARITY_ORDER[a.rarity]||3) - (RARITY_ORDER[b.rarity]||3))
-      ].map(b => _badgeCardHtml(b, { compact: true, owned: myBadgeIds.has(b.id) })).join('')}
+      ${sorted.map(b => _badgeCardHtml(b, { compact: true, owned: myBadgeIds.has(b.id), ownedAt: myBadgeMap[b.id] || null })).join('')}
     </div>
     ${unlocked.length === 0 ? `<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px 0">Continue — tes badges arrivent !</div>` : ''}
   `;
@@ -2484,6 +2507,219 @@ async function _pollUnseenBadges() {
   } finally {
     _isBadgePolling = false;
   }
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MODALE DÉTAIL BADGE — cliquable depuis le profil
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+function _openBadgeDetail(id, name, emoji, desc, rarity, owned, ownedAt) {
+  document.getElementById('badge-detail-modal')?.remove();
+  const r = RARITY_CONFIG[(rarity||'bronze').trim().toLowerCase()] || RARITY_CONFIG.bronze;
+  const overlay = document.createElement('div');
+  overlay.id = 'badge-detail-modal';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:10002;
+    background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);
+    display:flex;align-items:flex-end;justify-content:center;
+    animation:fadeInOverlay 0.2s ease;
+  `;
+  if (!document.getElementById('badge-detail-style')) {
+    const s = document.createElement('style');
+    s.id = 'badge-detail-style';
+    s.textContent = `
+      @keyframes fadeInOverlay{from{opacity:0}to{opacity:1}}
+      @keyframes slideUpSheet{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    `;
+    document.head.appendChild(s);
+  }
+  const lockedHtml = !owned ? `
+    <div style="margin-top:12px;padding:10px 14px;background:rgba(255,255,255,0.04);border:1px solid var(--border);border-radius:10px;font-size:12px;color:var(--muted);text-align:center;line-height:1.5">
+      🔒 Badge verrouillé<br>
+      <span style="font-size:11px">${desc || 'Continue tes entraînements pour débloquer ce badge.'}</span>
+    </div>` : '';
+  const obtainedHtml = owned && ownedAt ? `
+    <div style="margin-top:8px;font-size:11px;color:var(--muted);text-align:center">
+      Obtenu le ${ownedAt}
+    </div>` : '';
+
+  overlay.innerHTML = `
+    <div style="
+      background:var(--card);border-radius:24px 24px 0 0;
+      padding:28px 24px 40px;width:100%;max-width:480px;
+      animation:slideUpSheet 0.3s cubic-bezier(0.34,1.1,0.64,1);
+      border-top:1px solid var(--border2);
+    ">
+      <div style="width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 20px;"></div>
+      <div style="text-align:center">
+        <div style="
+          font-size:72px;line-height:1;margin-bottom:14px;display:inline-block;
+          filter:${owned ? `drop-shadow(0 0 20px ${r.glow})` : 'grayscale(1)'};
+          opacity:${owned ? '1' : '0.4'};
+        ">${emoji}</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:2px;color:var(--text)">${name}</div>
+        <div style="margin-top:6px">${_rarityBadgeHtml(rarity)}</div>
+        ${owned && desc ? `<div style="font-size:13px;color:var(--text2);margin-top:10px;line-height:1.6">${desc}</div>` : ''}
+        ${lockedHtml}
+        ${obtainedHtml}
+      </div>
+      <button onclick="document.getElementById('badge-detail-modal').remove()" style="
+        margin-top:22px;width:100%;padding:14px;
+        background:var(--card2);color:var(--text2);
+        border:1px solid var(--border2);border-radius:14px;
+        font-family:'DM Sans',sans-serif;font-size:14px;font-weight:700;cursor:pointer;
+      ">Fermer</button>
+    </div>
+  `;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MODALE LISTE TOUS LES BADGES
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+async function _openAllBadgesList() {
+  document.getElementById('all-badges-modal')?.remove();
+
+  const overlay = document.createElement('div');
+  overlay.id = 'all-badges-modal';
+  overlay.style.cssText = `
+    position:fixed;inset:0;z-index:10002;
+    background:rgba(0,0,0,0.75);backdrop-filter:blur(4px);
+    display:flex;align-items:flex-end;justify-content:center;
+    animation:fadeInOverlay 0.2s ease;
+  `;
+
+  overlay.innerHTML = `
+    <div style="
+      background:var(--card);border-radius:24px 24px 0 0;
+      width:100%;max-width:480px;
+      border-top:1px solid var(--border2);
+      display:flex;flex-direction:column;
+      max-height:88vh;
+      animation:slideUpSheet 0.3s cubic-bezier(0.34,1.1,0.64,1);
+    ">
+      <div style="padding:20px 20px 0;flex-shrink:0">
+        <div style="width:40px;height:4px;background:var(--border2);border-radius:2px;margin:0 auto 16px;"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:2px">Tous les badges</div>
+          <button onclick="document.getElementById('all-badges-modal').remove()" style="
+            background:var(--card2);border:1px solid var(--border2);border-radius:8px;
+            padding:6px 12px;color:var(--text2);font-size:12px;cursor:pointer;
+            font-family:'DM Sans',sans-serif;
+          ">✕</button>
+        </div>
+        <div id="all-badges-progress-bar" style="font-size:12px;color:var(--muted);margin-bottom:14px">Chargement…</div>
+        <!-- Filtres rareté -->
+        <div style="display:flex;gap:6px;overflow-x:auto;padding-bottom:10px;-ms-overflow-style:none;scrollbar-width:none">
+          ${['Tous','Légendaire','Or','Argent','Bronze'].map((lbl,i) => {
+            const val = ['all','legendary','gold','silver','bronze'][i];
+            return `<button onclick="_filterAllBadges('${val}',this)" id="abf-${val}" style="
+              flex:0 0 auto;padding:5px 12px;border-radius:20px;font-size:11px;font-weight:700;
+              cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s;
+              background:${i===0?'var(--accent)':'var(--card2)'};
+              color:${i===0?'#000':'var(--text2)'};
+              border:1px solid ${i===0?'var(--accent)':'var(--border2)'};
+            ">${lbl}</button>`;
+          }).join('')}
+        </div>
+      </div>
+      <div id="all-badges-list" style="overflow-y:auto;padding:0 16px 32px;flex:1">
+        <div class="spinner" style="margin:24px auto"></div>
+      </div>
+    </div>
+  `;
+  overlay.addEventListener('click', e => { if (e.target === overlay) overlay.remove(); });
+  document.body.appendChild(overlay);
+
+  // Charger les données
+  const [allBadges, myRaw] = await Promise.all([
+    loadAllBadges(false),
+    sb.from('athlete_badges').select('badge_id,awarded_at').eq('athlete_id', currentUser.id)
+  ]);
+  const myBadgeMap = {};
+  for (const ab of (myRaw.data || [])) myBadgeMap[ab.badge_id] = ab.awarded_at;
+
+  // Progress bar
+  const progressEl = document.getElementById('all-badges-progress-bar');
+  if (progressEl) {
+    const pct = allBadges.length ? Math.round(Object.keys(myBadgeMap).length / allBadges.length * 100) : 0;
+    progressEl.innerHTML = `
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="flex:1;height:6px;background:var(--card2);border-radius:3px;overflow:hidden">
+          <div style="height:100%;width:${pct}%;background:var(--accent);border-radius:3px;transition:width 0.5s"></div>
+        </div>
+        <span style="font-size:11px;font-weight:700;color:var(--accent)">${Object.keys(myBadgeMap).length}/${allBadges.length}</span>
+      </div>`;
+  }
+
+  window._allBadgesData = { allBadges, myBadgeMap };
+  _filterAllBadges('all', document.getElementById('abf-all'));
+}
+
+function _filterAllBadges(filter, btn) {
+  // Activer bouton
+  ['all','legendary','gold','silver','bronze'].forEach(v => {
+    const b = document.getElementById('abf-' + v);
+    if (!b) return;
+    const active = v === filter;
+    b.style.background = active ? 'var(--accent)' : 'var(--card2)';
+    b.style.color = active ? '#000' : 'var(--text2)';
+    b.style.borderColor = active ? 'var(--accent)' : 'var(--border2)';
+  });
+
+  const { allBadges, myBadgeMap } = window._allBadgesData || {};
+  if (!allBadges) return;
+  const RARITY_ORDER = { legendary: 0, gold: 1, silver: 2, bronze: 3 };
+
+  const filtered = filter === 'all' ? allBadges : allBadges.filter(b => (b.rarity||'bronze') === filter);
+  const unlocked = filtered.filter(b => myBadgeMap[b.id]);
+  const locked   = filtered.filter(b => !myBadgeMap[b.id]);
+  const sorted = [
+    ...unlocked.sort((a,b) => (RARITY_ORDER[a.rarity]||3) - (RARITY_ORDER[b.rarity]||3)),
+    ...locked.sort((a,b)   => (RARITY_ORDER[a.rarity]||3) - (RARITY_ORDER[b.rarity]||3))
+  ];
+
+  const list = document.getElementById('all-badges-list');
+  if (!list) return;
+
+  if (sorted.length === 0) {
+    list.innerHTML = `<div style="text-align:center;padding:32px;color:var(--muted);font-size:13px">Aucun badge dans cette catégorie.</div>`;
+    return;
+  }
+
+  list.innerHTML = sorted.map(b => {
+    const owned = !!myBadgeMap[b.id];
+    const r = RARITY_CONFIG[(b.rarity||'bronze').trim().toLowerCase()] || RARITY_CONFIG.bronze;
+    const ownedAt = myBadgeMap[b.id] ? new Date(myBadgeMap[b.id]).toLocaleDateString('fr-FR', { day:'numeric', month:'short', year:'numeric' }) : null;
+    const safeId  = (b.id||'').replace(/'/g,"\\'");
+    const safeName = (b.name||'').replace(/'/g,"\\'");
+    const safeDesc = (b.description||'').replace(/'/g,"\\'");
+    return `<div onclick="document.getElementById('all-badges-modal').remove();setTimeout(()=>_openBadgeDetail('${safeId}','${safeName}','${b.emoji}','${safeDesc}','${b.rarity||'bronze'}',${owned},'${ownedAt||''}'),80)"
+      style="
+        display:flex;align-items:center;gap:14px;padding:12px 14px;margin-bottom:8px;
+        background:${owned ? `rgba(${_hexToRgb(r.color)},0.07)` : 'var(--card2)'};
+        border:1px solid ${owned ? r.color+'44' : 'var(--border)'};
+        border-radius:14px;cursor:pointer;transition:all 0.15s;
+        opacity:${owned ? '1' : '0.55'};
+      "
+      onmouseenter="this.style.opacity='1';this.style.transform='translateX(3px)'"
+      onmouseleave="this.style.opacity='${owned?'1':'0.55'}';this.style.transform=''"
+    >
+      <div style="
+        font-size:32px;line-height:1;flex-shrink:0;
+        filter:${owned ? `drop-shadow(0 0 8px ${r.glow})` : 'grayscale(1)'};
+      ">${b.emoji}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${b.name}</div>
+        ${b.description ? `<div style="font-size:11px;color:var(--text2);margin-top:2px;line-height:1.4;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${b.description}</div>` : ''}
+        <div style="margin-top:4px;display:flex;align-items:center;gap:8px">
+          ${_rarityBadgeHtml(b.rarity)}
+          ${owned && ownedAt ? `<span style="font-size:10px;color:var(--muted)">· ${ownedAt}</span>` : ''}
+        </div>
+      </div>
+      <div style="font-size:16px;color:var(--muted);flex-shrink:0">${owned ? '✓' : '🔒'}</div>
+    </div>`;
+  }).join('');
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
