@@ -37,7 +37,7 @@ exports.handler = async (event) => {
     .from('wod_scores')
     .select('athlete_id')
     .eq('id', scoreId)
-    .single();
+    .maybeSingle();
 
   if (scoreErr || !score) {
     console.log('[notif] score introuvable:', scoreErr?.message);
