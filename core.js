@@ -204,7 +204,7 @@ async function initApp(){
 }
 
 // ── Push Notifications ─────────────────────────────────────
-const VAPID_PUBLIC_KEY = 'REMPLACE_PAR_TA_CLE_PUBLIQUE_VAPID';
+const VAPID_PUBLIC_KEY = 'BIqRyyh15JLzfRrU4vSefmtSxbV869vhpsYf6PNyCDpkAWeK5oaEctTz0jJl8ytTVIjzwg6OoBDrgUpZpRqFZEk';
 
 function _urlBase64ToUint8Array(base64String) {
   const padding = '='.repeat((4 - base64String.length % 4) % 4);
