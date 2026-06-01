@@ -8,7 +8,7 @@ function showToast(msg){const t=document.getElementById('toast');t.textContent=m
 // HELPERS — escape / strip
 // ===================================================
 function escapeHtml(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');}
-function stripHtml(s){if(!s)return'';const d=document.createElement('div');d.innerHTML=s;return(d.textContent||d.innerText||'').replace(/\s+/g,' ').trim();}
+function stripHtml(s){if(!s)return'';const d=document.createElement('div');d.innerHTML=s.replace(/<br\s*\/?>/gi,'\n').replace(/<\/p>/gi,'\n').replace(/<\/div>/gi,'\n');return(d.textContent||d.innerText||'').replace(/\n{3,}/g,'\n\n').trim();}
 
 // ===================================================
 // MODAL LECTURE SÉANCE — vue identique à l'athlète
