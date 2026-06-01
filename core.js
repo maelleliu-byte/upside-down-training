@@ -212,9 +212,8 @@ function _urlBase64ToUint8Array(base64String) {
 }
 
 async function _initPushNotifications() {
-  showToast('Push: démarrage...');
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) { showToast('Push: non supporté'); return; }
-  if (!currentUser) { showToast('Push: pas de user'); return; }
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!currentUser) return;
 
   try {
     // Enregistrer le service worker et attendre qu'il soit actif
@@ -259,11 +258,10 @@ async function _initPushNotifications() {
       auth: authStr,
     }, { onConflict: 'user_id,endpoint' });
 
-    if (error) showToast('Push upsert error: ' + error.message);
-    else showToast('Push OK - subscription saved!');
+    if (error) console.error('[Push] upsert error:', error);
 
   } catch(e) {
-    showToast('Push error: ' + (e.message || String(e)));
+    console.error('[Push] init error:', e.message || e);
   }
 }
 
