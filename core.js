@@ -199,6 +199,60 @@ async function initApp(){
   if(typeof checkAutoBadges==='function')setTimeout(checkAutoBadges,2000);
   if(typeof _showUnseenBadges==='function')setTimeout(_showUnseenBadges,2200);
   if(typeof _startBadgeRealtime==='function')setTimeout(_startBadgeRealtime,1000);
+  // Push notifications
+  setTimeout(_initPushNotifications, 3000);
+}
+
+// ── Push Notifications ─────────────────────────────────────
+const VAPID_PUBLIC_KEY = 'REMPLACE_PAR_TA_CLE_PUBLIQUE_VAPID';
+
+function _urlBase64ToUint8Array(base64String) {
+  const padding = '='.repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return new Uint8Array([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function _initPushNotifications() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+  if (!window.currentUser) return;
+
+  try {
+    // Enregistrer le service worker
+    const reg = await navigator.serviceWorker.register('/sw.js');
+
+    // Demander la permission seulement si pas encore accordée
+    if (Notification.permission === 'denied') return;
+    if (Notification.permission === 'default') {
+      const perm = await Notification.requestPermission();
+      if (perm !== 'granted') return;
+    }
+
+    // Vérifier si déjà subscrit
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
+
+    // Sauvegarder dans Supabase
+    const key = sub.getKey('p256dh');
+    const auth = sub.getKey('auth');
+    const p256dh = btoa(String.fromCharCode(...new Uint8Array(key))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    const authStr = btoa(String.fromCharCode(...new Uint8Array(auth))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+
+    await sb.from('push_subscriptions').upsert({
+      user_id:  currentUser.id,
+      endpoint: sub.endpoint,
+      p256dh,
+      auth: authStr,
+    }, { onConflict: 'user_id,endpoint' });
+
+  } catch(e) {
+    console.log('[Push] init error:', e);
+  }
 }
 
 // NAVIGATION

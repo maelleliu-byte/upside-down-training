@@ -2441,6 +2441,20 @@ async function confirmAwardBadge() {
   document.getElementById('award-badge-modal')?.remove();
   _myBadgesCache = null;
   showToast('✅ Badge attribué !');
+
+  // Envoyer la notification push à l'athlète
+  const badge = (_badgesCache || []).find(b => b.id === _awardingBadgeId);
+  if (badge) {
+    sb.functions.invoke('send-push-notification', {
+      body: {
+        athlete_id: athleteId,
+        badge_emoji: badge.emoji,
+        badge_name:  badge.name,
+        coach_note:  note,
+      }
+    }).catch(e => console.log('[Push] send error:', e));
+  }
+
   await loadAdminBadgesTab();
 }
 
