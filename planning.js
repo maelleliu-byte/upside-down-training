@@ -1,8 +1,4 @@
 // SESSIONS
-// Helpers (aussi définis dans wellness.js, dupliqués ici pour indépendance du chargement)
-if(typeof escapeHtml==='undefined'){window.escapeHtml=function(s){if(s==null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');};}
-if(typeof stripHtml==='undefined'){window.stripHtml=function(s){if(!s)return'';const d=document.createElement('div');d.innerHTML=s;return(d.textContent||d.innerText||'').replace(/\s+/g,' ').trim();};}
-
 function hasAccess(prog){
   if(!prog)return false;
   if(currentProfile?.role==='admin')return true;
@@ -107,99 +103,29 @@ async function renderSessions(){
   }
 
   area.innerHTML='<div class="spinner"></div>';
-
-  // ONE-SHOT : afficher les 7 jours de la semaine en colonnes
-  if(isOneshotProg(currentProg)){
-    const total=currentProg.total_weeks||8;
-    // Déduire le weekNum depuis selectedDate ou currentWeekOffset
-    let weekNum=currentWeekOffset+1;
-    if(typeof selectedDate==='string'&&selectedDate.startsWith('__w')){
-      const m=selectedDate.match(/^__w(\d+)d/);
-      if(m) weekNum=parseInt(m[1]);
+  // ONE-SHOT : selectedDate format "__wNdM" -> requête par week_number + day_of_week
+  let sessionsQuery;
+  if(isOneshotProg(currentProg)&&typeof selectedDate==='string'&&selectedDate.startsWith('__w')){
+    const m=selectedDate.match(/^__w(\d+)d(\d+)$/);
+    if(m){
+      sessionsQuery=sb.from('sessions').select('*').eq('programme_id',currentProg.id)
+        .eq('week_number',parseInt(m[1])).eq('day_of_week',parseInt(m[2]))
+        .order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
     }
-    weekNum=Math.max(1,Math.min(total,weekNum));
-    const {data:allSessions}=await sb.from('sessions').select('*')
-      .eq('programme_id',currentProg.id).eq('week_number',weekNum)
-      .order('day_of_week').order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
-    const byDow={};
-    for(let i=0;i<7;i++) byDow[i]=[];
-    (allSessions||[]).forEach(s=>{if(byDow[s.day_of_week]!=null)byDow[s.day_of_week].push(s);});
-    const DAY_LABELS=['LUN','MAR','MER','JEU','VEN','SAM','DIM'];
-    const dates=getWeekDates(currentWeekOffset);
-    const today=new Date().toISOString().split('T')[0];
-    const headers=DAY_LABELS.map(l=>`<div class="cal-day-header">${l}</div>`).join('');
-    const dateRow=dates.map((d,i)=>{
-      const iso=d.toISOString().split('T')[0];
-      return`<div class="cal-day-date ${iso===today?'today':''}">${d.getDate()}</div>`;
-    }).join('');
-    const sessionCols=Array.from({length:7},(_,dow)=>{
-      const sessions=byDow[dow]||[];
-      if(!sessions.length) return`<div class="cal-day-col rich"><div class="cal-empty-day" style="cursor:default;pointer-events:none"></div></div>`;
-      const blocks=sessions.map(s=>{
-        if(s.type==='separator') return`<div class="cal-rich separator"><div class="cal-rich-title">— ${escapeHtml(s.title||'—')} —</div></div>`;
-        const color=s.color||'#e8ff47';
-        const typeLabel=TYPE_LABELS[s.type]||s.type;
-        const preview=stripHtml(s.content||'').slice(0,120);
-        const intensity=s.intensity?`<span>I${s.intensity}/10</span>`:'';
-        return`<div class="cal-rich" onclick="openReadSession('${s.id}','session')">
-          <div class="cal-accent" style="background:${color}"></div>
-          <div class="cal-rich-head">
-            <span class="cal-rich-type" style="background:${color}22;color:${color}">${typeLabel}</span>
-          </div>
-          <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
-          ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
-          ${intensity?`<div class="cal-rich-meta">${intensity}</div>`:''}
-        </div>`;
-      }).join('');
-      return`<div class="cal-day-col rich">${blocks}</div>`;
-    }).join('');
-    area.innerHTML=`<div style="padding:0 16px 16px"><div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div></div>`;
-    return;
   }
-
-  // MODE ABONNEMENT CLASSIQUE — vue semaine en colonnes
-  const dates=getWeekDates(currentWeekOffset);
-  const isos=dates.map(d=>d.toISOString().split('T')[0]);
-  const {data:allSessions}=await sb.from('sessions').select('*')
-    .eq('programme_id',currentProg.id).in('date',isos)
-    .order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
-  const byDate={};
-  isos.forEach(iso=>byDate[iso]=[]);
-  (allSessions||[]).forEach(s=>{if(byDate[s.date])byDate[s.date].push(s);});
-  const today=new Date().toISOString().split('T')[0];
-  const headers=dates.map(d=>`<div class="cal-day-header">${DAYS[d.getDay()]}</div>`).join('');
-  const dateRow=dates.map(d=>{
-    const iso=d.toISOString().split('T')[0];
-    return`<div class="cal-day-date ${iso===today?'today':''}">${d.getDate()}</div>`;
-  }).join('');
-  const sessionCols=dates.map(d=>{
-    const iso=d.toISOString().split('T')[0];
-    const sessions=byDate[iso]||[];
-    if(!sessions.length) return`<div class="cal-day-col rich"><div class="cal-empty-day" style="cursor:default;pointer-events:none"></div></div>`;
-    const blocks=sessions.map(s=>{
-      if(s.type==='separator') return`<div class="cal-rich separator"><div class="cal-rich-title">— ${escapeHtml(s.title||'—')} —</div></div>`;
-      const color=s.color||'#e8ff47';
-      const typeLabel=TYPE_LABELS[s.type]||s.type;
-      const preview=stripHtml(s.content||'').slice(0,120);
-      const intensity=s.intensity?`<span>I${s.intensity}/10</span>`:'';
-      return`<div class="cal-rich" onclick="openReadSession('${s.id}','session')">
-        <div class="cal-accent" style="background:${color}"></div>
-        <div class="cal-rich-head">
-          <span class="cal-rich-type" style="background:${color}22;color:${color}">${typeLabel}</span>
-        </div>
-        <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
-        ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
-        ${intensity?`<div class="cal-rich-meta">${intensity}</div>`:''}
-      </div>`;
-    }).join('');
-    return`<div class="cal-day-col rich">${blocks}</div>`;
-  }).join('');
-  const hasAny=(allSessions||[]).length>0;
-  if(!hasAny){
-    area.innerHTML='<div class="empty fade-up"><div class="empty-icon">🗓</div><p>Pas de séance<br>programmée cette semaine.</p></div>';
-    return;
+  if(!sessionsQuery){
+    sessionsQuery=sb.from('sessions').select('*').eq('programme_id',currentProg.id).eq('date',selectedDate).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
   }
-  area.innerHTML=`<div style="padding:0 16px 16px"><div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div></div>`;
+  const {data:sessions}=await sessionsQuery;
+  if(!sessions||sessions.length===0){area.innerHTML='<div class="empty fade-up"><div class="empty-icon">🗓</div><p>Pas de séance<br>programmée ce jour.</p></div>';return;}
+  area.innerHTML='';
+  for(const s of sessions){
+    if(s.type==='separator'){
+      area.insertAdjacentHTML('beforeend',buildSeparatorCard(s));
+    } else {
+      area.insertAdjacentHTML('beforeend',await buildSessionCard(s));
+    }
+  }
 }
 
 async function buildSessionCard(s){
