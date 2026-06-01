@@ -258,8 +258,8 @@ async function _initPushNotifications() {
       auth: authStr,
     }, { onConflict: 'user_id,endpoint' });
 
-    if (error) console.error('[Push] upsert error:', error);
-    else console.log('[Push] subscription saved OK');
+    if (error) showToast('Push upsert error: ' + error.message);
+    else showToast('Push OK - subscription saved!');
 
   } catch(e) {
     showToast('Push error: ' + (e.message || String(e)));
