@@ -214,7 +214,7 @@ function _urlBase64ToUint8Array(base64String) {
 async function _initPushNotifications() {
   showToast('Push: démarrage...');
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) { showToast('Push: non supporté'); return; }
-  if (!window.currentUser) { showToast('Push: pas de user'); return; }
+  if (!currentUser) { showToast('Push: pas de user'); return; }
 
   try {
     // Enregistrer le service worker et attendre qu'il soit actif
