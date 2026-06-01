@@ -2043,12 +2043,10 @@ async function loadAdminBadgesTab() {
     loadAllBadges(true),
     sb.from('profiles').select('id,full_name,avatar_url').order('full_name'),
     sb.from('athlete_badges')
-      .select('badge_id, athlete_id, coach_note, awarded_at, profiles(full_name)')
+      .select('badge_id, athlete_id, coach_note, awarded_at')
       .order('awarded_at', { ascending: false }),
   ]);
 
-  // Index badge_id → liste athlètes
-  // Construire un map athlete_id → nom depuis allAthletes (fallback si join profiles échoue)
   const athleteMap = {};
   for (const a of (allAthletes.data || [])) athleteMap[a.id] = a.full_name;
 
@@ -2057,7 +2055,7 @@ async function loadAdminBadgesTab() {
     if (!allAttributions[row.badge_id]) allAttributions[row.badge_id] = [];
     allAttributions[row.badge_id].push({
       athlete_id: row.athlete_id,
-      full_name:  row.profiles?.full_name || athleteMap[row.athlete_id] || 'Athlète',
+      full_name:  athleteMap[row.athlete_id] || 'Athlète',
       coach_note: row.coach_note,
       awarded_at: row.awarded_at,
     });
@@ -2443,6 +2441,7 @@ async function confirmAwardBadge() {
   document.getElementById('award-badge-modal')?.remove();
   _myBadgesCache = null;
   showToast('✅ Badge attribué !');
+  await loadAdminBadgesTab();
 }
 
 // ── Edit badge ─────────────────────────────────────────────
