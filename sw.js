@@ -3,7 +3,7 @@ self.addEventListener('push', function(event) {
   try {
     data = event.data ? event.data.json() : {};
   } catch(e) {
-    data = { title: '🏅 Nouveau badge !', body: event.data ? event.data.text() : '' };
+    data = { title: 'Nouveau badge !', body: event.data ? event.data.text() : '' };
   }
 
   const options = {
@@ -12,13 +12,10 @@ self.addEventListener('push', function(event) {
     badge:   data.badge || '/icon-192.png',
     vibrate: [200, 100, 200],
     data:    { url: data.url || '/' },
-    actions: [
-      { action: 'open', title: 'Voir mon profil' }
-    ]
   };
 
   event.waitUntil(
-    self.registration.showNotification(data.title || '🏅 Badge débloqué !', options)
+    self.registration.showNotification(data.title || 'Badge debloque !', options)
   );
 });
 
