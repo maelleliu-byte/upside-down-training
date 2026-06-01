@@ -2221,6 +2221,10 @@ async function loadAdminBadgesTab() {
                   </div>
                 </div>
                 <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
+                  <button onclick="openAwardBadgeModal('${safeBadgeId}')" style="
+                    padding:5px 10px;background:var(--accent);color:#000;
+                    border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
+                  ">🎖️ Attribuer</button>
                   <button onclick="openEditBadgeModal('${safeBadgeId}')" style="
                     padding:5px 10px;background:var(--card);color:var(--text2);
                     border:1px solid var(--border2);border-radius:8px;font-size:11px;cursor:pointer;
