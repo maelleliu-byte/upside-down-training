@@ -262,7 +262,7 @@ async function _initPushNotifications() {
     else console.log('[Push] subscription saved OK');
 
   } catch(e) {
-    console.error('[Push] init error:', e.message || e);
+    showToast('Push error: ' + (e.message || String(e)));
   }
 }
 
