@@ -50,6 +50,24 @@
   <div id="r5"></div>
 </div>
 
+<div class="box">
+  <div class="lbl">6. Test table session_notes</div>
+  <button onclick="testSessionNotes()">Tester session_notes</button>
+  <div id="r6"></div>
+</div>
+
+<div class="box">
+  <div class="lbl">7. Test jointure session_notes + profiles</div>
+  <button onclick="testSessionNotesJoin()">Tester la jointure</button>
+  <div id="r7"></div>
+</div>
+
+<div class="box">
+  <div class="lbl">8. Test RLS — notes visibles par les autres</div>
+  <button onclick="testRLS()">Tester la politique RLS</button>
+  <div id="r8"></div>
+</div>
+
 <script>
 const SUPABASE_URL='https://tltqtpbaaxiwwpvuzszt.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDA5NTQsImV4cCI6MjA5MzUxNjk1NH0.5LVedQ-ktLcTC6z2X0XIoqY-mqP9_tw-gzrt-KNfuuY';
@@ -130,6 +148,76 @@ async function testProfile() {
     }
   } catch(e) {
     r5.innerHTML = '<span class="err">✗ ' + e.message + '</span>';
+  }
+}
+
+async function testSessionNotes() {
+  const r6 = document.getElementById('r6');
+  r6.innerHTML = '<span style="color:#999">Requête en cours…</span>';
+  try {
+    // Lecture simple sans jointure
+    const {data, error, status} = await sb.from('session_notes').select('*').limit(5);
+    if (error) {
+      r6.innerHTML = '<span class="err">✗ ERREUR (status ' + status + ') : ' + error.message + '</span><pre>' + JSON.stringify(error, null, 2) + '</pre>';
+    } else if (!data || data.length === 0) {
+      r6.innerHTML = '<span style="color:#facc15">⚠ Table accessible mais 0 notes trouvées (peut être normal si personne n\'a encore écrit de note)</span>';
+    } else {
+      r6.innerHTML = '<span class="ok">✓ ' + data.length + ' note(s) trouvée(s)</span><pre>' + JSON.stringify(data[0], null, 2) + '</pre>';
+    }
+  } catch(e) {
+    r6.innerHTML = '<span class="err">✗ ' + e.message + '</span>';
+  }
+}
+
+async function testSessionNotesJoin() {
+  const r7 = document.getElementById('r7');
+  r7.innerHTML = '<span style="color:#999">Requête en cours…</span>';
+  try {
+    // Même requête que renderScoresModal
+    const {data, error, status} = await sb.from('session_notes').select('*,profiles(full_name)').limit(5).order('created_at', {ascending:false});
+    if (error) {
+      r7.innerHTML = '<span class="err">✗ ERREUR jointure profiles (status ' + status + ') : ' + error.message + '</span><pre>' + JSON.stringify(error, null, 2) + '</pre><div style="margin-top:8px;color:#facc15">⚠ C\'est probablement ça le bug ! La foreign key entre session_notes.athlete_id et profiles.id est manquante dans Supabase.</div>';
+    } else if (!data || data.length === 0) {
+      r7.innerHTML = '<span style="color:#facc15">⚠ Jointure OK mais 0 résultats</span>';
+    } else {
+      r7.innerHTML = '<span class="ok">✓ Jointure OK — ' + data.length + ' note(s) :</span><pre>' + JSON.stringify(data[0], null, 2) + '</pre>';
+    }
+  } catch(e) {
+    r7.innerHTML = '<span class="err">✗ ' + e.message + '</span>';
+  }
+}
+
+async function testRLS() {
+  const r8 = document.getElementById('r8');
+  r8.innerHTML = '<span style="color:#999">Test en cours…</span>';
+  try {
+    const {data:{session}} = await sb.auth.getSession();
+    if (!session) { r8.innerHTML = '<span class="err">✗ Pas connecté — connecte-toi d\'abord</span>'; return; }
+
+    // Chercher une session récente
+    const {data:sessions, error:se} = await sb.from('sessions').select('id').limit(3);
+    if (se || !sessions?.length) { r8.innerHTML = '<span class="err">✗ Impossible de récupérer des sessions : ' + (se?.message||'aucune session') + '</span>'; return; }
+
+    let found = false;
+    let results = [];
+    for (const s of sessions) {
+      const {data:notes, error:ne} = await sb.from('session_notes').select('athlete_id,content').eq('session_id', s.id);
+      if (ne) {
+        results.push('Session ' + s.id.slice(0,8) + '… → ERREUR : ' + ne.message);
+      } else {
+        results.push('Session ' + s.id.slice(0,8) + '… → ' + (notes?.length||0) + ' note(s) visible(s)');
+        if (notes?.length) found = true;
+      }
+    }
+
+    const color = found ? 'ok' : 'err';
+    const icon = found ? '✓' : '⚠';
+    r8.innerHTML = '<span class="' + color + '">' + icon + ' RLS test terminé</span><pre>' + results.join('\n') + '</pre>';
+    if (!found) {
+      r8.innerHTML += '<div style="margin-top:8px;color:#facc15">⚠ Aucune note visible — vérifie la politique RLS sur session_notes dans Supabase (les athlètes doivent pouvoir lire les notes de tous, pas seulement les leurs).</div>';
+    }
+  } catch(e) {
+    r8.innerHTML = '<span class="err">✗ ' + e.message + '</span>';
   }
 }
 </script>
