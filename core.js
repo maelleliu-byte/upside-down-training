@@ -216,8 +216,18 @@ async function _initPushNotifications() {
   if (!window.currentUser) return;
 
   try {
-    // Enregistrer le service worker
+    // Enregistrer le service worker et attendre qu'il soit actif
     const reg = await navigator.serviceWorker.register('/sw.js');
+
+    // Attendre que le SW soit actif
+    await new Promise((resolve) => {
+      if (reg.active) { resolve(); return; }
+      const sw = reg.installing || reg.waiting;
+      if (!sw) { resolve(); return; }
+      sw.addEventListener('statechange', function() {
+        if (this.state === 'activated') resolve();
+      });
+    });
 
     // Demander la permission seulement si pas encore accordée
     if (Notification.permission === 'denied') return;
@@ -236,20 +246,23 @@ async function _initPushNotifications() {
     }
 
     // Sauvegarder dans Supabase
-    const key = sub.getKey('p256dh');
-    const auth = sub.getKey('auth');
+    const key    = sub.getKey('p256dh');
+    const auth   = sub.getKey('auth');
     const p256dh = btoa(String.fromCharCode(...new Uint8Array(key))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-    const authStr = btoa(String.fromCharCode(...new Uint8Array(auth))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
+    const authStr= btoa(String.fromCharCode(...new Uint8Array(auth))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
 
-    await sb.from('push_subscriptions').upsert({
+    const { error } = await sb.from('push_subscriptions').upsert({
       user_id:  currentUser.id,
       endpoint: sub.endpoint,
       p256dh,
       auth: authStr,
     }, { onConflict: 'user_id,endpoint' });
 
+    if (error) console.error('[Push] upsert error:', error);
+    else console.log('[Push] subscription saved OK');
+
   } catch(e) {
-    console.log('[Push] init error:', e);
+    console.error('[Push] init error:', e.message || e);
   }
 }
 
