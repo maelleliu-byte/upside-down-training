@@ -2658,52 +2658,33 @@ function _injectProfilExtras() {
 
 function _injectPushNotifButton() {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (document.getElementById('push-notif-btn-wrapper')) return;
+  if (document.getElementById('push-notif-menu-item')) return;
+  if (Notification.permission === 'granted') return;
 
-  const perm = Notification.permission;
-  if (perm === 'granted') return; // déjà activé, pas besoin du bouton
+  // Insérer après le bouton couleur de l'app
+  const colorBtn = document.getElementById('color-theme-trigger');
+  if (!colorBtn) return;
 
-  // Trouver un bon endroit dans le profil — après l'email
-  const emailEl = document.getElementById('profil-email');
-  if (!emailEl) return;
-
-  const wrapper = document.createElement('div');
-  wrapper.id = 'push-notif-btn-wrapper';
-  wrapper.style.cssText = 'padding:12px 16px 0;';
-  wrapper.innerHTML = `
-    <button id="push-notif-btn" onclick="_requestPushPermission()" style="
-      width:100%;padding:12px 16px;
-      background:rgba(232,255,71,0.08);
-      border:1px solid rgba(232,255,71,0.25);
-      border-radius:12px;cursor:pointer;
-      display:flex;align-items:center;gap:10px;
-      font-family:'DM Sans',sans-serif;
-      -webkit-tap-highlight-color:transparent;
-    ">
-      <span style="font-size:20px">🔔</span>
-      <div style="text-align:left">
-        <div style="font-size:13px;font-weight:700;color:var(--accent)">Activer les notifications</div>
-        <div style="font-size:11px;color:var(--muted);margin-top:1px">Sois alerté quand tu reçois un badge</div>
-      </div>
-    </button>
-  `;
-
-  // Insérer après le bloc nom/email
-  const profilHeader = emailEl.closest('.profil-header') || emailEl.parentElement;
-  profilHeader.insertAdjacentElement('afterend', wrapper);
+  const item = document.createElement('div');
+  item.className = 'menu-item';
+  item.id = 'push-notif-menu-item';
+  item.style.cursor = 'pointer';
+  item.onclick = _requestPushPermission;
+  item.innerHTML = `<span class="menu-item-label">🔔 Notifications</span><span>›</span>`;
+  colorBtn.insertAdjacentElement('afterend', item);
 }
 
 async function _requestPushPermission() {
-  const btn = document.getElementById('push-notif-btn');
-  if (btn) btn.style.opacity = '0.6';
+  const item = document.getElementById('push-notif-menu-item');
+  if (item) item.style.opacity = '0.5';
 
   const perm = await Notification.requestPermission();
   if (perm === 'granted') {
     await _initPushNotifications();
-    document.getElementById('push-notif-btn-wrapper')?.remove();
+    document.getElementById('push-notif-menu-item')?.remove();
     showToast('🔔 Notifications activées !');
   } else {
-    if (btn) btn.style.opacity = '1';
+    if (item) item.style.opacity = '1';
     showToast('❌ Permission refusée');
   }
 }
