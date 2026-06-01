@@ -913,23 +913,52 @@ async function renderPersoDayStrip(){
 async function renderPersoSessions(){
   const area=document.getElementById('sessions-area');
   area.innerHTML='<div class="spinner"></div>';
-  const {data:sessions}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentUser.id).eq('date',selectedDate).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
-  if(!sessions||sessions.length===0){
+  const dates=getWeekDates(currentWeekOffset);
+  const isos=dates.map(d=>d.toISOString().split('T')[0]);
+  const {data:allSessions}=await sb.from('personal_sessions').select('*')
+    .eq('athlete_id',currentUser.id).in('date',isos)
+    .order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+  const byDate={};
+  isos.forEach(iso=>byDate[iso]=[]);
+  (allSessions||[]).forEach(s=>{if(byDate[s.date])byDate[s.date].push(s);});
+  const today=new Date().toISOString().split('T')[0];
+  const headers=dates.map(d=>`<div class="cal-day-header">${DAYS[d.getDay()]}</div>`).join('');
+  const dateRow=dates.map(d=>{
+    const iso=d.toISOString().split('T')[0];
+    return`<div class="cal-day-date ${iso===today?'today':''}">${d.getDate()}</div>`;
+  }).join('');
+  const hasAny=(allSessions||[]).length>0;
+  if(!hasAny){
     area.innerHTML=`<div class="empty fade-up">
       <div class="empty-icon">👤</div>
-      <p>Pas de séance perso<br>programmée ce jour.</p>
+      <p>Pas de séance perso<br>programmée cette semaine.</p>
       <div style="font-size:11px;color:var(--muted);margin-top:8px">Ton coach peut t'en ajouter depuis son espace admin.</div>
     </div>`;
     return;
   }
-  area.innerHTML='';
-  for(const s of sessions){
-    if(s.type==='separator'){
-      area.insertAdjacentHTML('beforeend',buildSeparatorCard(s));
-    } else {
-      area.insertAdjacentHTML('beforeend',await buildSessionCard(s));
-    }
-  }
+  const sessionCols=dates.map(d=>{
+    const iso=d.toISOString().split('T')[0];
+    const sessions=byDate[iso]||[];
+    if(!sessions.length) return`<div class="cal-day-col rich"><div class="cal-empty-day" style="cursor:default;pointer-events:none"></div></div>`;
+    const blocks=sessions.map(s=>{
+      if(s.type==='separator') return`<div class="cal-rich separator"><div class="cal-rich-title">— ${escapeHtml(s.title||'—')} —</div></div>`;
+      const color=s.color||'#e8ff47';
+      const typeLabel=TYPE_LABELS[s.type]||s.type;
+      const preview=stripHtml(s.content||'').slice(0,120);
+      const intensity=s.intensity?`<span>I${s.intensity}/10</span>`:'';
+      return`<div class="cal-rich" onclick="openReadSession('${s.id}','personal')">
+        <div class="cal-accent" style="background:${color}"></div>
+        <div class="cal-rich-head">
+          <span class="cal-rich-type" style="background:${color}22;color:${color}">${typeLabel}</span>
+        </div>
+        <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
+        ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
+        ${intensity?`<div class="cal-rich-meta">${intensity}</div>`:''}
+      </div>`;
+    }).join('');
+    return`<div class="cal-day-col rich">${blocks}</div>`;
+  }).join('');
+  area.innerHTML=`<div style="padding:0 16px 16px"><div class="cal-grid">${headers}</div><div class="cal-grid">${dateRow}</div><div class="cal-grid" style="align-items:start">${sessionCols}</div></div>`;
 }
 
 // Surcharger renderDayStrip / renderSessions pour rerouter quand currentProg=__perso__
