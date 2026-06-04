@@ -631,6 +631,94 @@ async function onCalDrop(event,targetDate){
   loadAdminCalendar();
 }
 
+// ===== DUPLIQUER UNE SEMAINE ENTIÈRE (admin calendrier) =====
+function openDupWeekModal(){
+  const progId=document.getElementById('admin-filter-prog')?.value;
+  const prog=getProgById(progId);
+  const oneshot=isOneshotProg(prog);
+  const modal=document.getElementById('dup-week-modal');
+  if(!modal){showToast('⚠️ Modal introuvable');return;}
+  if(oneshot){
+    const weekNum=adminWeekOffset+1;
+    const total=prog.total_weeks||8;
+    document.getElementById('dup-week-source-label').textContent=`Semaine ${weekNum} / ${total}`;
+    document.getElementById('dup-week-oneshot-group').style.display='';
+    document.getElementById('dup-week-date-group').style.display='none';
+    const sel=document.getElementById('dup-week-target-week');
+    sel.innerHTML=Array.from({length:total},(_,i)=>{
+      const w=i+1;
+      return`<option value="${w}" ${w===weekNum?'disabled':''}>Semaine ${w}${w===weekNum?' (actuelle)':''}</option>`;
+    }).join('');
+    // Sélectionner par défaut la suivante
+    const next=Math.min(weekNum+1,total);
+    sel.value=String(next);
+  } else {
+    const dates=getWeekDates(adminWeekOffset);
+    const wk=getWeekNum(dates[0]);
+    const label=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]} ${dates[0].getFullYear()}`;
+    document.getElementById('dup-week-source-label').textContent=label;
+    document.getElementById('dup-week-oneshot-group').style.display='none';
+    document.getElementById('dup-week-date-group').style.display='';
+    // Date cible par défaut = lundi semaine suivante
+    const nextMon=new Date(dates[0]);nextMon.setDate(dates[0].getDate()+7);
+    document.getElementById('dup-week-target-date').value=nextMon.toISOString().split('T')[0];
+  }
+  modal.classList.add('open');
+}
+function closeDupWeekModal(){
+  document.getElementById('dup-week-modal')?.classList.remove('open');
+}
+async function confirmDupWeek(){
+  const progId=document.getElementById('admin-filter-prog')?.value;
+  if(!progId){showToast('⚠️ Aucun programme sélectionné');return;}
+  const prog=getProgById(progId);
+  const oneshot=isOneshotProg(prog);
+  const btn=document.querySelector('#dup-week-modal .btn-modal-save');
+  if(btn){btn.disabled=true;btn.textContent='Copie...';}
+  try{
+    if(oneshot){
+      const srcWeek=adminWeekOffset+1;
+      const tgtWeek=parseInt(document.getElementById('dup-week-target-week').value);
+      if(!tgtWeek||tgtWeek===srcWeek){showToast('⚠️ Choisis une semaine différente');return;}
+      const {data,error}=await sb.from('sessions').select('*').eq('programme_id',progId).eq('week_number',srcWeek);
+      if(error){showToast('❌ '+error.message);return;}
+      if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
+      const rows=data.map(({id,created_at,...rest})=>({...rest,week_number:tgtWeek,created_by:currentUser.id}));
+      const {error:e2}=await sb.from('sessions').insert(rows);
+      if(e2){showToast('❌ '+e2.message);return;}
+      showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} copiée${rows.length>1?'s':''} → Semaine ${tgtWeek}`);
+    } else {
+      const srcDates=getWeekDates(adminWeekOffset).map(d=>d.toISOString().split('T')[0]);
+      const tgtDateStr=document.getElementById('dup-week-target-date').value;
+      if(!tgtDateStr){showToast('⚠️ Choisis une date');return;}
+      // Lundi de la semaine cible
+      const tgtPicked=new Date(tgtDateStr+'T12:00:00');
+      const tgtDay=tgtPicked.getDay();
+      const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
+      // Décalage en jours entre lundi source et lundi cible
+      const srcMon=getWeekDates(adminWeekOffset)[0];
+      const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
+      if(diffDays===0){showToast('⚠️ Choisis une semaine différente');return;}
+      let q=sb.from('sessions').select('*').in('date',srcDates).eq('programme_id',progId);
+      const {data,error}=await q;
+      if(error){showToast('❌ '+error.message);return;}
+      if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
+      const rows=data.map(({id,created_at,...rest})=>{
+        const newDate=new Date(rest.date+'T12:00:00');
+        newDate.setDate(newDate.getDate()+diffDays);
+        return{...rest,date:newDate.toISOString().split('T')[0],created_by:currentUser.id};
+      });
+      const {error:e2}=await sb.from('sessions').insert(rows);
+      if(e2){showToast('❌ '+e2.message);return;}
+      showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} copiée${rows.length>1?'s':''}`);
+    }
+    closeDupWeekModal();
+    loadAdminCalendar();
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='📋 Dupliquer la semaine';}
+  }
+}
+
 function changeAdminWeek(dir){
   const progId=document.getElementById('admin-filter-prog')?.value;
   const prog=getProgById(progId);

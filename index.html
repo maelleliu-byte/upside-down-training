@@ -451,6 +451,7 @@
         <div style="display:flex;gap:6px">
           <button class="arrow-btn" onclick="changeAdminWeek(-1)">‹</button>
           <button class="arrow-btn" onclick="changeAdminWeek(1)">›</button>
+          <button class="arrow-btn" onclick="openDupWeekModal()" title="Dupliquer la semaine" style="font-size:13px;padding:0 10px">📋</button>
         </div>
       </div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px;color:var(--muted)" id="admin-cal-week-label">—</div>
@@ -643,6 +644,7 @@
             <button class="arrow-btn" onclick="persoNav(-1)">‹</button>
             <span style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--muted);min-width:140px;text-align:center" id="perso-period-label">—</span>
             <button class="arrow-btn" onclick="persoNav(1)">›</button>
+            <button class="arrow-btn" onclick="openDupPersoWeekModal()" title="Dupliquer la semaine" style="font-size:13px;padding:0 10px">📋</button>
           </div>
         </div>
         <div id="perso-calendar-area"></div>
@@ -925,6 +927,40 @@
     </div>
     <button class="btn-modal-save" onclick="confirmPersoDuplicate()">📋 Dupliquer</button>
     <button class="btn-modal-cancel" onclick="closeDupPersoModal()">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL DUPLICATION SEMAINE ENTIÈRE (admin) -->
+<div class="modal-overlay" id="dup-week-modal">
+  <div class="modal">
+    <div class="modal-title">📋 Dupliquer la semaine</div>
+    <div class="modal-sub" id="dup-week-source-label">—</div>
+    <div class="form-group" style="margin-bottom:14px" id="dup-week-oneshot-group">
+      <label class="form-label">Semaine destination</label>
+      <select class="form-select" id="dup-week-target-week"></select>
+    </div>
+    <div class="form-group" style="margin-bottom:14px" id="dup-week-date-group">
+      <label class="form-label">Semaine de destination</label>
+      <input type="date" class="modal-date" id="dup-week-target-date">
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">La semaine choisie sera automatiquement alignée sur le lundi.</div>
+    </div>
+    <button class="btn-modal-save" onclick="confirmDupWeek()">📋 Dupliquer la semaine</button>
+    <button class="btn-modal-cancel" onclick="closeDupWeekModal()">Annuler</button>
+  </div>
+</div>
+
+<!-- MODAL DUPLICATION SEMAINE ENTIÈRE (espace perso) -->
+<div class="modal-overlay" id="dup-perso-week-modal">
+  <div class="modal">
+    <div class="modal-title">📋 Dupliquer la semaine</div>
+    <div class="modal-sub" id="dup-perso-week-source-label">—</div>
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">Semaine de destination</label>
+      <input type="date" class="modal-date" id="dup-perso-week-target-date">
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">Toutes les séances de la semaine seront copiées. La semaine choisie est alignée sur le lundi.</div>
+    </div>
+    <button class="btn-modal-save" onclick="confirmDupPersoWeek()">📋 Dupliquer la semaine</button>
+    <button class="btn-modal-cancel" onclick="closeDupPersoWeekModal()">Annuler</button>
   </div>
 </div>
 

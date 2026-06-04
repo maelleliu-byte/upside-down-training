@@ -772,6 +772,58 @@ async function confirmPersoDuplicate(){
   renderPersoCalendar();
 }
 
+// ===== DUPLIQUER UNE SEMAINE ENTIÈRE (espace perso) =====
+function openDupPersoWeekModal(){
+  if(persoView!=='week'){showToast('⚠️ Passe en vue semaine d\'abord');return;}
+  const dates=getWeekDates(persoOffset);
+  const wk=getWeekNum(dates[0]);
+  document.getElementById('dup-perso-week-source-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]} ${dates[0].getFullYear()}`;
+  // Date cible par défaut = lundi semaine suivante
+  const nextMon=new Date(dates[0]);nextMon.setDate(dates[0].getDate()+7);
+  document.getElementById('dup-perso-week-target-date').value=nextMon.toISOString().split('T')[0];
+  document.getElementById('dup-perso-week-modal').classList.add('open');
+}
+function closeDupPersoWeekModal(){
+  document.getElementById('dup-perso-week-modal')?.classList.remove('open');
+}
+async function confirmDupPersoWeek(){
+  if(!currentPersoAthlete)return;
+  const tgtDateStr=document.getElementById('dup-perso-week-target-date').value;
+  if(!tgtDateStr){showToast('⚠️ Choisis une date');return;}
+  const srcMon=getWeekDates(persoOffset)[0];
+  const srcDates=getWeekDates(persoOffset).map(d=>d.toISOString().split('T')[0]);
+  const tgtPicked=new Date(tgtDateStr+'T12:00:00');
+  const tgtDay=tgtPicked.getDay();
+  const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
+  const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
+  if(diffDays===0){showToast('⚠️ Choisis une semaine différente');return;}
+  const btn=document.querySelector('#dup-perso-week-modal .btn-modal-save');
+  if(btn){btn.disabled=true;btn.textContent='Copie...';}
+  try{
+    const {data,error}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',srcDates);
+    if(error){showToast('❌ '+error.message);return;}
+    if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
+    // Pour sort_order, on décale simplement par jour ; pas besoin de recalculer
+    const rows=data.map(({id,created_at,...rest})=>{
+      const newDate=new Date(rest.date+'T12:00:00');
+      newDate.setDate(newDate.getDate()+diffDays);
+      return{...rest,date:newDate.toISOString().split('T')[0],created_by:currentUser.id};
+    });
+    const {error:e2}=await sb.from('personal_sessions').insert(rows);
+    if(e2){showToast('❌ '+e2.message);return;}
+    showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} copiée${rows.length>1?'s':''}`);
+    closeDupPersoWeekModal();
+    // Naviguer vers la semaine cible
+    const now=new Date();const nowDay=now.getDay();
+    const nowMon=new Date(now);nowMon.setDate(now.getDate()-(nowDay===0?6:nowDay-1));nowMon.setHours(0,0,0,0);
+    tgtMon.setHours(0,0,0,0);
+    persoOffset=Math.round((tgtMon-nowMon)/(7*24*60*60*1000));
+    renderPersoCalendar();
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='📋 Dupliquer la semaine';}
+  }
+}
+
 function enterPersoFormMode(athleteId){
   personalAthleteId=athleteId;
   const ath=persoAthletesCache.find(a=>a.id===athleteId)||currentPersoAthlete;
