@@ -1303,16 +1303,49 @@ async function loadDashboard(){
 }
 
 // ===== ÉDITEUR RICHE =====
+function _getActiveRichEl(){return document.getElementById('f-content-editor');}
+function _wrapPlainSelection(el,before,after){
+  const start=el.selectionStart,end=el.selectionEnd;
+  if(start===end)return; // rien de sélectionné
+  const sel=el.value.substring(start,end);
+  const wrapped=before+sel+after;
+  el.setRangeText(wrapped,start,end,'end');
+  el.focus();
+  el.selectionStart=start+before.length;
+  el.selectionEnd=start+before.length+sel.length;
+}
 function richColor(color){
-  document.getElementById('f-content-editor').focus();
+  const type=window._richActiveType;
+  if(type!=='rich')return; // couleurs seulement pour rich
+  const editor=_getActiveRichEl();
+  editor.focus();
   document.execCommand('foreColor',false,color);
 }
 function richCmd(cmd){
-  document.getElementById('f-content-editor').focus();
+  const type=window._richActiveType;
+  const target=window._richActiveTarget;
+  if(type==='plain'&&target){
+    if(cmd==='bold')_wrapPlainSelection(target,'**','**');
+    else if(cmd==='italic')_wrapPlainSelection(target,'_','_');
+    else if(cmd==='removeFormat'){
+      // Retirer ** et _ simples autour de la sélection si présents
+      const s=target.selectionStart,e=target.selectionEnd;
+      const val=target.value;
+      const isBold=val.substring(s-2,s)==='**'&&val.substring(e,e+2)==='**';
+      const isItalic=val.substring(s-1,s)==='_'&&val.substring(e,e+1)==='_';
+      if(isBold){target.setRangeText(val.substring(s,e),s-2,e+2,'select');}
+      else if(isItalic){target.setRangeText(val.substring(s,e),s-1,e+1,'select');}
+    }
+    return;
+  }
+  const editor=_getActiveRichEl();
+  editor.focus();
   document.execCommand(cmd,false,null);
 }
 function richFont(type){
-  document.getElementById('f-content-editor').focus();
+  if(window._richActiveType!=='rich')return;
+  const editor=_getActiveRichEl();
+  editor.focus();
   const sel=window.getSelection();
   if(!sel||sel.rangeCount===0)return;
   const range=sel.getRangeAt(0);
