@@ -841,7 +841,7 @@ async function saveSession(){
     document.getElementById('form-prog-group').style.display='';
     if(persoAthlete){
       currentPersoAthlete=persoAthletesCache.find(a=>a.id===persoAthlete)||currentPersoAthlete;
-      adminTab('perso',document.querySelector('.admin-tab-btn:last-child'));
+      adminTab('perso',document.querySelector('.admin-tab-btn[onclick*="perso"]'));
       openPersoFiche(persoAthlete,date);
     }
   } else {
