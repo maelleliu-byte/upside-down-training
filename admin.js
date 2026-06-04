@@ -143,7 +143,7 @@ async function saveNewProg(){
       slug=slug+'-'+i;
     }
   }
-  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id,studio_id:window.__STUDIO__?.id||null}).select().single();
+  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id}).select().single();
   if(error){
     showToast('❌ '+error.message);
     // Restaurer le bouton "+ Nouveau programme" même en cas d'erreur
@@ -188,12 +188,7 @@ function toggleSetsField(){
 async function loadAdminSessions(){
   const progId=document.getElementById('admin-filter-prog').value;
   let q=sb.from('sessions').select('*,programmes(name,icon)').order('date',{ascending:false}).limit(50);
-  // Filtrer par les programmes du studio courant (évite d'afficher les séances d'autres studios)
-  if(progId){
-    q=q.eq('programme_id',progId);
-  } else if(programmes&&programmes.length>0){
-    q=q.in('programme_id',programmes.map(p=>p.id));
-  }
+  if(progId)q=q.eq('programme_id',progId);
   const {data}=await q;
   const list=document.getElementById('admin-sessions-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucune séance.</p></div>';return;}
@@ -301,14 +296,14 @@ function _collectSessionFormSnapshot(){
     title:document.getElementById('f-title').value.trim(),
     content:getEditorContent(),
     intensity:parseInt(document.getElementById('f-intensity').value)||7,
-    target:document.getElementById('f-target').value,
-    tips:document.getElementById('f-tips').value,
+    target:document.getElementById('f-target').innerHTML,
+    tips:document.getElementById('f-tips').innerHTML,
     score_type:document.getElementById('f-score-type').value,
     sets:document.getElementById('f-sets')?document.getElementById('f-sets').value:'',
     color:selectedSessionColor||'#e8ff47',
-    scaling_inter:document.getElementById('f-scaling-inter').value,
-    scaling_scaled:document.getElementById('f-scaling-scaled').value,
-    scaling_foundation:document.getElementById('f-scaling-foundation').value,
+    scaling_inter:document.getElementById('f-scaling-inter').innerHTML,
+    scaling_scaled:document.getElementById('f-scaling-scaled').innerHTML,
+    scaling_foundation:document.getElementById('f-scaling-foundation').innerHTML,
     multi_score:!!(typeof multiScoreEnabled!=='undefined'&&multiScoreEnabled),
     score_count:(typeof multiScoreEnabled!=='undefined'&&multiScoreEnabled)?parseInt(document.getElementById('f-score-count')?.value)||2:0,
     score_labels:(()=>{
@@ -347,12 +342,12 @@ function applySessionTemplate(i){
   setEditorContent(t.content||'');
   document.getElementById('f-intensity').value=t.intensity||7;
   document.getElementById('f-int-val').textContent=t.intensity||7;
-  document.getElementById('f-target').value=t.target||'';
-  document.getElementById('f-tips').value=t.tips||'';
+  document.getElementById('f-target').innerHTML=t.target||'';
+  document.getElementById('f-tips').innerHTML=t.tips||'';
   document.getElementById('f-score-type').value=t.score_type||'reps';
-  document.getElementById('f-scaling-inter').value=t.scaling_inter||'';
-  document.getElementById('f-scaling-scaled').value=t.scaling_scaled||'';
-  document.getElementById('f-scaling-foundation').value=t.scaling_foundation||'';
+  document.getElementById('f-scaling-inter').innerHTML=t.scaling_inter||'';
+  document.getElementById('f-scaling-scaled').innerHTML=t.scaling_scaled||'';
+  document.getElementById('f-scaling-foundation').innerHTML=t.scaling_foundation||'';
   // Vidéos
   try{if(typeof setFormVideos==='function')setFormVideos(t.videos||[]);}catch(e){}
   // Couleur
@@ -636,6 +631,94 @@ async function onCalDrop(event,targetDate){
   loadAdminCalendar();
 }
 
+// ===== DUPLIQUER UNE SEMAINE ENTIÈRE (admin calendrier) =====
+function openDupWeekModal(){
+  const progId=document.getElementById('admin-filter-prog')?.value;
+  const prog=getProgById(progId);
+  const oneshot=isOneshotProg(prog);
+  const modal=document.getElementById('dup-week-modal');
+  if(!modal){showToast('⚠️ Modal introuvable');return;}
+  if(oneshot){
+    const weekNum=adminWeekOffset+1;
+    const total=prog.total_weeks||8;
+    document.getElementById('dup-week-source-label').textContent=`Semaine ${weekNum} / ${total}`;
+    document.getElementById('dup-week-oneshot-group').style.display='';
+    document.getElementById('dup-week-date-group').style.display='none';
+    const sel=document.getElementById('dup-week-target-week');
+    sel.innerHTML=Array.from({length:total},(_,i)=>{
+      const w=i+1;
+      return`<option value="${w}" ${w===weekNum?'disabled':''}>Semaine ${w}${w===weekNum?' (actuelle)':''}</option>`;
+    }).join('');
+    // Sélectionner par défaut la suivante
+    const next=Math.min(weekNum+1,total);
+    sel.value=String(next);
+  } else {
+    const dates=getWeekDates(adminWeekOffset);
+    const wk=getWeekNum(dates[0]);
+    const label=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]} ${dates[0].getFullYear()}`;
+    document.getElementById('dup-week-source-label').textContent=label;
+    document.getElementById('dup-week-oneshot-group').style.display='none';
+    document.getElementById('dup-week-date-group').style.display='';
+    // Date cible par défaut = lundi semaine suivante
+    const nextMon=new Date(dates[0]);nextMon.setDate(dates[0].getDate()+7);
+    document.getElementById('dup-week-target-date').value=nextMon.toISOString().split('T')[0];
+  }
+  modal.classList.add('open');
+}
+function closeDupWeekModal(){
+  document.getElementById('dup-week-modal')?.classList.remove('open');
+}
+async function confirmDupWeek(){
+  const progId=document.getElementById('admin-filter-prog')?.value;
+  if(!progId){showToast('⚠️ Aucun programme sélectionné');return;}
+  const prog=getProgById(progId);
+  const oneshot=isOneshotProg(prog);
+  const btn=document.querySelector('#dup-week-modal .btn-modal-save');
+  if(btn){btn.disabled=true;btn.textContent='Copie...';}
+  try{
+    if(oneshot){
+      const srcWeek=adminWeekOffset+1;
+      const tgtWeek=parseInt(document.getElementById('dup-week-target-week').value);
+      if(!tgtWeek||tgtWeek===srcWeek){showToast('⚠️ Choisis une semaine différente');return;}
+      const {data,error}=await sb.from('sessions').select('*').eq('programme_id',progId).eq('week_number',srcWeek);
+      if(error){showToast('❌ '+error.message);return;}
+      if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
+      const rows=data.map(({id,created_at,...rest})=>({...rest,week_number:tgtWeek,created_by:currentUser.id}));
+      const {error:e2}=await sb.from('sessions').insert(rows);
+      if(e2){showToast('❌ '+e2.message);return;}
+      showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} copiée${rows.length>1?'s':''} → Semaine ${tgtWeek}`);
+    } else {
+      const srcDates=getWeekDates(adminWeekOffset).map(d=>d.toISOString().split('T')[0]);
+      const tgtDateStr=document.getElementById('dup-week-target-date').value;
+      if(!tgtDateStr){showToast('⚠️ Choisis une date');return;}
+      // Lundi de la semaine cible
+      const tgtPicked=new Date(tgtDateStr+'T12:00:00');
+      const tgtDay=tgtPicked.getDay();
+      const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
+      // Décalage en jours entre lundi source et lundi cible
+      const srcMon=getWeekDates(adminWeekOffset)[0];
+      const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
+      if(diffDays===0){showToast('⚠️ Choisis une semaine différente');return;}
+      let q=sb.from('sessions').select('*').in('date',srcDates).eq('programme_id',progId);
+      const {data,error}=await q;
+      if(error){showToast('❌ '+error.message);return;}
+      if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
+      const rows=data.map(({id,created_at,...rest})=>{
+        const newDate=new Date(rest.date+'T12:00:00');
+        newDate.setDate(newDate.getDate()+diffDays);
+        return{...rest,date:newDate.toISOString().split('T')[0],created_by:currentUser.id};
+      });
+      const {error:e2}=await sb.from('sessions').insert(rows);
+      if(e2){showToast('❌ '+e2.message);return;}
+      showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} copiée${rows.length>1?'s':''}`);
+    }
+    closeDupWeekModal();
+    loadAdminCalendar();
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='📋 Dupliquer la semaine';}
+  }
+}
+
 function changeAdminWeek(dir){
   const progId=document.getElementById('admin-filter-prog')?.value;
   const prog=getProgById(progId);
@@ -680,8 +763,8 @@ async function editSession(id){
   setEditorContent(data.content||'');
   document.getElementById('f-intensity').value=data.intensity||7;
   document.getElementById('f-int-val').textContent=data.intensity||7;
-  document.getElementById('f-target').value=data.target||'';
-  document.getElementById('f-tips').value=data.tips||'';
+  document.getElementById('f-target').innerHTML=data.target||'';
+  document.getElementById('f-tips').innerHTML=data.tips||'';
   document.getElementById('f-score-type').value=data.score_type||'reps';
   // Multi-vidéos
   let _vids=[];
@@ -689,9 +772,9 @@ async function editSession(id){
   if((!_vids||!_vids.length)&&data.youtube_url){_vids=[{url:data.youtube_url,label:data.youtube_label||''}];}
   setFormVideos(_vids);
   // Scaling
-  document.getElementById('f-scaling-inter').value=data.scaling_inter||'';
-  document.getElementById('f-scaling-scaled').value=data.scaling_scaled||'';
-  document.getElementById('f-scaling-foundation').value=data.scaling_foundation||'';
+  document.getElementById('f-scaling-inter').innerHTML=data.scaling_inter||'';
+  document.getElementById('f-scaling-scaled').innerHTML=data.scaling_scaled||'';
+  document.getElementById('f-scaling-foundation').innerHTML=data.scaling_foundation||'';
   // Multi score
   if(data.multi_score){
     multiScoreEnabled=true;
@@ -755,8 +838,8 @@ async function saveSession(){
   const title=document.getElementById('f-title').value.trim();
   const content=getEditorContent();
   const intensity=parseInt(document.getElementById('f-intensity').value);
-  const target=document.getElementById('f-target').value.trim();
-  const tips=document.getElementById('f-tips').value.trim();
+  const target=document.getElementById('f-target').innerHTML.trim();
+  const tips=document.getElementById('f-tips').innerHTML.trim();
   const scoreType=document.getElementById('f-score-type').value;
   syncLegacyVideoFields();
   const videos=getFormVideos();
@@ -764,9 +847,9 @@ async function saveSession(){
   const ytlabel=videos[0]?.label||'';
   const sets=type==='strength'?parseInt(document.getElementById('f-sets').value)||null:null;
   const color=selectedSessionColor||'#e8ff47';
-  const scalingInter=document.getElementById('f-scaling-inter').value.trim();
-  const scalingScaled=document.getElementById('f-scaling-scaled').value.trim();
-  const scalingFoundation=document.getElementById('f-scaling-foundation').value.trim();
+  const scalingInter=document.getElementById('f-scaling-inter').innerHTML.trim();
+  const scalingScaled=document.getElementById('f-scaling-scaled').innerHTML.trim();
+  const scalingFoundation=document.getElementById('f-scaling-foundation').innerHTML.trim();
   const multiScore=multiScoreEnabled;
   const scoreCount=multiScore?parseInt(document.getElementById('f-score-count')?.value)||2:0;
   const scoreLabels=multiScore?Array.from({length:scoreCount},(_,i)=>document.getElementById(`f-score-label-${i}`)?.value.trim()||`Score ${i+1}`):[];
@@ -821,7 +904,8 @@ async function saveSession(){
   personalEditingId=null;
   const cancelBtn=document.getElementById('edit-cancel-btn');
   if(cancelBtn)cancelBtn.remove();
-  ['f-title','f-target','f-tips','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-title').value='';
+  ['f-target','f-tips','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='';});
   setFormVideos([]);
   clearEditor();
   document.getElementById('score-labels-container').innerHTML='';
@@ -841,7 +925,7 @@ async function saveSession(){
     document.getElementById('form-prog-group').style.display='';
     if(persoAthlete){
       currentPersoAthlete=persoAthletesCache.find(a=>a.id===persoAthlete)||currentPersoAthlete;
-      adminTab('perso',document.querySelector('.admin-tab-btn[onclick*="perso"]'));
+      adminTab('perso',document.querySelector('.admin-tab-btn:last-child'));
       openPersoFiche(persoAthlete,date);
     }
   } else {
@@ -891,10 +975,7 @@ async function loadMixedAthletes(){
   const counts={};
   rows.forEach(r=>{if(r.athlete_id)counts[r.athlete_id]=(counts[r.athlete_id]||0)+1;});
   if(!persoAthletesCache.length){
-    const _studioId=window.__STUDIO__?.id||null;
-    let _pq=sb.from('profiles').select('*').order('full_name');
-    if(_studioId)_pq=_pq.eq('studio_id',_studioId);else _pq=_pq.is('studio_id',null);
-    const {data}=await _pq;
+    const {data}=await sb.from('profiles').select('*').order('full_name');
     persoAthletesCache=data||[];
   }
   // Tous les profils, athlètes mixtes (≥2 progs) en tête.
@@ -962,10 +1043,7 @@ async function confirmDuplicate(){
 }
 async function loadAdminBenchmarks(){
   loadAdminMovements();
-  const studioId=window.__STUDIO__?.id||null;
-  let bq=sb.from('benchmarks').select('*').order('category,name');
-  if(studioId){bq=bq.eq('studio_id',studioId);}else{bq=bq.is('studio_id',null);}
-  const {data}=await bq;
+  const {data}=await sb.from('benchmarks').select('*').order('category,name');
   const el=document.getElementById('admin-bench-list');
   if(!data||data.length===0){el.innerHTML='';return;}
   el.innerHTML=`<div class="pr-hist-title">${data.length} benchmarks actifs</div>`+data.map(b=>`<div class="sessions-list-item"><div><div class="sli-title">${b.name}</div><div class="sli-meta">${b.category} · ${b.score_type}</div></div></div>`).join('');
@@ -974,10 +1052,7 @@ async function loadAdminMovements(){
   const el=document.getElementById('admin-mv-list');
   if(!el)return;
   const q=(document.getElementById('admin-mv-search')?.value||'').toLowerCase().trim();
-  const studioId=window.__STUDIO__?.id||null;
-  let mq=sb.from('movements').select('*').order('category,name');
-  if(studioId){mq=mq.eq('studio_id',studioId);}else{mq=mq.is('studio_id',null);}
-  const {data}=await mq;
+  const {data}=await sb.from('movements').select('*').order('category,name');
   let list=data||[];
   // Détection des doublons (même nom normalisé)
   const norm=s=>s.toLowerCase().replace(/\s+/g,' ').trim();
@@ -1067,11 +1142,7 @@ async function saveBenchmark(){
   await loadBenchmarks();loadAdminBenchmarks();
 }
 async function loadAdminAthletes(){
-  const studioId=window.__STUDIO__?.id||null;
-  let q=sb.from('profiles').select('*').order('full_name');
-  if(studioId){q=q.eq('studio_id',studioId);}
-  else{q=q.is('studio_id',null);}
-  const {data}=await q;
+  const {data}=await sb.from('profiles').select('*').order('full_name');
   const list=document.getElementById('admin-athletes-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
   list.innerHTML=data.map(p=>{
@@ -1120,7 +1191,7 @@ function adminTab(tab,btn){
   if(tab==='videos'){loadAdminVideos();populateVideoMovementSelect();}
   if(tab==='perso')loadPersoAthletes();
   if(tab==='cycle')initCyclePlanner();
-  if(tab==='studios')loadAdminStudios();
+  if(tab==='badges'&&typeof loadAdminBadgesTab==='function')loadAdminBadgesTab();
 }
 
 // ===== DASHBOARD COACH =====
@@ -1170,23 +1241,11 @@ async function loadDashboard(){
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
 
-  // Récupérer les IDs athlètes du studio pour filtrer tous les scores/PR
-  const _dashStudioId=window.__STUDIO__?.id||null;
-  let _studioAthleteIds=null;
-  if(_dashStudioId){
-    const {data:_sa}=await sb.from('profiles').select('id').eq('studio_id',_dashStudioId).eq('role','athlete');
-    _studioAthleteIds=(_sa||[]).map(a=>a.id);
-  }
-  const _inAthletes=(q)=>_studioAthleteIds?q.in('athlete_id',_studioAthleteIds):q;
-
-  let _profQ=sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete');
-  if(_dashStudioId)_profQ=_profQ.eq('studio_id',_dashStudioId);else _profQ=_profQ.is('studio_id',null);
-
   const [athletesRes,scoresRes,prsRes,activeRes]=await Promise.all([
-    _profQ,
-    _inAthletes(sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo)),
-    _inAthletes(sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo)),
-    _inAthletes(sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo))
+    sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete'),
+    sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
+    sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
+    sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo)
   ]);
 
   const activeIds=new Set((activeRes.data||[]).map(s=>s.athlete_id));
@@ -1197,10 +1256,7 @@ async function loadDashboard(){
     <div class="dash-stat-box"><div class="dash-stat-val">${prsRes.count||0}</div><div class="dash-stat-lbl">PR 30j</div></div>`;
 
   // Athlètes inactifs
-  const _dashStudioId=window.__STUDIO__?.id||null;
-  let _athQ=sb.from('profiles').select('id,full_name,email').eq('role','athlete');
-  if(_dashStudioId)_athQ=_athQ.eq('studio_id',_dashStudioId);else _athQ=_athQ.is('studio_id',null);
-  const {data:allAthletes}=await _athQ;
+  const {data:allAthletes}=await sb.from('profiles').select('id,full_name,email').eq('role','athlete');
   const inactiveAthletes=(allAthletes||[]).filter(a=>!activeIds.has(a.id));
   const inactiveEl=document.getElementById('dash-inactive');
   if(inactiveAthletes.length===0){inactiveEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Tous les athlètes sont actifs 💪</div>';}
@@ -1219,9 +1275,7 @@ async function loadDashboard(){
   }
 
   // Top performers (plus de PR ce mois)
-  let _tpQ=sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
-  if(_studioAthleteIds)_tpQ=_tpQ.in('athlete_id',_studioAthleteIds);
-  const {data:topPRs}=await _tpQ;
+  const {data:topPRs}=await sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
   const prCount={};
   (topPRs||[]).forEach(p=>{prCount[p.athlete_id]=(prCount[p.athlete_id]||{count:0,name:p.profiles?.full_name||'—'});prCount[p.athlete_id].count++;});
   const topList=Object.values(prCount).sort((a,b)=>b.count-a.count).slice(0,5);
@@ -1230,14 +1284,19 @@ async function loadDashboard(){
     :topList.map((t,i)=>`<div class="inactive-row"><div class="inactive-name">${i===0?'🥇':i===1?'🥈':'🥉'} ${t.name}</div><div style="font-size:12px;color:var(--accent);font-weight:700">${t.count} PR</div></div>`).join('');
 
   // Derniers scores
-  let _rsQ=sb.from('wod_scores').select('*,profiles(full_name,avatar_url),sessions(title)').order('created_at',{ascending:false}).limit(8);
-  if(_studioAthleteIds)_rsQ=_rsQ.in('athlete_id',_studioAthleteIds);
-  const {data:recentScores}=await _rsQ;
+  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name,avatar_url)').order('created_at',{ascending:false}).limit(8);
+  // Récupère les titres de session séparément (la FK wod_scores → sessions a été retirée)
+  const recSessIds=Array.from(new Set((recentScores||[]).map(s=>s.session_id).filter(Boolean)));
+  const recSessTitleById={};
+  if(recSessIds.length){
+    const {data:sessTitles}=await sb.from('sessions').select('id,title').in('id',recSessIds);
+    for(const x of (sessTitles||[]))recSessTitleById[x.id]=x.title;
+  }
   document.getElementById('dash-recent').innerHTML=(recentScores||[]).map(s=>`<div class="recent-score-row">
     ${avatarHtml(s.profiles)}
     <div class="recent-score-info">
       <div class="recent-score-name">${s.profiles?.full_name||'—'}</div>
-      <div class="recent-score-meta">${s.sessions?.title||'—'} · <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]||s.level}</span></div>
+      <div class="recent-score-meta">${recSessTitleById[s.session_id]||'—'} · <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]||s.level}</span></div>
     </div>
     <div class="recent-score-val">${s.score_text||s.score_value||'—'}</div>
   </div>`).join('');
@@ -1245,16 +1304,19 @@ async function loadDashboard(){
 }
 
 // ===== ÉDITEUR RICHE =====
+function _refocusActive(){
+  if(window._richActiveTarget) window._richActiveTarget.focus();
+}
 function richColor(color){
-  document.getElementById('f-content-editor').focus();
+  _refocusActive();
   document.execCommand('foreColor',false,color);
 }
 function richCmd(cmd){
-  document.getElementById('f-content-editor').focus();
+  _refocusActive();
   document.execCommand(cmd,false,null);
 }
 function richFont(type){
-  document.getElementById('f-content-editor').focus();
+  _refocusActive();
   const sel=window.getSelection();
   if(!sel||sel.rangeCount===0)return;
   const range=sel.getRangeAt(0);
@@ -1338,10 +1400,7 @@ async function initCyclePlanner(){
 
 let cycleYearFilter='all'; // 'all' or 4-digit year as string
 async function loadAllCycles(){
-  const studioId=window.__STUDIO__?.id||null;
-  let cq=sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
-  if(studioId){cq=cq.eq('studio_id',studioId);}else{cq=cq.is('studio_id',null);}
-  const {data}=await cq;
+  const {data}=await sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
   allCycles=data||[];
   renderCycleYearTabs();
   renderCycleSelector();
@@ -1904,6 +1963,7 @@ function openCycleCellModal(a,b,c,mode){
   document.getElementById('cycle-cell-input').value='';
   selectedChipColor='#e8ff47';
   document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color==='#e8ff47'));
+  setTimeout(()=>autoResizeCycleInput(document.getElementById('cycle-cell-input')),0);
   if(!options)setTimeout(()=>document.getElementById('cycle-cell-input').focus(),300);
 }
 
@@ -2067,6 +2127,14 @@ function selectChipColor(color,el){
   flushAutoSaveCycleChip();
 }
 
+// ===== AUTO-RESIZE DU TEXTAREA DU BLOC CYCLE =====
+function autoResizeCycleInput(el){
+  if(!el)return;
+  el.style.height='auto';
+  const newH=Math.min(el.scrollHeight+2,300);
+  el.style.height=newH+'px';
+}
+
 // ===== AUTO-SAVE CHIP DANS MODAL CYCLE/SESSION =====
 let _autoSaveChipTimer=null;
 function _setChipAutoSaveStatus(state){
@@ -2147,6 +2215,7 @@ function editCycleChip(w,ci,chi){
   selectedChipColor=chip.color;
   document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color===chip.color));
   document.getElementById('cycle-cell-modal').classList.add('open');
+  setTimeout(()=>autoResizeCycleInput(document.getElementById('cycle-cell-input')),0);
   _setChipAutoSaveStatus('idle');
 }
 
@@ -2162,6 +2231,7 @@ function editSessionChip(wk,ri,di,chi){
   selectedChipColor=chip.color;
   document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color===chip.color));
   document.getElementById('cycle-cell-modal').classList.add('open');
+  setTimeout(()=>autoResizeCycleInput(document.getElementById('cycle-cell-input')),0);
   _setChipAutoSaveStatus('idle');
 }
 
@@ -2305,25 +2375,7 @@ function syncLegacyVideoFields(){
 let allVideos=[];let currentVCat='all';let videoSearch='';
 
 async function loadVideos(){
-  const studioId=window.__STUDIO__?.id||null;
-  let vq=sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
-  if(studioId){
-    // Filtrer via les mouvements du studio
-    const {data:studioMvs}=await sb.from('movements').select('id').eq('studio_id',studioId);
-    const mvIds=(studioMvs||[]).map(m=>m.id);
-    if(mvIds.length){vq=vq.in('movement_id',mvIds);}
-    else{
-      // Studio sans mouvements encore — retourner vide
-      window._allVideos=[];
-      return;
-    }
-  } else {
-    // Upside Down : mouvements sans studio_id
-    const {data:studioMvs}=await sb.from('movements').select('id').is('studio_id',null);
-    const mvIds=(studioMvs||[]).map(m=>m.id);
-    if(mvIds.length){vq=vq.in('movement_id',mvIds);}
-  }
-  const {data}=await vq;
+  const {data}=await sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
   allVideos=data||[];
 }
 
@@ -2418,80 +2470,3 @@ async function loadSessionNotes(sessionId){
   if(ta&&data&&data[0])ta.value=data[0].content;
 }
 
-
-// ===== GESTION DES STUDIOS (superadmin Upside Down uniquement) =====
-
-async function loadAdminStudios(){
-  // Seulement visible pour le studio "upside" (studio_id de Maelle)
-  const container=document.getElementById('admin-studios');
-  if(!container)return;
-  container.innerHTML='<div class="spinner"></div>';
-
-  const {data:studios,error}=await sb.from('studios').select('*').order('created_at',{ascending:false});
-  if(error){container.innerHTML='<p style="color:#ff4747;padding:20px">Erreur: '+error.message+'</p>';return;}
-
-  if(!studios||studios.length===0){container.innerHTML='<p style="color:#888;padding:20px">Aucun studio.</p>';return;}
-
-  container.innerHTML=studios.map(function(s){
-    var logoHtml=s.logo_url
-      ?'<img src="'+s.logo_url+'" style="width:40px;height:40px;border-radius:8px;object-fit:contain;background:#0a0a0a">'
-      :'<div style="width:40px;height:40px;border-radius:8px;background:#222;display:flex;align-items:center;justify-content:center;font-size:18px">&#127967;</div>';
-    var statusHtml=s.is_active
-      ?'<span style="color:#47ff80">Actif</span>'
-      :'<span style="color:#ff8c47">En attente</span>';
-    var btnBg=s.is_active?'#333':'#e8ff47';
-    var btnColor=s.is_active?'#f0f0f0':'#0a0a0a';
-    var btnLabel=s.is_active?'Désactiver':'Activer';
-    return '<div style="background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin:12px 20px;display:flex;align-items:center;gap:12px">'
-      +logoHtml
-      +'<div style="flex:1">'
-      +'<div style="font-weight:700;color:#f0f0f0">'+s.name+'</div>'
-      +'<div style="font-size:12px;color:#666">/'+s.slug+' · '+statusHtml+'</div>'
-      +'</div>'
-      +'<button onclick="toggleStudio(''+s.id+'','+s.is_active+')" style="background:'+btnBg+';color:'+btnColor+';border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">'+btnLabel+'</button>'
-      +'</div>';
-  }).join('');
-}
-
-async function toggleStudio(studioId,currentActive){
-  const {error}=await sb.from('studios').update({is_active:!currentActive}).eq('id',studioId);
-  if(error){showToast('❌ '+error.message);return;}
-  showToast(currentActive?'Studio désactivé':'✅ Studio activé !');
-  loadAdminStudios();
-}
-
-
-// ===== STUDIOS (superadmin Upside Down uniquement) =====
-async function loadAdminStudios(){
-  var container=document.getElementById('admin-studios');
-  if(!container)return;
-  container.innerHTML='<div class="spinner"></div>';
-  var res=await sb.from('studios').select('*').order('created_at',{ascending:false});
-  if(res.error){container.innerHTML='<p style="color:#ff4747;padding:20px">'+res.error.message+'</p>';return;}
-  var studios=res.data||[];
-  if(!studios.length){container.innerHTML='<p style="color:#888;padding:20px">Aucun studio.</p>';return;}
-  var html='';
-  for(var i=0;i<studios.length;i++){
-    var s=studios[i];
-    var active=s.is_active;
-    html+='<div style="background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin:12px 20px;display:flex;align-items:center;gap:12px">';
-    if(s.logo_url){html+='<img src="'+s.logo_url+'" style="width:40px;height:40px;border-radius:8px;object-fit:contain;background:#0a0a0a">';}
-    else{html+='<div style="width:40px;height:40px;border-radius:8px;background:#222;display:flex;align-items:center;justify-content:center">&#127967;</div>';}
-    html+='<div style="flex:1">';
-    html+='<div style="font-weight:700;color:#f0f0f0">'+s.name+'</div>';
-    html+='<div style="font-size:12px;color:#666">/'+s.slug+' &middot; '+(active?'<span style="color:#47ff80">Actif</span>':'<span style="color:#ff8c47">En attente</span>')+'</div>';
-    html+='</div>';
-    html+='<button onclick="toggleStudio(''+s.id+'','+active+')" style="background:'+(active?'#333':'#e8ff47')+';color:'+(active?'#f0f0f0':'#0a0a0a')+';border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">'+(active?'Désactiver':'Activer')+'</button>';
-    html+='</div>';
-  }
-  container.innerHTML=html;
-}
-
-async function toggleStudio(studioId,currentActive){
-  var res=await sb.from('studios').update({is_active:!currentActive}).eq('id',studioId);
-  if(res.error){showToast('Erreur: '+res.error.message);return;}
-  showToast(currentActive?'Studio désactivé':'Studio activé !');
-  loadAdminStudios();
-}
-function loadAdminStudios(){}
-function toggleStudio(){}
