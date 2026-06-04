@@ -424,8 +424,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .rich-editor-wrap{border:1.5px solid var(--border2);border-radius:10px;overflow:hidden;transition:border-color .2s}
 .rich-editor-wrap:focus-within{border-color:var(--orange)}
 .rich-toolbar{display:flex;align-items:center;gap:4px;padding:8px 10px;background:var(--dark);border-bottom:1px solid var(--border2);flex-wrap:wrap}
-.rich-toolbar-floating{position:fixed;bottom:0;left:0;right:0;z-index:3000;display:flex;align-items:center;gap:6px;padding:10px 12px 14px;background:var(--dark);border-top:1px solid var(--border2);box-shadow:0 -4px 20px rgba(0,0,0,.5);flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
-.rich-toolbar-floating::-webkit-scrollbar{display:none}
+.rich-toolbar-sticky{position:sticky;top:0;z-index:100;display:flex;align-items:center;gap:4px;padding:8px 10px;background:var(--dark);border-bottom:1px solid var(--border2);border-top:1px solid var(--border2);flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;margin:0 -20px 14px;padding-left:20px;padding-right:20px}
+.rich-toolbar-sticky::-webkit-scrollbar{display:none}
 .rich-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border2);background:transparent;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;transition:all .2s;line-height:1}
 .rich-btn:active,.rich-btn.active{background:var(--orange);color:#000;border-color:var(--orange)}
 .rich-btn:hover{background:var(--card2)}
