@@ -22,6 +22,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);
 
 .page{position:fixed;inset:0;overflow-y:auto;display:none;padding-bottom:calc(76px + var(--safe-bottom));background:var(--black);z-index:10}
 .page.active{display:block}
+/* PAGE PROG : header fixe + contenu scrollable */
+#page-prog{overflow-y:hidden;display:none;flex-direction:column}
+#page-prog.active{display:flex}
+#page-prog .topbar,#page-prog .prog-tabs,#page-prog .week-nav,#page-prog .day-strip-wrap{flex-shrink:0}
+#page-prog #sessions-area{flex:1;overflow-y:auto;padding-bottom:calc(76px + var(--safe-bottom));}
 
 /* AUTH */
 #auth-screen{position:fixed;inset:0;z-index:200;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px}
