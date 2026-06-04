@@ -48,7 +48,17 @@ const { data: score, error: scoreErr } = await sb
   .maybeSingle();
 
   console.log('[notif] wod_scores result:', JSON.stringify({ score, scoreErr }));
-
+const res = await fetch(
+  `${process.env.SUPABASE_URL}/rest/v1/wod_scores?id=eq.${scoreId}&select=athlete_id`,
+  {
+    headers: {
+      'apikey': process.env.SUPABASE_SERVICE_KEY,
+      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+    }
+  }
+);
+const rows = await res.json();
+console.log('[notif] fetch direct:', JSON.stringify(rows));
   if (!score) {
     console.log('[notif] score introuvable');
     return { statusCode: 404, body: 'Score not found' };
