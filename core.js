@@ -52,8 +52,21 @@ const STRIPE_PLANS={
   kids:{priceId:'price_1TVVFiGfW5FegIxCmwl0GkBV',name:'Kids & Teens',icon:'',price:'30€',period:'/mois',trial:14,desc:'Programmation jeunes athlètes (8-16 ans).',features:['Adapté au développement','Mouvements fondamentaux','Coordination & motricité','Suivi progression','14 jours d\'essai gratuit'],color:'#47b8ff'}
 };
 
-// SPLASH SCREEN
+// SPLASH SCREEN — branding dynamique selon le studio
 window.addEventListener('load',()=>{
+  // Appliquer logo/couleur du studio au splash dès que disponible
+  function applySplashBranding(){
+    const studio=window.__STUDIO__;
+    if(!studio)return;
+    const splash=document.getElementById('splash-screen');
+    if(!splash)return;
+    if(studio.logo_url){
+      const img=splash.querySelector('img');
+      if(img){img.src=studio.logo_url;img.style.maxWidth='200px';}
+    }
+  }
+  window.addEventListener('studio:ready',applySplashBranding);
+  applySplashBranding();
   setTimeout(()=>{
     const splash=document.getElementById('splash-screen');
     if(splash){splash.style.opacity='0';setTimeout(()=>splash.style.display='none',600);}
@@ -180,6 +193,11 @@ async function initApp(){
       btn.innerHTML='<span class="nav-icon">⚙️</span><span class="nav-label">Admin</span>';
       btn.onclick=()=>goPage('admin');
       nav.appendChild(btn);
+    }
+    // Afficher l'onglet Studios uniquement pour le studio "upside" (superadmin)
+    if(window.__STUDIO__?.slug==='upside'){
+      const studiosTabBtn=document.getElementById('admin-studios-tab-btn');
+      if(studiosTabBtn)studiosTabBtn.style.display='';
     }
   }
   await loadMovements();
