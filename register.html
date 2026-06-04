@@ -152,41 +152,40 @@ async function submitRegister(){
   btn.disabled=true;btn.textContent='Création en cours…';
 
   try{
-    // 1. Vérifier que le slug n'existe pas déjà
+    // 1. Vérifier que le slug n'existe pas déjà (pas de session requise)
     const {data:existing}=await sb.from('studios').select('id').eq('slug',slug).maybeSingle();
     if(existing){showError('Ce slug est déjà pris. Choisis-en un autre.');btn.disabled=false;btn.textContent='Créer mon studio';return;}
 
-    // 2. Créer le compte auth
-    const {data:authData,error:authErr}=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:coachName}}});
+    // 2. signUp — tout passe en metadata, le trigger SECURITY DEFINER crée studio + profil
+    const {data:authData,error:authErr}=await sb.auth.signUp({
+      email,password:pwd,
+      options:{data:{
+        full_name:coachName,
+        studio_slug:slug,
+        studio_name:name,
+        accent_color:accent
+      }}
+    });
     if(authErr)throw authErr;
     const userId=authData.user?.id;
     if(!userId)throw new Error('Erreur création compte');
 
-    // 3. Uploader le logo si présent
-    let logo_url=null;
+    // 3. Upload logo si présent — on attend un peu que la session soit établie
     if(logoFile){
-      const ext=(logoFile.name.split('.').pop()||'png').toLowerCase();
-      const path=`studios/${slug}/logo.${ext}`;
-      const {error:uploadErr}=await sb.storage.from('avatars').upload(path,logoFile,{upsert:true,contentType:logoFile.type});
-      if(!uploadErr){
-        const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
-        logo_url=pub.publicUrl;
+      // Petite attente pour laisser Supabase Auth finaliser la session
+      await new Promise(r=>setTimeout(r,1500));
+      const {data:{session}}=await sb.auth.getSession();
+      if(session){
+        const ext=(logoFile.name.split('.').pop()||'png').toLowerCase();
+        const path=`studios/${slug}/logo.${ext}`;
+        const {error:uploadErr}=await sb.storage.from('avatars').upload(path,logoFile,{upsert:true,contentType:logoFile.type});
+        if(!uploadErr){
+          const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
+          // Mettre à jour le studio avec le logo
+          await sb.from('studios').update({logo_url:pub.publicUrl}).eq('slug',slug);
+        }
       }
     }
-
-    // 4. Créer le studio (is_active = false — attente validation)
-    const {data:studio,error:studioErr}=await sb.from('studios').insert({
-      slug,name,accent_color:accent,logo_url,
-      is_active:false,lang:'fr',owner_id:userId
-    }).select('id').single();
-    if(studioErr)throw studioErr;
-
-    // 5. Créer le profil coach
-    const {error:profErr}=await sb.from('profiles').upsert({
-      id:userId,email,full_name:coachName,
-      role:'admin',studio_id:studio.id
-    },{onConflict:'id'});
-    if(profErr)throw profErr;
 
     // Succès
     const el=document.getElementById('reg-success');
