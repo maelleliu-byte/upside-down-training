@@ -443,9 +443,9 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .rich-content .font-sans-italic-applied{font-family:'DM Sans',sans-serif;font-style:italic}
 
 /* SÉPARATEUR */
-.separator-block{margin:4px 20px 8px;display:flex;align-items:center;gap:12px;animation:fadeUp .3s ease}
-.separator-line{flex:1;height:1px;background:var(--border2)}
-.separator-title{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:3px;color:var(--muted);white-space:nowrap;text-transform:uppercase}
+.separator-block{margin:8px 20px 12px;display:flex;align-items:center;gap:12px;animation:fadeUp .3s ease}
+.separator-line{flex:1;height:1.5px;background:var(--accent);opacity:.35}
+.separator-title{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:4px;color:var(--accent);white-space:nowrap;text-transform:uppercase}
 
 /* DRAG & DROP CALENDRIER */
 .cal-session-block{cursor:grab}
@@ -471,8 +471,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 @media (hover:none){.cal-rich-actions{display:flex!important}}
 .cal-rich-nav{display:flex;gap:4px;margin:6px 0 4px;justify-content:flex-start}
 .cal-rich-nav .cal-action-btn{width:24px;height:22px;font-size:12px;background:rgba(255,255,255,.06);border:1px solid var(--border)}
-.cal-rich.separator{background:rgba(232,255,71,.06);border:1px solid rgba(232,255,71,.25) !important;border-radius:8px;text-align:center;padding:10px 6px;cursor:default}
-.cal-rich.separator .cal-rich-title{color:var(--accent) !important;font-size:15px !important;letter-spacing:3px;margin:0}
+.cal-rich.separator{background:transparent;border:none;text-align:center;padding:6px 0;cursor:default}
+.cal-rich.separator .cal-rich-title{color:var(--accent);font-size:11px;letter-spacing:2px;margin:0}
 
 /* MODAL LECTURE SÉANCE */
 .read-modal{position:fixed;inset:0;background:rgba(0,0,0,.78);backdrop-filter:blur(6px);z-index:9999;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
@@ -904,9 +904,9 @@ html[data-theme="light"] .cal-rich .cal-rich-nav .cal-action-btn,
 html[data-theme="light"] .cal-rich .cal-rich-actions .cal-action-btn,
 :root[data-theme="light"] .cal-rich .cal-rich-actions .cal-action-btn{background:rgba(0,0,0,.55) !important;color:#fff !important}
 html[data-theme="light"] .cal-rich.separator,
-:root[data-theme="light"] .cal-rich.separator{background:rgba(90,104,16,.07) !important;border:1px solid rgba(90,104,16,.25) !important}
+:root[data-theme="light"] .cal-rich.separator{background:transparent !important;border:none !important}
 html[data-theme="light"] .cal-rich.separator .cal-rich-title,
-:root[data-theme="light"] .cal-rich.separator .cal-rich-title{color:#5a6810 !important;font-size:15px !important}
+:root[data-theme="light"] .cal-rich.separator .cal-rich-title{color:#5a6810 !important}
 html[data-theme="light"] .cal-day-date,
 :root[data-theme="light"] .cal-day-date{color:#3d3d3d !important}
 html[data-theme="light"] .cal-day-date.today,
