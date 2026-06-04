@@ -2432,20 +2432,25 @@ async function loadAdminStudios(){
 
   if(!studios||studios.length===0){container.innerHTML='<p style="color:#888;padding:20px">Aucun studio.</p>';return;}
 
-  container.innerHTML=studios.map(s=>`
-    <div style="background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin:12px 20px;display:flex;align-items:center;gap:12px">
-      ${s.logo_url?`<img src="${s.logo_url}" style="width:40px;height:40px;border-radius:8px;object-fit:contain;background:#0a0a0a">`:'<div style="width:40px;height:40px;border-radius:8px;background:#222;display:flex;align-items:center;justify-content:center;font-size:18px">🏟</div>'}
-      <div style="flex:1">
-        <div style="font-weight:700;color:#f0f0f0">${s.name}</div>
-        <div style="font-size:12px;color:#666">/${s.slug} · ${s.is_active?'<span style="color:#47ff80">Actif</span>':'<span style="color:#ff8c47">En attente</span>'}</div>
-      </div>
-      <div style="display:flex;gap:8px">
-        <button onclick="toggleStudio('${s.id}',${s.is_active})" style="background:${s.is_active?'#333':'#e8ff47'};color:${s.is_active?'#f0f0f0':'#0a0a0a'};border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">
-          ${s.is_active?'Désactiver':'Activer'}
-        </button>
-      </div>
-    </div>
-  `).join('');
+  container.innerHTML=studios.map(function(s){
+    var logoHtml=s.logo_url
+      ?'<img src="'+s.logo_url+'" style="width:40px;height:40px;border-radius:8px;object-fit:contain;background:#0a0a0a">'
+      :'<div style="width:40px;height:40px;border-radius:8px;background:#222;display:flex;align-items:center;justify-content:center;font-size:18px">&#127967;</div>';
+    var statusHtml=s.is_active
+      ?'<span style="color:#47ff80">Actif</span>'
+      :'<span style="color:#ff8c47">En attente</span>';
+    var btnBg=s.is_active?'#333':'#e8ff47';
+    var btnColor=s.is_active?'#f0f0f0':'#0a0a0a';
+    var btnLabel=s.is_active?'Désactiver':'Activer';
+    return '<div style="background:#111;border:1px solid #222;border-radius:12px;padding:16px;margin:12px 20px;display:flex;align-items:center;gap:12px">'
+      +logoHtml
+      +'<div style="flex:1">'
+      +'<div style="font-weight:700;color:#f0f0f0">'+s.name+'</div>'
+      +'<div style="font-size:12px;color:#666">/'+s.slug+' · '+statusHtml+'</div>'
+      +'</div>'
+      +'<button onclick="toggleStudio(''+s.id+'','+s.is_active+')" style="background:'+btnBg+';color:'+btnColor+';border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">'+btnLabel+'</button>'
+      +'</div>';
+  }).join('');
 }
 
 async function toggleStudio(studioId,currentActive){
