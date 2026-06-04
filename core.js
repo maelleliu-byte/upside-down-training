@@ -203,10 +203,10 @@ async function initApp(){
 
 // NAVIGATION
 async function goPage(page){
-  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
+  document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';p.style.overflowY='';});
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   const pg=document.getElementById(`page-${page}`);
-  if(pg){pg.style.display='block';pg.classList.add('active');pg.scrollTop=0;}
+  if(pg){pg.style.display='block';pg.classList.add('active');pg.style.overflowY='auto';requestAnimationFrame(()=>{pg.scrollTop=0;});}
   const btn=document.querySelector(`[data-page="${page}"]`);
   if(btn)btn.classList.add('active');
   if(page==='pr'){await loadMyPRs();await loadMyBenchScores();renderAll();}
@@ -218,16 +218,7 @@ async function goPage(page){
 
 // PROGRAMMES
 async function loadProgrammes(){
-  // Attendre que le studio soit chargé (bootstrap async)
-  const studio=window.__STUDIO__;
-  const studioId=studio?.id||null;
-  let q=sb.from('programmes').select('*').eq('is_active',true);
-  if(studioId){
-    q=q.eq('studio_id',studioId);
-  } else {
-    q=q.is('studio_id',null);
-  }
-  const {data}=await q.order('name');
+  const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
   programmes=data||[];
 
   // Gérer retour Stripe ici, après chargement des programmes
