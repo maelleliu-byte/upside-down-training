@@ -270,7 +270,7 @@ async function goPage(page){
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   const pg=document.getElementById(`page-${page}`);
-  if(pg){pg.style.display='block';pg.classList.add('active');pg.scrollTop=0;}
+  if(pg){pg.style.display=pg.id==='page-prog'?'flex':'block';pg.classList.add('active');pg.scrollTop=0;}
   const btn=document.querySelector(`[data-page="${page}"]`);
   if(btn)btn.classList.add('active');
   if(page==='pr'){await loadMyPRs();await loadMyBenchScores();renderAll();}
