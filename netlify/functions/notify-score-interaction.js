@@ -18,6 +18,13 @@ exports.handler = async (event) => {
     process.env.VAPID_PRIVATE_KEY
   );
 
+  console.log('[notif] env check:', {
+    url: process.env.SUPABASE_URL ? 'OK' : 'MANQUANT',
+    key: process.env.SUPABASE_SERVICE_KEY ? 'OK' : 'MANQUANT',
+    vapidPub: process.env.VAPID_PUBLIC_KEY ? 'OK' : 'MANQUANT',
+    vapidPriv: process.env.VAPID_PRIVATE_KEY ? 'OK' : 'MANQUANT',
+  });
+
   let body;
   try {
     body = JSON.parse(event.body);
