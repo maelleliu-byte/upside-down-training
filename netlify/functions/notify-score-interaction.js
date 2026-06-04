@@ -41,11 +41,10 @@ exports.handler = async (event) => {
   }
 
   // 1. Récupérer le propriétaire du score
-  const { data: score, error: scoreErr } = await sb
-    .from('wod_scores')
-    .select('athlete_id')
-    .eq('id', scoreId)
-    .maybeSingle();
+const { data: score, error: scoreErr } = await sb
+  .from('wod_scores')
+  .select('athlete_id')
+  .limit(1);
 
   console.log('[notif] wod_scores result:', JSON.stringify({ score, scoreErr }));
 
