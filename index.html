@@ -344,23 +344,6 @@
       <div class="form-group">
         <label class="form-label">Contenu RX</label>
         <div class="rich-editor-wrap">
-          <div class="rich-toolbar">
-            <button type="button" class="rich-btn" onclick="richCmd('bold')" title="Gras"><b>G</b></button>
-            <button type="button" class="rich-btn" onclick="richCmd('italic')" title="Italique"><i>I</i></button>
-            <div class="rich-sep"></div>
-            <button type="button" class="rich-btn font-serif" onclick="richFont('serif')" title="Serif Bold">Aa</button>
-            <button type="button" class="rich-btn font-sans-bold" onclick="richFont('sans-bold')" title="Sans-serif Bold"><b>Aa</b></button>
-            <button type="button" class="rich-btn font-sans-italic" onclick="richFont('sans-italic')" title="Sans-serif Italique"><i>Aa</i></button>
-            <div class="rich-sep"></div>
-            <button type="button" class="rich-color-btn" style="color:#f0f0f0;border-color:#555" onclick="richColor('#f0f0f0')" title="Blanc">A</button>
-            <button type="button" class="rich-color-btn" style="color:#ff4444" onclick="richColor('#ff4444')" title="Rouge">A</button>
-            <button type="button" class="rich-color-btn" style="color:#47ff8c" onclick="richColor('#47ff8c')" title="Vert">A</button>
-            <button type="button" class="rich-color-btn" style="color:#47c8ff" onclick="richColor('#47c8ff')" title="Bleu">A</button>
-            <button type="button" class="rich-color-btn" style="color:#111111;background:#f0f0f0" onclick="richColor('#111111')" title="Noir">A</button>
-            <button type="button" class="rich-color-btn" style="color:#e8ff47" onclick="richColor('#e8ff47')" title="Jaune">A</button>
-            <div class="rich-sep"></div>
-            <button type="button" class="rich-btn" onclick="richCmd('removeFormat')" title="Effacer formatage" style="font-size:11px;color:var(--muted)">✕ fmt</button>
-          </div>
           <div class="rich-content" id="f-content-editor" contenteditable="true" data-placeholder="Détails de la séance RX..."></div>
           <textarea id="f-content" style="display:none"></textarea>
         </div>
@@ -2759,6 +2742,73 @@ function _injectAdminBadgesTab() {
   if (lastPanel) lastPanel.insertAdjacentElement('afterend', panel);
   else adminPage.appendChild(panel);
 }
+</script>
+
+<!-- FLOATING RICH TOOLBOX -->
+<div id="floating-rich-toolbar" class="rich-toolbar-floating" onmousedown="event.preventDefault()" style="display:none">
+  <button type="button" class="rich-btn" onclick="richCmd('bold')" title="Gras"><b>G</b></button>
+  <button type="button" class="rich-btn" onclick="richCmd('italic')" title="Italique"><i>I</i></button>
+  <div class="rich-sep rich-plain-hide"></div>
+  <button type="button" class="rich-btn font-serif rich-plain-hide" onclick="richFont('serif')" title="Serif Bold">Aa</button>
+  <button type="button" class="rich-btn font-sans-bold rich-plain-hide" onclick="richFont('sans-bold')" title="Sans-serif Bold"><b>Aa</b></button>
+  <button type="button" class="rich-btn font-sans-italic rich-plain-hide" onclick="richFont('sans-italic')" title="Sans-serif Italique"><i>Aa</i></button>
+  <div class="rich-sep rich-plain-hide"></div>
+  <button type="button" class="rich-color-btn rich-plain-hide" style="color:#f0f0f0;border-color:#555" onclick="richColor('#f0f0f0')" title="Blanc">A</button>
+  <button type="button" class="rich-color-btn rich-plain-hide" style="color:#ff4444" onclick="richColor('#ff4444')" title="Rouge">A</button>
+  <button type="button" class="rich-color-btn rich-plain-hide" style="color:#47ff8c" onclick="richColor('#47ff8c')" title="Vert">A</button>
+  <button type="button" class="rich-color-btn rich-plain-hide" style="color:#47c8ff" onclick="richColor('#47c8ff')" title="Bleu">A</button>
+  <button type="button" class="rich-color-btn rich-plain-hide" style="color:#111111;background:#f0f0f0" onclick="richColor('#111111')" title="Noir">A</button>
+  <button type="button" class="rich-color-btn rich-plain-hide" style="color:#e8ff47" onclick="richColor('#e8ff47')" title="Jaune">A</button>
+  <div class="rich-sep"></div>
+  <button type="button" class="rich-btn" onclick="richCmd('removeFormat')" title="Effacer formatage" style="font-size:11px;color:var(--muted)">✕ fmt</button>
+</div>
+
+<script>
+(function(){
+  var SESSION_FIELDS = ['f-content-editor','f-scaling-inter','f-scaling-scaled','f-scaling-foundation','f-target','f-tips'];
+  var _hideTimer = null;
+
+  window._richActiveTarget = null;
+  window._richActiveType = null; // 'rich' | 'plain'
+
+  function showToolbar(isRich){
+    var tb = document.getElementById('floating-rich-toolbar');
+    if(!tb) return;
+    tb.querySelectorAll('.rich-plain-hide').forEach(function(el){ el.style.display = isRich ? '' : 'none'; });
+    tb.style.display = 'flex';
+  }
+
+  function hideToolbar(){
+    var tb = document.getElementById('floating-rich-toolbar');
+    if(tb) tb.style.display = 'none';
+    window._richActiveTarget = null;
+    window._richActiveType = null;
+  }
+
+  function attach(){
+    SESSION_FIELDS.forEach(function(id){
+      var el = document.getElementById(id);
+      if(!el || el._richBound) return;
+      el._richBound = true;
+      var isRich = (id === 'f-content-editor');
+      el.addEventListener('focus', function(){
+        if(_hideTimer){ clearTimeout(_hideTimer); _hideTimer = null; }
+        window._richActiveTarget = el;
+        window._richActiveType = isRich ? 'rich' : 'plain';
+        showToolbar(isRich);
+      });
+      el.addEventListener('blur', function(){
+        _hideTimer = setTimeout(hideToolbar, 200);
+      });
+    });
+  }
+
+  // Premier attachement au chargement
+  if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', attach); }
+  else { attach(); }
+  // Exposer pour ré-attachement si nécessaire (ex: après ouverture du panel admin)
+  window._attachRichToolbarListeners = attach;
+})();
 </script>
 </body>
 </html>
