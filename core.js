@@ -13,7 +13,7 @@ let currentCat='all',searchQuery='',currentBcat='all';
 
 const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
-const TYPE_LABELS={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymnastics:'Gymnastics',renforcement:'Renforcement',bodybuilding:'Bodybuilding',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité',engine:'Engine',run:'Run',repos:'Repos',separator:'Séparateur'};
+const TYPE_LABELS={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymnastics:'Gymnastics',renforcement:'Renforcement',bodybuilding:'Bodybuilding',skill:'Skill',warmup:'Échauffement',mobility:'Mobilité',engine:'Engine',run:'Run',separator:'Séparateur'};
 const CAT_LABELS={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio / Mono',autre:'Autre'};
 const HALTERO_SUBCATS=[
   {key:'snatch',  label:'SNATCH',   match:n=>/snatch/i.test(n)},
@@ -201,76 +201,12 @@ async function initApp(){
   if(typeof _startBadgeRealtime==='function')setTimeout(_startBadgeRealtime,1000);
 }
 
-// ── Push Notifications ─────────────────────────────────────
-const VAPID_PUBLIC_KEY = 'BIqRyyh15JLzfRrU4vSefmtSxbV869vhpsYf6PNyCDpkAWeK5oaEctTz0jJl8ytTVIjzwg6OoBDrgUpZpRqFZEk';
-
-function _urlBase64ToUint8Array(base64String) {
-  const padding = '='.repeat((4 - base64String.length % 4) % 4);
-  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
-  const rawData = atob(base64);
-  return new Uint8Array([...rawData].map(c => c.charCodeAt(0)));
-}
-
-async function _initPushNotifications() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (!currentUser) return;
-
-  try {
-    // Enregistrer le service worker et attendre qu'il soit actif
-    const reg = await navigator.serviceWorker.register('/sw.js');
-
-    // Attendre que le SW soit actif
-    await new Promise((resolve) => {
-      if (reg.active) { resolve(); return; }
-      const sw = reg.installing || reg.waiting;
-      if (!sw) { resolve(); return; }
-      sw.addEventListener('statechange', function() {
-        if (this.state === 'activated') resolve();
-      });
-    });
-
-    // Demander la permission seulement si pas encore accordée
-    if (Notification.permission === 'denied') return;
-    if (Notification.permission === 'default') {
-      const perm = await Notification.requestPermission();
-      if (perm !== 'granted') return;
-    }
-
-    // Vérifier si déjà subscrit
-    let sub = await reg.pushManager.getSubscription();
-    if (!sub) {
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-      });
-    }
-
-    // Sauvegarder dans Supabase
-    const key    = sub.getKey('p256dh');
-    const auth   = sub.getKey('auth');
-    const p256dh = btoa(String.fromCharCode(...new Uint8Array(key))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-    const authStr= btoa(String.fromCharCode(...new Uint8Array(auth))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=/g,'');
-
-    const { error } = await sb.from('push_subscriptions').upsert({
-      user_id:  currentUser.id,
-      endpoint: sub.endpoint,
-      p256dh,
-      auth: authStr,
-    }, { onConflict: 'user_id,endpoint' });
-
-    if (error) console.error('[Push] upsert error:', error);
-
-  } catch(e) {
-    console.error('[Push] init error:', e.message || e);
-  }
-}
-
 // NAVIGATION
 async function goPage(page){
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   const pg=document.getElementById(`page-${page}`);
-  if(pg){pg.style.display=pg.id==='page-prog'?'flex':'block';pg.classList.add('active');pg.scrollTop=0;}
+  if(pg){pg.style.display='block';pg.classList.add('active');pg.scrollTop=0;}
   const btn=document.querySelector(`[data-page="${page}"]`);
   if(btn)btn.classList.add('active');
   if(page==='pr'){await loadMyPRs();await loadMyBenchScores();renderAll();}
@@ -282,7 +218,16 @@ async function goPage(page){
 
 // PROGRAMMES
 async function loadProgrammes(){
-  const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
+  // Attendre que le studio soit chargé (bootstrap async)
+  const studio=window.__STUDIO__;
+  const studioId=studio?.id||null;
+  let q=sb.from('programmes').select('*').eq('is_active',true);
+  if(studioId){
+    q=q.eq('studio_id',studioId);
+  } else {
+    q=q.is('studio_id',null);
+  }
+  const {data}=await q.order('name');
   programmes=data||[];
 
   // Gérer retour Stripe ici, après chargement des programmes
