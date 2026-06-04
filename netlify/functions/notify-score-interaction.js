@@ -1,21 +1,22 @@
 const webpush = require('web-push');
 const { createClient } = require('@supabase/supabase-js');
 
-const sb = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_KEY
-);
-
-webpush.setVapidDetails(
-  'mailto:contact@upside-training.fr',
-  process.env.VAPID_PUBLIC_KEY,
-  process.env.VAPID_PRIVATE_KEY
-);
-
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
+
+  // Init ici pour être sûr que les env vars sont chargées
+  const sb = createClient(
+    process.env.SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_KEY
+  );
+
+  webpush.setVapidDetails(
+    'mailto:contact@upside-training.fr',
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
 
   let body;
   try {
@@ -28,7 +29,6 @@ exports.handler = async (event) => {
   console.log('[notif] reçu:', { scoreId, type, fromName, fromUserId });
 
   if (!scoreId || !type || !fromUserId) {
-    console.log('[notif] champs manquants');
     return { statusCode: 400, body: 'Missing fields' };
   }
 
@@ -39,12 +39,12 @@ exports.handler = async (event) => {
     .eq('id', scoreId)
     .maybeSingle();
 
-  if (scoreErr || !score) {
-    console.log('[notif] score introuvable:', scoreErr?.message);
+  console.log('[notif] wod_scores result:', JSON.stringify({ score, scoreErr }));
+
+  if (!score) {
+    console.log('[notif] score introuvable');
     return { statusCode: 404, body: 'Score not found' };
   }
-
-  console.log('[notif] score owner:', score.athlete_id, '| from:', fromUserId);
 
   // Ne pas notifier si on like/commente son propre score
   if (score.athlete_id === fromUserId) {
@@ -52,13 +52,15 @@ exports.handler = async (event) => {
     return { statusCode: 200, body: 'Self-interaction, skipped' };
   }
 
+  console.log('[notif] score owner:', score.athlete_id);
+
   // 2. Récupérer toutes les push subscriptions du propriétaire
-  const { data: subs } = await sb
+  const { data: subs, error: subErr } = await sb
     .from('push_subscriptions')
     .select('*')
     .eq('user_id', score.athlete_id);
 
-  console.log('[notif] subscriptions trouvées:', subs?.length ?? 0);
+  console.log('[notif] subscriptions trouvées:', subs?.length ?? 0, subErr?.message);
 
   if (!subs || subs.length === 0) {
     return { statusCode: 200, body: 'No subscription found' };
@@ -66,7 +68,7 @@ exports.handler = async (event) => {
 
   // 3. Construire le payload
   const payload = JSON.stringify({
-    title: type === 'like' ? '❤️ Quelqu\'un a liké ton score !' : '💬 Nouveau commentaire !',
+    title: type === 'like' ? "❤️ Quelqu'un a liké ton score !" : '💬 Nouveau commentaire !',
     body: type === 'like'
       ? `${fromName} a aimé ton score`
       : `${fromName} a commenté ton score`,
@@ -102,7 +104,6 @@ exports.handler = async (event) => {
   });
   if (expiredEndpoints.length > 0) {
     await sb.from('push_subscriptions').delete().in('endpoint', expiredEndpoints);
-    console.log('[notif] subscriptions expirées supprimées:', expiredEndpoints.length);
   }
 
   return { statusCode: 200, body: 'OK' };
