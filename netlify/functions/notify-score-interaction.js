@@ -6,7 +6,6 @@ exports.handler = async (event) => {
     return { statusCode: 405, body: 'Method Not Allowed' };
   }
 
-  // Init ici pour être sûr que les env vars sont chargées
   const sb = createClient(
     process.env.SUPABASE_URL,
     process.env.SUPABASE_SERVICE_KEY
@@ -40,51 +39,61 @@ exports.handler = async (event) => {
     return { statusCode: 400, body: 'Missing fields' };
   }
 
+  // Test fetch direct pour bypasser le client JS
+  const res = await fetch(
+    `${process.env.SUPABASE_URL}/rest/v1/wod_scores?id=eq.${scoreId}&select=athlete_id`,
+    {
+      headers: {
+        'apikey': process.env.SUPABASE_SERVICE_KEY,
+        'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
+      }
+    }
+  );
+  const rows = await res.json();
+  console.log('[notif] fetch direct:', JSON.stringify(rows));
+
   // 1. Récupérer le propriétaire du score
-const { data: score, error: scoreErr } = await sb
-  .from('wod_scores')
-  .select('athlete_id')
-  .eq('id', scoreId)
-  .maybeSingle();
+  const { data: score, error: scoreErr } = await sb
+    .from('wod_scores')
+    .select('athlete_id')
+    .eq('id', scoreId)
+    .maybeSingle();
 
   console.log('[notif] wod_scores result:', JSON.stringify({ score, scoreErr }));
-const res = await fetch(
-  `${process.env.SUPABASE_URL}/rest/v1/wod_scores?id=eq.${scoreId}&select=athlete_id`,
-  {
-    headers: {
-      'apikey': process.env.SUPABASE_SERVICE_KEY,
-      'Authorization': `Bearer ${process.env.SUPABASE_SERVICE_KEY}`,
-    }
-  }
-);
-const rows = await res.json();
-console.log('[notif] fetch direct:', JSON.stringify(rows));
+
   if (!score) {
-    console.log('[notif] score introuvable');
-    return { statusCode: 404, body: 'Score not found' };
+    // Utiliser le résultat du fetch direct si le client JS échoue
+    if (rows && rows.length > 0) {
+      console.log('[notif] using fetch direct result');
+      rows[0].athlete_id && await sendNotification(rows[0].athlete_id, scoreId, type, fromName, fromUserId, sb);
+    } else {
+      console.log('[notif] score introuvable partout');
+    }
+    return { statusCode: 200, body: 'OK' };
   }
 
-  // Ne pas notifier si on like/commente son propre score
-  if (score.athlete_id === fromUserId) {
+  await sendNotification(score.athlete_id, scoreId, type, fromName, fromUserId, sb);
+  return { statusCode: 200, body: 'OK' };
+};
+
+async function sendNotification(athleteId, scoreId, type, fromName, fromUserId, sb) {
+  if (athleteId === fromUserId) {
     console.log('[notif] self-interaction, skipped');
-    return { statusCode: 200, body: 'Self-interaction, skipped' };
+    return;
   }
 
-  console.log('[notif] score owner:', score.athlete_id);
+  console.log('[notif] score owner:', athleteId);
 
-  // 2. Récupérer toutes les push subscriptions du propriétaire
   const { data: subs, error: subErr } = await sb
     .from('push_subscriptions')
     .select('*')
-    .eq('user_id', score.athlete_id);
+    .eq('user_id', athleteId);
 
   console.log('[notif] subscriptions trouvées:', subs?.length ?? 0, subErr?.message);
 
-  if (!subs || subs.length === 0) {
-    return { statusCode: 200, body: 'No subscription found' };
-  }
+  if (!subs || subs.length === 0) return;
 
-  // 3. Construire le payload
+  const webpush = require('web-push');
   const payload = JSON.stringify({
     title: type === 'like' ? "❤️ Quelqu'un a liké ton score !" : '💬 Nouveau commentaire !',
     body: type === 'like'
@@ -95,7 +104,6 @@ console.log('[notif] fetch direct:', JSON.stringify(rows));
     tag: `score-${type}-${scoreId}`,
   });
 
-  // 4. Envoyer
   const results = await Promise.allSettled(
     subs.map(sub =>
       webpush.sendNotification(
@@ -113,7 +121,6 @@ console.log('[notif] fetch direct:', JSON.stringify(rows));
     }
   });
 
-  // Nettoyer les subscriptions expirées (410 Gone)
   const expiredEndpoints = [];
   results.forEach((r, i) => {
     if (r.status === 'rejected' && r.reason?.statusCode === 410) {
@@ -123,6 +130,4 @@ console.log('[notif] fetch direct:', JSON.stringify(rows));
   if (expiredEndpoints.length > 0) {
     await sb.from('push_subscriptions').delete().in('endpoint', expiredEndpoints);
   }
-
-  return { statusCode: 200, body: 'OK' };
-};
+}
