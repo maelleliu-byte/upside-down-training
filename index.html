@@ -2,10 +2,6 @@
 <html lang="fr">
 <head>
 <meta charset="UTF-8">
-<link rel="manifest" href="/manifest.json">
-<meta name="theme-color" content="#0a0a0a">
-<meta name="mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-capable" content="yes">
 <!-- drag-drop-touch polyfill: lazy, silent — sandbox may block CDNs (non-critical) -->
 <script>
 (function(){
@@ -79,8 +75,21 @@
         showNotFound(`Aucun studio nommé <code style="background:#222;padding:2px 8px;border-radius:4px;color:#e8ff47">${slug}</code> n'existe.`);
         return;
       }
-      // No slug in URL → silent fallback to defaults
-      window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
+      // No slug in URL → charger quand même le studio upside pour avoir l'ID
+      slug = 'upside';
+      fetch(`${SUPABASE_URL}/rest/v1/rpc/get_studio_by_slug`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': SUPABASE_ANON, 'Authorization': `Bearer ${SUPABASE_ANON}` },
+        body: JSON.stringify({ p_slug: 'upside' })
+      }).then(r=>r.json()).then(rows=>{
+        const s = Array.isArray(rows) ? rows[0] : rows;
+        window.__STUDIO__ = s && s.id ? s : { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
+        if (s?.accent_color) document.documentElement.style.setProperty('--accent', s.accent_color);
+        window.dispatchEvent(new CustomEvent('studio:ready', { detail: window.__STUDIO__ }));
+      }).catch(()=>{
+        window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
+        window.dispatchEvent(new CustomEvent('studio:ready', { detail: window.__STUDIO__ }));
+      });
       return;
     }
     window.__STUDIO__ = studio;
@@ -95,6 +104,7 @@
       return;
     }
     window.__STUDIO__ = { slug: 'upside', name: 'Upside Down Training', accent_color: '#e8ff47' };
+    window.dispatchEvent(new CustomEvent('studio:ready', { detail: window.__STUDIO__ }));
   });
 })();
 </script>
@@ -180,10 +190,7 @@
         <button class="arrow-btn" onclick="changeWeek(1)">›</button>
       </div>
     </div>
-    <div class="day-strip-wrap" style="position:relative">
-      <div class="day-strip" id="day-strip"></div>
-      <div id="date-picker-pop" class="date-picker-pop" style="display:none"></div>
-    </div>
+    <div class="day-strip" id="day-strip"></div>
     <div id="sessions-area"></div>
   </div>
 
@@ -214,7 +221,7 @@
     <div class="admin-tabs">
       <button class="admin-tab-btn active" onclick="adminTab('progs',this)">Programmes</button>
       <button class="admin-tab-btn" onclick="adminTab('new-session',this)">+ Séance</button>
-      <button class="admin-tab-btn" onclick="adminTab('sessions',this)">Planning</button>
+      <button class="admin-tab-btn" onclick="adminTab('sessions',this)">Séances</button>
       <button class="admin-tab-btn" onclick="adminTab('cycle',this)">🗓 Cycle</button>
       <button class="admin-tab-btn" onclick="adminTab('benchmarks',this)">Mouv. &amp; Bench.</button>
       <button class="admin-tab-btn" onclick="adminTab('videos',this)">Vidéos</button>
@@ -277,25 +284,6 @@
 
     <!-- NOUVELLE SÉANCE -->
     <div class="admin-panel" id="admin-new-session">
-
-      <!-- RICH TOOLBOX STICKY -->
-      <div id="session-rich-toolbar" class="rich-toolbar-sticky" onmousedown="event.preventDefault()">
-        <button type="button" class="rich-btn" onclick="richCmd('bold')" title="Gras"><b>G</b></button>
-        <button type="button" class="rich-btn" onclick="richCmd('italic')" title="Italique"><i>I</i></button>
-        <div class="rich-sep"></div>
-        <button type="button" class="rich-btn font-serif" onclick="richFont('serif')" title="Serif Bold">Aa</button>
-        <button type="button" class="rich-btn font-sans-bold" onclick="richFont('sans-bold')" title="Sans-serif Bold"><b>Aa</b></button>
-        <button type="button" class="rich-btn font-sans-italic" onclick="richFont('sans-italic')" title="Sans-serif Italique"><i>Aa</i></button>
-        <div class="rich-sep"></div>
-        <button type="button" class="rich-color-btn" style="color:#f0f0f0;border-color:#555" onclick="richColor('#f0f0f0')" title="Blanc">A</button>
-        <button type="button" class="rich-color-btn" style="color:#ff4444" onclick="richColor('#ff4444')" title="Rouge">A</button>
-        <button type="button" class="rich-color-btn" style="color:#47ff8c" onclick="richColor('#47ff8c')" title="Vert">A</button>
-        <button type="button" class="rich-color-btn" style="color:#47c8ff" onclick="richColor('#47c8ff')" title="Bleu">A</button>
-        <button type="button" class="rich-color-btn" style="color:#111111;background:#f0f0f0" onclick="richColor('#111111')" title="Noir">A</button>
-        <button type="button" class="rich-color-btn" style="color:#e8ff47" onclick="richColor('#e8ff47')" title="Jaune">A</button>
-        <div class="rich-sep"></div>
-        <button type="button" class="rich-btn" onclick="richCmd('removeFormat')" title="Effacer formatage" style="font-size:11px;color:var(--muted)">✕ fmt</button>
-      </div>
 
       <!-- TEMPLATES DE SÉANCE -->
       <div id="session-templates-block" style="background:linear-gradient(135deg,rgba(232,255,71,.06),rgba(71,200,255,.04));border:1px solid var(--border);border-radius:12px;padding:12px 14px;margin-bottom:14px">
@@ -363,6 +351,23 @@
       <div class="form-group">
         <label class="form-label">Contenu RX</label>
         <div class="rich-editor-wrap">
+          <div class="rich-toolbar">
+            <button type="button" class="rich-btn" onclick="richCmd('bold')" title="Gras"><b>G</b></button>
+            <button type="button" class="rich-btn" onclick="richCmd('italic')" title="Italique"><i>I</i></button>
+            <div class="rich-sep"></div>
+            <button type="button" class="rich-btn font-serif" onclick="richFont('serif')" title="Serif Bold">Aa</button>
+            <button type="button" class="rich-btn font-sans-bold" onclick="richFont('sans-bold')" title="Sans-serif Bold"><b>Aa</b></button>
+            <button type="button" class="rich-btn font-sans-italic" onclick="richFont('sans-italic')" title="Sans-serif Italique"><i>Aa</i></button>
+            <div class="rich-sep"></div>
+            <button type="button" class="rich-color-btn" style="color:#f0f0f0;border-color:#555" onclick="richColor('#f0f0f0')" title="Blanc">A</button>
+            <button type="button" class="rich-color-btn" style="color:#ff4444" onclick="richColor('#ff4444')" title="Rouge">A</button>
+            <button type="button" class="rich-color-btn" style="color:#47ff8c" onclick="richColor('#47ff8c')" title="Vert">A</button>
+            <button type="button" class="rich-color-btn" style="color:#47c8ff" onclick="richColor('#47c8ff')" title="Bleu">A</button>
+            <button type="button" class="rich-color-btn" style="color:#111111;background:#f0f0f0" onclick="richColor('#111111')" title="Noir">A</button>
+            <button type="button" class="rich-color-btn" style="color:#e8ff47" onclick="richColor('#e8ff47')" title="Jaune">A</button>
+            <div class="rich-sep"></div>
+            <button type="button" class="rich-btn" onclick="richCmd('removeFormat')" title="Effacer formatage" style="font-size:11px;color:var(--muted)">✕ fmt</button>
+          </div>
           <div class="rich-content" id="f-content-editor" contenteditable="true" data-placeholder="Détails de la séance RX..."></div>
           <textarea id="f-content" style="display:none"></textarea>
         </div>
@@ -373,21 +378,21 @@
         <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">Scaling par niveau</div>
         <div class="form-group">
           <label class="form-label" style="color:var(--blue)">Intermédiaire</label>
-          <div class="rich-content form-textarea" id="f-scaling-inter" contenteditable="true" data-placeholder="Modifications pour le niveau intermédiaire..." style="min-height:70px"></div>
+          <textarea class="form-textarea" id="f-scaling-inter" style="min-height:70px" placeholder="Modifications pour le niveau intermédiaire..."></textarea>
         </div>
         <div class="form-group">
           <label class="form-label" style="color:var(--orange)">Scaled</label>
-          <div class="rich-content form-textarea" id="f-scaling-scaled" contenteditable="true" data-placeholder="Modifications pour le niveau scaled..." style="min-height:70px"></div>
+          <textarea class="form-textarea" id="f-scaling-scaled" style="min-height:70px" placeholder="Modifications pour le niveau scaled..."></textarea>
         </div>
         <div class="form-group" style="margin-bottom:0">
           <label class="form-label" style="color:var(--purple)">Fondation</label>
-          <div class="rich-content form-textarea" id="f-scaling-foundation" contenteditable="true" data-placeholder="Modifications pour le niveau fondation..." style="min-height:70px"></div>
+          <textarea class="form-textarea" id="f-scaling-foundation" style="min-height:70px" placeholder="Modifications pour le niveau fondation..."></textarea>
         </div>
       </div>
 
       <div class="form-group"><label class="form-label">Intensité — <span id="f-int-val">7</span>/10</label><input type="range" min="1" max="10" value="7" id="f-intensity" oninput="document.getElementById('f-int-val').textContent=this.value"></div>
-      <div class="form-group"><label class="form-label">Target</label><div class="rich-content form-textarea" id="f-target" contenteditable="true" data-placeholder="Objectif par niveau..." style="min-height:80px"></div></div>
-      <div class="form-group"><label class="form-label">Coaching Tips</label><div class="rich-content form-textarea" id="f-tips" contenteditable="true" data-placeholder="Points techniques clés..." style="min-height:90px"></div></div>
+      <div class="form-group"><label class="form-label">Target</label><textarea class="form-textarea" id="f-target" style="min-height:80px" placeholder="Objectif par niveau..."></textarea></div>
+      <div class="form-group"><label class="form-label">Coaching Tips</label><textarea class="form-textarea" id="f-tips" style="min-height:90px" placeholder="Points techniques clés..."></textarea></div>
 
       <!-- SCORES MULTIPLES -->
       <div class="form-group">
@@ -453,7 +458,6 @@
         <div style="display:flex;gap:6px">
           <button class="arrow-btn" onclick="changeAdminWeek(-1)">‹</button>
           <button class="arrow-btn" onclick="changeAdminWeek(1)">›</button>
-          <button class="arrow-btn" onclick="openDupWeekModal()" title="Dupliquer la semaine" style="font-size:13px;padding:0 10px">📋</button>
         </div>
       </div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px;color:var(--muted)" id="admin-cal-week-label">—</div>
@@ -646,7 +650,6 @@
             <button class="arrow-btn" onclick="persoNav(-1)">‹</button>
             <span style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--muted);min-width:140px;text-align:center" id="perso-period-label">—</span>
             <button class="arrow-btn" onclick="persoNav(1)">›</button>
-            <button class="arrow-btn" onclick="openDupPersoWeekModal()" title="Dupliquer la semaine" style="font-size:13px;padding:0 10px">📋</button>
           </div>
         </div>
         <div id="perso-calendar-area"></div>
@@ -929,40 +932,6 @@
     </div>
     <button class="btn-modal-save" onclick="confirmPersoDuplicate()">📋 Dupliquer</button>
     <button class="btn-modal-cancel" onclick="closeDupPersoModal()">Annuler</button>
-  </div>
-</div>
-
-<!-- MODAL DUPLICATION SEMAINE ENTIÈRE (admin) -->
-<div class="modal-overlay" id="dup-week-modal">
-  <div class="modal">
-    <div class="modal-title">📋 Dupliquer la semaine</div>
-    <div class="modal-sub" id="dup-week-source-label">—</div>
-    <div class="form-group" style="margin-bottom:14px" id="dup-week-oneshot-group">
-      <label class="form-label">Semaine destination</label>
-      <select class="form-select" id="dup-week-target-week"></select>
-    </div>
-    <div class="form-group" style="margin-bottom:14px" id="dup-week-date-group">
-      <label class="form-label">Semaine de destination</label>
-      <input type="date" class="modal-date" id="dup-week-target-date">
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">La semaine choisie sera automatiquement alignée sur le lundi.</div>
-    </div>
-    <button class="btn-modal-save" onclick="confirmDupWeek()">📋 Dupliquer la semaine</button>
-    <button class="btn-modal-cancel" onclick="closeDupWeekModal()">Annuler</button>
-  </div>
-</div>
-
-<!-- MODAL DUPLICATION SEMAINE ENTIÈRE (espace perso) -->
-<div class="modal-overlay" id="dup-perso-week-modal">
-  <div class="modal">
-    <div class="modal-title">📋 Dupliquer la semaine</div>
-    <div class="modal-sub" id="dup-perso-week-source-label">—</div>
-    <div class="form-group" style="margin-bottom:14px">
-      <label class="form-label">Semaine de destination</label>
-      <input type="date" class="modal-date" id="dup-perso-week-target-date">
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">Toutes les séances de la semaine seront copiées. La semaine choisie est alignée sur le lundi.</div>
-    </div>
-    <button class="btn-modal-save" onclick="confirmDupPersoWeek()">📋 Dupliquer la semaine</button>
-    <button class="btn-modal-cancel" onclick="closeDupPersoWeekModal()">Annuler</button>
   </div>
 </div>
 
@@ -1912,8 +1881,31 @@ function _hideBadgeNavDot() {
 }
 
 async function _showUnseenBadges() {
-  // Déléguer au polling pour éviter les doublons
-  await _pollUnseenBadges();
+  if (!window.currentUser) return;
+  const { data } = await sb.from('athlete_badges')
+    .select('*, badges(*)')
+    .eq('athlete_id', currentUser.id)
+    .eq('seen', false);
+
+  if (!data || !data.length) return;
+
+  // Afficher le point rouge sur l'icône Profil
+  _showBadgeNavDot(data.length);
+
+  // Lancer les célébrations avec délai entre chaque
+  for (let i = 0; i < data.length; i++) {
+    setTimeout(() => _celebrateBadge(data[i]), i * 3800);
+  }
+
+  // Marquer tous comme vus après la dernière célébration
+  setTimeout(async () => {
+    await sb.from('athlete_badges')
+      .update({ seen: true })
+      .eq('athlete_id', currentUser.id)
+      .eq('seen', false);
+    _myBadgesCache = null;
+    _hideBadgeNavDot();
+  }, data.length * 3800 + 500);
 }
 
 // ── Célébration badge ──────────────────────────────────────
@@ -2079,43 +2071,15 @@ async function loadAdminBadgesTab() {
   _injectAdminBadgesTab();
   const panel = document.getElementById('admin-badges-panel');
   if (!panel) return;
-  panel.innerHTML = '<div class="spinner"></div>';
 
-  const [allBadges, allAthletes, attributionsRaw] = await Promise.all([
+  const [allBadges, allAthletes] = await Promise.all([
     loadAllBadges(true),
     sb.from('profiles').select('id,full_name,avatar_url').order('full_name'),
-    sb.from('athlete_badges')
-      .select('badge_id, athlete_id, coach_note, awarded_at')
-      .order('awarded_at', { ascending: false }),
   ]);
-
-  const athleteMap = {};
-  for (const a of (allAthletes.data || [])) athleteMap[a.id] = a.full_name;
-
-  const allAttributions = {};
-  for (const row of (attributionsRaw.data || [])) {
-    if (!allAttributions[row.badge_id]) allAttributions[row.badge_id] = [];
-    allAttributions[row.badge_id].push({
-      athlete_id: row.athlete_id,
-      full_name:  athleteMap[row.athlete_id] || 'Athlète',
-      coach_note: row.coach_note,
-      awarded_at: row.awarded_at,
-    });
-  }
-
-  // Construire le map complet : badge_id → { hasList, hasntList }
-  const athletesList = allAthletes.data || [];
-  const badgeRoster = {};
-  for (const b of allBadges) {
-    const hasList   = (allAttributions[b.id] || []);
-    const hasIds    = new Set(hasList.map(a => a.athlete_id));
-    const hasntList = athletesList.filter(a => !hasIds.has(a.id));
-    badgeRoster[b.id] = { hasList, hasntList };
-  }
 
   panel.innerHTML = `
     <!-- Formulaire création badge -->
-    <div style="background:var(--card2);border:1px solid var(--border2);border-radius:14px;padding:16px;margin-bottom:20px" id="badge-create-form">
+    <div style="background:var(--card2);border:1px solid var(--border2);border-radius:14px;padding:16px;margin-bottom:16px" id="badge-create-form">
       <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">+ Nouveau badge</div>
       <div style="display:flex;gap:8px;margin-bottom:10px;align-items:flex-start;flex-wrap:wrap">
         <input id="nb-emoji" type="text" value="🏅" style="
@@ -2164,6 +2128,7 @@ async function loadAdminBadgesTab() {
         </div>
       </div>
 
+      <!-- Champs condition auto (masqués par défaut) -->
       <div id="nb-auto-fields" style="display:none;background:rgba(232,255,71,0.04);border:1px solid rgba(232,255,71,0.15);border-radius:10px;padding:12px;margin-bottom:10px">
         <div style="font-size:10px;font-weight:700;color:var(--accent);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px">⚡ Condition automatique</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
@@ -2190,140 +2155,14 @@ async function loadAdminBadgesTab() {
       ">Créer le badge</button>
     </div>
 
-    <!-- Liste des badges existants avec roster -->
-    <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:12px">
+    <!-- Liste des badges existants -->
+    <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:10px">
       ${allBadges.length} badge${allBadges.length > 1 ? 's' : ''} créé${allBadges.length > 1 ? 's' : ''}
     </div>
-    <div style="display:flex;flex-direction:column;gap:12px" id="badges-admin-list">
+    <div style="display:flex;flex-direction:column;gap:10px" id="badges-admin-list">
       ${allBadges.length === 0
         ? `<div style="font-size:13px;color:var(--muted);text-align:center;padding:24px">Aucun badge créé pour l'instant.</div>`
-        : allBadges.map(b => {
-            const r = RARITY_CONFIG[(b.rarity||'bronze').toLowerCase()] || RARITY_CONFIG.bronze;
-            const { hasList, hasntList } = badgeRoster[b.id] || { hasList: [], hasntList: [] };
-            const safeBadgeId = b.id.replace(/'/g,"\\'");
-            const safeName = (b.name||'').replace(/'/g,"\\'");
-
-            const hasHtml = hasList.length === 0
-              ? `<div style="font-size:11px;color:var(--muted);padding:8px 0">Personne pour l'instant.</div>`
-              : hasList.map(a => {
-                  const safeAthName = (a.full_name||'Athlète').replace(/'/g,"\\'");
-                  const safeAthId = a.athlete_id.replace(/'/g,"\\'");
-                  const dateStr = a.awarded_at ? new Date(a.awarded_at).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}) : '';
-                  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)">
-                    <div>
-                      <span style="font-size:13px;font-weight:600;color:var(--text)">${a.full_name||'Athlète'}</span>
-                      ${dateStr ? `<span style="font-size:10px;color:var(--muted);margin-left:6px">${dateStr}</span>` : ''}
-                      ${a.coach_note ? `<div style="font-size:11px;color:var(--text2);margin-top:2px;font-style:italic">"${a.coach_note}"</div>` : ''}
-                    </div>
-                    <button onclick="revokeAthlBadge('${safeBadgeId}','${safeName}','${safeAthId}','${safeAthName}')" style="
-                      padding:4px 8px;background:transparent;color:var(--muted);
-                      border:1px solid var(--border);border-radius:6px;
-                      font-size:10px;cursor:pointer;flex-shrink:0;margin-left:8px;
-                    ">Retirer</button>
-                  </div>`;
-                }).join('');
-
-            const hasntHtml = hasntList.length === 0
-              ? `<div style="font-size:11px;color:var(--muted);padding:8px 0">Tous les athlètes ont ce badge 🎉</div>`
-              : hasntList.map(a => {
-                  const safeAthId = a.id.replace(/'/g,"\\'");
-                  return `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)">
-                    <span style="font-size:13px;color:var(--text2)">${a.full_name||'Athlète'}</span>
-                    <button onclick="openAwardBadgeModal('${safeBadgeId}','${safeAthId}')" style="
-                      padding:4px 10px;background:var(--accent);color:#000;
-                      border:none;border-radius:6px;font-size:10px;font-weight:700;
-                      cursor:pointer;flex-shrink:0;margin-left:8px;
-                    ">+ Attribuer</button>
-                  </div>`;
-                }).join('');
-
-            return `<div style="
-              background:var(--card2);border:1px solid var(--border2);border-radius:16px;
-              overflow:hidden;
-            ">
-              <!-- En-tête badge -->
-              <div style="
-                display:flex;align-items:center;gap:12px;padding:14px 16px;
-                border-bottom:1px solid var(--border);
-                background:rgba(${_hexToRgb(r.color)},0.06);
-              ">
-                <div style="
-                  width:44px;height:44px;border-radius:12px;flex-shrink:0;
-                  background:rgba(${_hexToRgb(r.color)},0.12);border:1.5px solid ${r.color}66;
-                  display:flex;align-items:center;justify-content:center;font-size:24px;
-                ">${b.emoji}</div>
-                <div style="flex:1;min-width:0">
-                  <div style="font-size:14px;font-weight:700;color:var(--text)">${b.name}</div>
-                  <div style="display:flex;align-items:center;gap:8px;margin-top:3px">
-                    ${_rarityBadgeHtml(b.rarity)}
-                    <span style="font-size:10px;color:var(--muted)">${b.award_type === 'auto' ? '⚡ Auto' : '🎖️ Manuel'}</span>
-                    <span style="font-size:10px;font-weight:700;color:var(--accent)">${hasList.length}/${athletesList.length}</span>
-                  </div>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:4px;flex-shrink:0">
-                  <button onclick="openAwardBadgeModal('${safeBadgeId}')" style="
-                    padding:5px 10px;background:var(--accent);color:#000;
-                    border:none;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;
-                  ">🎖️ Attribuer</button>
-                  <button onclick="openEditBadgeModal('${safeBadgeId}')" style="
-                    padding:5px 10px;background:var(--card);color:var(--text2);
-                    border:1px solid var(--border2);border-radius:8px;font-size:11px;cursor:pointer;
-                  ">Modifier</button>
-                  <button onclick="deleteBadge('${safeBadgeId}','${safeName}')" style="
-                    padding:5px 10px;background:transparent;color:var(--muted);
-                    border:1px solid var(--border);border-radius:8px;font-size:11px;cursor:pointer;
-                  ">Supprimer</button>
-                </div>
-              </div>
-
-              <!-- Accordéon ont / n'ont pas -->
-              <div style="padding:0 16px">
-
-                <!-- ONT ce badge -->
-                <div style="border-bottom:1px solid var(--border)">
-                  <button onclick="_toggleBadgeRoster(this)" style="
-                    width:100%;display:flex;align-items:center;justify-content:space-between;
-                    padding:11px 0;background:transparent;border:none;cursor:pointer;
-                    font-family:'DM Sans',sans-serif;
-                  ">
-                    <span style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:1px;text-transform:uppercase">
-                      ✅ Ont ce badge
-                      <span style="
-                        display:inline-flex;align-items:center;justify-content:center;
-                        min-width:18px;height:18px;padding:0 5px;margin-left:6px;
-                        background:rgba(100,220,100,0.15);color:#4caf50;
-                        border-radius:9px;font-size:10px;font-weight:700;
-                      ">${hasList.length}</span>
-                    </span>
-                    <span style="color:var(--muted);font-size:14px;transition:transform 0.2s" class="roster-arrow">▾</span>
-                  </button>
-                  <div class="roster-body" style="display:none;padding-bottom:8px">${hasHtml}</div>
-                </div>
-
-                <!-- N'ONT PAS ce badge -->
-                <div>
-                  <button onclick="_toggleBadgeRoster(this)" style="
-                    width:100%;display:flex;align-items:center;justify-content:space-between;
-                    padding:11px 0;background:transparent;border:none;cursor:pointer;
-                    font-family:'DM Sans',sans-serif;
-                  ">
-                    <span style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:1px;text-transform:uppercase">
-                      🔒 N'ont pas ce badge
-                      <span style="
-                        display:inline-flex;align-items:center;justify-content:center;
-                        min-width:18px;height:18px;padding:0 5px;margin-left:6px;
-                        background:rgba(255,255,255,0.06);color:var(--muted);
-                        border-radius:9px;font-size:10px;font-weight:700;
-                      ">${hasntList.length}</span>
-                    </span>
-                    <span style="color:var(--muted);font-size:14px;transition:transform 0.2s" class="roster-arrow">▾</span>
-                  </button>
-                  <div class="roster-body" style="display:none;padding-bottom:8px">${hasntHtml}</div>
-                </div>
-
-              </div>
-            </div>`;
-          }).join('')
+        : allBadges.map(b => _badgeCardHtml(b, { showActions: true })).join('')
       }
     </div>
   `;
@@ -2370,16 +2209,6 @@ async function createBadge() {
   await loadAdminBadgesTab();
 }
 
-async function revokeAthlBadge(badgeId, badgeName, athleteId, athleteName) {
-  if (!confirm('Retirer le badge "' + badgeName + '" à ' + athleteName + ' ?')) return;
-  const { error } = await sb.from('athlete_badges')
-    .delete().eq('badge_id', badgeId).eq('athlete_id', athleteId);
-  if (error) { showToast('❌ ' + error.message); return; }
-  showToast('🗑️ Badge retiré à ' + athleteName);
-  _myBadgesCache = null;
-  loadAdminBadgesTab();
-}
-
 async function deleteBadge(id, name) {
   if (!confirm(`Supprimer le badge "${name}" ?\n\nIl sera retiré à tous les athlètes qui l'ont.`)) return;
   const { error } = await sb.from('badges').delete().eq('id', id);
@@ -2390,18 +2219,10 @@ async function deleteBadge(id, name) {
   await loadAdminBadgesTab();
 }
 
-function _toggleBadgeRoster(btn) {
-  const body = btn.nextElementSibling;
-  const arrow = btn.querySelector('.roster-arrow');
-  const open = body.style.display === 'none';
-  body.style.display = open ? 'block' : 'none';
-  if (arrow) arrow.style.transform = open ? 'rotate(180deg)' : '';
-}
-
 // ── Attribution manuelle ───────────────────────────────────
 let _awardingBadgeId = null;
 
-async function openAwardBadgeModal(badgeId, preselectedAthleteId) {
+async function openAwardBadgeModal(badgeId) {
   _awardingBadgeId = badgeId;
   const badge = (_badgesCache || []).find(b => b.id === badgeId);
   const { data: athletes } = await sb.from('profiles').select('id,full_name').order('full_name');
@@ -2433,7 +2254,7 @@ async function openAwardBadgeModal(badgeId, preselectedAthleteId) {
         font-size:14px;padding:11px 14px;outline:none;margin-bottom:12px;
       ">
         <option value="">— Choisir un athlète —</option>
-        ${(athletes || []).map(a => `<option value="${a.id}" ${a.id === preselectedAthleteId ? 'selected' : ''}>${a.full_name || a.id}</option>`).join('')}
+        ${(athletes || []).map(a => `<option value="${a.id}">${a.full_name || a.id}</option>`).join('')}
       </select>
 
       <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Message du coach <span style="font-weight:400;text-transform:none;letter-spacing:0">(optionnel)</span></div>
@@ -2481,26 +2302,8 @@ async function confirmAwardBadge() {
   if (error) { showToast('❌ ' + error.message); return; }
 
   document.getElementById('award-badge-modal')?.remove();
-
-  // Récupérer le badge AVANT de vider le cache
-  const badge = (_badgesCache || []).find(b => b.id === _awardingBadgeId);
-
   _myBadgesCache = null;
   showToast('✅ Badge attribué !');
-
-  // Envoyer la notification push à l'athlète
-  if (badge) {
-    sb.functions.invoke('send-push-notification', {
-      body: {
-        athlete_id: athleteId,
-        badge_emoji: badge.emoji,
-        badge_name:  badge.name,
-        coach_note:  note,
-      }
-    }).catch(e => console.log('[Push] send error:', e));
-  }
-
-  await loadAdminBadgesTab();
 }
 
 // ── Edit badge ─────────────────────────────────────────────
@@ -2628,63 +2431,48 @@ function _injectAdminBadgesTab() {
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 let _badgeRealtimeChannel = null;
 
-let _badgePollingInterval = null;
-
 function _startBadgeRealtime() {
   if (!window.currentUser) return;
-
-  // Arrêter le polling précédent si actif
-  if (_badgePollingInterval) {
-    clearInterval(_badgePollingInterval);
-    _badgePollingInterval = null;
+  if (_badgeRealtimeChannel) {
+    try { sb.removeChannel(_badgeRealtimeChannel); } catch(e) {}
+    _badgeRealtimeChannel = null;
   }
 
-  // Polling toutes les 20 secondes
-  // Simple, fiable avec RLS, pas de dépendance Realtime
-  _badgePollingInterval = setInterval(_pollUnseenBadges, 20000);
-}
+  _badgeRealtimeChannel = sb
+    .channel('badge-notif-' + currentUser.id)
+    .on(
+      'postgres_changes',
+      {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'athlete_badges',
+        filter: 'athlete_id=eq.' + currentUser.id,
+      },
+      async (payload) => {
+        const newRow = payload.new;
+        if (!newRow || !newRow.badge_id) return;
 
-let _isBadgePolling = false; // anti-doublon
+        // Récupérer les détails du badge
+        const { data: badgeData } = await sb
+          .from('badges').select('*').eq('id', newRow.badge_id).single();
+        if (!badgeData) return;
 
-async function _pollUnseenBadges() {
-  if (!window.currentUser || _isBadgePolling) return;
-  _isBadgePolling = true;
+        // Lancer la célébration avec la note du coach
+        _celebrateBadge({ ...newRow, badges: badgeData });
 
-  try {
-    const { data } = await sb
-      .from('athlete_badges')
-      .select('id, badge_id, coach_note, awarded_at, badges(*)')
-      .eq('athlete_id', currentUser.id)
-      .eq('seen', false);
-
-    if (!data || !data.length) return;
-
-    // Afficher le point rouge sur la nav
-    _showBadgeNavDot(data.length);
-
-    // Lancer les célébrations en séquence
-    for (let i = 0; i < data.length; i++) {
-      setTimeout(() => _celebrateBadge(data[i]), i * 3800);
-    }
-
-    // Marquer comme vus après la dernière célébration
-    const ids = data.map(ab => ab.id);
-    setTimeout(async () => {
-      for (const id of ids) {
-        await sb.from('athlete_badges').update({ seen: true }).eq('id', id);
+        // Marquer comme vu après la célébration (3.8s)
+        setTimeout(async () => {
+          await sb.from('athlete_badges').update({ seen: true }).eq('id', newRow.id);
+          _myBadgesCache = null;
+          // Rafraîchir si la page Profil est ouverte
+          const pg = document.getElementById('page-profil');
+          if (pg && pg.classList.contains('active')) {
+            renderBadgesSection();
+          }
+        }, 4000);
       }
-      _myBadgesCache = null;
-      _hideBadgeNavDot();
-      // Rafraîchir si profil ouvert
-      const pg = document.getElementById('page-profil');
-      if (pg && pg.classList.contains('active')) renderBadgesSection();
-    }, data.length * 3800 + 500);
-
-  } catch(e) {
-    console.error('[Badges polling]', e);
-  } finally {
-    _isBadgePolling = false;
-  }
+    )
+    .subscribe();
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2694,46 +2482,10 @@ function _injectProfilExtras() {
   _injectColorThemeButton();
   _injectAthleteCardButton();
   _injectBadgesSectionInProfil();
-  _injectPushNotifButton();
-  // Toujours tenter d'enregistrer/rafraîchir la subscription push si permission déjà accordée
-  if (Notification.permission === 'granted') _initPushNotifications();
   // Masquer le point rouge quand on ouvre le profil
   _hideBadgeNavDot();
   // Vérifier les badges non vus → célébration si nécessaire
   _showUnseenBadges();
-}
-
-function _injectPushNotifButton() {
-  if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  if (document.getElementById('push-notif-menu-item')) return;
-  if (Notification.permission === 'granted') return;
-
-  // Insérer après le bouton couleur de l'app
-  const colorBtn = document.getElementById('color-theme-trigger');
-  if (!colorBtn) return;
-
-  const item = document.createElement('div');
-  item.className = 'menu-item';
-  item.id = 'push-notif-menu-item';
-  item.style.cursor = 'pointer';
-  item.onclick = _requestPushPermission;
-  item.innerHTML = `<span class="menu-item-label">🔔 Notifications</span><span>›</span>`;
-  colorBtn.insertAdjacentElement('afterend', item);
-}
-
-async function _requestPushPermission() {
-  const item = document.getElementById('push-notif-menu-item');
-  if (item) item.style.opacity = '0.5';
-
-  const perm = await Notification.requestPermission();
-  if (perm === 'granted') {
-    await _initPushNotifications();
-    document.getElementById('push-notif-menu-item')?.remove();
-    showToast('🔔 Notifications activées !');
-  } else {
-    if (item) item.style.opacity = '1';
-    showToast('❌ Permission refusée');
-  }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -2761,24 +2513,6 @@ function _injectAdminBadgesTab() {
   if (lastPanel) lastPanel.insertAdjacentElement('afterend', panel);
   else adminPage.appendChild(panel);
 }
-</script>
-<script>
-// Tracker le champ actif pour la toolbox sticky
-(function(){
-  var FIELDS = ['f-content-editor','f-scaling-inter','f-scaling-scaled','f-scaling-foundation','f-target','f-tips'];
-  window._richActiveTarget = null;
-  function attach(){
-    FIELDS.forEach(function(id){
-      var el = document.getElementById(id);
-      if(!el || el._richBound) return;
-      el._richBound = true;
-      el.addEventListener('focus', function(){ window._richActiveTarget = el; });
-    });
-  }
-  if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', attach); }
-  else { attach(); }
-  window._attachRichToolbarListeners = attach;
-})();
 </script>
 </body>
 </html>
