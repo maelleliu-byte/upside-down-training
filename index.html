@@ -2516,5 +2516,23 @@ function _injectAdminBadgesTab() {
   else adminPage.appendChild(panel);
 }
 </script>
+<script src="studios-admin.js"></script>
+<script>
+// Patch adminTab pour supporter l'onglet studios
+(function(){
+  var _orig=window.adminTab;
+  window.adminTab=function(tab,btn){
+    if(tab==='studios'){
+      document.querySelectorAll('.admin-tab-btn').forEach(function(b){b.classList.remove('active');});
+      if(btn)btn.classList.add('active');
+      document.querySelectorAll('.admin-panel').forEach(function(p){p.classList.remove('active');});
+      var panel=document.getElementById('admin-studios');
+      if(panel){panel.classList.add('active');loadAdminStudios();}
+      return;
+    }
+    if(_orig)_orig(tab,btn);
+  };
+})();
+</script>
 </body>
 </html>
