@@ -2493,3 +2493,5 @@ async function toggleStudio(studioId,currentActive){
   showToast(currentActive?'Studio désactivé':'Studio activé !');
   loadAdminStudios();
 }
+function loadAdminStudios(){}
+function toggleStudio(){}
