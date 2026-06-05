@@ -144,7 +144,7 @@ async function saveNewProg(){
     }
   }
   // MULTI-TENANT : associer le programme au studio du coach courant (NULL pour Upside Down)
-  const _progStudioId=currentProfile?.studio_id??null;
+  const _progStudioId=getStudioId();
   const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id,studio_id:_progStudioId}).select().single();
   if(error){
     showToast('❌ '+error.message);
@@ -969,7 +969,7 @@ function setDupDest(dest){
 async function loadMixedAthletes(){
   // On charge les athlètes du studio courant uniquement.
   // On force le rechargement à chaque appel (pas de cache) pour garantir le filtre studio.
-  const studioId=currentProfile?.studio_id??null;
+  const studioId=getStudioId();
   let q=sb.from('profiles').select('*');
   if(studioId){q=q.eq('studio_id',studioId);}
   else{q=q.is('studio_id',null);}
@@ -1148,7 +1148,7 @@ async function saveBenchmark(){
 }
 async function loadAdminAthletes(){
   // MULTI-TENANT : chaque admin ne voit que les profils de son studio
-  const studioId=currentProfile?.studio_id??null;
+  const studioId=getStudioId();
   let q=sb.from('profiles').select('*');
   if(studioId){q=q.eq('studio_id',studioId);}
   else{q=q.is('studio_id',null);}
@@ -1251,7 +1251,7 @@ async function loadDashboard(){
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
   // MULTI-TENANT : filtrer les athlètes par studio
-  const studioId=currentProfile?.studio_id??null;
+  const studioId=getStudioId();
   let athletesQ=sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete');
   if(studioId){athletesQ=athletesQ.eq('studio_id',studioId);}
   else{athletesQ=athletesQ.is('studio_id',null);}
@@ -1442,7 +1442,7 @@ async function initCyclePlanner(){
 let cycleYearFilter='all'; // 'all' or 4-digit year as string
 async function loadAllCycles(){
   // MULTI-TENANT : filtrer par studio_id
-  const studioId=currentProfile?.studio_id??null;
+  const studioId=getStudioId();
   let q=sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
   if(studioId){q=q.eq('studio_id',studioId);}
   else{q=q.is('studio_id',null);}
@@ -1669,7 +1669,7 @@ async function saveCycle(){
   cycleData.name=name;cycleData.weeks=weeks;
 
   const startDate=document.getElementById('cycle-start-date')?.value||null;
-  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id,studio_id:currentProfile?.studio_id??null};
+  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id,studio_id:getStudioId()};
 
   let error;
   if(cycleData.id){
@@ -2107,7 +2107,7 @@ async function autoSaveCycleNow(){
   const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
   cycleData.name=name;cycleData.weeks=weeks;
   const startDate=document.getElementById('cycle-start-date')?.value||null;
-  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id,studio_id:currentProfile?.studio_id??null};
+  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id,studio_id:getStudioId()};
   try {
     if(cycleData.id){await sb.from('cycle_plans').update(payload).eq('id',cycleData.id);}
     else {const {data,error}=await sb.from('cycle_plans').insert(payload).select('id').single();if(!error&&data){cycleData.id=data.id;await loadAllCycles();const sel=document.getElementById('cycle-selector');if(sel)sel.value=cycleData.id;}}
@@ -2422,7 +2422,7 @@ let allVideos=[];let currentVCat='all';let videoSearch='';
 
 async function loadVideos(){
   // MULTI-TENANT : filtrer par studio_id (même logique que programmes/badges)
-  const _vidStudioId=currentProfile?.studio_id??null;
+  const _vidStudioId=getStudioId();
   let q=sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
   if(_vidStudioId){q=q.eq('studio_id',_vidStudioId);}
   else{q=q.is('studio_id',null);}
@@ -2478,7 +2478,7 @@ async function saveVideo(){
   const desc=document.getElementById('v-desc').value.trim();
   const level=document.getElementById('v-level').value;
   if(!title||!youtube){showToast('⚠️ Titre et lien YouTube requis');return;}
-  const {error}=await sb.from('movement_videos').insert({movement_id:movementId,title,youtube_url:youtube,description:desc||null,level,created_by:currentUser.id,studio_id:currentProfile?.studio_id??null});
+  const {error}=await sb.from('movement_videos').insert({movement_id:movementId,title,youtube_url:youtube,description:desc||null,level,created_by:currentUser.id,studio_id:getStudioId()});
   if(error){showToast('❌ '+error.message);return;}
   showToast('✅ Vidéo ajoutée !');
   ['v-title','v-youtube','v-desc'].forEach(id=>document.getElementById(id).value='');

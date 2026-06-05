@@ -108,6 +108,9 @@ async function loadProfile(){
   window.currentProfile=data; // exposé pour index.html et autres scripts
 }
 
+// Helper global — retourne le studio_id du profil courant (null pour Upside Down)
+function getStudioId(){return currentProfile?.studio_id??null;}
+
 // Après login, vérifie que l'URL correspond au studio du profil.
 // Si Maxime se connecte sur "/" alors qu'il appartient à CF Sandglass,
 // on le redirige vers "/crossfit-sandglass".

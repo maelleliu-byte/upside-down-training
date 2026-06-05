@@ -1390,7 +1390,7 @@ async function loadWellnessAdmin(){
   document.getElementById('wellness-admin-date').textContent=today.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   const since=_isoDate(_addDays(today,-(_wellnessAdminPeriod-1)));
   // MULTI-TENANT : filtrer par studio
-  const _wStudioId=currentProfile?.studio_id??null;
+  const _wStudioId=getStudioId();
   let profsQ=sb.from('profiles').select('id,full_name,email');
   if(_wStudioId){profsQ=profsQ.eq('studio_id',_wStudioId);}
   else{profsQ=profsQ.is('studio_id',null);}
