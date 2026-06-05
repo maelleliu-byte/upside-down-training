@@ -1248,6 +1248,10 @@ async function _dashEmbedExtras(){
   }
 }
 async function loadDashboard(){
+  // DIAGNOSTIC TEMPORAIRE
+  const _diagEl=document.getElementById('dash-stats');
+  if(_diagEl)_diagEl.innerHTML='<div style="color:yellow;font-size:11px;padding:8px">Chargement… studioId='+JSON.stringify(getStudioId())+' profile='+JSON.stringify(currentProfile?.studio_id)+'</div>';
+
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
 
