@@ -92,7 +92,12 @@ async function loadPersoAthletes(){
   document.getElementById('perso-fiche-view').style.display='none';
   document.getElementById('perso-form-view').style.display='none';
 
-  const {data}=await sb.from('profiles').select('*').order('full_name');
+  // MULTI-TENANT : filtrer par studio
+  const _pStudioId=currentProfile?.studio_id??null;
+  let _pq=sb.from('profiles').select('*');
+  if(_pStudioId){_pq=_pq.eq('studio_id',_pStudioId);}
+  else{_pq=_pq.is('studio_id',null);}
+  const {data}=await _pq.order('full_name');
   persoAthletesCache=data||[];
 
   // Charger les favoris depuis la table dédiée coach_favorites
