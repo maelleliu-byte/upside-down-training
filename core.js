@@ -195,8 +195,8 @@ async function initApp(){
       nav.appendChild(btn);
     }
     // Afficher l'onglet Studios uniquement pour le superadmin Upside Down
-    // (studio slug = 'upside' ET profil sans studio_id)
-    if(window.__STUDIO__?.slug==='upside' && !currentProfile?.studio_id){
+    // (profil sans studio_id = admin natif Upside)
+    if(!currentProfile?.studio_id){
       const studiosTabBtn=document.getElementById('admin-studios-tab-btn');
       if(studiosTabBtn)studiosTabBtn.style.display='';
     }
