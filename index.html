@@ -1770,7 +1770,16 @@ function _hexToRgb(hex) {
 // ── Chargement des badges ──────────────────────────────────
 async function loadAllBadges(force = false) {
   if (_badgesCache && !force) return _badgesCache;
-  const { data } = await sb.from('badges').select('*').eq('is_active', true).order('rarity').order('name');
+  // MULTI-TENANT : filtrer par les admins du studio courant
+  const _bStudioId = window.currentProfile?.studio_id ?? null;
+  const _admQ = _bStudioId
+    ? await sb.from('profiles').select('id').eq('studio_id', _bStudioId).eq('role', 'admin')
+    : await sb.from('profiles').select('id').is('studio_id', null).eq('role', 'admin');
+  const _admIds = (_admQ.data || []).map(a => a.id);
+  let q = sb.from('badges').select('*').eq('is_active', true);
+  if (_admIds.length) { q = q.in('created_by', _admIds); }
+  else { q = q.in('created_by', ['00000000-0000-0000-0000-000000000000']); } // studio vide → aucun badge
+  const { data } = await q.order('rarity').order('name');
   _badgesCache = data || [];
   return _badgesCache;
 }
