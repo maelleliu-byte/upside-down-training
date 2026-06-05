@@ -143,7 +143,9 @@ async function saveNewProg(){
       slug=slug+'-'+i;
     }
   }
-  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id}).select().single();
+  // MULTI-TENANT : associer le programme au studio du coach courant (NULL pour Upside Down)
+  const _progStudioId=currentProfile?.studio_id??null;
+  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id,studio_id:_progStudioId}).select().single();
   if(error){
     showToast('❌ '+error.message);
     // Restaurer le bouton "+ Nouveau programme" même en cas d'erreur
@@ -965,8 +967,16 @@ function setDupDest(dest){
 }
 
 async function loadMixedAthletes(){
-  // On charge TOUS les athlètes (le coach décide qui est en prog mixte).
-  // On compte les programmes assignés pour afficher un indicateur, mais on ne filtre pas.
+  // On charge les athlètes du studio courant uniquement.
+  if(!persoAthletesCache.length){
+    const studioId=currentProfile?.studio_id??null;
+    let q=sb.from('profiles').select('*');
+    if(studioId){q=q.eq('studio_id',studioId);}
+    else{q=q.is('studio_id',null);}
+    const {data}=await q.order('full_name');
+    persoAthletesCache=data||[];
+  }
+  // Compter les programmes assignés pour afficher un indicateur
   let rows=[];
   const r1=await sb.from('athlete_programmes').select('athlete_id');
   if(!r1.error&&r1.data)rows=r1.data;
@@ -974,10 +984,6 @@ async function loadMixedAthletes(){
   if(!r2.error&&r2.data)rows=rows.concat(r2.data);
   const counts={};
   rows.forEach(r=>{if(r.athlete_id)counts[r.athlete_id]=(counts[r.athlete_id]||0)+1;});
-  if(!persoAthletesCache.length){
-    const {data}=await sb.from('profiles').select('*').order('full_name');
-    persoAthletesCache=data||[];
-  }
   // Tous les profils, athlètes mixtes (≥2 progs) en tête.
   const list=persoAthletesCache
     .filter(a=>a.role!=='admin')
@@ -1142,7 +1148,12 @@ async function saveBenchmark(){
   await loadBenchmarks();loadAdminBenchmarks();
 }
 async function loadAdminAthletes(){
-  const {data}=await sb.from('profiles').select('*').order('full_name');
+  // MULTI-TENANT : chaque admin ne voit que les profils de son studio
+  const studioId=currentProfile?.studio_id??null;
+  let q=sb.from('profiles').select('*');
+  if(studioId){q=q.eq('studio_id',studioId);}
+  else{q=q.is('studio_id',null);}
+  const {data}=await q.order('full_name');
   const list=document.getElementById('admin-athletes-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
   list.innerHTML=data.map(p=>{
@@ -1240,9 +1251,14 @@ async function _dashEmbedExtras(){
 async function loadDashboard(){
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
+  // MULTI-TENANT : filtrer les athlètes par studio
+  const studioId=currentProfile?.studio_id??null;
+  let athletesQ=sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete');
+  if(studioId){athletesQ=athletesQ.eq('studio_id',studioId);}
+  else{athletesQ=athletesQ.is('studio_id',null);}
 
   const [athletesRes,scoresRes,prsRes,activeRes]=await Promise.all([
-    sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete'),
+    athletesQ,
     sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
     sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
     sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo)
@@ -1255,8 +1271,11 @@ async function loadDashboard(){
     <div class="dash-stat-box"><div class="dash-stat-val">${scoresRes.count||0}</div><div class="dash-stat-lbl">Scores 30j</div></div>
     <div class="dash-stat-box"><div class="dash-stat-val">${prsRes.count||0}</div><div class="dash-stat-lbl">PR 30j</div></div>`;
 
-  // Athlètes inactifs
-  const {data:allAthletes}=await sb.from('profiles').select('id,full_name,email').eq('role','athlete');
+  // Athlètes inactifs — filtrés par studio
+  let allAthQ=sb.from('profiles').select('id,full_name,email').eq('role','athlete');
+  if(studioId){allAthQ=allAthQ.eq('studio_id',studioId);}
+  else{allAthQ=allAthQ.is('studio_id',null);}
+  const {data:allAthletes}=await allAthQ;
   const inactiveAthletes=(allAthletes||[]).filter(a=>!activeIds.has(a.id));
   const inactiveEl=document.getElementById('dash-inactive');
   if(inactiveAthletes.length===0){inactiveEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Tous les athlètes sont actifs 💪</div>';}

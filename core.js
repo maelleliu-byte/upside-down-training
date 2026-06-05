@@ -236,7 +236,14 @@ async function goPage(page){
 
 // PROGRAMMES
 async function loadProgrammes(){
-  const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
+  // MULTI-TENANT : filtrer par studio_id du profil courant.
+  // Upside Down (studio_id NULL) → .is('studio_id',null)
+  // Studio tiers (studio_id = UUID) → .eq('studio_id', uuid)
+  const studioId=currentProfile?.studio_id??null;
+  let q=sb.from('programmes').select('*').eq('is_active',true);
+  if(studioId){q=q.eq('studio_id',studioId);}
+  else{q=q.is('studio_id',null);}
+  const {data}=await q.order('name');
   programmes=data||[];
 
   // Gérer retour Stripe ici, après chargement des programmes
