@@ -3,14 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Créer mon studio</title>
+<title>Créer mon studio — Upside Down Training</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0;}
 body{background:#0a0a0a;color:#f0f0f0;font-family:'DM Sans',system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;}
 .card{background:#111;border:1px solid #222;border-radius:20px;padding:32px 28px;width:100%;max-width:440px;}
 h1{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:2px;color:#e8ff47;margin-bottom:8px;}
-.subtitle{color:#888;font-size:14px;margin-bottom:32px;}
+.subtitle{color:#888;font-size:14px;margin-bottom:32px;line-height:1.5;}
 .field{margin-bottom:20px;}
 label{display:block;font-size:13px;color:#aaa;margin-bottom:8px;font-weight:500;}
 input[type=text],input[type=email],input[type=password]{width:100%;background:#0a0a0a;border:1px solid #333;border-radius:10px;padding:12px 14px;color:#f0f0f0;font-size:15px;outline:none;transition:border-color .2s;}
@@ -28,69 +29,119 @@ input[type=color]{width:48px;height:48px;border:1px solid #333;border-radius:10p
 .btn{width:100%;background:#e8ff47;color:#0a0a0a;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;transition:opacity .2s;margin-top:8px;}
 .btn:hover{opacity:.9;}
 .btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-outline{width:100%;background:transparent;color:#e8ff47;border:1px solid #e8ff47;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;margin-top:10px;}
+.btn-outline:hover{opacity:.8;}
 .error{background:#ff474720;border:1px solid #ff4747;border-radius:8px;padding:10px 14px;font-size:13px;color:#ff7070;margin-top:16px;display:none;}
-.success{background:#47ff8020;border:1px solid #47ff80;border-radius:8px;padding:16px;font-size:14px;color:#80ffb0;margin-top:16px;display:none;}
+.success{background:#47ff8020;border:1px solid #47ff80;border-radius:8px;padding:16px;font-size:14px;color:#80ffb0;margin-top:16px;display:none;line-height:1.6;}
+.info-box{background:#e8ff4710;border:1px solid #e8ff4740;border-radius:10px;padding:16px;font-size:13px;color:#c8df40;line-height:1.6;margin-bottom:24px;}
+.step-indicator{display:flex;gap:8px;margin-bottom:28px;align-items:center;}
+.step{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;}
+.step.active{background:#e8ff47;color:#0a0a0a;}
+.step.done{background:#333;color:#e8ff47;border:1px solid #e8ff47;}
+.step.inactive{background:#1a1a1a;color:#555;border:1px solid #222;}
+.step-line{flex:1;height:1px;background:#222;}
+.step-line.done{background:#e8ff4760;}
 .divider{height:1px;background:#1e1e1e;margin:24px 0;}
 a{color:#e8ff47;text-decoration:none;}
+.email-highlight{background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:10px 14px;font-size:14px;color:#e8ff47;font-weight:600;text-align:center;margin:12px 0;}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid #0a0a0a40;border-top-color:#0a0a0a;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:8px;}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Étapes */
+#step-email{display:block;}
+#step-verify{display:none;}
+#step-studio{display:none;}
+#step-done{display:none;}
 </style>
-<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
 <div class="card">
   <h1>Créer mon studio</h1>
-  <p class="subtitle">Rejoin la plateforme Upside Down Training</p>
+  <p class="subtitle">Rejoins la plateforme Upside Down Training</p>
 
-  <div class="field">
-    <label>Nom du studio</label>
-    <input type="text" id="studio-name" placeholder="Ex: CrossFit Bordeaux" oninput="autoSlug()">
+  <!-- Indicateur d'étapes -->
+  <div class="step-indicator">
+    <div class="step active" id="ind-1">1</div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step inactive" id="ind-2">2</div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step inactive" id="ind-3">3</div>
   </div>
 
-  <div class="field">
-    <label>URL de ton studio</label>
-    <input type="text" id="studio-slug" placeholder="ex: crossfit-bordeaux" oninput="cleanSlug()">
-    <div class="slug-preview">upside-down-training.netlify.app/<span id="slug-display">…</span></div>
-  </div>
-
-  <div class="field">
-    <label>Couleur principale</label>
-    <div class="color-row">
-      <input type="color" id="accent-color" value="#e8ff47">
-      <span class="color-label">Couleur de ta marque</span>
+  <!-- ÉTAPE 1 : Email + mot de passe -->
+  <div id="step-email">
+    <div class="field">
+      <label>Ton email</label>
+      <input type="email" id="reg-email" placeholder="coach@monstudio.fr">
     </div>
-  </div>
-
-  <div class="field">
-    <label>Logo (optionnel)</label>
-    <div class="logo-area" onclick="document.getElementById('logo-input').click()">
-      <img id="logo-preview" class="logo-preview">
-      <input type="file" id="logo-input" accept="image/*" onchange="previewLogo(event)">
-      <div class="logo-hint" id="logo-hint">Clique pour uploader ton logo<br><small>PNG, JPG — max 2 Mo</small></div>
+    <div class="field">
+      <label>Mot de passe</label>
+      <input type="password" id="reg-pwd" placeholder="Min. 8 caractères">
     </div>
+    <div class="field">
+      <label>Ton nom</label>
+      <input type="text" id="reg-name" placeholder="Prénom Nom">
+    </div>
+    <button class="btn" id="btn-step1" onclick="submitStep1()">Continuer →</button>
+    <div class="error" id="err-1"></div>
+    <div class="divider"></div>
+    <p style="text-align:center;font-size:13px;color:#555;">Déjà un compte ? <a href="/">Se connecter</a></p>
   </div>
 
-  <div class="divider"></div>
-
-  <div class="field">
-    <label>Ton email</label>
-    <input type="email" id="reg-email" placeholder="coach@monstudio.fr">
+  <!-- ÉTAPE 2 : Vérification email -->
+  <div id="step-verify">
+    <div class="info-box">
+      📧 Un lien de confirmation a été envoyé à :
+      <div class="email-highlight" id="verify-email-display"></div>
+      Clique sur le lien dans l'email pour continuer.<br><small style="color:#888;font-size:12px;">Vérifie tes spams si tu ne le vois pas.</small>
+    </div>
+    <button class="btn-outline" id="btn-resend" onclick="resendEmail()">Renvoyer l'email</button>
+    <div class="error" id="err-2"></div>
+    <div class="success" id="suc-2"></div>
   </div>
 
-  <div class="field">
-    <label>Mot de passe</label>
-    <input type="password" id="reg-pwd" placeholder="Min. 8 caractères">
+  <!-- ÉTAPE 3 : Infos studio (après confirmation email) -->
+  <div id="step-studio">
+    <div class="info-box" style="margin-bottom:20px;">
+      ✅ Email vérifié — complète ton studio
+    </div>
+    <div class="field">
+      <label>Nom du studio</label>
+      <input type="text" id="studio-name" placeholder="Ex: CrossFit Bordeaux" oninput="autoSlug()">
+    </div>
+    <div class="field">
+      <label>URL de ton studio</label>
+      <input type="text" id="studio-slug" placeholder="ex: crossfit-bordeaux" oninput="cleanSlug()">
+      <div class="slug-preview">upside-down-training.netlify.app/<span id="slug-display">…</span></div>
+    </div>
+    <div class="field">
+      <label>Couleur principale</label>
+      <div class="color-row">
+        <input type="color" id="accent-color" value="#e8ff47">
+        <span class="color-label">Couleur de ta marque</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Logo (optionnel)</label>
+      <div class="logo-area" onclick="document.getElementById('logo-input').click()">
+        <img id="logo-preview" class="logo-preview">
+        <input type="file" id="logo-input" accept="image/*" onchange="previewLogo(event)">
+        <div class="logo-hint" id="logo-hint">Clique pour uploader ton logo<br><small>PNG, JPG — max 2 Mo</small></div>
+      </div>
+    </div>
+    <button class="btn" id="btn-step3" onclick="submitStep3()">Créer mon studio</button>
+    <div class="error" id="err-3"></div>
   </div>
 
-  <div class="field">
-    <label>Ton nom</label>
-    <input type="text" id="reg-name" placeholder="Prénom Nom">
+  <!-- ÉTAPE 4 : Done -->
+  <div id="step-done">
+    <div class="success" id="suc-done" style="display:block;">
+      🎉 <strong>Demande envoyée !</strong><br><br>
+      Ton studio est en attente de validation.<br>
+      Tu recevras un email dès que ton accès sera activé.<br><br>
+      <span id="done-url" style="color:#e8ff47;font-size:13px;"></span>
+    </div>
+    <a href="/"><button class="btn" style="margin-top:16px;">Retour à l'accueil</button></a>
   </div>
-
-  <button class="btn" id="submit-btn" onclick="submitRegister()">Créer mon studio</button>
-  <div class="error" id="reg-error"></div>
-  <div class="success" id="reg-success"></div>
-
-  <div class="divider"></div>
-  <p style="text-align:center;font-size:13px;color:#555;">Déjà un compte ? <a href="/">Se connecter</a></p>
 </div>
 
 <script>
@@ -98,6 +149,154 @@ const SUPABASE_URL='https://tltqtpbaaxiwwpvuzszt.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDA5NTQsImV4cCI6MjA5MzUxNjk1NH0.5LVedQ-ktLcTC6z2X0XIoqY-mqP9_tw-gzrt-KNfuuY';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
+let pendingEmail='';
+let pendingName='';
+let logoFile=null;
+
+// ─── Détection retour après confirmation email ───────────────────────────────
+// Supabase envoie un lien qui redirige vers /register avec un hash #access_token=...
+// ou un ?token_hash=...&type=signup selon la config
+window.addEventListener('load', async ()=>{
+  // Cas 1 : hash fragment (flow PKCE désactivé)
+  const hash=window.location.hash;
+  if(hash && hash.includes('access_token')){
+    const params=new URLSearchParams(hash.replace('#',''));
+    const accessToken=params.get('access_token');
+    const refreshToken=params.get('refresh_token');
+    if(accessToken){
+      const {data,error}=await sb.auth.setSession({access_token:accessToken,refresh_token:refreshToken||''});
+      if(!error && data.user){
+        window.history.replaceState({},'','/register');
+        showStep3(data.user);
+        return;
+      }
+    }
+  }
+
+  // Cas 2 : query params (flow PKCE activé — Supabase v2 récent)
+  const qp=new URLSearchParams(window.location.search);
+  const tokenHash=qp.get('token_hash');
+  const type=qp.get('type');
+  if(tokenHash && type==='signup'){
+    const {data,error}=await sb.auth.verifyOtp({token_hash:tokenHash,type:'signup'});
+    if(!error && data.user){
+      window.history.replaceState({},'','/register');
+      showStep3(data.user);
+      return;
+    }
+  }
+
+  // Cas 3 : déjà connecté avec email confirmé (refresh de page à l'étape 3)
+  const {data:{session}}=await sb.auth.getSession();
+  if(session?.user && session.user.email_confirmed_at){
+    // Vérifier s'il a déjà un studio
+    const {data:existing}=await sb.from('studios').select('id,slug,name').eq('owner_id',session.user.id).maybeSingle();
+    if(existing){
+      // Studio déjà créé → étape done
+      showStepDone(existing.name, existing.slug);
+      return;
+    }
+    showStep3(session.user);
+    return;
+  }
+
+  // Sinon → étape 1
+  showStep(1);
+});
+
+// ─── Navigation étapes ───────────────────────────────────────────────────────
+function showStep(n){
+  document.getElementById('step-email').style.display=n===1?'block':'none';
+  document.getElementById('step-verify').style.display=n===2?'block':'none';
+  document.getElementById('step-studio').style.display=n===3?'block':'none';
+  document.getElementById('step-done').style.display=n===4?'block':'none';
+  // Indicateurs
+  ['ind-1','ind-2','ind-3'].forEach((id,i)=>{
+    const el=document.getElementById(id);
+    el.className='step '+(i+1<n?'done':i+1===n?'active':'inactive');
+  });
+  document.getElementById('line-1').className='step-line'+(n>1?' done':'');
+  document.getElementById('line-2').className='step-line'+(n>2?' done':'');
+}
+
+function showStep3(user){
+  pendingEmail=user.email||'';
+  pendingName=user.user_metadata?.full_name||'';
+  showStep(3);
+}
+
+function showStepDone(name,slug){
+  showStep(4);
+  document.getElementById('done-url').textContent='URL : upside-down-training.netlify.app/'+slug;
+}
+
+// ─── ÉTAPE 1 : Créer le compte ───────────────────────────────────────────────
+async function submitStep1(){
+  const email=document.getElementById('reg-email').value.trim();
+  const pwd=document.getElementById('reg-pwd').value;
+  const name=document.getElementById('reg-name').value.trim();
+  hideErr('err-1');
+
+  if(!email||!pwd||!name){showErr('err-1','Tous les champs sont obligatoires.');return;}
+  if(pwd.length<8){showErr('err-1','Mot de passe trop court (min. 8 caractères).');return;}
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){showErr('err-1','Email invalide.');return;}
+
+  const btn=document.getElementById('btn-step1');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span>Envoi…';
+
+  try{
+    const {data,error}=await sb.auth.signUp({
+      email,
+      password:pwd,
+      options:{
+        data:{full_name:name},
+        emailRedirectTo:window.location.origin+'/register'
+      }
+    });
+    if(error)throw error;
+
+    // Si l'email existe déjà et est confirmé → Supabase retourne un user sans session
+    // On oriente vers la connexion
+    if(data.user && !data.session && data.user.identities?.length===0){
+      showErr('err-1','Un compte existe déjà avec cet email. <a href="/">Se connecter</a>');
+      btn.disabled=false;btn.innerHTML='Continuer →';
+      return;
+    }
+
+    pendingEmail=email;
+    pendingName=name;
+    document.getElementById('verify-email-display').textContent=email;
+    showStep(2);
+
+  }catch(err){
+    showErr('err-1',err.message||'Une erreur est survenue.');
+    btn.disabled=false;btn.innerHTML='Continuer →';
+  }
+}
+
+// ─── Renvoyer l'email ────────────────────────────────────────────────────────
+async function resendEmail(){
+  if(!pendingEmail)return;
+  hideErr('err-2');
+  const btn=document.getElementById('btn-resend');
+  btn.disabled=true;btn.textContent='Envoi…';
+  const {error}=await sb.auth.resend({
+    type:'signup',
+    email:pendingEmail,
+    options:{emailRedirectTo:window.location.origin+'/register'}
+  });
+  if(error){
+    showErr('err-2',error.message);
+  }else{
+    const s=document.getElementById('suc-2');
+    s.textContent='Email renvoyé ✓';s.style.display='block';
+    setTimeout(()=>{s.style.display='none';},4000);
+  }
+  setTimeout(()=>{btn.disabled=false;btn.textContent='Renvoyer l\'email';},30000);
+}
+
+// ─── ÉTAPE 3 : Créer le studio ───────────────────────────────────────────────
 function autoSlug(){
   const name=document.getElementById('studio-name').value;
   const slug=name.toLowerCase()
@@ -116,11 +315,10 @@ function cleanSlug(){
   document.getElementById('slug-display').textContent=slug||'…';
 }
 
-let logoFile=null;
 function previewLogo(e){
   const file=e.target.files?.[0];
   if(!file)return;
-  if(file.size>2*1024*1024){showError('Logo trop lourd (max 2 Mo)');return;}
+  if(file.size>2*1024*1024){showErr('err-3','Logo trop lourd (max 2 Mo)');return;}
   logoFile=file;
   const url=URL.createObjectURL(file);
   const preview=document.getElementById('logo-preview');
@@ -128,41 +326,33 @@ function previewLogo(e){
   document.getElementById('logo-hint').style.display='none';
 }
 
-function showError(msg){
-  const el=document.getElementById('reg-error');
-  el.textContent=msg;el.style.display='block';
-}
-
-async function submitRegister(){
+async function submitStep3(){
   const name=document.getElementById('studio-name').value.trim();
   const slug=document.getElementById('studio-slug').value.trim();
   const accent=document.getElementById('accent-color').value;
-  const email=document.getElementById('reg-email').value.trim();
-  const pwd=document.getElementById('reg-pwd').value;
-  const coachName=document.getElementById('reg-name').value.trim();
+  hideErr('err-3');
 
-  document.getElementById('reg-error').style.display='none';
-  document.getElementById('reg-success').style.display='none';
+  if(!name||!slug){showErr('err-3','Nom et URL du studio obligatoires.');return;}
+  if(!/^[a-z0-9-]+$/.test(slug)){showErr('err-3','L\'URL ne peut contenir que des lettres minuscules, chiffres et tirets.');return;}
+  if(slug==='upside'||slug==='register'||slug==='admin'){showErr('err-3','Ce slug est réservé.');return;}
 
-  if(!name||!slug||!email||!pwd||!coachName){showError('Tous les champs obligatoires doivent être remplis.');return;}
-  if(pwd.length<8){showError('Mot de passe trop court (min. 8 caractères).');return;}
-  if(!/^[a-z0-9-]+$/.test(slug)){showError('Le slug ne peut contenir que des lettres minuscules, chiffres et tirets.');return;}
-
-  const btn=document.getElementById('submit-btn');
-  btn.disabled=true;btn.textContent='Création en cours…';
+  const btn=document.getElementById('btn-step3');
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span>Création…';
 
   try{
-    // 1. Vérifier que le slug n'existe pas déjà
+    // Vérifier session active (email confirmé)
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session?.user)throw new Error('Session expirée — recharge la page.');
+    if(!session.user.email_confirmed_at)throw new Error('Email non confirmé.');
+
+    const userId=session.user.id;
+
+    // Vérifier slug disponible
     const {data:existing}=await sb.from('studios').select('id').eq('slug',slug).maybeSingle();
-    if(existing){showError('Ce slug est déjà pris. Choisis-en un autre.');btn.disabled=false;btn.textContent='Créer mon studio';return;}
+    if(existing){showErr('err-3','Ce slug est déjà pris. Choisis-en un autre.');btn.disabled=false;btn.innerHTML='Créer mon studio';return;}
 
-    // 2. Créer le compte auth
-    const {data:authData,error:authErr}=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:coachName}}});
-    if(authErr)throw authErr;
-    const userId=authData.user?.id;
-    if(!userId)throw new Error('Erreur création compte');
-
-    // 3. Uploader le logo si présent
+    // Uploader le logo si présent
     let logo_url=null;
     if(logoFile){
       const ext=(logoFile.name.split('.').pop()||'png').toLowerCase();
@@ -170,34 +360,44 @@ async function submitRegister(){
       const {error:uploadErr}=await sb.storage.from('avatars').upload(path,logoFile,{upsert:true,contentType:logoFile.type});
       if(!uploadErr){
         const {data:pub}=sb.storage.from('avatars').getPublicUrl(path);
-        logo_url=pub.publicUrl.startsWith('http') ? pub.publicUrl : 'https://'+pub.publicUrl;
+        logo_url=pub.publicUrl.startsWith('http')?pub.publicUrl:'https://'+pub.publicUrl;
       }
     }
 
-    // 4. Créer le studio (is_active = false — attente validation)
+    // Créer le studio (is_active = false — attente validation)
     const {data:studio,error:studioErr}=await sb.from('studios').insert({
       slug,name,accent_color:accent,logo_url,
       is_active:false,lang:'fr',owner_id:userId
     }).select('id').single();
     if(studioErr)throw studioErr;
 
-    // 5. Créer le profil coach
+    // Créer/mettre à jour le profil coach
+    const coachName=session.user.user_metadata?.full_name||pendingName||'';
     const {error:profErr}=await sb.from('profiles').upsert({
-      id:userId,email,full_name:coachName,
-      role:'admin',studio_id:studio.id
+      id:userId,
+      email:session.user.email,
+      full_name:coachName,
+      role:'admin',
+      studio_id:studio.id
     },{onConflict:'id'});
     if(profErr)throw profErr;
 
-    // Succès
-    const el=document.getElementById('reg-success');
-    el.innerHTML=`🎉 <strong>Studio créé !</strong><br><br>Ton studio <strong>${name}</strong> est en attente de validation. Tu recevras un email dès que ton accès sera activé.<br><br>URL future : <strong>/${slug}</strong>`;
-    el.style.display='block';
-    btn.textContent='Demande envoyée ✓';
+    showStepDone(name,slug);
 
   }catch(err){
-    showError(err.message||'Une erreur est survenue.');
-    btn.disabled=false;btn.textContent='Créer mon studio';
+    showErr('err-3',err.message||'Une erreur est survenue.');
+    btn.disabled=false;btn.innerHTML='Créer mon studio';
   }
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+function showErr(id,msg){
+  const el=document.getElementById(id);
+  el.innerHTML=msg;el.style.display='block';
+}
+function hideErr(id){
+  const el=document.getElementById(id);
+  el.style.display='none';
 }
 </script>
 </body>
