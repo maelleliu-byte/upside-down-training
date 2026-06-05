@@ -1248,9 +1248,8 @@ async function _dashEmbedExtras(){
   }
 }
 async function loadDashboard(){
-  // DIAGNOSTIC TEMPORAIRE
-  const _diagEl=document.getElementById('dash-stats');
-  if(_diagEl)_diagEl.innerHTML='<div style="color:yellow;font-size:11px;padding:8px;grid-column:1/-1">studioId='+JSON.stringify(getStudioId())+' profile='+JSON.stringify(currentProfile?.studio_id)+'</div>';
+  // DIAGNOSTIC TEMPORAIRE — BLOQUANT
+  alert('loadDashboard — studioId='+JSON.stringify(getStudioId())+' profile_studio_id='+JSON.stringify(currentProfile?.studio_id));
 
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
@@ -1262,8 +1261,8 @@ async function loadDashboard(){
   else{athProfilesQ=athProfilesQ.is('studio_id',null);}
   const {data:allAthletes,error:_athErr}=await athProfilesQ;
 
-  // DIAGNOSTIC 2
-  if(_diagEl)_diagEl.innerHTML+='<div style="color:orange;font-size:11px;padding:4px;grid-column:1/-1">count='+JSON.stringify((allAthletes||[]).length)+' err='+JSON.stringify(_athErr?.message)+'</div>';
+  // DIAGNOSTIC 2 — BLOQUANT
+  alert('athletes count='+JSON.stringify((allAthletes||[]).length)+' err='+JSON.stringify(_athErr?.message));
 
   const studioAthIds=(allAthletes||[]).map(r=>r.id);
 
