@@ -1265,14 +1265,22 @@ async function loadDashboard(){
   const {data:studioAthRows}=await studioAthleteIdsQ;
   const studioAthIds=(studioAthRows||[]).map(r=>r.id);
 
-  let scoresQ=sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo);
-  let prsQ=sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo);
-  let activeQ=sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo);
-  if(studioAthIds.length){
-    scoresQ=scoresQ.in('athlete_id',studioAthIds);
-    prsQ=prsQ.in('athlete_id',studioAthIds);
-    activeQ=activeQ.in('athlete_id',studioAthIds);
+  // Si aucun athlète dans ce studio, on court-circuite tout (évite le .in([]) qui retourne tout)
+  if(!studioAthIds.length){
+    document.getElementById('dash-stats').innerHTML=`
+      <div class="dash-stat-box"><div class="dash-stat-val">0</div><div class="dash-stat-lbl">Athlètes</div></div>
+      <div class="dash-stat-box"><div class="dash-stat-val">0</div><div class="dash-stat-lbl">Actifs 7j</div></div>
+      <div class="dash-stat-box"><div class="dash-stat-val">0</div><div class="dash-stat-lbl">Scores 30j</div></div>
+      <div class="dash-stat-box"><div class="dash-stat-val">0</div><div class="dash-stat-lbl">PR 30j</div></div>`;
+    const inEl=document.getElementById('dash-inactive');if(inEl)inEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Aucun athlète inscrit</div>';
+    const topEl=document.getElementById('dash-top');if(topEl)topEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Pas encore de PR ce mois</div>';
+    const recEl=document.getElementById('dash-recent');if(recEl)recEl.innerHTML='';
+    await _dashEmbedExtras();
+    return;
   }
+  let scoresQ=sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds);
+  let prsQ=sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds);
+  let activeQ=sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo).in('athlete_id',studioAthIds);
   const [scoresRes,prsRes,activeRes]=await Promise.all([scoresQ,prsQ,activeQ]);
 
   const activeIds=new Set((activeRes.data||[]).map(s=>s.athlete_id));
@@ -1435,16 +1443,14 @@ async function initCyclePlanner(){
 let cycleYearFilter='all'; // 'all' or 4-digit year as string
 async function loadAllCycles(){
   // MULTI-TENANT : filtrer par créateur du studio courant
-  // Les cycle_plans n'ont pas de studio_id — on filtre par created_by des admins du studio
   const studioId=currentProfile?.studio_id??null;
   let q=sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
   if(studioId){
-    // Récupérer les admins de ce studio pour filtrer leurs cycles
     const {data:studioAdmins}=await sb.from('profiles').select('id').eq('studio_id',studioId).eq('role','admin');
     const adminIds=(studioAdmins||[]).map(a=>a.id);
-    if(adminIds.length)q=q.in('created_by',adminIds);
+    if(adminIds.length){q=q.in('created_by',adminIds);}
+    else{allCycles=[];renderCycleYearTabs();renderCycleSelector();renderSeasonOverview();return;} // studio vide
   } else {
-    // Upside Down : cycles créés par des admins sans studio (studio_id IS NULL)
     const {data:upsideAdmins}=await sb.from('profiles').select('id').is('studio_id',null).eq('role','admin');
     const adminIds=(upsideAdmins||[]).map(a=>a.id);
     if(adminIds.length)q=q.in('created_by',adminIds);
@@ -2424,7 +2430,20 @@ function syncLegacyVideoFields(){
 let allVideos=[];let currentVCat='all';let videoSearch='';
 
 async function loadVideos(){
-  const {data}=await sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
+  // MULTI-TENANT : les vidéos sont associées à leur créateur.
+  const _vidStudioId=currentProfile?.studio_id??null;
+  let _vidQ=sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
+  const _admQ=_vidStudioId
+    ? await sb.from('profiles').select('id').eq('studio_id',_vidStudioId).eq('role','admin')
+    : await sb.from('profiles').select('id').is('studio_id',null).eq('role','admin');
+  const _admIds=(_admQ.data||[]).map(a=>a.id);
+  if(_admIds.length){
+    _vidQ=_vidQ.in('created_by',_admIds);
+  } else if(_vidStudioId){
+    // Studio tiers sans admins connus → aucune vidéo
+    allVideos=[];return;
+  }
+  const {data}=await _vidQ;
   allVideos=data||[];
 }
 
