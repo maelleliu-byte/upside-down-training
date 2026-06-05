@@ -60,9 +60,15 @@
   function applySplashLogo(studio) {
     if (!studio || !studio.logo_url) return;
     const splash = document.getElementById('splash-screen');
-    if (!splash) return;
-    const img = splash.querySelector('img');
-    if (img) { img.src = studio.logo_url; img.style.maxWidth = '200px'; }
+    if (splash) {
+      const img = splash.querySelector('img');
+      if (img) { img.src = studio.logo_url; img.style.maxWidth = '200px'; }
+    }
+    const auth = document.getElementById('auth-screen');
+    if (auth) {
+      const img = auth.querySelector('img');
+      if (img) { img.src = studio.logo_url; img.style.maxWidth = '200px'; }
+    }
   }
 
   // Fetch studio config via REST (no auth needed - get_studio_by_slug is public)
