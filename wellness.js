@@ -92,7 +92,12 @@ async function loadPersoAthletes(){
   document.getElementById('perso-fiche-view').style.display='none';
   document.getElementById('perso-form-view').style.display='none';
 
-  const {data}=await sb.from('profiles').select('*').order('full_name');
+  // MULTI-TENANT : filtrer par studio
+  const _pStudioId=currentProfile?.studio_id??null;
+  let _pq=sb.from('profiles').select('*');
+  if(_pStudioId){_pq=_pq.eq('studio_id',_pStudioId);}
+  else{_pq=_pq.is('studio_id',null);}
+  const {data}=await _pq.order('full_name');
   persoAthletesCache=data||[];
 
   // Charger les favoris depuis la table dédiée coach_favorites
@@ -1389,12 +1394,20 @@ async function loadWellnessAdmin(){
   const today=new Date();
   document.getElementById('wellness-admin-date').textContent=today.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
   const since=_isoDate(_addDays(today,-(_wellnessAdminPeriod-1)));
-  // tous les athlètes
-  const {data:profs}=await sb.from('profiles').select('id,full_name,email').order('full_name');
+  // MULTI-TENANT : filtrer par studio
+  const _wStudioId=getStudioId();
+  let profsQ=sb.from('profiles').select('id,full_name,email');
+  if(_wStudioId){profsQ=profsQ.eq('studio_id',_wStudioId);}
+  else{profsQ=profsQ.is('studio_id',null);}
+  const {data:profs}=await profsQ.order('full_name');
+  // Si aucun profil dans ce studio, afficher vide
+  const profIds=(profs||[]).map(p=>p.id);
   let entries=[];
   try{
-    const {data}=await sb.from('wellness_entries').select('*').gte('date',since);
-    entries=data||[];
+    if(profIds.length){
+      const {data}=await sb.from('wellness_entries').select('*').gte('date',since).in('athlete_id',profIds);
+      entries=data||[];
+    }
   }catch(e){console.warn('wellness admin',e);}
 
   // pour chaque athlète : prendre la saisie la plus récente (sur la période)

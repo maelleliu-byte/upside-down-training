@@ -143,7 +143,9 @@ async function saveNewProg(){
       slug=slug+'-'+i;
     }
   }
-  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id}).select().single();
+  // MULTI-TENANT : associer le programme au studio du coach courant (NULL pour Upside Down)
+  const _progStudioId=getStudioId();
+  const {data:inserted,error}=await sb.from('programmes').insert({name,slug,description:desc,icon:selectedIcon,color:selectedColor,type,price_monthly:type==='subscription'?price:null,price_oneshot:type==='oneshot'?price:null,total_weeks:totalWeeks,created_by:currentUser.id,studio_id:_progStudioId}).select().single();
   if(error){
     showToast('❌ '+error.message);
     // Restaurer le bouton "+ Nouveau programme" même en cas d'erreur
@@ -965,8 +967,15 @@ function setDupDest(dest){
 }
 
 async function loadMixedAthletes(){
-  // On charge TOUS les athlètes (le coach décide qui est en prog mixte).
-  // On compte les programmes assignés pour afficher un indicateur, mais on ne filtre pas.
+  // On charge les athlètes du studio courant uniquement.
+  // On force le rechargement à chaque appel (pas de cache) pour garantir le filtre studio.
+  const studioId=getStudioId();
+  let q=sb.from('profiles').select('*');
+  if(studioId){q=q.eq('studio_id',studioId);}
+  else{q=q.is('studio_id',null);}
+  const {data}=await q.order('full_name');
+  persoAthletesCache=data||[];
+  // Compter les programmes assignés pour afficher un indicateur
   let rows=[];
   const r1=await sb.from('athlete_programmes').select('athlete_id');
   if(!r1.error&&r1.data)rows=r1.data;
@@ -974,10 +983,6 @@ async function loadMixedAthletes(){
   if(!r2.error&&r2.data)rows=rows.concat(r2.data);
   const counts={};
   rows.forEach(r=>{if(r.athlete_id)counts[r.athlete_id]=(counts[r.athlete_id]||0)+1;});
-  if(!persoAthletesCache.length){
-    const {data}=await sb.from('profiles').select('*').order('full_name');
-    persoAthletesCache=data||[];
-  }
   // Tous les profils, athlètes mixtes (≥2 progs) en tête.
   const list=persoAthletesCache
     .filter(a=>a.role!=='admin')
@@ -1142,7 +1147,12 @@ async function saveBenchmark(){
   await loadBenchmarks();loadAdminBenchmarks();
 }
 async function loadAdminAthletes(){
-  const {data}=await sb.from('profiles').select('*').order('full_name');
+  // MULTI-TENANT : chaque admin ne voit que les profils de son studio
+  const studioId=getStudioId();
+  let q=sb.from('profiles').select('*');
+  if(studioId){q=q.eq('studio_id',studioId);}
+  else{q=q.is('studio_id',null);}
+  const {data}=await q.order('full_name');
   const list=document.getElementById('admin-athletes-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
   list.innerHTML=data.map(p=>{
@@ -1241,27 +1251,41 @@ async function loadDashboard(){
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
 
-  const [athletesRes,scoresRes,prsRes,activeRes]=await Promise.all([
-    sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete'),
-    sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
-    sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
-    sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo)
+  // MULTI-TENANT : récupérer les IDs des athlètes du studio courant
+  const studioId=getStudioId();
+  let athProfilesQ=sb.from('profiles').select('id,full_name,email').eq('role','athlete');
+  if(studioId!==null&&studioId!==undefined){athProfilesQ=athProfilesQ.eq('studio_id',studioId);}
+  else{athProfilesQ=athProfilesQ.is('studio_id',null);}
+  const {data:allAthletes}=await athProfilesQ;
+  const studioAthIds=(allAthletes||[]).map(r=>r.id);
+
+  // Stats — utiliser studioAthIds pour filtrer scores/PR
+  // Si studioAthIds vide → zéro partout
+  const noAthletes=!studioAthIds.length;
+  const [scoresRes,prsRes,activeRes]=await Promise.all([
+    noAthletes
+      ? Promise.resolve({count:0})
+      : sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds),
+    noAthletes
+      ? Promise.resolve({count:0})
+      : sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds),
+    noAthletes
+      ? Promise.resolve({data:[]})
+      : sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo).in('athlete_id',studioAthIds)
   ]);
 
   const activeIds=new Set((activeRes.data||[]).map(s=>s.athlete_id));
   document.getElementById('dash-stats').innerHTML=`
-    <div class="dash-stat-box"><div class="dash-stat-val">${athletesRes.count||0}</div><div class="dash-stat-lbl">Athlètes</div></div>
+    <div class="dash-stat-box"><div class="dash-stat-val">${studioAthIds.length}</div><div class="dash-stat-lbl">Athlètes</div></div>
     <div class="dash-stat-box"><div class="dash-stat-val">${activeIds.size}</div><div class="dash-stat-lbl">Actifs 7j</div></div>
     <div class="dash-stat-box"><div class="dash-stat-val">${scoresRes.count||0}</div><div class="dash-stat-lbl">Scores 30j</div></div>
     <div class="dash-stat-box"><div class="dash-stat-val">${prsRes.count||0}</div><div class="dash-stat-lbl">PR 30j</div></div>`;
 
   // Athlètes inactifs
-  const {data:allAthletes}=await sb.from('profiles').select('id,full_name,email').eq('role','athlete');
   const inactiveAthletes=(allAthletes||[]).filter(a=>!activeIds.has(a.id));
   const inactiveEl=document.getElementById('dash-inactive');
-  if(inactiveAthletes.length===0){inactiveEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Tous les athlètes sont actifs 💪</div>';}
+  if(!inactiveAthletes.length){inactiveEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Tous les athlètes sont actifs 💪</div>';}
   else{
-    // Chercher la dernière activité de chaque athlète inactif
     const inactiveWithDays=await Promise.all(inactiveAthletes.slice(0,5).map(async a=>{
       const {data}=await sb.from('wod_scores').select('created_at').eq('athlete_id',a.id).order('created_at',{ascending:false}).limit(1);
       const lastDate=data?.[0]?.created_at;
@@ -1274,25 +1298,26 @@ async function loadDashboard(){
     </div>`).join('');
   }
 
-  // Top performers (plus de PR ce mois)
-  const {data:topPRs}=await sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
+  // Top performers
+  let topPRsQ=noAthletes?null:sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds);
+  const topPRs=topPRsQ?(await topPRsQ).data||[]:[];
   const prCount={};
-  (topPRs||[]).forEach(p=>{prCount[p.athlete_id]=(prCount[p.athlete_id]||{count:0,name:p.profiles?.full_name||'—'});prCount[p.athlete_id].count++;});
+  topPRs.forEach(p=>{prCount[p.athlete_id]=(prCount[p.athlete_id]||{count:0,name:p.profiles?.full_name||'—'});prCount[p.athlete_id].count++;});
   const topList=Object.values(prCount).sort((a,b)=>b.count-a.count).slice(0,5);
   document.getElementById('dash-top').innerHTML=topList.length===0
     ?'<div style="font-size:13px;color:var(--muted);padding:8px 0">Pas encore de PR ce mois</div>'
     :topList.map((t,i)=>`<div class="inactive-row"><div class="inactive-name">${i===0?'🥇':i===1?'🥈':'🥉'} ${t.name}</div><div style="font-size:12px;color:var(--accent);font-weight:700">${t.count} PR</div></div>`).join('');
 
   // Derniers scores
-  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name,avatar_url)').order('created_at',{ascending:false}).limit(8);
-  // Récupère les titres de session séparément (la FK wod_scores → sessions a été retirée)
-  const recSessIds=Array.from(new Set((recentScores||[]).map(s=>s.session_id).filter(Boolean)));
+  let recentScoresQ=noAthletes?null:sb.from('wod_scores').select('*,profiles(full_name,avatar_url)').order('created_at',{ascending:false}).limit(8).in('athlete_id',studioAthIds);
+  const recentScores=recentScoresQ?(await recentScoresQ).data||[]:[];
+  const recSessIds=Array.from(new Set(recentScores.map(s=>s.session_id).filter(Boolean)));
   const recSessTitleById={};
   if(recSessIds.length){
     const {data:sessTitles}=await sb.from('sessions').select('id,title').in('id',recSessIds);
     for(const x of (sessTitles||[]))recSessTitleById[x.id]=x.title;
   }
-  document.getElementById('dash-recent').innerHTML=(recentScores||[]).map(s=>`<div class="recent-score-row">
+  document.getElementById('dash-recent').innerHTML=recentScores.map(s=>`<div class="recent-score-row">
     ${avatarHtml(s.profiles)}
     <div class="recent-score-info">
       <div class="recent-score-name">${s.profiles?.full_name||'—'}</div>
@@ -1400,7 +1425,12 @@ async function initCyclePlanner(){
 
 let cycleYearFilter='all'; // 'all' or 4-digit year as string
 async function loadAllCycles(){
-  const {data}=await sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
+  // MULTI-TENANT : filtrer par studio_id
+  const studioId=getStudioId();
+  let q=sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
+  if(studioId){q=q.eq('studio_id',studioId);}
+  else{q=q.is('studio_id',null);}
+  const {data}=await q;
   allCycles=data||[];
   renderCycleYearTabs();
   renderCycleSelector();
@@ -1623,7 +1653,7 @@ async function saveCycle(){
   cycleData.name=name;cycleData.weeks=weeks;
 
   const startDate=document.getElementById('cycle-start-date')?.value||null;
-  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id};
+  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id,studio_id:getStudioId()};
 
   let error;
   if(cycleData.id){
@@ -2061,7 +2091,7 @@ async function autoSaveCycleNow(){
   const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
   cycleData.name=name;cycleData.weeks=weeks;
   const startDate=document.getElementById('cycle-start-date')?.value||null;
-  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id};
+  const payload={name,weeks,mode:cycleMode,start_date:startDate,columns:cycleData.columns,rows:cycleData.rows,cells:cycleData.cells,session_cells:cycleData.sessionCells,created_by:currentUser.id,studio_id:getStudioId()};
   try {
     if(cycleData.id){await sb.from('cycle_plans').update(payload).eq('id',cycleData.id);}
     else {const {data,error}=await sb.from('cycle_plans').insert(payload).select('id').single();if(!error&&data){cycleData.id=data.id;await loadAllCycles();const sel=document.getElementById('cycle-selector');if(sel)sel.value=cycleData.id;}}
@@ -2375,7 +2405,12 @@ function syncLegacyVideoFields(){
 let allVideos=[];let currentVCat='all';let videoSearch='';
 
 async function loadVideos(){
-  const {data}=await sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
+  // MULTI-TENANT : filtrer par studio_id (même logique que programmes/badges)
+  const _vidStudioId=getStudioId();
+  let q=sb.from('movement_videos').select('*,movements(name,category)').order('created_at',{ascending:false});
+  if(_vidStudioId){q=q.eq('studio_id',_vidStudioId);}
+  else{q=q.is('studio_id',null);}
+  const {data}=await q;
   allVideos=data||[];
 }
 
@@ -2427,7 +2462,7 @@ async function saveVideo(){
   const desc=document.getElementById('v-desc').value.trim();
   const level=document.getElementById('v-level').value;
   if(!title||!youtube){showToast('⚠️ Titre et lien YouTube requis');return;}
-  const {error}=await sb.from('movement_videos').insert({movement_id:movementId,title,youtube_url:youtube,description:desc||null,level,created_by:currentUser.id});
+  const {error}=await sb.from('movement_videos').insert({movement_id:movementId,title,youtube_url:youtube,description:desc||null,level,created_by:currentUser.id,studio_id:getStudioId()});
   if(error){showToast('❌ '+error.message);return;}
   showToast('✅ Vidéo ajoutée !');
   ['v-title','v-youtube','v-desc'].forEach(id=>document.getElementById(id).value='');

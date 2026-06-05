@@ -76,7 +76,7 @@ window.addEventListener('load',()=>{
 // INIT
 window.onload=async()=>{
   const {data:{session}}=await sb.auth.getSession();
-  if(session){currentUser=session.user;await loadProfile();await initApp();}
+  if(session){currentUser=session.user;await loadProfile();await _redirectToProfileStudio();await initApp();}
 };
 
 // AUTH
@@ -99,12 +99,32 @@ async function doAuth(){
   if(authMode==='login'){res=await sb.auth.signInWithPassword({email,password:pwd});}
   else{if(!name){errEl.textContent='Prénom et nom requis';return;}res=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:name}}});}
   if(res.error){errEl.textContent=res.error.message;return;}
-  currentUser=res.data.user;await loadProfile();await initApp();
+  currentUser=res.data.user;await loadProfile();await _redirectToProfileStudio();await initApp();
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;currentProfile=null;location.reload();}
 async function loadProfile(){
   const {data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   currentProfile=data;
+  window.currentProfile=data; // exposé pour index.html et autres scripts
+}
+
+// Helper global — retourne le studio_id du profil courant (null pour Upside Down)
+function getStudioId(){return currentProfile?.studio_id??null;}
+
+// Après login, vérifie que l'URL correspond au studio du profil.
+// Si Maxime se connecte sur "/" alors qu'il appartient à CF Sandglass,
+// on le redirige vers "/crossfit-sandglass".
+async function _redirectToProfileStudio(){
+  const studioId=currentProfile?.studio_id;
+  if(!studioId)return; // Upside Down — pas de redirection
+  // Récupérer le slug du studio
+  const {data:studio}=await sb.from('studios').select('slug').eq('id',studioId).single();
+  if(!studio?.slug)return;
+  const currentSlug=location.pathname.split('/').filter(Boolean)[0]||'';
+  if(currentSlug!==studio.slug){
+    // Rediriger vers le bon slug en conservant le chemin éventuel
+    location.replace('/'+studio.slug);
+  }
 }
 function toggleTheme(){
   const cur=document.documentElement.getAttribute('data-theme')||'dark';
@@ -194,8 +214,9 @@ async function initApp(){
       btn.onclick=()=>goPage('admin');
       nav.appendChild(btn);
     }
-    // Afficher l'onglet Studios uniquement pour le studio "upside" (superadmin)
-    if(window.__STUDIO__?.slug==='upside'){
+    // Afficher l'onglet Studios uniquement pour le superadmin Upside Down
+    // (profil sans studio_id = admin natif Upside)
+    if(!currentProfile?.studio_id){
       const studiosTabBtn=document.getElementById('admin-studios-tab-btn');
       if(studiosTabBtn)studiosTabBtn.style.display='';
     }
@@ -236,7 +257,14 @@ async function goPage(page){
 
 // PROGRAMMES
 async function loadProgrammes(){
-  const {data}=await sb.from('programmes').select('*').eq('is_active',true).order('name');
+  // MULTI-TENANT : filtrer par studio_id du profil courant.
+  // Upside Down (studio_id NULL) → .is('studio_id',null)
+  // Studio tiers (studio_id = UUID) → .eq('studio_id', uuid)
+  const studioId=currentProfile?.studio_id??null;
+  let q=sb.from('programmes').select('*').eq('is_active',true);
+  if(studioId){q=q.eq('studio_id',studioId);}
+  else{q=q.is('studio_id',null);}
+  const {data}=await q.order('name');
   programmes=data||[];
 
   // Gérer retour Stripe ici, après chargement des programmes

@@ -1770,7 +1770,13 @@ function _hexToRgb(hex) {
 // ── Chargement des badges ──────────────────────────────────
 async function loadAllBadges(force = false) {
   if (_badgesCache && !force) return _badgesCache;
-  const { data } = await sb.from('badges').select('*').eq('is_active', true).order('rarity').order('name');
+  // MULTI-TENANT : filtrer par studio_id (même logique que programmes)
+  // Upside Down = studio_id IS NULL, studio tiers = leur UUID
+  const _bStudioId = getStudioId();
+  let q = sb.from('badges').select('*').eq('is_active', true);
+  if (_bStudioId) { q = q.eq('studio_id', _bStudioId); }
+  else { q = q.is('studio_id', null); }
+  const { data } = await q.order('rarity').order('name');
   _badgesCache = data || [];
   return _badgesCache;
 }
@@ -2074,9 +2080,16 @@ async function loadAdminBadgesTab() {
   const panel = document.getElementById('admin-badges-panel');
   if (!panel) return;
 
+  // MULTI-TENANT : charger seulement les athlètes du studio courant
+  const _badgeStudioId = getStudioId();
+  let _badgeAthQ = sb.from('profiles').select('id,full_name,avatar_url');
+  if (_badgeStudioId) { _badgeAthQ = _badgeAthQ.eq('studio_id', _badgeStudioId); }
+  else { _badgeAthQ = _badgeAthQ.is('studio_id', null); }
+  _badgeAthQ = _badgeAthQ.order('full_name');
+
   const [allBadges, allAthletes] = await Promise.all([
     loadAllBadges(true),
-    sb.from('profiles').select('id,full_name,avatar_url').order('full_name'),
+    _badgeAthQ,
   ]);
 
   panel.innerHTML = `
@@ -2198,6 +2211,7 @@ async function createBadge() {
     auto_trigger:    awardType === 'auto' ? trigger   : null,
     auto_threshold:  awardType === 'auto' ? threshold : null,
     created_by: window.currentUser?.id,
+    studio_id: getStudioId(),
   };
 
   const { error } = await sb.from('badges').insert(payload);
