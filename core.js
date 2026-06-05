@@ -105,6 +105,7 @@ async function doLogout(){await sb.auth.signOut();currentUser=null;currentProfil
 async function loadProfile(){
   const {data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
   currentProfile=data;
+  window.currentProfile=data; // exposé pour index.html et autres scripts
 }
 function toggleTheme(){
   const cur=document.documentElement.getAttribute('data-theme')||'dark';
