@@ -1257,12 +1257,23 @@ async function loadDashboard(){
   if(studioId){athletesQ=athletesQ.eq('studio_id',studioId);}
   else{athletesQ=athletesQ.is('studio_id',null);}
 
-  const [athletesRes,scoresRes,prsRes,activeRes]=await Promise.all([
-    athletesQ,
-    sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
-    sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo),
-    sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo)
-  ]);
+  // Récupérer d'abord les IDs des athlètes du studio pour filtrer scores/PR
+  const athletesRes=await athletesQ;
+  let studioAthleteIdsQ=sb.from('profiles').select('id').eq('role','athlete');
+  if(studioId){studioAthleteIdsQ=studioAthleteIdsQ.eq('studio_id',studioId);}
+  else{studioAthleteIdsQ=studioAthleteIdsQ.is('studio_id',null);}
+  const {data:studioAthRows}=await studioAthleteIdsQ;
+  const studioAthIds=(studioAthRows||[]).map(r=>r.id);
+
+  let scoresQ=sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo);
+  let prsQ=sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo);
+  let activeQ=sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo);
+  if(studioAthIds.length){
+    scoresQ=scoresQ.in('athlete_id',studioAthIds);
+    prsQ=prsQ.in('athlete_id',studioAthIds);
+    activeQ=activeQ.in('athlete_id',studioAthIds);
+  }
+  const [scoresRes,prsRes,activeRes]=await Promise.all([scoresQ,prsQ,activeQ]);
 
   const activeIds=new Set((activeRes.data||[]).map(s=>s.athlete_id));
   document.getElementById('dash-stats').innerHTML=`
@@ -1293,8 +1304,10 @@ async function loadDashboard(){
     </div>`).join('');
   }
 
-  // Top performers (plus de PR ce mois)
-  const {data:topPRs}=await sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
+  // Top performers — filtrés par studio
+  let topPRsQ=sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
+  if(studioAthIds.length)topPRsQ=topPRsQ.in('athlete_id',studioAthIds);
+  const {data:topPRs}=await topPRsQ;
   const prCount={};
   (topPRs||[]).forEach(p=>{prCount[p.athlete_id]=(prCount[p.athlete_id]||{count:0,name:p.profiles?.full_name||'—'});prCount[p.athlete_id].count++;});
   const topList=Object.values(prCount).sort((a,b)=>b.count-a.count).slice(0,5);
@@ -1302,8 +1315,10 @@ async function loadDashboard(){
     ?'<div style="font-size:13px;color:var(--muted);padding:8px 0">Pas encore de PR ce mois</div>'
     :topList.map((t,i)=>`<div class="inactive-row"><div class="inactive-name">${i===0?'🥇':i===1?'🥈':'🥉'} ${t.name}</div><div style="font-size:12px;color:var(--accent);font-weight:700">${t.count} PR</div></div>`).join('');
 
-  // Derniers scores
-  const {data:recentScores}=await sb.from('wod_scores').select('*,profiles(full_name,avatar_url)').order('created_at',{ascending:false}).limit(8);
+  // Derniers scores — filtrés par studio
+  let recentScoresQ=sb.from('wod_scores').select('*,profiles(full_name,avatar_url)').order('created_at',{ascending:false}).limit(8);
+  if(studioAthIds.length)recentScoresQ=recentScoresQ.in('athlete_id',studioAthIds);
+  const {data:recentScores}=await recentScoresQ;
   // Récupère les titres de session séparément (la FK wod_scores → sessions a été retirée)
   const recSessIds=Array.from(new Set((recentScores||[]).map(s=>s.session_id).filter(Boolean)));
   const recSessTitleById={};
@@ -1419,7 +1434,22 @@ async function initCyclePlanner(){
 
 let cycleYearFilter='all'; // 'all' or 4-digit year as string
 async function loadAllCycles(){
-  const {data}=await sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
+  // MULTI-TENANT : filtrer par créateur du studio courant
+  // Les cycle_plans n'ont pas de studio_id — on filtre par created_by des admins du studio
+  const studioId=currentProfile?.studio_id??null;
+  let q=sb.from('cycle_plans').select('id,name,start_date,created_at,weeks,cells,columns').order('start_date',{ascending:false,nullsFirst:false});
+  if(studioId){
+    // Récupérer les admins de ce studio pour filtrer leurs cycles
+    const {data:studioAdmins}=await sb.from('profiles').select('id').eq('studio_id',studioId).eq('role','admin');
+    const adminIds=(studioAdmins||[]).map(a=>a.id);
+    if(adminIds.length)q=q.in('created_by',adminIds);
+  } else {
+    // Upside Down : cycles créés par des admins sans studio (studio_id IS NULL)
+    const {data:upsideAdmins}=await sb.from('profiles').select('id').is('studio_id',null).eq('role','admin');
+    const adminIds=(upsideAdmins||[]).map(a=>a.id);
+    if(adminIds.length)q=q.in('created_by',adminIds);
+  }
+  const {data}=await q;
   allCycles=data||[];
   renderCycleYearTabs();
   renderCycleSelector();

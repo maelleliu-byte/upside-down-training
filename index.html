@@ -2074,9 +2074,16 @@ async function loadAdminBadgesTab() {
   const panel = document.getElementById('admin-badges-panel');
   if (!panel) return;
 
+  // MULTI-TENANT : charger seulement les athlètes du studio courant
+  const _badgeStudioId = window.currentProfile?.studio_id ?? null;
+  let _badgeAthQ = sb.from('profiles').select('id,full_name,avatar_url');
+  if (_badgeStudioId) { _badgeAthQ = _badgeAthQ.eq('studio_id', _badgeStudioId); }
+  else { _badgeAthQ = _badgeAthQ.is('studio_id', null); }
+  _badgeAthQ = _badgeAthQ.order('full_name');
+
   const [allBadges, allAthletes] = await Promise.all([
     loadAllBadges(true),
-    sb.from('profiles').select('id,full_name,avatar_url').order('full_name'),
+    _badgeAthQ,
   ]);
 
   panel.innerHTML = `
