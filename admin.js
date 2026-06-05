@@ -1250,55 +1250,42 @@ async function _dashEmbedExtras(){
 async function loadDashboard(){
   const thirtyDaysAgo=new Date(Date.now()-30*24*60*60*1000).toISOString();
   const sevenDaysAgo=new Date(Date.now()-7*24*60*60*1000).toISOString();
-  // MULTI-TENANT : filtrer les athlètes par studio
+
+  // MULTI-TENANT : récupérer les IDs des athlètes du studio courant
   const studioId=getStudioId();
-  let athletesQ=sb.from('profiles').select('id',{count:'exact'}).eq('role','athlete');
-  if(studioId){athletesQ=athletesQ.eq('studio_id',studioId);}
-  else{athletesQ=athletesQ.is('studio_id',null);}
+  let athProfilesQ=sb.from('profiles').select('id,full_name,email').eq('role','athlete');
+  if(studioId!==null&&studioId!==undefined){athProfilesQ=athProfilesQ.eq('studio_id',studioId);}
+  else{athProfilesQ=athProfilesQ.is('studio_id',null);}
+  const {data:allAthletes,count:athleteCount}=await athProfilesQ;
+  const studioAthIds=(allAthletes||[]).map(r=>r.id);
 
-  // Récupérer d'abord les IDs des athlètes du studio pour filtrer scores/PR
-  const athletesRes=await athletesQ;
-  let studioAthleteIdsQ=sb.from('profiles').select('id').eq('role','athlete');
-  if(studioId){studioAthleteIdsQ=studioAthleteIdsQ.eq('studio_id',studioId);}
-  else{studioAthleteIdsQ=studioAthleteIdsQ.is('studio_id',null);}
-  const {data:studioAthRows}=await studioAthleteIdsQ;
-  const studioAthIds=(studioAthRows||[]).map(r=>r.id);
-
-  // Si aucun athlète dans ce studio, on court-circuite tout (évite le .in([]) qui retourne tout)
-  if(!studioAthIds.length){
-    document.getElementById('dash-stats').innerHTML=`
-      <div class="dash-stat-box"><div class="dash-stat-val">0</div><div class="dash-stat-lbl">Athlètes</div></div>
-      <div class="dash-stat-box"><div class="dash-stat-val">0</div><div class="dash-stat-lbl">Actifs 7j</div></div>
-      <div class="dash-stat-box"><div class="dash-stat-val">0</div><div class="dash-stat-lbl">Scores 30j</div></div>
-      <div class="dash-stat-box"><div class="dash-stat-val">0</div><div class="dash-stat-lbl">PR 30j</div></div>`;
-    const inEl=document.getElementById('dash-inactive');if(inEl)inEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Aucun athlète inscrit</div>';
-    const topEl=document.getElementById('dash-top');if(topEl)topEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Pas encore de PR ce mois</div>';
-    const recEl=document.getElementById('dash-recent');if(recEl)recEl.innerHTML='';
-    await _dashEmbedExtras();
-    return;
-  }
-  let scoresQ=sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds);
-  let prsQ=sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds);
-  let activeQ=sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo).in('athlete_id',studioAthIds);
-  const [scoresRes,prsRes,activeRes]=await Promise.all([scoresQ,prsQ,activeQ]);
+  // Stats — utiliser studioAthIds pour filtrer scores/PR
+  // Si studioAthIds vide → zéro partout
+  const noAthletes=!studioAthIds.length;
+  const [scoresRes,prsRes,activeRes]=await Promise.all([
+    noAthletes
+      ? Promise.resolve({count:0})
+      : sb.from('wod_scores').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds),
+    noAthletes
+      ? Promise.resolve({count:0})
+      : sb.from('athlete_prs').select('id',{count:'exact'}).gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds),
+    noAthletes
+      ? Promise.resolve({data:[]})
+      : sb.from('wod_scores').select('athlete_id').gte('created_at',sevenDaysAgo).in('athlete_id',studioAthIds)
+  ]);
 
   const activeIds=new Set((activeRes.data||[]).map(s=>s.athlete_id));
   document.getElementById('dash-stats').innerHTML=`
-    <div class="dash-stat-box"><div class="dash-stat-val">${athletesRes.count||0}</div><div class="dash-stat-lbl">Athlètes</div></div>
+    <div class="dash-stat-box"><div class="dash-stat-val">${studioAthIds.length}</div><div class="dash-stat-lbl">Athlètes</div></div>
     <div class="dash-stat-box"><div class="dash-stat-val">${activeIds.size}</div><div class="dash-stat-lbl">Actifs 7j</div></div>
     <div class="dash-stat-box"><div class="dash-stat-val">${scoresRes.count||0}</div><div class="dash-stat-lbl">Scores 30j</div></div>
     <div class="dash-stat-box"><div class="dash-stat-val">${prsRes.count||0}</div><div class="dash-stat-lbl">PR 30j</div></div>`;
 
-  // Athlètes inactifs — filtrés par studio
-  let allAthQ=sb.from('profiles').select('id,full_name,email').eq('role','athlete');
-  if(studioId){allAthQ=allAthQ.eq('studio_id',studioId);}
-  else{allAthQ=allAthQ.is('studio_id',null);}
-  const {data:allAthletes}=await allAthQ;
+  // Athlètes inactifs
   const inactiveAthletes=(allAthletes||[]).filter(a=>!activeIds.has(a.id));
   const inactiveEl=document.getElementById('dash-inactive');
-  if(inactiveAthletes.length===0){inactiveEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Tous les athlètes sont actifs 💪</div>';}
+  if(!inactiveAthletes.length){inactiveEl.innerHTML='<div style="font-size:13px;color:var(--muted);padding:8px 0">Tous les athlètes sont actifs 💪</div>';}
   else{
-    // Chercher la dernière activité de chaque athlète inactif
     const inactiveWithDays=await Promise.all(inactiveAthletes.slice(0,5).map(async a=>{
       const {data}=await sb.from('wod_scores').select('created_at').eq('athlete_id',a.id).order('created_at',{ascending:false}).limit(1);
       const lastDate=data?.[0]?.created_at;
@@ -1311,29 +1298,26 @@ async function loadDashboard(){
     </div>`).join('');
   }
 
-  // Top performers — filtrés par studio
-  let topPRsQ=sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo);
-  if(studioAthIds.length)topPRsQ=topPRsQ.in('athlete_id',studioAthIds);
-  const {data:topPRs}=await topPRsQ;
+  // Top performers
+  let topPRsQ=noAthletes?null:sb.from('athlete_prs').select('athlete_id,profiles(full_name)').gte('created_at',thirtyDaysAgo).in('athlete_id',studioAthIds);
+  const topPRs=topPRsQ?(await topPRsQ).data||[]:[];
   const prCount={};
-  (topPRs||[]).forEach(p=>{prCount[p.athlete_id]=(prCount[p.athlete_id]||{count:0,name:p.profiles?.full_name||'—'});prCount[p.athlete_id].count++;});
+  topPRs.forEach(p=>{prCount[p.athlete_id]=(prCount[p.athlete_id]||{count:0,name:p.profiles?.full_name||'—'});prCount[p.athlete_id].count++;});
   const topList=Object.values(prCount).sort((a,b)=>b.count-a.count).slice(0,5);
   document.getElementById('dash-top').innerHTML=topList.length===0
     ?'<div style="font-size:13px;color:var(--muted);padding:8px 0">Pas encore de PR ce mois</div>'
     :topList.map((t,i)=>`<div class="inactive-row"><div class="inactive-name">${i===0?'🥇':i===1?'🥈':'🥉'} ${t.name}</div><div style="font-size:12px;color:var(--accent);font-weight:700">${t.count} PR</div></div>`).join('');
 
-  // Derniers scores — filtrés par studio
-  let recentScoresQ=sb.from('wod_scores').select('*,profiles(full_name,avatar_url)').order('created_at',{ascending:false}).limit(8);
-  if(studioAthIds.length)recentScoresQ=recentScoresQ.in('athlete_id',studioAthIds);
-  const {data:recentScores}=await recentScoresQ;
-  // Récupère les titres de session séparément (la FK wod_scores → sessions a été retirée)
-  const recSessIds=Array.from(new Set((recentScores||[]).map(s=>s.session_id).filter(Boolean)));
+  // Derniers scores
+  let recentScoresQ=noAthletes?null:sb.from('wod_scores').select('*,profiles(full_name,avatar_url)').order('created_at',{ascending:false}).limit(8).in('athlete_id',studioAthIds);
+  const recentScores=recentScoresQ?(await recentScoresQ).data||[]:[];
+  const recSessIds=Array.from(new Set(recentScores.map(s=>s.session_id).filter(Boolean)));
   const recSessTitleById={};
   if(recSessIds.length){
     const {data:sessTitles}=await sb.from('sessions').select('id,title').in('id',recSessIds);
     for(const x of (sessTitles||[]))recSessTitleById[x.id]=x.title;
   }
-  document.getElementById('dash-recent').innerHTML=(recentScores||[]).map(s=>`<div class="recent-score-row">
+  document.getElementById('dash-recent').innerHTML=recentScores.map(s=>`<div class="recent-score-row">
     ${avatarHtml(s.profiles)}
     <div class="recent-score-info">
       <div class="recent-score-name">${s.profiles?.full_name||'—'}</div>
