@@ -11,48 +11,38 @@
 body{background:#0a0a0a;color:#f0f0f0;font-family:'DM Sans',system-ui,sans-serif;min-height:100vh;padding:24px;}
 .page{max-width:520px;margin:0 auto;}
 .back{display:inline-flex;align-items:center;gap:8px;color:#666;font-size:14px;text-decoration:none;margin-bottom:24px;}
-.back:hover{color:#f0f0f0;}
 h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#e8ff47;margin-bottom:4px;}
 .subtitle{color:#666;font-size:14px;margin-bottom:32px;}
 .section{background:#111;border:1px solid #222;border-radius:16px;padding:24px;margin-bottom:16px;}
 .section-title{font-size:12px;font-weight:700;color:#555;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;}
-.status-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
 .status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:700;}
 .status-badge.connected{background:#47ff8020;border:1px solid #47ff8040;color:#80ffb0;}
 .status-badge.pending{background:#ff8c4720;border:1px solid #ff8c4740;color:#ff8c47;}
-.status-badge.not-connected{background:#33333350;border:1px solid #333;color:#666;}
 .dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
 .info-box{background:#e8ff4708;border:1px solid #e8ff4720;border-radius:10px;padding:14px 16px;font-size:13px;color:#c8df40;line-height:1.6;margin-bottom:20px;}
 .info-box ul{margin:8px 0 0 16px;}
 .info-box ul li{margin-bottom:4px;}
 .btn{display:block;width:100%;background:#e8ff47;color:#0a0a0a;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s;text-align:center;}
-.btn:hover{opacity:.88;}
 .btn:disabled{opacity:.4;cursor:not-allowed;}
 .btn-secondary{background:transparent;border:1px solid #333;color:#f0f0f0;}
-.btn-secondary:hover{border-color:#555;opacity:1;}
 .btn-danger{background:#ff474720;border:1px solid #ff474740;color:#ff7070;}
-.btn-danger:hover{background:#ff474730;opacity:1;}
-.account-info{background:#0a0a0a;border:1px solid #1e1e1e;border-radius:10px;padding:14px;margin-bottom:16px;}
-.account-info-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;}
-.account-info-row + .account-info-row{margin-top:10px;padding-top:10px;border-top:1px solid #1e1e1e;}
-.account-info-label{color:#555;}
-.account-info-value{color:#f0f0f0;font-weight:600;font-family:monospace;font-size:12px;}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(10,10,10,.3);border-top-color:#0a0a0a;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:8px;}
 .spinner-light{border-color:rgba(240,240,240,.2);border-top-color:#f0f0f0;}
 @keyframes spin{to{transform:rotate(360deg)}}
-.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #333;color:#f0f0f0;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;white-space:nowrap;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;}
-.toast.show{opacity:1;}
-.error-box{background:#ff474715;border:1px solid #ff474740;border-radius:12px;padding:20px;text-align:center;color:#ff7070;font-size:14px;line-height:1.6;}
-#loading-screen{display:flex;align-items:center;justify-content:center;min-height:60vh;color:#555;font-size:14px;gap:10px;}
+#loading-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:16px;}
+#loading-msg{color:#555;font-size:13px;}
+#debug-log{background:#111;border:1px solid #333;border-radius:10px;padding:12px;width:100%;max-width:400px;font-family:monospace;font-size:12px;color:#888;line-height:1.8;}
 #main-content{display:none;}
 </style>
 </head>
 <body>
 <div class="page">
-  <a href="/" class="back" id="back-link">← Retour à l'app</a>
+  <a href="/" class="back" id="back-link">← Retour</a>
 
   <div id="loading-screen">
-    <span class="spinner spinner-light"></span> Chargement...
+    <span class="spinner spinner-light"></span>
+    <div id="loading-msg">Initialisation...</div>
+    <div id="debug-log"></div>
   </div>
 
   <div id="main-content">
@@ -80,40 +70,25 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
         <div class="status-row">
           <div class="status-badge pending"><span class="dot"></span>Onboarding en cours</div>
         </div>
-        <p style="font-size:13px;color:#888;margin-bottom:16px">Tu n'as pas encore terminé la configuration Stripe. Reprends où tu en étais :</p>
-        <button class="btn" id="btn-resume-stripe" onclick="startConnectOnboarding()">
-          Reprendre la configuration Stripe
-        </button>
-        <button class="btn btn-secondary" style="margin-top:10px" onclick="disconnectStripe()">
-          Déconnecter et recommencer
-        </button>
+        <p style="font-size:13px;color:#888;margin-bottom:16px">Tu n'as pas encore terminé la configuration Stripe.</p>
+        <button class="btn" id="btn-resume-stripe" onclick="startConnectOnboarding()">Reprendre la configuration Stripe</button>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="disconnectStripe()">Déconnecter et recommencer</button>
       </div>
 
       <div id="connect-active" style="display:none">
-        <div class="status-row">
-          <div class="status-badge connected"><span class="dot"></span>Compte connecté ✓</div>
-        </div>
-        <div class="account-info">
-          <div class="account-info-row">
-            <span class="account-info-label">Account ID</span>
-            <span class="account-info-value" id="account-id-display">—</span>
-          </div>
-        </div>
-        <p style="font-size:12px;color:#555;margin-bottom:16px">Tes athlètes peuvent maintenant s'abonner à tes programmes.</p>
-        <button class="btn btn-danger" onclick="disconnectStripe()">
-          Déconnecter Stripe
-        </button>
+        <div class="status-badge connected"><span class="dot"></span>Compte connecté ✓</div>
+        <p style="font-size:12px;color:#555;margin:12px 0 16px">Tes athlètes peuvent maintenant s'abonner à tes programmes.</p>
+        <div style="background:#0a0a0a;border:1px solid #1e1e1e;border-radius:10px;padding:14px;margin-bottom:16px;font-family:monospace;font-size:12px;color:#888" id="account-id-display">—</div>
+        <button class="btn btn-danger" onclick="disconnectStripe()">Déconnecter Stripe</button>
       </div>
     </div>
 
     <div class="section" style="opacity:.45;pointer-events:none">
       <div class="section-title">⚙️ Informations du studio</div>
-      <p style="font-size:13px;color:#555">Modifier le nom, logo, couleur... — bientôt disponible</p>
+      <p style="font-size:13px;color:#555">Bientôt disponible</p>
     </div>
   </div>
 </div>
-
-<div class="toast" id="toast"></div>
 
 <script>
 const SUPABASE_URL = 'https://tltqtpbaaxiwwpvuzszt.supabase.co';
@@ -122,108 +97,76 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 let currentUser = null;
 let currentStudio = null;
+let debugLines = [];
 
-// Extraire le slug depuis l'URL : /crossfit-sandglass/settings → "crossfit-sandglass"
-function getSlugFromUrl() {
-  const parts = window.location.pathname.split('/').filter(Boolean);
-  // Format attendu : /:slug/settings
-  if (parts.length >= 2 && parts[parts.length - 1] === 'settings') {
-    return parts[parts.length - 2];
-  }
-  return null;
+function log(msg) {
+  debugLines.push(msg);
+  const el = document.getElementById('debug-log');
+  if (el) el.innerHTML = debugLines.map(l => '→ ' + l).join('<br>');
+  document.getElementById('loading-msg').textContent = msg;
 }
 
-function showToast(msg, duration = 3000) {
-  const t = document.getElementById('toast');
-  t.textContent = msg;
-  t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), duration);
+function getSlugFromUrl() {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  if (parts.length >= 2 && parts[parts.length - 1] === 'settings') return parts[parts.length - 2];
+  return null;
 }
 
 function showError(msg) {
   document.getElementById('loading-screen').innerHTML =
-    '<div class="error-box">' + msg + '</div>';
+    '<div style="background:#ff474715;border:1px solid #ff474740;border-radius:12px;padding:20px;color:#ff7070;font-size:14px;line-height:1.6;max-width:400px">' + msg + '</div>';
 }
 
 async function init() {
   const slug = getSlugFromUrl();
+  log('slug détecté : ' + (slug || 'AUCUN'));
 
-  // Mettre à jour le lien retour avec le bon slug
-  const backLink = document.getElementById('back-link');
-  if (slug && slug !== 'upside') {
-    backLink.href = '/' + slug;
-  } else {
-    backLink.href = '/';
-  }
+  document.getElementById('back-link').href = slug && slug !== 'upside' ? '/' + slug : '/';
 
-  // Vérifier auth
-  const { data: { session } } = await sb.auth.getSession();
-  if (!session) {
-    showError('Tu dois être connecté pour accéder à cette page.<br><a href="/" style="color:#e8ff47">← Retour à l\'app</a>');
-    return;
-  }
+  const { data: { session }, error: sessionErr } = await sb.auth.getSession();
+  log('session : ' + (session ? session.user.email : 'NULL') + (sessionErr ? ' ERR:' + sessionErr.message : ''));
+
+  if (!session) { showError('Non connecté — <a href="/" style="color:#e8ff47">retour à l\'app</a>'); return; }
   currentUser = session.user;
 
-  // Récupérer le profil
   const { data: profile, error: profileErr } = await sb.from('profiles')
-    .select('studio_id, role')
-    .eq('id', currentUser.id)
-    .single();
+    .select('studio_id, role').eq('id', currentUser.id).single();
+  log('profil : studio_id=' + (profile?.studio_id || 'NULL') + ' role=' + (profile?.role || '?') + (profileErr ? ' ERR:' + profileErr.message : ''));
 
-  if (profileErr) {
-    showError('Erreur profil : ' + profileErr.message);
-    return;
-  }
+  if (profileErr) { showError('Erreur profil : ' + profileErr.message); return; }
 
-  const isSuperadmin = !profile?.studio_id; // studio_id NULL = superadmin Upside Down
+  const isSuperadmin = !profile?.studio_id;
+  log('superadmin : ' + isSuperadmin);
 
   let studio = null;
 
   if (isSuperadmin) {
-    // Superadmin : charger le studio depuis le slug de l'URL
-    if (!slug) {
-      showError('URL invalide — aucun slug détecté.');
-      return;
-    }
-    const { data: s, error: se } = await sb.from('studios')
-      .select('*')
-      .eq('slug', slug)
-      .single();
-    if (se || !s) {
-      showError('Studio introuvable : <strong>' + slug + '</strong>');
-      return;
-    }
+    if (!slug) { showError('URL invalide.'); return; }
+    const { data: s, error: se } = await sb.from('studios').select('*').eq('slug', slug).single();
+    log('studio (via slug) : ' + (s?.name || 'NULL') + (se ? ' ERR:' + se.message : ''));
+    if (se || !s) { showError('Studio introuvable : ' + slug + (se ? '<br>' + se.message : '')); return; }
     studio = s;
   } else {
-    // Coach normal : charger son propre studio
-    const { data: s, error: se } = await sb.from('studios')
-      .select('*')
-      .eq('id', profile.studio_id)
-      .single();
-    if (se || !s) {
-      showError('Studio introuvable.');
-      return;
-    }
+    const { data: s, error: se } = await sb.from('studios').select('*').eq('id', profile.studio_id).single();
+    log('studio (via profile) : ' + (s?.name || 'NULL') + (se ? ' ERR:' + se.message : ''));
+    if (se || !s) { showError('Studio introuvable.' + (se ? '<br>' + se.message : '')); return; }
     studio = s;
 
-    // Vérifier que c'est le owner ou un coach du studio
-    if (studio.owner_id !== currentUser.id && profile.role !== 'coach' && profile.role !== 'admin') {
-      showError('Accès refusé — cette page est réservée au propriétaire du studio.');
-      return;
-    }
+    const isOwner = studio.owner_id === currentUser.id;
+    const isCoachOrAdmin = profile.role === 'coach' || profile.role === 'admin';
+    log('isOwner=' + isOwner + ' role=' + profile.role);
+    if (!isOwner && !isCoachOrAdmin) { showError('Accès refusé.'); return; }
   }
 
   currentStudio = studio;
+  log('OK — affichage de ' + studio.name);
   renderStudio(studio);
 
-  // Gérer le retour depuis Stripe
   const params = new URLSearchParams(window.location.search);
   if (params.get('connect') === 'success') {
-    showToast('✅ Config Stripe envoyée — vérification en cours...', 5000);
     setTimeout(async () => { await refreshStudioStatus(); }, 2500);
     window.history.replaceState({}, '', window.location.pathname);
   } else if (params.get('connect') === 'refresh') {
-    showToast('⚠️ Session expirée — clique à nouveau pour reprendre');
     window.history.replaceState({}, '', window.location.pathname);
   }
 
@@ -235,11 +178,9 @@ function renderStudio(studio) {
   document.getElementById('studio-name-title').textContent = studio.name;
   document.getElementById('studio-slug-subtitle').textContent = '/' + studio.slug;
   document.title = 'Paramètres — ' + studio.name;
-
   document.getElementById('connect-not-connected').style.display = 'none';
   document.getElementById('connect-pending').style.display = 'none';
   document.getElementById('connect-active').style.display = 'none';
-
   if (!studio.stripe_account_id) {
     document.getElementById('connect-not-connected').style.display = 'block';
   } else if (!studio.stripe_onboarding_complete) {
@@ -252,54 +193,36 @@ function renderStudio(studio) {
 
 async function refreshStudioStatus() {
   const { data: studio } = await sb.from('studios').select('*').eq('id', currentStudio.id).single();
-  if (studio) {
-    currentStudio = studio;
-    renderStudio(studio);
-    if (studio.stripe_onboarding_complete) showToast('🎉 Stripe Connect activé !');
-  }
+  if (studio) { currentStudio = studio; renderStudio(studio); }
 }
 
 async function startConnectOnboarding() {
   const btn = document.getElementById('btn-connect-stripe') || document.getElementById('btn-resume-stripe');
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Redirection...'; }
-
   try {
     const { data: { session } } = await sb.auth.getSession();
     const token = session?.access_token;
-    if (!token) { showToast('⚠️ Session expirée'); return; }
-
+    if (!token) { alert('Session expirée'); return; }
     const res = await fetch(SUPABASE_URL + '/functions/v1/stripe-connect-onboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     });
     const data = await res.json();
-
-    if (data.error) {
-      showToast('❌ ' + data.error);
-      if (btn) { btn.disabled = false; btn.textContent = 'Connecter mon compte Stripe'; }
-      return;
-    }
+    if (data.error) { alert('Erreur : ' + data.error); if (btn) { btn.disabled = false; btn.textContent = 'Connecter mon compte Stripe'; } return; }
     if (data.url) window.location.href = data.url;
-
   } catch (e) {
-    showToast('❌ ' + e.message);
+    alert('Erreur : ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = 'Connecter mon compte Stripe'; }
   }
 }
 
 async function disconnectStripe() {
-  if (!confirm('Déconnecter Stripe ? Tes athlètes ne pourront plus s\'abonner jusqu\'à la reconnexion.')) return;
-
-  const { error } = await sb.from('studios')
-    .update({ stripe_account_id: null, stripe_onboarding_complete: false })
-    .eq('id', currentStudio.id);
-
-  if (error) { showToast('❌ ' + error.message); return; }
-
+  if (!confirm('Déconnecter Stripe ?')) return;
+  const { error } = await sb.from('studios').update({ stripe_account_id: null, stripe_onboarding_complete: false }).eq('id', currentStudio.id);
+  if (error) { alert(error.message); return; }
   currentStudio.stripe_account_id = null;
   currentStudio.stripe_onboarding_complete = false;
   renderStudio(currentStudio);
-  showToast('Stripe déconnecté');
 }
 
 init();
