@@ -688,6 +688,7 @@
             <button class="arrow-btn" onclick="persoNav(-1)">‹</button>
             <span style="font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--muted);min-width:140px;text-align:center" id="perso-period-label">—</span>
             <button class="arrow-btn" onclick="persoNav(1)">›</button>
+            <button class="arrow-btn" onclick="openDupPersoWeekModal()" title="Dupliquer la semaine entière" style="font-size:14px">📋</button>
           </div>
         </div>
         <div id="perso-calendar-area"></div>
@@ -701,6 +702,20 @@
         <div id="perso-form-container">
           <!-- Le formulaire sera cloné depuis #admin-new-session -->
         </div>
+      </div>
+    </div>
+
+    <!-- MODAL DUPLIQUER SEMAINE ENTIÈRE (espace perso) -->
+    <div class="modal-overlay" id="dup-perso-week-modal">
+      <div class="modal-box">
+        <div class="modal-title">📋 Dupliquer la semaine</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Source : <strong id="dup-perso-week-source-label">—</strong></div>
+        <div class="form-group">
+          <label class="form-label">Lundi de la semaine cible</label>
+          <input type="date" class="form-input" id="dup-perso-week-target-date">
+        </div>
+        <button class="btn-modal-save" onclick="confirmDupPersoWeek()">📋 Dupliquer la semaine</button>
+        <button class="btn-secondary" onclick="closeDupPersoWeekModal()" style="margin-top:8px;width:100%">Annuler</button>
       </div>
     </div>
 
