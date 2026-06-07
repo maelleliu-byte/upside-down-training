@@ -76,7 +76,12 @@ window.addEventListener('load',()=>{
 // INIT
 window.onload=async()=>{
   const {data:{session}}=await sb.auth.getSession();
-  if(session){currentUser=session.user;await loadProfile();await _redirectToProfileStudio();await initApp();}
+  if(session){
+    currentUser=session.user;
+    await loadProfile();
+    const redirecting=await _redirectToProfileStudio();
+    if(!redirecting)await initApp();
+  }
 };
 
 // AUTH
@@ -96,10 +101,24 @@ async function doAuth(){
   errEl.textContent='';
   if(!email||!pwd){errEl.textContent='Email et mot de passe requis';return;}
   let res;
-  if(authMode==='login'){res=await sb.auth.signInWithPassword({email,password:pwd});}
-  else{if(!name){errEl.textContent='Prénom et nom requis';return;}res=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:name}}});}
+  if(authMode==='login'){
+    res=await sb.auth.signInWithPassword({email,password:pwd});
+  } else {
+    if(!name){errEl.textContent='Prénom et nom requis';return;}
+    res=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:name}}});
+    // Après signup : assigner le studio courant au profil
+    if(!res.error&&res.data.user){
+      const studioId=window.__STUDIO__?.id||null;
+      const profileData={id:res.data.user.id,email,full_name:name,role:'athlete'};
+      if(studioId)profileData.studio_id=studioId;
+      await sb.from('profiles').upsert(profileData,{onConflict:'id'});
+    }
+  }
   if(res.error){errEl.textContent=res.error.message;return;}
-  currentUser=res.data.user;await loadProfile();await _redirectToProfileStudio();await initApp();
+  currentUser=res.data.user;
+  await loadProfile();
+  const redirecting=await _redirectToProfileStudio();
+  if(!redirecting)await initApp();
 }
 async function doLogout(){await sb.auth.signOut();currentUser=null;currentProfile=null;location.reload();}
 async function loadProfile(){
@@ -116,15 +135,16 @@ function getStudioId(){return currentProfile?.studio_id??null;}
 // on le redirige vers "/crossfit-sandglass".
 async function _redirectToProfileStudio(){
   const studioId=currentProfile?.studio_id;
-  if(!studioId)return; // Upside Down — pas de redirection
+  if(!studioId)return false; // Upside Down — pas de redirection
   // Récupérer le slug du studio
   const {data:studio}=await sb.from('studios').select('slug').eq('id',studioId).single();
-  if(!studio?.slug)return;
+  if(!studio?.slug)return false;
   const currentSlug=location.pathname.split('/').filter(Boolean)[0]||'';
   if(currentSlug!==studio.slug){
-    // Rediriger vers le bon slug en conservant le chemin éventuel
     location.replace('/'+studio.slug);
+    return true; // redirection en cours — ne pas initApp
   }
+  return false;
 }
 function toggleTheme(){
   const cur=document.documentElement.getAttribute('data-theme')||'dark';
