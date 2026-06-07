@@ -2563,5 +2563,28 @@ function _injectAdminBadgesTab() {
   };
 })();
 </script>
+<script>
+// FIX: f-target, f-tips, f-scaling-* sont des textarea - .innerHTML ne lit pas ce que l'user tape
+// editSession ecrit .innerHTML (bug) - on recopie dans .value apres
+// saveSession lit .innerHTML (bug) - on sync .value -> .innerHTML avant save
+(function(){
+  const TIDS=['f-target','f-tips','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'];
+  const _origEdit=window.editSession;
+  if(_origEdit){
+    window.editSession=async function(){
+      const r=await _origEdit.apply(this,arguments);
+      TIDS.forEach(function(id){const el=document.getElementById(id);if(el&&el.tagName==='TEXTAREA')el.value=el.innerHTML;});
+      return r;
+    };
+  }
+  const _origSave=window.saveSession;
+  if(_origSave){
+    window.saveSession=async function(){
+      TIDS.forEach(function(id){const el=document.getElementById(id);if(el&&el.tagName==='TEXTAREA')el.innerHTML=el.value;});
+      return _origSave.apply(this,arguments);
+    };
+  }
+})();
+</script>
 </body>
 </html>
