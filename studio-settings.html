@@ -42,13 +42,14 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
 @keyframes spin{to{transform:rotate(360deg)}}
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #333;color:#f0f0f0;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;white-space:nowrap;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;}
 .toast.show{opacity:1;}
+.error-box{background:#ff474715;border:1px solid #ff474740;border-radius:12px;padding:20px;text-align:center;color:#ff7070;font-size:14px;line-height:1.6;}
 #loading-screen{display:flex;align-items:center;justify-content:center;min-height:60vh;color:#555;font-size:14px;gap:10px;}
 #main-content{display:none;}
 </style>
 </head>
 <body>
 <div class="page">
-  <a href="/" class="back">← Retour à l'app</a>
+  <a href="/" class="back" id="back-link">← Retour à l'app</a>
 
   <div id="loading-screen">
     <span class="spinner spinner-light"></span> Chargement...
@@ -58,7 +59,6 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
     <h1 id="studio-name-title">Mon Studio</h1>
     <p class="subtitle" id="studio-slug-subtitle"></p>
 
-    <!-- Section Stripe Connect -->
     <div class="section">
       <div class="section-title">💳 Paiements — Stripe Connect</div>
 
@@ -80,7 +80,7 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
         <div class="status-row">
           <div class="status-badge pending"><span class="dot"></span>Onboarding en cours</div>
         </div>
-        <p style="font-size:13px;color:#888;margin-bottom:16px">Tu n'as pas encore terminé la configuration de ton compte Stripe. Reprends où tu en étais :</p>
+        <p style="font-size:13px;color:#888;margin-bottom:16px">Tu n'as pas encore terminé la configuration Stripe. Reprends où tu en étais :</p>
         <button class="btn" id="btn-resume-stripe" onclick="startConnectOnboarding()">
           Reprendre la configuration Stripe
         </button>
@@ -93,20 +93,19 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
         <div class="status-row">
           <div class="status-badge connected"><span class="dot"></span>Compte connecté ✓</div>
         </div>
-        <div class="account-info" id="account-info-block">
+        <div class="account-info">
           <div class="account-info-row">
             <span class="account-info-label">Account ID</span>
             <span class="account-info-value" id="account-id-display">—</span>
           </div>
         </div>
-        <p style="font-size:12px;color:#555;margin-bottom:16px">Tes athlètes peuvent maintenant s'abonner à tes programmes. Les paiements arrivent directement sur ton compte Stripe.</p>
+        <p style="font-size:12px;color:#555;margin-bottom:16px">Tes athlètes peuvent maintenant s'abonner à tes programmes.</p>
         <button class="btn btn-danger" onclick="disconnectStripe()">
           Déconnecter Stripe
         </button>
       </div>
     </div>
 
-    <!-- Section infos studio (futur) -->
     <div class="section" style="opacity:.45;pointer-events:none">
       <div class="section-title">⚙️ Informations du studio</div>
       <p style="font-size:13px;color:#555">Modifier le nom, logo, couleur... — bientôt disponible</p>
@@ -124,6 +123,16 @@ const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 let currentUser = null;
 let currentStudio = null;
 
+// Extraire le slug depuis l'URL : /crossfit-sandglass/settings → "crossfit-sandglass"
+function getSlugFromUrl() {
+  const parts = window.location.pathname.split('/').filter(Boolean);
+  // Format attendu : /:slug/settings
+  if (parts.length >= 2 && parts[parts.length - 1] === 'settings') {
+    return parts[parts.length - 2];
+  }
+  return null;
+}
+
 function showToast(msg, duration = 3000) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -131,32 +140,77 @@ function showToast(msg, duration = 3000) {
   setTimeout(() => t.classList.remove('show'), duration);
 }
 
+function showError(msg) {
+  document.getElementById('loading-screen').innerHTML =
+    '<div class="error-box">' + msg + '</div>';
+}
+
 async function init() {
+  const slug = getSlugFromUrl();
+
+  // Mettre à jour le lien retour avec le bon slug
+  const backLink = document.getElementById('back-link');
+  if (slug && slug !== 'upside') {
+    backLink.href = '/' + slug;
+  } else {
+    backLink.href = '/';
+  }
+
   // Vérifier auth
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
-    window.location.href = '/';
+    showError('Tu dois être connecté pour accéder à cette page.<br><a href="/" style="color:#e8ff47">← Retour à l\'app</a>');
     return;
   }
   currentUser = session.user;
 
-  // Récupérer le profil + studio
-  const { data: profile } = await sb.from('profiles').select('studio_id, role').eq('id', currentUser.id).single();
-  if (!profile?.studio_id) {
-    window.location.href = '/';
+  // Récupérer le profil
+  const { data: profile, error: profileErr } = await sb.from('profiles')
+    .select('studio_id, role')
+    .eq('id', currentUser.id)
+    .single();
+
+  if (profileErr) {
+    showError('Erreur profil : ' + profileErr.message);
     return;
   }
 
-  const { data: studio } = await sb.from('studios').select('*').eq('id', profile.studio_id).single();
-  if (!studio) {
-    window.location.href = '/';
-    return;
-  }
+  const isSuperadmin = !profile?.studio_id; // studio_id NULL = superadmin Upside Down
 
-  // Vérifier que c'est le owner (ou coach du studio)
-  if (studio.owner_id !== currentUser.id && profile.role !== 'coach') {
-    window.location.href = '/';
-    return;
+  let studio = null;
+
+  if (isSuperadmin) {
+    // Superadmin : charger le studio depuis le slug de l'URL
+    if (!slug) {
+      showError('URL invalide — aucun slug détecté.');
+      return;
+    }
+    const { data: s, error: se } = await sb.from('studios')
+      .select('*')
+      .eq('slug', slug)
+      .single();
+    if (se || !s) {
+      showError('Studio introuvable : <strong>' + slug + '</strong>');
+      return;
+    }
+    studio = s;
+  } else {
+    // Coach normal : charger son propre studio
+    const { data: s, error: se } = await sb.from('studios')
+      .select('*')
+      .eq('id', profile.studio_id)
+      .single();
+    if (se || !s) {
+      showError('Studio introuvable.');
+      return;
+    }
+    studio = s;
+
+    // Vérifier que c'est le owner ou un coach du studio
+    if (studio.owner_id !== currentUser.id && profile.role !== 'coach') {
+      showError('Accès refusé — cette page est réservée au propriétaire du studio.');
+      return;
+    }
   }
 
   currentStudio = studio;
@@ -165,11 +219,8 @@ async function init() {
   // Gérer le retour depuis Stripe
   const params = new URLSearchParams(window.location.search);
   if (params.get('connect') === 'success') {
-    showToast('✅ Configuration Stripe envoyée — vérification en cours...', 5000);
-    // Rafraîchir le statut après 2 secondes (le webhook peut prendre un moment)
-    setTimeout(async () => {
-      await refreshStudioStatus();
-    }, 2500);
+    showToast('✅ Config Stripe envoyée — vérification en cours...', 5000);
+    setTimeout(async () => { await refreshStudioStatus(); }, 2500);
     window.history.replaceState({}, '', window.location.pathname);
   } else if (params.get('connect') === 'refresh') {
     showToast('⚠️ Session expirée — clique à nouveau pour reprendre');
@@ -182,10 +233,9 @@ async function init() {
 
 function renderStudio(studio) {
   document.getElementById('studio-name-title').textContent = studio.name;
-  document.getElementById('studio-slug-subtitle').textContent = `/${studio.slug}`;
-  document.title = `Paramètres — ${studio.name}`;
+  document.getElementById('studio-slug-subtitle').textContent = '/' + studio.slug;
+  document.title = 'Paramètres — ' + studio.name;
 
-  // Afficher le bon bloc Connect
   document.getElementById('connect-not-connected').style.display = 'none';
   document.getElementById('connect-pending').style.display = 'none';
   document.getElementById('connect-active').style.display = 'none';
@@ -205,9 +255,7 @@ async function refreshStudioStatus() {
   if (studio) {
     currentStudio = studio;
     renderStudio(studio);
-    if (studio.stripe_onboarding_complete) {
-      showToast('🎉 Stripe Connect activé !');
-    }
+    if (studio.stripe_onboarding_complete) showToast('🎉 Stripe Connect activé !');
   }
 }
 
@@ -220,10 +268,9 @@ async function startConnectOnboarding() {
     const token = session?.access_token;
     if (!token) { showToast('⚠️ Session expirée'); return; }
 
-    const fnUrl = `${SUPABASE_URL}/functions/v1/stripe-connect-onboard`;
-    const res = await fetch(fnUrl, {
+    const res = await fetch(SUPABASE_URL + '/functions/v1/stripe-connect-onboard', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
     });
     const data = await res.json();
 
@@ -232,18 +279,16 @@ async function startConnectOnboarding() {
       if (btn) { btn.disabled = false; btn.textContent = 'Connecter mon compte Stripe'; }
       return;
     }
+    if (data.url) window.location.href = data.url;
 
-    if (data.url) {
-      window.location.href = data.url;
-    }
   } catch (e) {
-    showToast('❌ Erreur : ' + e.message);
+    showToast('❌ ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = 'Connecter mon compte Stripe'; }
   }
 }
 
 async function disconnectStripe() {
-  if (!confirm('Déconnecter ton compte Stripe ? Tes athlètes ne pourront plus s\'abonner jusqu\'à la reconnexion.')) return;
+  if (!confirm('Déconnecter Stripe ? Tes athlètes ne pourront plus s\'abonner jusqu\'à la reconnexion.')) return;
 
   const { error } = await sb.from('studios')
     .update({ stripe_account_id: null, stripe_onboarding_complete: false })
