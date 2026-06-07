@@ -83,6 +83,35 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
       </div>
     </div>
 
+    <!-- Section Abonnement SaaS -->
+    <div class="section" id="billing-section">
+      <div class="section-title">📦 Abonnement Upside Down</div>
+
+      <div id="billing-active" style="display:none">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+          <div class="status-badge connected"><span class="dot"></span>Abonnement actif</div>
+          <div style="font-size:13px;color:#666" id="billing-tier-label"></div>
+        </div>
+        <div style="background:#0a0a0a;border:1px solid #1e1e1e;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#888;line-height:1.8" id="billing-info"></div>
+        <p style="font-size:12px;color:#555;margin-bottom:0">Le tier évolue automatiquement avec le nombre d'athlètes.</p>
+      </div>
+
+      <div id="billing-inactive">
+        <div class="info-box">
+          <strong>Abonne-toi pour activer ton studio</strong> et permettre à tes athlètes de s'inscrire.
+          <ul>
+            <li>Starter — 0 à 10 athlètes — <strong>10€/mois</strong></li>
+            <li>Scale — 11 à 30 athlètes — <strong>30€/mois</strong></li>
+            <li>Pro — 31+ athlètes — <strong>50€/mois</strong></li>
+          </ul>
+        </div>
+        <div style="font-size:13px;color:#666;margin-bottom:16px" id="billing-athlete-count"></div>
+        <button class="btn" id="btn-subscribe" onclick="startBillingSubscription()">
+          S'abonner
+        </button>
+      </div>
+    </div>
+
     <div class="section" style="opacity:.45;pointer-events:none">
       <div class="section-title">⚙️ Informations du studio</div>
       <p style="font-size:13px;color:#555">Bientôt disponible</p>
@@ -189,6 +218,8 @@ function renderStudio(studio) {
     document.getElementById('connect-active').style.display = 'block';
     document.getElementById('account-id-display').textContent = studio.stripe_account_id;
   }
+
+  renderBilling(studio);
 }
 
 async function refreshStudioStatus() {
@@ -206,6 +237,7 @@ async function startConnectOnboarding() {
     const res = await fetch(SUPABASE_URL + '/functions/v1/stripe-connect-onboard', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ studio_id: currentStudio.id }),
     });
     const data = await res.json();
     if (data.error) { alert('Erreur : ' + data.error); if (btn) { btn.disabled = false; btn.textContent = 'Connecter mon compte Stripe'; } return; }
@@ -223,6 +255,74 @@ async function disconnectStripe() {
   currentStudio.stripe_account_id = null;
   currentStudio.stripe_onboarding_complete = false;
   renderStudio(currentStudio);
+}
+
+// ── Billing SaaS ─────────────────────────────────────────────────────
+
+const TIERS = {
+  starter: { label: 'Starter', price: '10€/mois', max: 10 },
+  scale:   { label: 'Scale',   price: '30€/mois', max: 30 },
+  pro:     { label: 'Pro',     price: '50€/mois', max: 99999 },
+};
+
+function renderBilling(studio) {
+  const hasSubscription = !!studio.stripe_subscription_id;
+  document.getElementById('billing-active').style.display = hasSubscription ? 'block' : 'none';
+  document.getElementById('billing-inactive').style.display = hasSubscription ? 'none' : 'block';
+
+  if (hasSubscription) {
+    const tier = TIERS[studio.plan_tier] || TIERS.starter;
+    document.getElementById('billing-tier-label').textContent = tier.label + ' — ' + tier.price;
+    document.getElementById('billing-info').innerHTML =
+      'Athlètes : <strong style="color:#f0f0f0">' + (studio.athlete_count || 0) + '</strong><br>' +
+      'Tier actuel : <strong style="color:#f0f0f0">' + tier.label + '</strong><br>' +
+      'Prochain palier : ' + (studio.plan_tier === 'pro' ? '—' : (studio.plan_tier === 'scale' ? '31 athlètes → Pro 50€/mois' : '11 athlètes → Scale 30€/mois'));
+  } else {
+    const count = studio.athlete_count || 0;
+    let tierLabel = count <= 10 ? 'Starter (10€/mois)' : count <= 30 ? 'Scale (30€/mois)' : 'Pro (50€/mois)';
+    document.getElementById('billing-athlete-count').textContent =
+      'Tu as ' + count + ' athlète' + (count > 1 ? 's' : '') + ' — tier adapté : ' + tierLabel;
+  }
+
+  // Gérer retour Stripe billing
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('billing') === 'success') {
+    showToast('🎉 Abonnement activé !', 5000);
+    setTimeout(async () => { await refreshStudioStatus(); }, 3000);
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (params.get('billing') === 'canceled') {
+    showToast('Abonnement annulé.');
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+}
+
+async function startBillingSubscription() {
+  const btn = document.getElementById('btn-subscribe');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Redirection...'; }
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { showToast('⚠️ Session expirée'); return; }
+
+    const res = await fetch(SUPABASE_URL + '/functions/v1/create-studio-subscription', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify({ studio_id: currentStudio.id }),
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      showToast('❌ ' + data.error);
+      if (btn) { btn.disabled = false; btn.textContent = "S'abonner"; }
+      return;
+    }
+    if (data.url) window.location.href = data.url;
+
+  } catch (e) {
+    showToast('❌ ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = "S'abonner"; }
+  }
 }
 
 init();
