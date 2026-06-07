@@ -68,6 +68,7 @@ function readModalEdit(){
     persoEditSession(s.id, s.athlete_id);
   } else {
     // S'assurer d'être sur page-admin avant de remplir le formulaire
+    window._returnToPlanningAfterSave=true;
     goPage('admin');
     setTimeout(()=>editSession(s.id), 80);
   }
@@ -1033,6 +1034,8 @@ adminTab=function(tab,btn){
   const list=document.getElementById('admin-athletes-list');
   if(card)card.style.display='none';
   if(list)list.style.display='';
+  // Si l'utilisateur annule manuellement l'édition (bouton retour), on efface le flag planning
+  if(tab!=='new-session')window._returnToPlanningAfterSave=false;
   __origAdminTab(tab,btn);
   if(tab==='wellness')loadWellnessAdmin();
 };
@@ -1379,6 +1382,17 @@ const __origGoPage=goPage;
 goPage=async function(p){
   await __origGoPage(p);
   if(p==='wellness')loadWellnessPage();
+};
+
+// hook into saveSession — retour planning si édition lancée depuis planning
+const __origSaveSession=saveSession;
+saveSession=async function(){
+  const returnToPlanning=!!window._returnToPlanningAfterSave;
+  if(returnToPlanning)window._returnToPlanningAfterSave=false;
+  await __origSaveSession();
+  if(returnToPlanning){
+    goPage('planning');
+  }
 };
 
 // ============================================
