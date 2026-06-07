@@ -1384,10 +1384,10 @@ goPage=async function(p){
   if(p==='wellness')loadWellnessPage();
 };
 
-// hook into editSession — s'assure que le form est dans page-admin avant édition
+// hook into editSession — s'assure que le form est dans page-admin et visible
 const __origEditSession=editSession;
 editSession=async function(id){
-  // Si le form a été déplacé dans perso-form-container, le remettre à sa place
+  // 1) Si le form a été déplacé dans perso-form-container, le remettre à sa place
   const form=document.getElementById('admin-new-session');
   const sessionsPanel=document.getElementById('admin-sessions');
   if(form&&sessionsPanel&&form.parentElement!==sessionsPanel.parentElement){
@@ -1396,6 +1396,17 @@ editSession=async function(id){
     document.getElementById('form-prog-group').style.display='';
   }
   await __origEditSession(id);
+  // 2) Forcer l'activation du panel Séance+ de façon fiable
+  //    (le querySelector [onclick*="new-session"] peut échouer sur Android)
+  document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+  if(form)form.classList.add('active');
+  // Activer le bon bouton d'onglet
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>{
+    const oc=b.getAttribute('onclick')||'';
+    b.classList.toggle('active', oc.includes('new-session'));
+  });
+  const pageAdmin=document.getElementById('page-admin');
+  if(pageAdmin)pageAdmin.scrollTop=0;
 };
 
 // hook into saveSession — retour planning si édition lancée depuis planning
