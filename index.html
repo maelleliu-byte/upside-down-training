@@ -62,10 +62,10 @@
     if (!logoUrl) return;
     // Splash
     const splashImg = document.getElementById('splash-logo');
-    if (splashImg) { splashImg.src = logoUrl; splashImg.style.maxWidth = '200px'; }
+    if (splashImg) { splashImg.src = logoUrl; splashImg.style.maxWidth = '200px'; splashImg.style.visibility = 'visible'; }
     // Auth screen
     const authImg = document.getElementById('auth-logo');
-    if (authImg) { authImg.src = logoUrl; authImg.style.maxWidth = '200px'; }
+    if (authImg) { authImg.src = logoUrl; authImg.style.maxWidth = '200px'; authImg.style.visibility = 'visible'; }
   }
 
   // Fetch studio config via REST (no auth needed - get_studio_by_slug is public)
@@ -165,14 +165,14 @@
 <!-- AUTH -->
 <!-- SPLASH SCREEN -->
 <div id="splash-screen" style="position:fixed;inset:0;z-index:999;background:#0a0a0a;display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .6s ease">
-  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" id="auth-logo" id="splash-logo" style="width:260px;animation:logoFadeIn .8s ease forwards">
+  <img src="" id="splash-logo" style="width:260px;animation:logoFadeIn .8s ease forwards;visibility:hidden">
   <div style="margin-top:32px;width:48px;height:3px;background:#1a9e8a;border-radius:2px;overflow:hidden">
     <div style="height:100%;background:#fff;border-radius:2px;animation:loadBar 1.8s ease forwards"></div>
   </div>
 </div>
 
 <div id="auth-screen">
-  <img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==" id="splash-logo" style="width:220px;margin-bottom:8px;animation:logoFadeIn 0.8s ease">
+  <img src="" id="auth-logo" style="width:220px;margin-bottom:8px;animation:logoFadeIn 0.8s ease;visibility:hidden">
   <div class="auth-tabs">
     <button class="auth-tab active" onclick="authTab('login')">Connexion</button>
     <button class="auth-tab" onclick="authTab('signup')">Inscription</button>
