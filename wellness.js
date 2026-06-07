@@ -1384,6 +1384,20 @@ goPage=async function(p){
   if(p==='wellness')loadWellnessPage();
 };
 
+// hook into editSession — s'assure que le form est dans page-admin avant édition
+const __origEditSession=editSession;
+editSession=async function(id){
+  // Si le form a été déplacé dans perso-form-container, le remettre à sa place
+  const form=document.getElementById('admin-new-session');
+  const sessionsPanel=document.getElementById('admin-sessions');
+  if(form&&sessionsPanel&&form.parentElement!==sessionsPanel.parentElement){
+    sessionsPanel.parentElement.insertBefore(form,sessionsPanel);
+    document.getElementById('form-perso-banner').style.display='none';
+    document.getElementById('form-prog-group').style.display='';
+  }
+  await __origEditSession(id);
+};
+
 // hook into saveSession — retour planning si édition lancée depuis planning
 const __origSaveSession=saveSession;
 saveSession=async function(){
