@@ -298,14 +298,14 @@ function _collectSessionFormSnapshot(){
     title:document.getElementById('f-title').value.trim(),
     content:getEditorContent(),
     intensity:parseInt(document.getElementById('f-intensity').value)||7,
-    target:document.getElementById('f-target').innerHTML,
-    tips:document.getElementById('f-tips').innerHTML,
+    target:document.getElementById('f-target').value,
+    tips:document.getElementById('f-tips').value,
     score_type:document.getElementById('f-score-type').value,
     sets:document.getElementById('f-sets')?document.getElementById('f-sets').value:'',
     color:selectedSessionColor||'#e8ff47',
-    scaling_inter:document.getElementById('f-scaling-inter').innerHTML,
-    scaling_scaled:document.getElementById('f-scaling-scaled').innerHTML,
-    scaling_foundation:document.getElementById('f-scaling-foundation').innerHTML,
+    scaling_inter:document.getElementById('f-scaling-inter').value,
+    scaling_scaled:document.getElementById('f-scaling-scaled').value,
+    scaling_foundation:document.getElementById('f-scaling-foundation').value,
     multi_score:!!(typeof multiScoreEnabled!=='undefined'&&multiScoreEnabled),
     score_count:(typeof multiScoreEnabled!=='undefined'&&multiScoreEnabled)?parseInt(document.getElementById('f-score-count')?.value)||2:0,
     score_labels:(()=>{
@@ -344,12 +344,12 @@ function applySessionTemplate(i){
   setEditorContent(t.content||'');
   document.getElementById('f-intensity').value=t.intensity||7;
   document.getElementById('f-int-val').textContent=t.intensity||7;
-  document.getElementById('f-target').innerHTML=t.target||'';
-  document.getElementById('f-tips').innerHTML=t.tips||'';
+  document.getElementById('f-target').value=t.target||'';
+  document.getElementById('f-tips').value=t.tips||'';
   document.getElementById('f-score-type').value=t.score_type||'reps';
-  document.getElementById('f-scaling-inter').innerHTML=t.scaling_inter||'';
-  document.getElementById('f-scaling-scaled').innerHTML=t.scaling_scaled||'';
-  document.getElementById('f-scaling-foundation').innerHTML=t.scaling_foundation||'';
+  document.getElementById('f-scaling-inter').value=t.scaling_inter||'';
+  document.getElementById('f-scaling-scaled').value=t.scaling_scaled||'';
+  document.getElementById('f-scaling-foundation').value=t.scaling_foundation||'';
   // Vidéos
   try{if(typeof setFormVideos==='function')setFormVideos(t.videos||[]);}catch(e){}
   // Couleur
@@ -765,8 +765,8 @@ async function editSession(id){
   setEditorContent(data.content||'');
   document.getElementById('f-intensity').value=data.intensity||7;
   document.getElementById('f-int-val').textContent=data.intensity||7;
-  document.getElementById('f-target').innerHTML=data.target||'';
-  document.getElementById('f-tips').innerHTML=data.tips||'';
+  document.getElementById('f-target').value=data.target||'';
+  document.getElementById('f-tips').value=data.tips||'';
   document.getElementById('f-score-type').value=data.score_type||'reps';
   // Multi-vidéos
   let _vids=[];
@@ -774,9 +774,9 @@ async function editSession(id){
   if((!_vids||!_vids.length)&&data.youtube_url){_vids=[{url:data.youtube_url,label:data.youtube_label||''}];}
   setFormVideos(_vids);
   // Scaling
-  document.getElementById('f-scaling-inter').innerHTML=data.scaling_inter||'';
-  document.getElementById('f-scaling-scaled').innerHTML=data.scaling_scaled||'';
-  document.getElementById('f-scaling-foundation').innerHTML=data.scaling_foundation||'';
+  document.getElementById('f-scaling-inter').value=data.scaling_inter||'';
+  document.getElementById('f-scaling-scaled').value=data.scaling_scaled||'';
+  document.getElementById('f-scaling-foundation').value=data.scaling_foundation||'';
   // Multi score
   if(data.multi_score){
     multiScoreEnabled=true;
@@ -840,8 +840,8 @@ async function saveSession(){
   const title=document.getElementById('f-title').value.trim();
   const content=getEditorContent();
   const intensity=parseInt(document.getElementById('f-intensity').value);
-  const target=document.getElementById('f-target').innerHTML.trim();
-  const tips=document.getElementById('f-tips').innerHTML.trim();
+  const target=document.getElementById('f-target').value.trim();
+  const tips=document.getElementById('f-tips').value.trim();
   const scoreType=document.getElementById('f-score-type').value;
   syncLegacyVideoFields();
   const videos=getFormVideos();
@@ -849,9 +849,9 @@ async function saveSession(){
   const ytlabel=videos[0]?.label||'';
   const sets=type==='strength'?parseInt(document.getElementById('f-sets').value)||null:null;
   const color=selectedSessionColor||'#e8ff47';
-  const scalingInter=document.getElementById('f-scaling-inter').innerHTML.trim();
-  const scalingScaled=document.getElementById('f-scaling-scaled').innerHTML.trim();
-  const scalingFoundation=document.getElementById('f-scaling-foundation').innerHTML.trim();
+  const scalingInter=document.getElementById('f-scaling-inter').value.trim();
+  const scalingScaled=document.getElementById('f-scaling-scaled').value.trim();
+  const scalingFoundation=document.getElementById('f-scaling-foundation').value.trim();
   const multiScore=multiScoreEnabled;
   const scoreCount=multiScore?parseInt(document.getElementById('f-score-count')?.value)||2:0;
   const scoreLabels=multiScore?Array.from({length:scoreCount},(_,i)=>document.getElementById(`f-score-label-${i}`)?.value.trim()||`Score ${i+1}`):[];
