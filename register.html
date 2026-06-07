@@ -29,8 +29,6 @@ input[type=color]{width:48px;height:48px;border:1px solid #333;border-radius:10p
 .btn{width:100%;background:#e8ff47;color:#0a0a0a;border:none;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;transition:opacity .2s;margin-top:8px;}
 .btn:hover{opacity:.9;}
 .btn:disabled{opacity:.4;cursor:not-allowed;}
-.btn-outline{width:100%;background:transparent;color:#e8ff47;border:1px solid #e8ff47;border-radius:12px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;margin-top:10px;}
-.btn-outline:hover{opacity:.8;}
 .error{background:#ff474720;border:1px solid #ff4747;border-radius:8px;padding:10px 14px;font-size:13px;color:#ff7070;margin-top:16px;display:none;}
 .success{background:#47ff8020;border:1px solid #47ff80;border-radius:8px;padding:16px;font-size:14px;color:#80ffb0;margin-top:16px;display:none;line-height:1.6;}
 .info-box{background:#e8ff4710;border:1px solid #e8ff4740;border-radius:10px;padding:16px;font-size:13px;color:#c8df40;line-height:1.6;margin-bottom:24px;}
@@ -43,12 +41,9 @@ input[type=color]{width:48px;height:48px;border:1px solid #333;border-radius:10p
 .step-line.done{background:#e8ff4760;}
 .divider{height:1px;background:#1e1e1e;margin:24px 0;}
 a{color:#e8ff47;text-decoration:none;}
-.email-highlight{background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:10px 14px;font-size:14px;color:#e8ff47;font-weight:600;text-align:center;margin:12px 0;}
 .spinner{display:inline-block;width:16px;height:16px;border:2px solid #0a0a0a40;border-top-color:#0a0a0a;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:8px;}
 @keyframes spin{to{transform:rotate(360deg)}}
-/* Étapes */
-#step-email{display:block;}
-#step-verify{display:none;}
+#step-account{display:block;}
 #step-studio{display:none;}
 #step-done{display:none;}
 </style>
@@ -63,12 +58,10 @@ a{color:#e8ff47;text-decoration:none;}
     <div class="step active" id="ind-1">1</div>
     <div class="step-line" id="line-1"></div>
     <div class="step inactive" id="ind-2">2</div>
-    <div class="step-line" id="line-2"></div>
-    <div class="step inactive" id="ind-3">3</div>
   </div>
 
-  <!-- ÉTAPE 1 : Email + mot de passe -->
-  <div id="step-email">
+  <!-- ÉTAPE 1 : Compte -->
+  <div id="step-account">
     <div class="field">
       <label>Ton email</label>
       <input type="email" id="reg-email" placeholder="coach@monstudio.fr">
@@ -87,23 +80,8 @@ a{color:#e8ff47;text-decoration:none;}
     <p style="text-align:center;font-size:13px;color:#555;">Déjà un compte ? <a href="/">Se connecter</a></p>
   </div>
 
-  <!-- ÉTAPE 2 : Vérification email -->
-  <div id="step-verify">
-    <div class="info-box">
-      📧 Un lien de confirmation a été envoyé à :
-      <div class="email-highlight" id="verify-email-display"></div>
-      Clique sur le lien dans l'email pour continuer.<br><small style="color:#888;font-size:12px;">Vérifie tes spams si tu ne le vois pas.</small>
-    </div>
-    <button class="btn-outline" id="btn-resend" onclick="resendEmail()">Renvoyer l'email</button>
-    <div class="error" id="err-2"></div>
-    <div class="success" id="suc-2"></div>
-  </div>
-
-  <!-- ÉTAPE 3 : Infos studio (après confirmation email) -->
+  <!-- ÉTAPE 2 : Infos studio -->
   <div id="step-studio">
-    <div class="info-box" style="margin-bottom:20px;">
-      ✅ Email vérifié — complète ton studio
-    </div>
     <div class="field">
       <label>Nom du studio</label>
       <input type="text" id="studio-name" placeholder="Ex: CrossFit Bordeaux" oninput="autoSlug()">
@@ -128,16 +106,16 @@ a{color:#e8ff47;text-decoration:none;}
         <div class="logo-hint" id="logo-hint">Clique pour uploader ton logo<br><small>PNG, JPG — max 2 Mo</small></div>
       </div>
     </div>
-    <button class="btn" id="btn-step3" onclick="submitStep3()">Créer mon studio</button>
-    <div class="error" id="err-3"></div>
+    <button class="btn" id="btn-step2" onclick="submitStep2()">Créer mon studio</button>
+    <div class="error" id="err-2"></div>
   </div>
 
-  <!-- ÉTAPE 4 : Done -->
+  <!-- ÉTAPE DONE -->
   <div id="step-done">
-    <div class="success" id="suc-done" style="display:block;">
+    <div class="success" style="display:block;">
       🎉 <strong>Demande envoyée !</strong><br><br>
       Ton studio est en attente de validation.<br>
-      Tu recevras un email dès que ton accès sera activé.<br><br>
+      Tu seras notifié dès que ton accès sera activé.<br><br>
       <span id="done-url" style="color:#e8ff47;font-size:13px;"></span>
     </div>
     <a href="/"><button class="btn" style="margin-top:16px;">Retour à l'accueil</button></a>
@@ -149,84 +127,39 @@ const SUPABASE_URL='https://tltqtpbaaxiwwpvuzszt.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDA5NTQsImV4cCI6MjA5MzUxNjk1NH0.5LVedQ-ktLcTC6z2X0XIoqY-mqP9_tw-gzrt-KNfuuY';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
-let pendingEmail='';
-let pendingName='';
+let currentUser=null;
 let logoFile=null;
 
-// ─── Détection retour après confirmation email ───────────────────────────────
-// Supabase envoie un lien qui redirige vers /register avec un hash #access_token=...
-// ou un ?token_hash=...&type=signup selon la config
+// ─── Init : si déjà connecté avec un studio → done, sans studio → étape 2 ────
 window.addEventListener('load', async ()=>{
-  // Cas 1 : hash fragment (flow PKCE désactivé)
-  const hash=window.location.hash;
-  if(hash && hash.includes('access_token')){
-    const params=new URLSearchParams(hash.replace('#',''));
-    const accessToken=params.get('access_token');
-    const refreshToken=params.get('refresh_token');
-    if(accessToken){
-      const {data,error}=await sb.auth.setSession({access_token:accessToken,refresh_token:refreshToken||''});
-      if(!error && data.user){
-        window.history.replaceState({},'','/register');
-        showStep3(data.user);
-        return;
-      }
-    }
-  }
-
-  // Cas 2 : query params (flow PKCE activé — Supabase v2 récent)
-  const qp=new URLSearchParams(window.location.search);
-  const tokenHash=qp.get('token_hash');
-  const type=qp.get('type');
-  if(tokenHash && type==='signup'){
-    const {data,error}=await sb.auth.verifyOtp({token_hash:tokenHash,type:'signup'});
-    if(!error && data.user){
-      window.history.replaceState({},'','/register');
-      showStep3(data.user);
-      return;
-    }
-  }
-
-  // Cas 3 : déjà connecté avec email confirmé (refresh de page à l'étape 3)
   const {data:{session}}=await sb.auth.getSession();
-  if(session?.user && session.user.email_confirmed_at){
-    // Vérifier s'il a déjà un studio
+  if(session?.user){
     const {data:existing}=await sb.from('studios').select('id,slug,name').eq('owner_id',session.user.id).maybeSingle();
     if(existing){
-      // Studio déjà créé → étape done
       showStepDone(existing.name, existing.slug);
       return;
     }
-    showStep3(session.user);
+    currentUser=session.user;
+    showStep(2);
     return;
   }
-
-  // Sinon → étape 1
   showStep(1);
 });
 
-// ─── Navigation étapes ───────────────────────────────────────────────────────
+// ─── Navigation ───────────────────────────────────────────────────────────────
 function showStep(n){
-  document.getElementById('step-email').style.display=n===1?'block':'none';
-  document.getElementById('step-verify').style.display=n===2?'block':'none';
-  document.getElementById('step-studio').style.display=n===3?'block':'none';
-  document.getElementById('step-done').style.display=n===4?'block':'none';
-  // Indicateurs
-  ['ind-1','ind-2','ind-3'].forEach((id,i)=>{
+  document.getElementById('step-account').style.display=n===1?'block':'none';
+  document.getElementById('step-studio').style.display=n===2?'block':'none';
+  document.getElementById('step-done').style.display=n===3?'block':'none';
+  ['ind-1','ind-2'].forEach((id,i)=>{
     const el=document.getElementById(id);
     el.className='step '+(i+1<n?'done':i+1===n?'active':'inactive');
   });
   document.getElementById('line-1').className='step-line'+(n>1?' done':'');
-  document.getElementById('line-2').className='step-line'+(n>2?' done':'');
-}
-
-function showStep3(user){
-  pendingEmail=user.email||'';
-  pendingName=user.user_metadata?.full_name||'';
-  showStep(3);
 }
 
 function showStepDone(name,slug){
-  showStep(4);
+  showStep(3);
   document.getElementById('done-url').textContent='URL : upside-down-training.netlify.app/'+slug;
 }
 
@@ -243,30 +176,24 @@ async function submitStep1(){
 
   const btn=document.getElementById('btn-step1');
   btn.disabled=true;
-  btn.innerHTML='<span class="spinner"></span>Envoi…';
+  btn.innerHTML='<span class="spinner"></span>Création…';
 
   try{
     const {data,error}=await sb.auth.signUp({
       email,
       password:pwd,
-      options:{
-        data:{full_name:name},
-        emailRedirectTo:window.location.origin+'/register'
-      }
+      options:{data:{full_name:name}}
     });
     if(error)throw error;
 
-    // Si l'email existe déjà et est confirmé → Supabase retourne un user sans session
-    // On oriente vers la connexion
-    if(data.user && !data.session && data.user.identities?.length===0){
+    // Email déjà utilisé (Supabase retourne user sans identities)
+    if(data.user && data.user.identities?.length===0){
       showErr('err-1','Un compte existe déjà avec cet email. <a href="/">Se connecter</a>');
       btn.disabled=false;btn.innerHTML='Continuer →';
       return;
     }
 
-    pendingEmail=email;
-    pendingName=name;
-    document.getElementById('verify-email-display').textContent=email;
+    currentUser=data.user;
     showStep(2);
 
   }catch(err){
@@ -275,28 +202,7 @@ async function submitStep1(){
   }
 }
 
-// ─── Renvoyer l'email ────────────────────────────────────────────────────────
-async function resendEmail(){
-  if(!pendingEmail)return;
-  hideErr('err-2');
-  const btn=document.getElementById('btn-resend');
-  btn.disabled=true;btn.textContent='Envoi…';
-  const {error}=await sb.auth.resend({
-    type:'signup',
-    email:pendingEmail,
-    options:{emailRedirectTo:window.location.origin+'/register'}
-  });
-  if(error){
-    showErr('err-2',error.message);
-  }else{
-    const s=document.getElementById('suc-2');
-    s.textContent='Email renvoyé ✓';s.style.display='block';
-    setTimeout(()=>{s.style.display='none';},4000);
-  }
-  setTimeout(()=>{btn.disabled=false;btn.textContent='Renvoyer l\'email';},30000);
-}
-
-// ─── ÉTAPE 3 : Créer le studio ───────────────────────────────────────────────
+// ─── ÉTAPE 2 : Créer le studio ───────────────────────────────────────────────
 function autoSlug(){
   const name=document.getElementById('studio-name').value;
   const slug=name.toLowerCase()
@@ -318,7 +224,7 @@ function cleanSlug(){
 function previewLogo(e){
   const file=e.target.files?.[0];
   if(!file)return;
-  if(file.size>2*1024*1024){showErr('err-3','Logo trop lourd (max 2 Mo)');return;}
+  if(file.size>2*1024*1024){showErr('err-2','Logo trop lourd (max 2 Mo)');return;}
   logoFile=file;
   const url=URL.createObjectURL(file);
   const preview=document.getElementById('logo-preview');
@@ -326,33 +232,32 @@ function previewLogo(e){
   document.getElementById('logo-hint').style.display='none';
 }
 
-async function submitStep3(){
+async function submitStep2(){
   const name=document.getElementById('studio-name').value.trim();
   const slug=document.getElementById('studio-slug').value.trim();
   const accent=document.getElementById('accent-color').value;
-  hideErr('err-3');
+  hideErr('err-2');
 
-  if(!name||!slug){showErr('err-3','Nom et URL du studio obligatoires.');return;}
-  if(!/^[a-z0-9-]+$/.test(slug)){showErr('err-3','L\'URL ne peut contenir que des lettres minuscules, chiffres et tirets.');return;}
-  if(slug==='upside'||slug==='register'||slug==='admin'){showErr('err-3','Ce slug est réservé.');return;}
+  if(!name||!slug){showErr('err-2','Nom et URL du studio obligatoires.');return;}
+  if(!/^[a-z0-9-]+$/.test(slug)){showErr('err-2','L\'URL ne peut contenir que des lettres minuscules, chiffres et tirets.');return;}
+  if(slug==='upside'||slug==='register'||slug==='admin'){showErr('err-2','Ce slug est réservé.');return;}
 
-  const btn=document.getElementById('btn-step3');
+  const btn=document.getElementById('btn-step2');
   btn.disabled=true;
   btn.innerHTML='<span class="spinner"></span>Création…';
 
   try{
-    // Vérifier session active (email confirmé)
+    // Récupérer session active
     const {data:{session}}=await sb.auth.getSession();
     if(!session?.user)throw new Error('Session expirée — recharge la page.');
-    if(!session.user.email_confirmed_at)throw new Error('Email non confirmé.');
 
     const userId=session.user.id;
 
     // Vérifier slug disponible
     const {data:existing}=await sb.from('studios').select('id').eq('slug',slug).maybeSingle();
-    if(existing){showErr('err-3','Ce slug est déjà pris. Choisis-en un autre.');btn.disabled=false;btn.innerHTML='Créer mon studio';return;}
+    if(existing){showErr('err-2','Ce slug est déjà pris. Choisis-en un autre.');btn.disabled=false;btn.innerHTML='Créer mon studio';return;}
 
-    // Uploader le logo si présent
+    // Uploader logo si présent
     let logo_url=null;
     if(logoFile){
       const ext=(logoFile.name.split('.').pop()||'png').toLowerCase();
@@ -364,15 +269,15 @@ async function submitStep3(){
       }
     }
 
-    // Créer le studio (is_active = false — attente validation)
+    // Créer studio (is_active = false — attente validation)
     const {data:studio,error:studioErr}=await sb.from('studios').insert({
       slug,name,accent_color:accent,logo_url,
       is_active:false,lang:'fr',owner_id:userId
     }).select('id').single();
     if(studioErr)throw studioErr;
 
-    // Créer/mettre à jour le profil coach
-    const coachName=session.user.user_metadata?.full_name||pendingName||'';
+    // Créer/mettre à jour profil coach
+    const coachName=session.user.user_metadata?.full_name||'';
     const {error:profErr}=await sb.from('profiles').upsert({
       id:userId,
       email:session.user.email,
@@ -385,7 +290,7 @@ async function submitStep3(){
     showStepDone(name,slug);
 
   }catch(err){
-    showErr('err-3',err.message||'Une erreur est survenue.');
+    showErr('err-2',err.message||'Une erreur est survenue.');
     btn.disabled=false;btn.innerHTML='Créer mon studio';
   }
 }
