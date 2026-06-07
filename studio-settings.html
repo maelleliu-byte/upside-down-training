@@ -207,7 +207,7 @@ async function init() {
     studio = s;
 
     // Vérifier que c'est le owner ou un coach du studio
-    if (studio.owner_id !== currentUser.id && profile.role !== 'coach') {
+    if (studio.owner_id !== currentUser.id && profile.role !== 'coach' && profile.role !== 'admin') {
       showError('Accès refusé — cette page est réservée au propriétaire du studio.');
       return;
     }
