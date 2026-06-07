@@ -1,21 +1,15 @@
 alert('fichier chargé');
 
+// Override editSession pour voir d'où il est appelé
+var _origEditSession = window.editSession;
+window.editSession = function(id) {
+  alert('editSession appelé depuis : ' + new Error().stack);
+  _origEditSession.apply(this, arguments);
+};
+
 window.openReadSession = function(id) {
-  alert('appelé ' + id);
+  alert('openReadSession appelé ' + id);
 };
 
 function closeReadModal() {}
 function readModalEdit() {}
-
-document.addEventListener('touchend', function(e) {
-  const card = e.target.closest('.cal-rich');
-  if (!card) return;
-  const btn = e.target.closest('.cal-action-btn');
-  if (btn) return;
-  const id = card.dataset.sessionId;
-  if (id) {
-    e.preventDefault();
-    e.stopPropagation();
-    openReadSession(id);
-  }
-}, true);
