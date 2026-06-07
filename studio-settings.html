@@ -266,7 +266,7 @@ const TIERS = {
 };
 
 function renderBilling(studio) {
-  const hasSubscription = !!studio.stripe_subscription_id;
+  const hasSubscription = studio.is_active && (!!studio.stripe_subscription_id || !!studio.stripe_customer_id);
   document.getElementById('billing-active').style.display = hasSubscription ? 'block' : 'none';
   document.getElementById('billing-inactive').style.display = hasSubscription ? 'none' : 'block';
 
