@@ -67,7 +67,9 @@ function readModalEdit(){
   if(isPerso){
     persoEditSession(s.id, s.athlete_id);
   } else {
-    editSession(s.id);
+    // S'assurer d'être sur page-admin avant de remplir le formulaire
+    goPage('admin');
+    setTimeout(()=>editSession(s.id), 80);
   }
 }
 
