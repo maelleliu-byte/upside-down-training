@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Paramètres du studio</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#0a0a0a;color:#f0f0f0;font-family:'DM Sans',system-ui,sans-serif;min-height:100vh;padding:24px;}
+.page{max-width:520px;margin:0 auto;}
+.back{display:inline-flex;align-items:center;gap:8px;color:#666;font-size:14px;text-decoration:none;margin-bottom:24px;}
+.back:hover{color:#f0f0f0;}
+h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#e8ff47;margin-bottom:4px;}
+.subtitle{color:#666;font-size:14px;margin-bottom:32px;}
+.section{background:#111;border:1px solid #222;border-radius:16px;padding:24px;margin-bottom:16px;}
+.section-title{font-size:12px;font-weight:700;color:#555;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:16px;}
+.status-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;}
+.status-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:20px;font-size:13px;font-weight:700;}
+.status-badge.connected{background:#47ff8020;border:1px solid #47ff8040;color:#80ffb0;}
+.status-badge.pending{background:#ff8c4720;border:1px solid #ff8c4740;color:#ff8c47;}
+.status-badge.not-connected{background:#33333350;border:1px solid #333;color:#666;}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.info-box{background:#e8ff4708;border:1px solid #e8ff4720;border-radius:10px;padding:14px 16px;font-size:13px;color:#c8df40;line-height:1.6;margin-bottom:20px;}
+.info-box ul{margin:8px 0 0 16px;}
+.info-box ul li{margin-bottom:4px;}
+.btn{display:block;width:100%;background:#e8ff47;color:#0a0a0a;border:none;border-radius:12px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;transition:opacity .2s;text-align:center;}
+.btn:hover{opacity:.88;}
+.btn:disabled{opacity:.4;cursor:not-allowed;}
+.btn-secondary{background:transparent;border:1px solid #333;color:#f0f0f0;}
+.btn-secondary:hover{border-color:#555;opacity:1;}
+.btn-danger{background:#ff474720;border:1px solid #ff474740;color:#ff7070;}
+.btn-danger:hover{background:#ff474730;opacity:1;}
+.account-info{background:#0a0a0a;border:1px solid #1e1e1e;border-radius:10px;padding:14px;margin-bottom:16px;}
+.account-info-row{display:flex;justify-content:space-between;align-items:center;font-size:13px;}
+.account-info-row + .account-info-row{margin-top:10px;padding-top:10px;border-top:1px solid #1e1e1e;}
+.account-info-label{color:#555;}
+.account-info-value{color:#f0f0f0;font-weight:600;font-family:monospace;font-size:12px;}
+.spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(10,10,10,.3);border-top-color:#0a0a0a;border-radius:50%;animation:spin .6s linear infinite;vertical-align:middle;margin-right:8px;}
+.spinner-light{border-color:rgba(240,240,240,.2);border-top-color:#f0f0f0;}
+@keyframes spin{to{transform:rotate(360deg)}}
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1a1a1a;border:1px solid #333;color:#f0f0f0;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:500;white-space:nowrap;z-index:999;opacity:0;transition:opacity .25s;pointer-events:none;}
+.toast.show{opacity:1;}
+#loading-screen{display:flex;align-items:center;justify-content:center;min-height:60vh;color:#555;font-size:14px;gap:10px;}
+#main-content{display:none;}
+</style>
+</head>
+<body>
+<div class="page">
+  <a href="/" class="back">← Retour à l'app</a>
+
+  <div id="loading-screen">
+    <span class="spinner spinner-light"></span> Chargement...
+  </div>
+
+  <div id="main-content">
+    <h1 id="studio-name-title">Mon Studio</h1>
+    <p class="subtitle" id="studio-slug-subtitle"></p>
+
+    <!-- Section Stripe Connect -->
+    <div class="section">
+      <div class="section-title">💳 Paiements — Stripe Connect</div>
+
+      <div id="connect-not-connected">
+        <div class="info-box">
+          <strong>Connecte ton compte Stripe</strong> pour encaisser les abonnements de tes athlètes directement sur ton compte bancaire.
+          <ul>
+            <li>Tes athlètes te paient directement</li>
+            <li>Upside Down ne touche aucune commission</li>
+            <li>Utilise ton compte Stripe existant ou crée-en un gratuitement</li>
+          </ul>
+        </div>
+        <button class="btn" id="btn-connect-stripe" onclick="startConnectOnboarding()">
+          Connecter mon compte Stripe
+        </button>
+      </div>
+
+      <div id="connect-pending" style="display:none">
+        <div class="status-row">
+          <div class="status-badge pending"><span class="dot"></span>Onboarding en cours</div>
+        </div>
+        <p style="font-size:13px;color:#888;margin-bottom:16px">Tu n'as pas encore terminé la configuration de ton compte Stripe. Reprends où tu en étais :</p>
+        <button class="btn" id="btn-resume-stripe" onclick="startConnectOnboarding()">
+          Reprendre la configuration Stripe
+        </button>
+        <button class="btn btn-secondary" style="margin-top:10px" onclick="disconnectStripe()">
+          Déconnecter et recommencer
+        </button>
+      </div>
+
+      <div id="connect-active" style="display:none">
+        <div class="status-row">
+          <div class="status-badge connected"><span class="dot"></span>Compte connecté ✓</div>
+        </div>
+        <div class="account-info" id="account-info-block">
+          <div class="account-info-row">
+            <span class="account-info-label">Account ID</span>
+            <span class="account-info-value" id="account-id-display">—</span>
+          </div>
+        </div>
+        <p style="font-size:12px;color:#555;margin-bottom:16px">Tes athlètes peuvent maintenant s'abonner à tes programmes. Les paiements arrivent directement sur ton compte Stripe.</p>
+        <button class="btn btn-danger" onclick="disconnectStripe()">
+          Déconnecter Stripe
+        </button>
+      </div>
+    </div>
+
+    <!-- Section infos studio (futur) -->
+    <div class="section" style="opacity:.45;pointer-events:none">
+      <div class="section-title">⚙️ Informations du studio</div>
+      <p style="font-size:13px;color:#555">Modifier le nom, logo, couleur... — bientôt disponible</p>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://tltqtpbaaxiwwpvuzszt.supabase.co';
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MTA3NjM4OTcsImV4cCI6MjAyNjMzOTg5N30.Bx3QG8oCpJiEd9oHiRuHYuAuJT0INKU3TCFiGNXsLJ0';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
+
+let currentUser = null;
+let currentStudio = null;
+
+function showToast(msg, duration = 3000) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), duration);
+}
+
+async function init() {
+  // Vérifier auth
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    window.location.href = '/';
+    return;
+  }
+  currentUser = session.user;
+
+  // Récupérer le profil + studio
+  const { data: profile } = await sb.from('profiles').select('studio_id, role').eq('id', currentUser.id).single();
+  if (!profile?.studio_id) {
+    window.location.href = '/';
+    return;
+  }
+
+  const { data: studio } = await sb.from('studios').select('*').eq('id', profile.studio_id).single();
+  if (!studio) {
+    window.location.href = '/';
+    return;
+  }
+
+  // Vérifier que c'est le owner (ou coach du studio)
+  if (studio.owner_id !== currentUser.id && profile.role !== 'coach') {
+    window.location.href = '/';
+    return;
+  }
+
+  currentStudio = studio;
+  renderStudio(studio);
+
+  // Gérer le retour depuis Stripe
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('connect') === 'success') {
+    showToast('✅ Configuration Stripe envoyée — vérification en cours...', 5000);
+    // Rafraîchir le statut après 2 secondes (le webhook peut prendre un moment)
+    setTimeout(async () => {
+      await refreshStudioStatus();
+    }, 2500);
+    window.history.replaceState({}, '', window.location.pathname);
+  } else if (params.get('connect') === 'refresh') {
+    showToast('⚠️ Session expirée — clique à nouveau pour reprendre');
+    window.history.replaceState({}, '', window.location.pathname);
+  }
+
+  document.getElementById('loading-screen').style.display = 'none';
+  document.getElementById('main-content').style.display = 'block';
+}
+
+function renderStudio(studio) {
+  document.getElementById('studio-name-title').textContent = studio.name;
+  document.getElementById('studio-slug-subtitle').textContent = `/${studio.slug}`;
+  document.title = `Paramètres — ${studio.name}`;
+
+  // Afficher le bon bloc Connect
+  document.getElementById('connect-not-connected').style.display = 'none';
+  document.getElementById('connect-pending').style.display = 'none';
+  document.getElementById('connect-active').style.display = 'none';
+
+  if (!studio.stripe_account_id) {
+    document.getElementById('connect-not-connected').style.display = 'block';
+  } else if (!studio.stripe_onboarding_complete) {
+    document.getElementById('connect-pending').style.display = 'block';
+  } else {
+    document.getElementById('connect-active').style.display = 'block';
+    document.getElementById('account-id-display').textContent = studio.stripe_account_id;
+  }
+}
+
+async function refreshStudioStatus() {
+  const { data: studio } = await sb.from('studios').select('*').eq('id', currentStudio.id).single();
+  if (studio) {
+    currentStudio = studio;
+    renderStudio(studio);
+    if (studio.stripe_onboarding_complete) {
+      showToast('🎉 Stripe Connect activé !');
+    }
+  }
+}
+
+async function startConnectOnboarding() {
+  const btn = document.getElementById('btn-connect-stripe') || document.getElementById('btn-resume-stripe');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Redirection...'; }
+
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    const token = session?.access_token;
+    if (!token) { showToast('⚠️ Session expirée'); return; }
+
+    const fnUrl = `${SUPABASE_URL}/functions/v1/stripe-connect-onboard`;
+    const res = await fetch(fnUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+    });
+    const data = await res.json();
+
+    if (data.error) {
+      showToast('❌ ' + data.error);
+      if (btn) { btn.disabled = false; btn.textContent = 'Connecter mon compte Stripe'; }
+      return;
+    }
+
+    if (data.url) {
+      window.location.href = data.url;
+    }
+  } catch (e) {
+    showToast('❌ Erreur : ' + e.message);
+    if (btn) { btn.disabled = false; btn.textContent = 'Connecter mon compte Stripe'; }
+  }
+}
+
+async function disconnectStripe() {
+  if (!confirm('Déconnecter ton compte Stripe ? Tes athlètes ne pourront plus s\'abonner jusqu\'à la reconnexion.')) return;
+
+  const { error } = await sb.from('studios')
+    .update({ stripe_account_id: null, stripe_onboarding_complete: false })
+    .eq('id', currentStudio.id);
+
+  if (error) { showToast('❌ ' + error.message); return; }
+
+  currentStudio.stripe_account_id = null;
+  currentStudio.stripe_onboarding_complete = false;
+  renderStudio(currentStudio);
+  showToast('Stripe déconnecté');
+}
+
+init();
+</script>
+</body>
+</html>
