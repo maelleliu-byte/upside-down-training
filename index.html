@@ -474,10 +474,31 @@
         <div style="display:flex;gap:6px">
           <button class="arrow-btn" onclick="changeAdminWeek(-1)">‹</button>
           <button class="arrow-btn" onclick="changeAdminWeek(1)">›</button>
+          <button class="arrow-btn" onclick="openDupWeekModal()" title="Dupliquer la semaine entière" style="font-size:14px">📋</button>
         </div>
       </div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px;color:var(--muted)" id="admin-cal-week-label">—</div>
       <div id="admin-calendar"></div>
+    </div>
+
+    <!-- MODAL DUPLIQUER SEMAINE ENTIÈRE -->
+    <div class="modal-overlay" id="dup-week-modal">
+      <div class="modal-box">
+        <div class="modal-title">📋 Dupliquer la semaine</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Source : <strong id="dup-week-source-label">—</strong></div>
+        <!-- Mode one-shot -->
+        <div id="dup-week-oneshot-group" class="form-group" style="display:none">
+          <label class="form-label">Semaine de destination</label>
+          <select class="form-select" id="dup-week-target-week"></select>
+        </div>
+        <!-- Mode abonnement -->
+        <div id="dup-week-date-group" class="form-group">
+          <label class="form-label">Lundi de la semaine cible</label>
+          <input type="date" class="form-input" id="dup-week-target-date">
+        </div>
+        <button class="btn-modal-save" onclick="confirmDupWeek()">📋 Dupliquer la semaine</button>
+        <button class="btn-secondary" onclick="closeDupWeekModal()" style="margin-top:8px;width:100%">Annuler</button>
+      </div>
     </div>
 
     <!-- BENCHMARKS ADMIN -->
