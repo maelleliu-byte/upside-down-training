@@ -742,49 +742,6 @@ async function loadAdminSessions(){loadAdminCalendar();}
 
 let editingSessionId=null;
 
-async function openReadSession(id){
-  const {data:s}=await sb.from('sessions').select('*').eq('id',id).single();
-  if(!s)return;
-  const color=s.color||'#e8ff47';
-  const typeLabel=TYPE_LABELS[s.type]||s.type;
-  const rawContent=s.content||'';
-  const withCharges=typeof renderContentWithCharges==='function'?renderContentWithCharges(rawContent):rawContent;
-  const isHtml=/<[a-z][\s\S]*>/i.test(withCharges);
-  const contentHtml=isHtml?withCharges:withCharges.replace(/\n/g,'<br>');
-  let intHtml='';
-  if(s.intensity){const pct=s.intensity*10;const col=s.intensity<=4?'var(--blue)':s.intensity<=7?'var(--accent)':'var(--red)';intHtml='<div class="intensity-bar"><div class="int-row"><span class="int-label">Intensité</span><span class="int-val" style="color:'+col+'">'+s.intensity+'/10</span></div><div class="int-track"><div class="int-fill" style="width:'+pct+'%;background:'+col+'"></div></div></div>';}
-  const targetHtml=s.target?'<div class="info-block"><div class="info-block-title"><span>🎯</span> Target</div><div class="info-block-text">'+s.target+'</div></div>':'';
-  const tipsHtml=s.tips?'<div class="info-block"><div class="info-block-title"><span>💡</span> Coaching Tips</div><div class="info-block-text">'+s.tips+'</div></div>':'';
-  const scalingHtml=[
-    s.scaling_inter?'<div class="scaling-block scaling-block-inter"><div class="scaling-label" style="color:var(--red)">Intermédiaire</div><div class="scaling-text">'+s.scaling_inter+'</div></div>':''  ,
-    s.scaling_scaled?'<div class="scaling-block scaling-block-scaled"><div class="scaling-label" style="color:var(--blue)">Scaled</div><div class="scaling-text">'+s.scaling_scaled+'</div></div>':''  ,
-    s.scaling_foundation?'<div class="scaling-block scaling-block-found"><div class="scaling-label" style="color:var(--purple)">Fondation</div><div class="scaling-text">'+s.scaling_foundation+'</div></div>':''  
-  ].join('');
-  let _vids=[];try{_vids=Array.isArray(s.videos)?s.videos:(typeof s.videos==='string'?JSON.parse(s.videos):[]);}catch(e){_vids=[];}
-  if((!_vids||!_vids.length)&&s.youtube_url){_vids=[{url:s.youtube_url,label:s.youtube_label||''}];}
-  const videoHtml=_vids.length?'<div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">'+ _vids.map(function(v){return '<a href="'+v.url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,0,0,.1);border:1px solid rgba(255,0,0,.25);border-radius:10px;text-decoration:none;color:var(--text)"><span style="font-size:22px">▶️</span><div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:700">'+(v.label||'Voir la vidéo démo')+'</div></div></a>';}).join('')+'</div>':'';
-  let modal=document.getElementById('read-session-modal');
-  if(!modal){modal=document.createElement('div');modal.id='read-session-modal';modal.style.cssText='position:fixed;inset:0;z-index:9000;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.6)';modal.addEventListener('click',function(e){if(e.target===modal)modal.remove();});document.body.appendChild(modal);}
-  const inner=document.createElement('div');
-  inner.style.cssText='background:var(--card);border-radius:18px 18px 0 0;width:100%;max-width:640px;max-height:90vh;overflow-y:auto;padding:20px 16px 32px';
-  const header=document.createElement('div');
-  header.style.cssText='display:flex;align-items:center;justify-content:space-between;margin-bottom:16px';
-  header.innerHTML='<span class="badge badge-'+s.type+'" style="background:'+color+'18;color:'+color+';font-size:13px">'+typeLabel+'</span>';
-  const actions=document.createElement('div');actions.style.cssText='display:flex;gap:8px';
-  const editBtn=document.createElement('button');editBtn.style.cssText='display:flex;align-items:center;gap:6px;padding:8px 16px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-weight:600;cursor:pointer';editBtn.textContent='✏️ Modifier';editBtn.onclick=function(){modal.remove();editSession(s.id);};
-  const closeBtn=document.createElement('button');closeBtn.style.cssText='width:32px;height:32px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--muted);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center';closeBtn.textContent='✕';closeBtn.onclick=function(){modal.remove();};
-  actions.appendChild(editBtn);actions.appendChild(closeBtn);header.appendChild(actions);
-  inner.appendChild(header);
-  const body=document.createElement('div');
-  body.innerHTML='<div style="font-size:18px;font-weight:700;margin-bottom:4px">'+escapeHtml(s.title||'')+'</div>'
-    +'<div style="font-size:12px;color:var(--muted);margin-bottom:14px">'+(s.date||'')+'</div>'
-    +'<div class="session-content" style="font-size:14px;line-height:1.7;margin-bottom:12px">'+contentHtml+'</div>'
-    +scalingHtml+intHtml+targetHtml+tipsHtml+videoHtml;
-  inner.appendChild(body);
-  modal.innerHTML='';
-  modal.appendChild(inner);
-}
-
 async function editSession(id){
   // S'assurer qu'on n'est pas en mode perso et que le form est dans son emplacement original
   if(personalAthleteId){exitPersoForm();}
