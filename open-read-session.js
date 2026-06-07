@@ -81,6 +81,7 @@ async function openReadSession(id) {
       scalingHtml + intHtml + targetHtml + tipsHtml + videoHtml;
 
     document.getElementById('read-modal').classList.add('open');
+    showToast('Modale ouverte ✓');
 
   } catch(err) {
     showToast('Erreur aperçu : ' + err.message);
