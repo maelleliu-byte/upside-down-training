@@ -16,6 +16,12 @@ function stripHtml(s){if(!s)return'';const d=document.createElement('div');d.inn
 let readModalSession=null;
 let readModalIsPerso=false;
 async function openReadSession(id, source){
+  // Sur page-admin : rediriger directement vers l'édition (évite les conflits touch/click sur Android)
+  const pageAdmin=document.getElementById('page-admin');
+  if(pageAdmin&&pageAdmin.classList.contains('active')&&source!=='personal'){
+    await editSession(id);
+    return;
+  }
   // source: 'session' (table sessions) ou 'personal' (personal_sessions)
   let data;
   if(source==='personal'){
