@@ -907,7 +907,7 @@ async function saveSession(){
   const cancelBtn=document.getElementById('edit-cancel-btn');
   if(cancelBtn)cancelBtn.remove();
   document.getElementById('f-title').value='';
-  ['f-target','f-tips','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML='';});
+  ['f-target','f-tips','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   setFormVideos([]);
   clearEditor();
   document.getElementById('score-labels-container').innerHTML='';
@@ -932,7 +932,10 @@ async function saveSession(){
     }
   } else {
     // Si on est arrivé depuis l'onglet "Séances" via le bouton +, on y retourne
-    if(window._returnToSessionsAfterSave){
+    if(window._returnToPlanningAfterSave){
+      window._returnToPlanningAfterSave=false;
+      if(typeof goPage==="function")goPage("planning");
+    } else if(window._returnToSessionsAfterSave){
       window._returnToSessionsAfterSave=false;
       const sessionsTabBtn=document.querySelector('.admin-tab-btn:nth-child(3)');
       adminTab('sessions',sessionsTabBtn);

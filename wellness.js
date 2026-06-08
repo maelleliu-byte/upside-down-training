@@ -108,7 +108,19 @@ function readModalEdit(){
     // S'assurer d'être sur page-admin avant de remplir le formulaire
     window._returnToPlanningAfterSave=true;
     goPage('admin');
-    setTimeout(()=>editSession(s.id), 80);
+    // Attendre que le DOM de page-admin soit actif (plus long sur tablette)
+    const _tryEdit=(attempts)=>{
+      const panel=document.getElementById('admin-new-session');
+      const fProg=document.getElementById('f-prog');
+      if(panel&&fProg){
+        editSession(s.id);
+      } else if(attempts>0){
+        setTimeout(()=>_tryEdit(attempts-1), 120);
+      } else {
+        editSession(s.id); // fallback
+      }
+    };
+    setTimeout(()=>_tryEdit(8), 100);
   }
 }
 
