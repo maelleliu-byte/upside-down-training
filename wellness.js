@@ -2178,3 +2178,63 @@ async function runWodCalSearch(query){
   }
 }
 
+
+// ===================================================
+// AUTO-SAVE VIDÉOS SÉANCE → BIBLIOTHÈQUE
+// Quand on publie/modifie une séance, les vidéos
+// saisies via URL directe sont auto-enregistrées
+// dans movement_videos si elles n'y existent pas déjà.
+// ===================================================
+async function autoSaveSessionVideos(videos){
+  if(!videos||!videos.length)return;
+  if(!currentUser)return;
+  const studioId=getStudioId();
+
+  // Charger les URLs déjà connues dans movement_videos pour ce studio
+  let q=sb.from('movement_videos').select('youtube_url');
+  if(studioId){q=q.eq('studio_id',studioId);}
+  else{q=q.is('studio_id',null);}
+  const {data:existing}=await q;
+  const knownUrls=new Set((existing||[]).map(v=>(v.youtube_url||'').trim()));
+
+  // Filtrer les nouvelles uniquement (URL non vide + pas déjà en base)
+  const toInsert=videos.filter(v=>{
+    const url=(v.url||'').trim();
+    return url&&!knownUrls.has(url);
+  });
+  if(!toInsert.length)return;
+
+  // Insérer en batch
+  const rows=toInsert.map(v=>({
+    youtube_url:(v.url||'').trim(),
+    title:(v.label||'').trim()||'Vidéo séance',
+    movement_id:null,
+    level:'all',
+    created_by:currentUser.id,
+    studio_id:studioId||null
+  }));
+  const {error}=await sb.from('movement_videos').insert(rows);
+  if(error){console.warn('autoSaveSessionVideos',error.message);return;}
+
+  // Rafraîchir allVideos silencieusement pour que le video picker soit à jour
+  if(typeof loadVideos==='function'){
+    try{await loadVideos();}catch(e){}
+  }
+  const n=rows.length;
+  showToast(`📚 ${n} vidéo${n>1?'s':''} ajoutée${n>1?'s':''} à la bibliothèque`);
+}
+
+// Patch de saveSession : on injecte autoSaveSessionVideos juste après l'insert réussi
+(function(){
+  const _orig=window.saveSession;
+  if(typeof _orig!=='function')return;
+  window.saveSession=async function(){
+    // Capturer les vidéos AVANT que saveSession les efface du formulaire
+    const videos=(typeof getFormVideos==='function')?getFormVideos():[];
+    await _orig.apply(this,arguments);
+    // autoSave en arrière-plan (silencieux si erreur)
+    if(videos.length){
+      autoSaveSessionVideos(videos).catch(e=>console.warn('autoSave videos',e));
+    }
+  };
+})();
