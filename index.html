@@ -1774,43 +1774,49 @@ function _badgeCardHtml(badge, opts = {}) {
     </div>`;
   }
 
-  return `<div style="
-    background:var(--card);border:1px solid ${r.color}44;border-radius:14px;
-    padding:14px;display:flex;align-items:center;gap:12px;position:relative;
-    box-shadow:0 0 0 0 ${r.color}00;transition:all 0.2s;
-  ">
+  return `<div style="border-radius:14px;overflow:hidden;border:1px solid ${r.color}44">
     <div style="
-      width:52px;height:52px;border-radius:12px;flex-shrink:0;
-      background:${`rgba(${_hexToRgb(r.color)},0.12)`};border:1.5px solid ${r.color}66;
-      display:flex;align-items:center;justify-content:center;font-size:26px;
-    ">${badge.emoji}</div>
-    <div style="flex:1;min-width:0">
-      <div style="font-size:14px;font-weight:700;color:var(--text)">${badge.name}</div>
-      ${badge.description ? `<div style="font-size:12px;color:var(--text2);margin-top:2px;line-height:1.4">${badge.description}</div>` : ''}
-      <div style="margin-top:5px;display:flex;align-items:center;gap:8px">
-        ${_rarityBadgeHtml(badge.rarity)}
-        ${badge.award_type === 'auto' && badge.auto_trigger
-          ? `<span style="font-size:10px;color:var(--muted)">⚡ Auto · ${badge.auto_threshold} ${AUTO_TRIGGERS[badge.auto_trigger]?.unit || ''}</span>`
-          : `<span style="font-size:10px;color:var(--muted)">🎖️ Manuel</span>`
-        }
+      background:var(--card);
+      padding:14px;display:flex;align-items:center;gap:12px;position:relative;
+    ">
+      <div style="
+        width:52px;height:52px;border-radius:12px;flex-shrink:0;
+        background:${`rgba(${_hexToRgb(r.color)},0.12)`};border:1.5px solid ${r.color}66;
+        display:flex;align-items:center;justify-content:center;font-size:26px;
+      ">${badge.emoji}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:14px;font-weight:700;color:var(--text)">${badge.name}</div>
+        ${badge.description ? `<div style="font-size:12px;color:var(--text2);margin-top:2px;line-height:1.4">${badge.description}</div>` : ''}
+        <div style="margin-top:5px;display:flex;align-items:center;gap:8px">
+          ${_rarityBadgeHtml(badge.rarity)}
+          ${badge.award_type === 'auto' && badge.auto_trigger
+            ? `<span style="font-size:10px;color:var(--muted)">⚡ Auto · ${badge.auto_threshold} ${AUTO_TRIGGERS[badge.auto_trigger]?.unit || ''}</span>`
+            : `<span style="font-size:10px;color:var(--muted)">🎖️ Manuel</span>`
+          }
+        </div>
       </div>
+      ${showActions ? `
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button onclick="openAwardBadgeModal('${badge.id}')" style="
+            padding:6px 10px;background:var(--accent);color:#000;border:none;
+            border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap
+          ">Attribuer</button>
+          <button onclick="toggleBadgeHolders('${badge.id}',this)" style="
+            padding:6px 10px;background:var(--card2);color:var(--text2);
+            border:1px solid var(--border2);border-radius:8px;font-size:11px;cursor:pointer;white-space:nowrap
+          ">👥 Titulaires</button>
+          <button onclick="openEditBadgeModal('${badge.id}')" style="
+            padding:6px 10px;background:var(--card2);color:var(--text2);
+            border:1px solid var(--border2);border-radius:8px;font-size:11px;cursor:pointer
+          ">Modifier</button>
+          <button onclick="deleteBadge('${badge.id}','${badge.name.replace(/'/g,"\\'")}') " style="
+            padding:6px 10px;background:transparent;color:var(--muted);
+            border:1px solid var(--border);border-radius:8px;font-size:11px;cursor:pointer
+          ">Supprimer</button>
+        </div>
+      ` : ''}
     </div>
-    ${showActions ? `
-      <div style="display:flex;flex-direction:column;gap:4px">
-        <button onclick="openAwardBadgeModal('${badge.id}')" style="
-          padding:6px 10px;background:var(--accent);color:#000;border:none;
-          border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap
-        ">Attribuer</button>
-        <button onclick="openEditBadgeModal('${badge.id}')" style="
-          padding:6px 10px;background:var(--card2);color:var(--text2);
-          border:1px solid var(--border2);border-radius:8px;font-size:11px;cursor:pointer
-        ">Modifier</button>
-        <button onclick="deleteBadge('${badge.id}','${badge.name.replace(/'/g,"\\'")}') " style="
-          padding:6px 10px;background:transparent;color:var(--muted);
-          border:1px solid var(--border);border-radius:8px;font-size:11px;cursor:pointer
-        ">Supprimer</button>
-      </div>
-    ` : ''}
+    ${showActions ? `<div id="badge-holders-${badge.id}" style="display:none;background:var(--card2);border-top:1px solid var(--border)"></div>` : ''}
   </div>`;
 }
 
@@ -2458,6 +2464,86 @@ async function saveEditBadge(badgeId) {
   showToast('✅ Badge modifié');
   _badgesCache = null;
   await loadAdminBadgesTab();
+}
+
+// ── Titulaires d'un badge (expand / révoquer) ──────────────
+async function toggleBadgeHolders(badgeId, btn) {
+  const section = document.getElementById('badge-holders-' + badgeId);
+  if (!section) return;
+
+  // Toggle : si déjà ouvert, fermer
+  if (section.style.display !== 'none') {
+    section.style.display = 'none';
+    if (btn) btn.textContent = '👥 Titulaires';
+    return;
+  }
+
+  section.style.display = 'block';
+  section.innerHTML = '<div style="padding:12px;font-size:12px;color:var(--muted)">Chargement…</div>';
+  if (btn) btn.textContent = '▲ Fermer';
+
+  // Deux requêtes séparées (pas de FK déclarée athlete_id → profiles)
+  const { data: rows, error } = await sb
+    .from('athlete_badges')
+    .select('id, athlete_id, awarded_at, coach_note')
+    .eq('badge_id', badgeId)
+    .order('awarded_at', { ascending: false });
+
+  if (error) {
+    section.innerHTML = `<div style="padding:12px;font-size:12px;color:var(--red,#ff4d4d)">Erreur : ${error.message}</div>`;
+    return;
+  }
+
+  if (!rows || rows.length === 0) {
+    section.innerHTML = `<div style="padding:12px;font-size:12px;color:var(--muted);text-align:center">Aucun athlète ne possède ce badge.</div>`;
+    return;
+  }
+
+  // Charger les noms
+  const athleteIds = [...new Set(rows.map(r => r.athlete_id))];
+  const { data: profiles } = await sb.from('profiles').select('id,full_name').in('id', athleteIds);
+  const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.full_name || p.id]));
+
+  section.innerHTML = `
+    <div style="padding:8px 12px;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)">
+      ${rows.length} titulaire${rows.length > 1 ? 's' : ''}
+    </div>
+    ${rows.map(row => {
+      const name = nameMap[row.athlete_id] || row.athlete_id || '—';
+      const nameSafe = name.replace(/'/g, "\\'");
+      const date = row.awarded_at ? new Date(row.awarded_at).toLocaleDateString('fr-FR', { day:'2-digit', month:'short', year:'numeric' }) : '';
+      const note = row.coach_note ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;font-style:italic">"${row.coach_note}"</div>` : '';
+      return `
+        <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid var(--border)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">${name}</div>
+            ${date ? `<div style="font-size:11px;color:var(--muted)">Attribué le ${date}</div>` : ''}
+            ${note}
+          </div>
+          <button onclick="revokeBadge('${badgeId}','${row.athlete_id}','${nameSafe}')" style="
+            padding:5px 10px;background:transparent;color:var(--red,#ff4d4d);
+            border:1px solid var(--red,#ff4d4d);border-radius:8px;
+            font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0
+          ">Révoquer</button>
+        </div>`;
+    }).join('')}
+  `;
+}
+
+async function revokeBadge(badgeId, athleteId, athleteName) {
+  if (!confirm(`Révoquer ce badge à ${athleteName} ?`)) return;
+  const { error } = await sb.from('athlete_badges')
+    .delete()
+    .eq('badge_id', badgeId)
+    .eq('athlete_id', athleteId);
+  if (error) { showToast('❌ ' + error.message); return; }
+  showToast(`🗑️ Badge retiré à ${athleteName}`);
+  _myBadgesCache = null;
+  await loadAdminBadgesTab();
+  // Ré-ouvrir la section titulaires du badge concerné
+  const section = document.getElementById('badge-holders-' + badgeId);
+  const btn = document.querySelector(`[onclick="toggleBadgeHolders('${badgeId}',this)"]`);
+  if (section && btn) await toggleBadgeHolders(badgeId, btn);
 }
 
 // ── Injection dans l'UI ────────────────────────────────────
