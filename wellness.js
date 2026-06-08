@@ -1540,17 +1540,26 @@ editSession=async function(id){
 async function handleSaveSession(){
   const wasEditing=!!(editingSessionId||personalEditingId);
   const wasPerso=!!personalAthleteId;
-  const wasPlanning=!!window._returnToPlanningAfterSave;
-  if(wasEditing && !wasPerso && !wasPlanning){
-    window._returnToSessionsAfterSave=true;
-  }
+  // Neutraliser les flags de navigation — on gère nous-mêmes après le save
+  window._returnToPlanningAfterSave=false;
+  window._returnToSessionsAfterSave=false;
   await saveSession();
-  // Diagnostic — à supprimer après résolution
-  setTimeout(()=>{
+  // Après un edit, toujours revenir à l'onglet Planning du calendrier admin
+  if(wasEditing && !wasPerso){
+    const sessionsPanel=document.getElementById('admin-sessions');
     const pageAdmin=document.getElementById('page-admin');
-    const anyPanel=document.querySelector('#page-admin .admin-panel.active');
-    showToast('DBG e='+wasEditing+' p='+wasPerso+' plan='+wasPlanning+' adminActive='+(pageAdmin?.classList.contains('active'))+' panel='+(anyPanel?.id||'none'));
-  },300);
+    document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
+    if(pageAdmin){pageAdmin.style.display='block';pageAdmin.classList.add('active');pageAdmin.style.overflowY='auto';}
+    const navBtn=document.querySelector('[data-page="admin"]');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    if(navBtn)navBtn.classList.add('active');
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+    if(sessionsPanel)sessionsPanel.classList.add('active');
+    document.querySelectorAll('.admin-tab-btn').forEach(b=>{
+      b.classList.toggle('active',(b.getAttribute('onclick')||'').includes("'sessions'"));
+    });
+    if(typeof loadAdminCalendar==='function')loadAdminCalendar();
+  }
 }
 
 // ============================================
