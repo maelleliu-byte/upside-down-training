@@ -1089,8 +1089,6 @@ adminTab=function(tab,btn){
   const list=document.getElementById('admin-athletes-list');
   if(card)card.style.display='none';
   if(list)list.style.display='';
-  // Si l'utilisateur annule manuellement l'édition (bouton retour), on efface le flag planning
-  if(tab!=='new-session')window._returnToPlanningAfterSave=false;
   __origAdminTab(tab,btn);
   if(tab==='wellness')loadWellnessAdmin();
 };
