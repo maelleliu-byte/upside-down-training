@@ -1536,29 +1536,26 @@ editSession=async function(id){
   if(pageAdmin)pageAdmin.scrollTop=0;
 };
 
-// hook saveSession — navigation robuste après édition (fallback si adminTab reçoit null)
+// hook saveSession — force la navigation après édition (contourne le crash nth-child(3) sur Android)
 const __origSaveSession=saveSession;
 saveSession=async function(){
   const wasEditing=!!(editingSessionId||personalEditingId);
+  const wasPerso=!!personalAthleteId;
   const wasReturnToPlanning=!!window._returnToPlanningAfterSave;
+  showToast('DBG wasEditing='+wasEditing+' wasPerso='+wasPerso+' planningFlag='+wasReturnToPlanning);
   await __origSaveSession();
-  // Garde-fou : si on était en mode édition et que le panel new-session est encore actif
-  // (crash silencieux de adminTab avec btn=null), on force la navigation
-  if(wasEditing){
-    const activePanel=document.querySelector('.admin-panel.active');
-    if(!activePanel||activePanel.id==='admin-new-session'){
-      if(wasReturnToPlanning){
-        if(typeof goPage==='function')goPage('planning');
-      } else {
-        const sessionsPanel=document.getElementById('admin-sessions');
-        document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
-        if(sessionsPanel)sessionsPanel.classList.add('active');
-        document.querySelectorAll('.admin-tab-btn').forEach(b=>{
-          const oc=b.getAttribute('onclick')||'';
-          b.classList.toggle('active',oc.includes("'sessions'"));
-        });
-        if(typeof loadAdminCalendar==='function')loadAdminCalendar();
-      }
+  if(wasEditing && !wasPerso){
+    if(wasReturnToPlanning){
+      if(typeof goPage==='function') goPage('planning');
+    } else {
+      const sessionsPanel=document.getElementById('admin-sessions');
+      document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+      if(sessionsPanel) sessionsPanel.classList.add('active');
+      document.querySelectorAll('.admin-tab-btn').forEach(b=>{
+        const oc=b.getAttribute('onclick')||'';
+        b.classList.toggle('active', oc.includes("'sessions'"));
+      });
+      if(typeof loadAdminCalendar==='function') loadAdminCalendar();
     }
   }
 };
