@@ -1509,6 +1509,35 @@ function _injectAdminStudioButtons() {
   topbar.appendChild(wrap);
 }
 
+// Patch adminTab — protège contre btn=null (crash sur Android avec nth-child(3))
+const __origAdminTab=adminTab;
+adminTab=function(tab,btn){
+  if(!btn){
+    // Retrouver le bon bouton via onclick si btn est null
+    btn=Array.from(document.querySelectorAll('.admin-tab-btn'))
+      .find(b=>(b.getAttribute('onclick')||'').includes("'"+tab+"'"))||null;
+  }
+  if(!btn){
+    // Fallback manuel sans btn
+    if(tab!=='new-session') window._returnToSessionsAfterSave=false;
+    document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+    const panel=document.getElementById('admin-'+tab);
+    if(panel) panel.classList.add('active');
+    if(tab==='sessions')loadAdminSessions();
+    if(tab==='athletes')loadAdminAthletes();
+    if(tab==='progs')loadAdminProgs();
+    if(tab==='benchmarks')loadAdminBenchmarks();
+    if(tab==='dashboard')loadDashboard();
+    if(tab==='videos'){loadAdminVideos();populateVideoMovementSelect();}
+    if(tab==='perso')loadPersoAthletes();
+    if(tab==='cycle')initCyclePlanner();
+    if(tab==='badges'&&typeof loadAdminBadgesTab==='function')loadAdminBadgesTab();
+    return;
+  }
+  __origAdminTab(tab,btn);
+};
+
 // hook into editSession — s'assure que le form est dans page-admin et visible
 const __origEditSession=editSession;
 editSession=async function(id){
@@ -1537,28 +1566,8 @@ editSession=async function(id){
 };
 
 // handleSaveSession — appelé par le bouton "Publier/Sauvegarder" à la place de saveSession()
-// Nécessaire car saveSession() est une function declaration dans admin.js (non wrappable)
 async function handleSaveSession(){
-  const wasEditing=!!(editingSessionId||personalEditingId);
-  const wasPerso=!!personalAthleteId;
-  const wasReturnToPlanning=!!window._returnToPlanningAfterSave;
   await saveSession();
-  // Force la navigation après une édition (saveSession native ne navigue pas toujours sur tablette)
-  if(wasEditing && !wasPerso){
-    if(wasReturnToPlanning){
-      window._returnToPlanningAfterSave=false;
-      if(typeof goPage==='function') goPage('planning');
-    } else {
-      const sessionsPanel=document.getElementById('admin-sessions');
-      document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
-      if(sessionsPanel) sessionsPanel.classList.add('active');
-      document.querySelectorAll('.admin-tab-btn').forEach(b=>{
-        const oc=b.getAttribute('onclick')||'';
-        b.classList.toggle('active', oc.includes("'sessions'"));
-      });
-      if(typeof loadAdminCalendar==='function') loadAdminCalendar();
-    }
-  }
 }
 
 // ============================================
