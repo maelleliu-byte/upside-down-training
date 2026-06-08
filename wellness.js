@@ -2224,17 +2224,3 @@ async function autoSaveSessionVideos(videos){
   showToast(`📚 ${n} vidéo${n>1?'s':''} ajoutée${n>1?'s':''} à la bibliothèque`);
 }
 
-// Patch de saveSession via DOMContentLoaded — rewire le bouton "Publier la séance"
-// pour capturer les vidéos avant que saveSession les efface du formulaire.
-(function rewireSaveSession(){
-  const btn = document.querySelector('#admin-new-session .btn-primary[onclick*="saveSession"]');
-  if(!btn){ console.warn('rewireSaveSession: bouton non trouvé'); return; }
-  btn.removeAttribute('onclick');
-  btn.addEventListener('click', async function(){
-    const videos = (typeof getFormVideos === 'function') ? getFormVideos() : [];
-    await saveSession();
-    if(videos.length){
-      autoSaveSessionVideos(videos).catch(e => console.warn('autoSave videos', e));
-    }
-  });
-})();
