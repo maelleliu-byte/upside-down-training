@@ -464,7 +464,7 @@
         <input type="hidden" id="f-youtube">
         <input type="hidden" id="f-ytlabel">
       </div>
-      <button class="btn-primary" onclick="(async()=>{const v=getFormVideos();await saveSession();if(v.length)autoSaveSessionVideos(v).catch(e=>console.warn(e));})()">Publier la séance</button>
+      <button class="btn-primary" onclick="handleSaveSession()">Publier la séance</button>
     </div>
 
     <!-- CALENDRIER SÉANCES -->

@@ -1536,16 +1536,17 @@ editSession=async function(id){
   if(pageAdmin)pageAdmin.scrollTop=0;
 };
 
-// hook saveSession — force la navigation après édition (contourne le crash nth-child(3) sur Android)
-const __origSaveSession=saveSession;
-saveSession=async function(){
+// handleSaveSession — appelé par le bouton "Publier/Sauvegarder" à la place de saveSession()
+// Nécessaire car saveSession() est une function declaration dans admin.js (non wrappable)
+async function handleSaveSession(){
   const wasEditing=!!(editingSessionId||personalEditingId);
   const wasPerso=!!personalAthleteId;
   const wasReturnToPlanning=!!window._returnToPlanningAfterSave;
-  showToast('DBG wasEditing='+wasEditing+' wasPerso='+wasPerso+' planningFlag='+wasReturnToPlanning);
-  await __origSaveSession();
+  await saveSession();
+  // Force la navigation après une édition (saveSession native ne navigue pas toujours sur tablette)
   if(wasEditing && !wasPerso){
     if(wasReturnToPlanning){
+      window._returnToPlanningAfterSave=false;
       if(typeof goPage==='function') goPage('planning');
     } else {
       const sessionsPanel=document.getElementById('admin-sessions');
@@ -1558,7 +1559,7 @@ saveSession=async function(){
       if(typeof loadAdminCalendar==='function') loadAdminCalendar();
     }
   }
-};
+}
 
 // ============================================
 // WELLNESS ADMIN — tableau global
