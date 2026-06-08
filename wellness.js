@@ -1420,7 +1420,75 @@ const __origGoPage=goPage;
 goPage=async function(p){
   await __origGoPage(p);
   if(p==='wellness')loadWellnessPage();
+  if(p==='profil')_injectStudioAdminMenuItems();
+  if(p==='admin')_injectAdminStudioButtons();
 };
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   BOUTONS STUDIO POUR ADMINS EXTERNES
+   Injectés uniquement si studio_id non null (admin d'un studio tiers)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+function _isExternalAdmin() {
+  return !!(currentProfile && currentProfile.role === 'admin' && currentProfile.studio_id);
+}
+
+// ── 1. Menu item "Paramètres du studio" dans la page Profil ──
+function _injectStudioAdminMenuItems() {
+  if (!_isExternalAdmin()) return;
+  if (document.getElementById('studio-settings-menu-item')) return;
+
+  const adminMenuItem = document.getElementById('admin-menu-item');
+  if (!adminMenuItem) return;
+
+  const slug = window.__STUDIO_SLUG__ || '';
+
+  const settingsItem = document.createElement('div');
+  settingsItem.className = 'menu-item';
+  settingsItem.id = 'studio-settings-menu-item';
+  settingsItem.innerHTML = `<span class="menu-item-label">🏟 Paramètres du studio</span><span>›</span>`;
+  settingsItem.onclick = () => { window.location.href = '/' + slug + '/settings'; };
+
+  adminMenuItem.insertAdjacentElement('afterend', settingsItem);
+}
+
+// ── 2. Boutons dans le topbar du panel Admin ──
+function _injectAdminStudioButtons() {
+  if (!_isExternalAdmin()) return;
+  if (document.getElementById('admin-topbar-studio-btns')) return;
+
+  const topbar = document.querySelector('#page-admin .topbar');
+  if (!topbar) return;
+
+  const slug = window.__STUDIO_SLUG__ || '';
+
+  const wrap = document.createElement('div');
+  wrap.id = 'admin-topbar-studio-btns';
+  wrap.style.cssText = 'display:flex;gap:8px;align-items:center;flex-shrink:0';
+
+  // Bouton Paramètres
+  const btnSettings = document.createElement('a');
+  btnSettings.href = '/' + slug + '/settings';
+  btnSettings.innerHTML = '⚙️ <span style="font-size:12px">Paramètres</span>';
+  btnSettings.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:7px 11px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap';
+
+  // Bouton Stripe Dashboard
+  const btnStripe = document.createElement('a');
+  btnStripe.href = 'https://dashboard.stripe.com';
+  btnStripe.target = '_blank';
+  btnStripe.rel = 'noopener noreferrer';
+  btnStripe.innerHTML = '💳 <span style="font-size:12px">Stripe</span>';
+  btnStripe.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:7px 11px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap';
+
+  wrap.appendChild(btnSettings);
+  wrap.appendChild(btnStripe);
+
+  // Insérer dans le topbar (après le titre)
+  topbar.style.display = 'flex';
+  topbar.style.alignItems = 'center';
+  topbar.style.justifyContent = 'space-between';
+  topbar.appendChild(wrap);
+}
 
 // hook into editSession — s'assure que le form est dans page-admin et visible
 const __origEditSession=editSession;
