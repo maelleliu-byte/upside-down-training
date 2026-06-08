@@ -1437,6 +1437,10 @@ goPage=async function(p){
   if(p==='wellness')loadWellnessPage();
   if(p==='profil')_injectStudioAdminMenuItems();
   if(p==='admin')_injectAdminStudioButtons();
+  if(p==='planning'){
+    if(typeof renderDayStrip==='function')renderDayStrip();
+    if(typeof renderSessions==='function')renderSessions();
+  }
 };
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
