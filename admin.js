@@ -937,7 +937,7 @@ async function saveSession(){
       if(typeof goPage==="function")goPage("planning");
     } else if(window._returnToSessionsAfterSave){
       window._returnToSessionsAfterSave=false;
-      const sessionsTabBtn=document.querySelector('.admin-tab-btn:nth-child(3)');
+      const sessionsTabBtn=Array.from(document.querySelectorAll('.admin-tab-btn')).find(b=>(b.getAttribute('onclick')||'').includes("'sessions'"))||document.querySelector('.admin-tab-btn:nth-child(3)');
       adminTab('sessions',sessionsTabBtn);
       loadAdminCalendar();
     } else {
