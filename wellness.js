@@ -1520,6 +1520,8 @@ editSession=async function(id){
     document.getElementById('form-perso-banner').style.display='none';
     document.getElementById('form-prog-group').style.display='';
   }
+  // Marquer qu'on doit revenir à l'onglet Planning (Séances) après sauvegarde
+  window._returnToSessionsAfterSave=true;
   await __origEditSession(id);
   // 2) Forcer l'activation du panel Séance+ de façon fiable
   //    (le querySelector [onclick*="new-session"] peut échouer sur Android)
