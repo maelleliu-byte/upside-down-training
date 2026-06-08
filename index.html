@@ -198,13 +198,14 @@
       <button class="avatar-btn" id="avatar-btn" onclick="goPage('profil')">?</button>
     </div>
     <div class="prog-tabs" id="prog-tabs"></div>
-    <div class="week-nav">
+    <div class="week-nav" style="position:relative">
       <div class="week-label" id="week-label">—</div>
       <div class="week-arrows">
         <button class="arrow-btn" onclick="changeWeek(-1)">‹</button>
         <button class="arrow-btn" onclick="changeWeek(1)">›</button>
-        <button class="arrow-btn" onclick="openWodCalendar()" title="Calendrier mensuel" style="font-size:14px">📅</button>
+
       </div>
+      <div class="date-picker-pop" id="date-picker-pop" style="display:none"></div>
     </div>
     <div class="day-strip" id="day-strip"></div>
     <div id="sessions-area"></div>
