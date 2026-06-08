@@ -23,6 +23,8 @@ async function openReadSession(id, source){
     window._readModalSessionId=id;
     const {data:s}=await sb.from('sessions').select('*').eq('id',id).single();
     if(!s)return;
+    readModalSession=s;
+    readModalIsPerso=false;
     const color=s.color||'#e8ff47';
     const typeLabel=(typeof TYPE_LABELS!=='undefined'?TYPE_LABELS[s.type]:null)||s.type||'—';
     const prog=typeof getProgById==='function'?getProgById(s.programme_id):null;
@@ -2224,3 +2226,17 @@ async function autoSaveSessionVideos(videos){
   showToast(`📚 ${n} vidéo${n>1?'s':''} ajoutée${n>1?'s':''} à la bibliothèque`);
 }
 
+// Patch de saveSession : on injecte autoSaveSessionVideos juste après l'insert réussi
+(function(){
+  const _orig=window.saveSession;
+  if(typeof _orig!=='function')return;
+  window.saveSession=async function(){
+    // Capturer les vidéos AVANT que saveSession les efface du formulaire
+    const videos=(typeof getFormVideos==='function')?getFormVideos():[];
+    await _orig.apply(this,arguments);
+    // autoSave en arrière-plan (silencieux si erreur)
+    if(videos.length){
+      autoSaveSessionVideos(videos).catch(e=>console.warn('autoSave videos',e));
+    }
+  };
+})();
