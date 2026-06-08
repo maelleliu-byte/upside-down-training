@@ -108,17 +108,20 @@ function readModalEdit(){
     persoEditSession(s.id, s.athlete_id);
   } else {
     // S'assurer d'être sur page-admin avant de remplir le formulaire
-    window._returnToPlanningAfterSave=true;
     goPage('admin');
     // Attendre que le DOM de page-admin soit actif (plus long sur tablette)
+    // NB: le flag _returnToPlanningAfterSave est setté APRÈS goPage pour éviter
+    // que adminTab() ne le remette à false (il reset le flag si tab !== 'new-session')
     const _tryEdit=(attempts)=>{
       const panel=document.getElementById('admin-new-session');
       const fProg=document.getElementById('f-prog');
       if(panel&&fProg){
+        window._returnToPlanningAfterSave=true;
         editSession(s.id);
       } else if(attempts>0){
         setTimeout(()=>_tryEdit(attempts-1), 120);
       } else {
+        window._returnToPlanningAfterSave=true;
         editSession(s.id); // fallback
       }
     };
@@ -1529,15 +1532,11 @@ editSession=async function(id){
   if(pageAdmin)pageAdmin.scrollTop=0;
 };
 
-// hook into saveSession — retour planning si édition lancée depuis planning
+// hook into saveSession — le flag _returnToPlanningAfterSave est géré nativement dans admin.js
+// Ce hook ne duplique plus la navigation pour éviter la page noire
 const __origSaveSession=saveSession;
 saveSession=async function(){
-  const returnToPlanning=!!window._returnToPlanningAfterSave;
-  if(returnToPlanning)window._returnToPlanningAfterSave=false;
   await __origSaveSession();
-  if(returnToPlanning){
-    goPage('planning');
-  }
 };
 
 // ============================================
