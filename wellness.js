@@ -2558,17 +2558,17 @@ function renderCycleGridNew(){
             const fg = isLightColor(chip.color)?'#111':'#fff';
             const themes = cycleData.themes||[];
             const DAYS_N = 6;
-            const mvStyle = `padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg};border-radius:3px;cursor:pointer;opacity:.8;line-height:1.3`;
+            const mvBtn = (label, disabled, onclick) => `<button style="padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg};border-radius:3px;cursor:${disabled?'default':'pointer'};opacity:${disabled?'.2':'.8'};line-height:1.3" ${disabled?'disabled':''} onclick="${disabled?'event.stopPropagation()':'event.stopPropagation();'+onclick}">${label}</button>`;
             return `<div class="session-chip" style="background:${chip.color};color:${fg};${chip.done?'opacity:.55;text-decoration:line-through':''};display:flex;flex-direction:column;gap:4px;padding:6px 6px 5px">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
                 <span class="chip-toggle" data-toggle-key="${key}" data-toggle-idx="${chi}" data-bucket="theme"
                   role="checkbox" aria-checked="${!!chip.done}" title="Traité"
                   style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1.5px solid ${fg};border-radius:3px;background:${chip.done?fg:'transparent'};color:${chip.done?(isLightColor(fg)?'#111':chip.color):fg};font-size:11px;line-height:1;cursor:pointer;user-select:none">${chip.done?'✓':''}</span>
                 <div style="display:flex;gap:2px;align-items:center">
-                  ${ti>0              ? `<button style="${mvStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},-1,0)">↑</button>` : ''}
-                  ${ti<themes.length-1? `<button style="${mvStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},1,0)">↓</button>` : ''}
-                  ${di>0              ? `<button style="${mvStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},0,-1)">←</button>` : ''}
-                  ${di<DAYS_N-1       ? `<button style="${mvStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},0,1)">→</button>` : ''}
+                  ${mvBtn('↑', ti===0,                  `moveThemeChip(${wk},${ti},${di},${chi},-1,0)`)}
+                  ${mvBtn('↓', ti===themes.length-1,    `moveThemeChip(${wk},${ti},${di},${chi},1,0)`)}
+                  ${mvBtn('←', di===0,                  `moveThemeChip(${wk},${ti},${di},${chi},0,-1)`)}
+                  ${mvBtn('→', di===DAYS_N-1,           `moveThemeChip(${wk},${ti},${di},${chi},0,1)`)}
                   <button class="session-chip-del" onclick="event.stopPropagation();removeThemeChip('${key}',${chi})" style="padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg};border-radius:3px;cursor:pointer;opacity:.8">✕</button>
                 </div>
               </div>
@@ -3118,15 +3118,16 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
         const rows = cycleData.rows||[];
         const DAYS_N = 6;
         const fg = chipEl.style.color;
-        const btnStyle = `padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg||'inherit'};border-radius:3px;cursor:pointer;opacity:.8;line-height:1.3`;
+        const mvBtn = (label, disabled, fn) => {
+          const s = `padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg||'inherit'};border-radius:3px;cursor:${disabled?'default':'pointer'};opacity:${disabled?'.2':'.8'};line-height:1.3`;
+          return `<button style="${s}" ${disabled?'disabled':''} onclick="event.stopPropagation();${disabled?'':fn}">${label}</button>`;
+        };
 
-        // Restructurer en flex-column
         chipEl.style.flexDirection = 'column';
         chipEl.style.alignItems    = '';
         chipEl.style.gap           = '4px';
         chipEl.style.padding       = '6px 6px 5px';
 
-        // Barre haute : case à cocher (gauche) + boutons direction + ✕ (droite)
         const topBar = document.createElement('div');
         topBar.className = 'chip-move-btns';
         topBar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%';
@@ -3134,10 +3135,10 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
         const rightBtns = document.createElement('div');
         rightBtns.style.cssText = 'display:flex;gap:2px;align-items:center';
         rightBtns.innerHTML = `
-          ${ri>0              ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},-1,0)">↑</button>` : ''}
-          ${ri<rows.length-1  ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},1,0)">↓</button>` : ''}
-          ${di>0              ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},0,-1)">←</button>` : ''}
-          ${di<DAYS_N-1       ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},0,1)">→</button>` : ''}
+          ${mvBtn('↑', ri===0,              `moveSessionChip(${wk},${ri},${di},${chi},-1,0)`)}
+          ${mvBtn('↓', ri===rows.length-1,  `moveSessionChip(${wk},${ri},${di},${chi},1,0)`)}
+          ${mvBtn('←', di===0,              `moveSessionChip(${wk},${ri},${di},${chi},0,-1)`)}
+          ${mvBtn('→', di===DAYS_N-1,       `moveSessionChip(${wk},${ri},${di},${chi},0,1)`)}
         `;
         rightBtns.appendChild(delBtn);
 
