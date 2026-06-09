@@ -16,6 +16,46 @@ function stripHtml(s){if(!s)return'';const d=document.createElement('div');d.inn
 let readModalSession=null;
 let readModalIsPerso=false;
 async function openReadSession(id, source){
+  // Sur page-admin : ouvrir la modale de lecture (clic sur crayon pour éditer)
+  const pageAdmin=document.getElementById('page-admin');
+  if(pageAdmin&&pageAdmin.classList.contains('active')&&source!=='personal'){
+    // Charger la séance et afficher la modale read-modal
+    window._readModalSessionId=id;
+    const {data:s}=await sb.from('sessions').select('*').eq('id',id).single();
+    if(!s)return;
+    readModalSession=s;
+    readModalIsPerso=false;
+    const color=s.color||'#e8ff47';
+    const typeLabel=(typeof TYPE_LABELS!=='undefined'?TYPE_LABELS[s.type]:null)||s.type||'—';
+    const prog=typeof getProgById==='function'?getProgById(s.programme_id):null;
+    document.getElementById('read-modal-prog').textContent=prog?((prog.icon?prog.icon+' ':'')+prog.name):'—';
+    let dateLabel=s.date||'';
+    try{if(s.date&&typeof formatDate==='function')dateLabel=formatDate(s.date);}catch(e){}
+    document.getElementById('read-modal-date').textContent=dateLabel;
+    const editBtn=document.getElementById('read-modal-edit-btn');
+    if(editBtn)editBtn.style.display='';
+    const rawContent=s.content||'';
+    let withCharges=rawContent;
+    try{if(typeof renderContentWithCharges==='function')withCharges=renderContentWithCharges(rawContent);}catch(e){}
+    const isHtml=/<[a-z][\s\S]*>/i.test(withCharges);
+    const contentHtml=isHtml?withCharges:withCharges.replace(/\n/g,'<br>');
+    let intHtml='';
+    if(s.intensity){const pct=s.intensity*10;const col=s.intensity<=4?'var(--blue)':s.intensity<=7?'var(--accent)':'var(--red)';intHtml='<div class="intensity-bar"><div class="int-row"><span class="int-label">Intensité</span><span class="int-val" style="color:'+col+'">'+s.intensity+'/10</span></div><div class="int-track"><div class="int-fill" style="width:'+pct+'%;background:'+col+'"></div></div></div>';}
+    const targetHtml=s.target?'<div class="info-block"><div class="info-block-title"><span>🎯</span> Target</div><div class="info-block-text">'+s.target+'</div></div>':'';
+    const tipsHtml=s.tips?'<div class="info-block"><div class="info-block-title"><span>💡</span> Coaching Tips</div><div class="info-block-text">'+s.tips+'</div></div>':'';
+    const scalingParts=[];
+    if(s.scaling_inter)scalingParts.push('<div class="scaling-block scaling-block-inter"><div class="scaling-label" style="color:var(--red)">Intermédiaire</div><div class="scaling-text">'+s.scaling_inter+'</div></div>');
+    if(s.scaling_scaled)scalingParts.push('<div class="scaling-block scaling-block-scaled"><div class="scaling-label" style="color:var(--blue)">Scaled</div><div class="scaling-text">'+s.scaling_scaled+'</div></div>');
+    if(s.scaling_foundation)scalingParts.push('<div class="scaling-block scaling-block-found"><div class="scaling-label" style="color:var(--purple)">Fondation</div><div class="scaling-text">'+s.scaling_foundation+'</div></div>');
+    const scalingHtml=scalingParts.join('');
+    let _vids=[];try{_vids=Array.isArray(s.videos)?s.videos:(typeof s.videos==='string'?JSON.parse(s.videos):[]);}catch(e){_vids=[];}
+    if((!_vids||!_vids.length)&&s.youtube_url){_vids=[{url:s.youtube_url,label:s.youtube_label||''}];}
+    const videoHtml=_vids.length?'<div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">'+_vids.map(function(v){return'<a href="'+v.url+'" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(255,0,0,.1);border:1px solid rgba(255,0,0,.25);border-radius:10px;text-decoration:none;color:var(--text)"><span style="font-size:22px">▶️</span><div><div style="font-size:13px;font-weight:700">'+(v.label||'Voir la vidéo')+'</div></div></a>';}).join('')+'</div>':'';
+    function _esc(str){return(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+    document.getElementById('read-modal-body').innerHTML='<div style="display:flex;align-items:center;gap:8px;margin-bottom:12px"><span class="badge badge-'+s.type+'" style="background:'+color+'18;color:'+color+'">'+typeLabel+'</span>'+(s.title?'<span style="font-size:16px;font-weight:700">'+_esc(s.title)+'</span>':'')+'</div><div class="session-content" style="font-size:14px;line-height:1.7;margin-bottom:12px">'+contentHtml+'</div>'+scalingHtml+intHtml+targetHtml+tipsHtml+videoHtml;
+    document.getElementById('read-modal').classList.add('open');
+    return;
+  }
   // source: 'session' (table sessions) ou 'personal' (personal_sessions)
   let data;
   if(source==='personal'){
@@ -67,7 +107,25 @@ function readModalEdit(){
   if(isPerso){
     persoEditSession(s.id, s.athlete_id);
   } else {
-    editSession(s.id);
+    // S'assurer d'être sur page-admin avant de remplir le formulaire
+    goPage('admin');
+    // Attendre que le DOM de page-admin soit actif (plus long sur tablette)
+    // NB: le flag _returnToPlanningAfterSave est setté APRÈS goPage pour éviter
+    // que adminTab() ne le remette à false (il reset le flag si tab !== 'new-session')
+    const _tryEdit=(attempts)=>{
+      const panel=document.getElementById('admin-new-session');
+      const fProg=document.getElementById('f-prog');
+      if(panel&&fProg){
+        window._returnToPlanningAfterSave=true;
+        editSession(s.id);
+      } else if(attempts>0){
+        setTimeout(()=>_tryEdit(attempts-1), 120);
+      } else {
+        window._returnToPlanningAfterSave=true;
+        editSession(s.id); // fallback
+      }
+    };
+    setTimeout(()=>_tryEdit(8), 100);
   }
 }
 
@@ -1377,7 +1435,132 @@ const __origGoPage=goPage;
 goPage=async function(p){
   await __origGoPage(p);
   if(p==='wellness')loadWellnessPage();
+  if(p==='profil')_injectStudioAdminMenuItems();
+  if(p==='admin')_injectAdminStudioButtons();
+  if(p==='planning'){
+    if(typeof renderDayStrip==='function')renderDayStrip();
+    if(typeof renderSessions==='function')renderSessions();
+  }
 };
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   BOUTONS STUDIO POUR ADMINS EXTERNES
+   Injectés uniquement si studio_id non null (admin d'un studio tiers)
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+
+function _isExternalAdmin() {
+  return !!(currentProfile && currentProfile.role === 'admin' && currentProfile.studio_id);
+}
+
+// ── 1. Menu item "Paramètres du studio" dans la page Profil ──
+function _injectStudioAdminMenuItems() {
+  if (!_isExternalAdmin()) return;
+  if (document.getElementById('studio-settings-menu-item')) return;
+
+  const adminMenuItem = document.getElementById('admin-menu-item');
+  if (!adminMenuItem) return;
+
+  const slug = window.__STUDIO_SLUG__ || '';
+
+  const settingsItem = document.createElement('div');
+  settingsItem.className = 'menu-item';
+  settingsItem.id = 'studio-settings-menu-item';
+  settingsItem.innerHTML = `<span class="menu-item-label">🏟 Paramètres du studio</span><span>›</span>`;
+  settingsItem.onclick = () => { window.location.href = '/' + slug + '/settings'; };
+
+  adminMenuItem.insertAdjacentElement('afterend', settingsItem);
+}
+
+// ── 2. Boutons dans le topbar du panel Admin ──
+function _injectAdminStudioButtons() {
+  if (!_isExternalAdmin()) return;
+  if (document.getElementById('admin-topbar-studio-btns')) return;
+
+  const topbar = document.querySelector('#page-admin .topbar');
+  if (!topbar) return;
+
+  const slug = window.__STUDIO_SLUG__ || '';
+
+  const wrap = document.createElement('div');
+  wrap.id = 'admin-topbar-studio-btns';
+  wrap.style.cssText = 'display:flex;gap:8px;align-items:center;flex-shrink:0';
+
+  // Bouton Paramètres
+  const btnSettings = document.createElement('a');
+  btnSettings.href = '/' + slug + '/settings';
+  btnSettings.innerHTML = '⚙️ <span style="font-size:12px">Paramètres</span>';
+  btnSettings.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:7px 11px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap';
+
+  // Bouton Stripe Dashboard
+  const btnStripe = document.createElement('a');
+  btnStripe.href = 'https://dashboard.stripe.com';
+  btnStripe.target = '_blank';
+  btnStripe.rel = 'noopener noreferrer';
+  btnStripe.innerHTML = '💳 <span style="font-size:12px">Stripe</span>';
+  btnStripe.style.cssText = 'display:inline-flex;align-items:center;gap:4px;padding:7px 11px;background:var(--card2);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:13px;font-weight:700;text-decoration:none;cursor:pointer;white-space:nowrap';
+
+  wrap.appendChild(btnSettings);
+  wrap.appendChild(btnStripe);
+
+  // Insérer dans le topbar (après le titre)
+  topbar.style.display = 'flex';
+  topbar.style.alignItems = 'center';
+  topbar.style.justifyContent = 'space-between';
+  topbar.appendChild(wrap);
+}
+
+// hook into editSession — s'assure que le form est dans page-admin et visible
+const __origEditSession=editSession;
+editSession=async function(id){
+  // 1) Si le form a été déplacé dans perso-form-container, le remettre à sa place
+  const form=document.getElementById('admin-new-session');
+  const sessionsPanel=document.getElementById('admin-sessions');
+  if(form&&sessionsPanel&&form.parentElement!==sessionsPanel.parentElement){
+    sessionsPanel.parentElement.insertBefore(form,sessionsPanel);
+    document.getElementById('form-perso-banner').style.display='none';
+    document.getElementById('form-prog-group').style.display='';
+  }
+  // Marquer qu'on doit revenir à l'onglet Planning (Séances) après sauvegarde
+  window._returnToSessionsAfterSave=true;
+  await __origEditSession(id);
+  // 2) Forcer l'activation du panel Séance+ de façon fiable
+  //    (le querySelector [onclick*="new-session"] peut échouer sur Android)
+  document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+  if(form)form.classList.add('active');
+  // Activer le bon bouton d'onglet
+  document.querySelectorAll('.admin-tab-btn').forEach(b=>{
+    const oc=b.getAttribute('onclick')||'';
+    b.classList.toggle('active', oc.includes('new-session'));
+  });
+  const pageAdmin=document.getElementById('page-admin');
+  if(pageAdmin)pageAdmin.scrollTop=0;
+};
+
+// handleSaveSession — appelé par le bouton "Publier/Sauvegarder" à la place de saveSession()
+async function handleSaveSession(){
+  const wasEditing=!!(editingSessionId||personalEditingId);
+  const wasPerso=!!personalAthleteId;
+  // Neutraliser les flags de navigation — on gère nous-mêmes après le save
+  window._returnToPlanningAfterSave=false;
+  window._returnToSessionsAfterSave=false;
+  await saveSession();
+  // Après un edit, toujours revenir à l'onglet Planning du calendrier admin
+  if(wasEditing && !wasPerso){
+    const sessionsPanel=document.getElementById('admin-sessions');
+    const pageAdmin=document.getElementById('page-admin');
+    document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';});
+    if(pageAdmin){pageAdmin.style.display='block';pageAdmin.classList.add('active');pageAdmin.style.overflowY='auto';}
+    const navBtn=document.querySelector('[data-page="admin"]');
+    document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+    if(navBtn)navBtn.classList.add('active');
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+    if(sessionsPanel)sessionsPanel.classList.add('active');
+    document.querySelectorAll('.admin-tab-btn').forEach(b=>{
+      b.classList.toggle('active',(b.getAttribute('onclick')||'').includes("'sessions'"));
+    });
+    if(typeof loadAdminCalendar==='function')loadAdminCalendar();
+  }
+}
 
 // ============================================
 // WELLNESS ADMIN — tableau global
@@ -2019,3 +2202,194 @@ async function runWodCalSearch(query){
   }
 }
 
+
+// ===================================================
+// AUTO-SAVE VIDÉOS SÉANCE → BIBLIOTHÈQUE
+// Quand on publie/modifie une séance, les vidéos
+// saisies via URL directe sont auto-enregistrées
+// dans movement_videos si elles n'y existent pas déjà.
+// ===================================================
+async function autoSaveSessionVideos(videos){
+  if(!videos||!videos.length)return;
+  if(!currentUser)return;
+  const studioId=getStudioId();
+
+  // Charger les URLs déjà connues dans movement_videos pour ce studio
+  let q=sb.from('movement_videos').select('youtube_url');
+  if(studioId){q=q.eq('studio_id',studioId);}
+  else{q=q.is('studio_id',null);}
+  const {data:existing}=await q;
+  const knownUrls=new Set((existing||[]).map(v=>(v.youtube_url||'').trim()));
+
+  // Filtrer les nouvelles uniquement (URL non vide + pas déjà en base)
+  const toInsert=videos.filter(v=>{
+    const url=(v.url||'').trim();
+    return url&&!knownUrls.has(url);
+  });
+  if(!toInsert.length)return;
+
+  // Insérer en batch
+  const rows=toInsert.map(v=>({
+    youtube_url:(v.url||'').trim(),
+    title:(v.label||'').trim()||'Vidéo séance',
+    movement_id:null,
+    level:'all',
+    created_by:currentUser.id,
+    studio_id:studioId||null
+  }));
+  const {error}=await sb.from('movement_videos').insert(rows);
+  if(error){console.warn('autoSaveSessionVideos',error.message);return;}
+
+  // Rafraîchir allVideos silencieusement pour que le video picker soit à jour
+  if(typeof loadVideos==='function'){
+    try{await loadVideos();}catch(e){}
+  }
+  const n=rows.length;
+  showToast(`📚 ${n} vidéo${n>1?'s':''} ajoutée${n>1?'s':''} à la bibliothèque`);
+}
+
+// Patch de saveSession : on injecte autoSaveSessionVideos juste après l'insert réussi
+(function(){
+  const _orig=window.saveSession;
+  if(typeof _orig!=='function')return;
+  window.saveSession=async function(){
+    // Capturer les vidéos AVANT que saveSession les efface du formulaire
+    const videos=(typeof getFormVideos==='function')?getFormVideos():[];
+    await _orig.apply(this,arguments);
+    // autoSave en arrière-plan (silencieux si erreur)
+    if(videos.length){
+      autoSaveSessionVideos(videos).catch(e=>console.warn('autoSave videos',e));
+    }
+  };
+})();
+
+// ===================================================
+// TRANSFERT CYCLE → SÉANCE+
+// Bouton "→ Séance+" dans chaque colonne-jour de la
+// grille session. Mappe les lignes vers les champs du
+// formulaire via leur nom (insensible à la casse).
+// ===================================================
+
+// Mapping nom de ligne → champ Séance+
+const CYCLE_ROW_FIELD_MAP = [
+  { keys: ['wod'],                                          field: 'wod'        },
+  { keys: ['athlete', 'target', 'objectif'],               field: 'target'     },
+  { keys: ['coach', 'tips', 'conseil'],                    field: 'tips'       },
+  { keys: ['rpe', 'intensity', 'intensité'],               field: 'intensity'  },
+  { keys: ['inter', 'intermédiaire', 'intermediaire'],     field: 'inter'      },
+  { keys: ['scaled'],                                       field: 'scaled'     },
+  { keys: ['foundation', 'fond', 'fondation'],             field: 'foundation' },
+];
+
+function _matchCycleRowField(rowName) {
+  const n = (rowName || '').toLowerCase().trim();
+  for (const entry of CYCLE_ROW_FIELD_MAP) {
+    if (entry.keys.some(k => n.includes(k))) return entry.field;
+  }
+  return null;
+}
+
+function transferCycleToSession(wk, di) {
+  if (!cycleData || !cycleData.rows) { showToast('⚠️ Aucun cycle chargé'); return; }
+
+  const rows = cycleData.rows;
+  const fields = { wod: null, target: null, tips: null, intensity: null, inter: null, scaled: null, foundation: null };
+  let hasContent = false;
+
+  rows.forEach((rowName, ri) => {
+    const field = _matchCycleRowField(rowName);
+    if (!field) return;
+    const key = `w${wk}-${ri}-${di}`;
+    const chips = cycleData.sessionCells[key] || [];
+    if (!chips.length) return;
+    fields[field] = chips[0].text; // une chip par case
+    hasContent = true;
+  });
+
+  if (!hasContent) { showToast('⚠️ Aucun contenu dans cette colonne'); return; }
+
+  // Aller sur l'onglet Séance+
+  window._returnToSessionsAfterSave = false;
+  const newSessionBtn = Array.from(document.querySelectorAll('.admin-tab-btn'))
+    .find(b => (b.getAttribute('onclick') || '').includes("'new-session'"));
+  if (typeof resetSessionForm === 'function') resetSessionForm();
+  if (typeof adminTab === 'function' && newSessionBtn) adminTab('new-session', newSessionBtn);
+
+  // Pré-remplir date si start_date du cycle est définie
+  const startDateEl = document.getElementById('cycle-start-date');
+  const startDate = startDateEl ? startDateEl.value : null;
+  if (startDate) {
+    try {
+      const base = new Date(startDate + 'T12:00:00');
+      base.setDate(base.getDate() + wk * 7 + di);
+      document.getElementById('f-date').value = base.toISOString().split('T')[0];
+    } catch(e) {}
+  }
+
+  // Remplir les champs
+  if (fields.wod   !== null && typeof setEditorContent === 'function') setEditorContent(fields.wod);
+  if (fields.target !== null) { const el = document.getElementById('f-target');      if (el) el.value = fields.target; }
+  if (fields.tips   !== null) { const el = document.getElementById('f-tips');        if (el) el.value = fields.tips; }
+  if (fields.inter  !== null) { const el = document.getElementById('f-scaling-inter');      if (el) el.value = fields.inter; }
+  if (fields.scaled !== null) { const el = document.getElementById('f-scaling-scaled');     if (el) el.value = fields.scaled; }
+  if (fields.foundation !== null) { const el = document.getElementById('f-scaling-foundation'); if (el) el.value = fields.foundation; }
+  if (fields.intensity !== null) {
+    const v = parseInt(fields.intensity);
+    if (!isNaN(v)) {
+      const el = document.getElementById('f-intensity');
+      const lbl = document.getElementById('f-int-val');
+      if (el) el.value = v;
+      if (lbl) lbl.textContent = v;
+    }
+  }
+
+  showToast('✅ Champs pré-remplis depuis le cycle');
+  const pageAdmin = document.getElementById('page-admin');
+  if (pageAdmin) pageAdmin.scrollTop = 0;
+}
+
+// Patch renderSessionGrid : injecte le bouton "→ Séance+" dans chaque <th> de jour
+(function () {
+  if (window.__cycleTransferBound) return;
+  window.__cycleTransferBound = true;
+
+  const _origRender = window.renderSessionGrid;
+  if (typeof _origRender !== 'function') {
+    // renderSessionGrid pas encore défini → on retente après chargement
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof renderSessionGrid === 'function' && !renderSessionGrid.__transferPatched) {
+        _patchRenderSessionGrid();
+      }
+    });
+    return;
+  }
+  _patchRenderSessionGrid();
+
+  function _patchRenderSessionGrid() {
+    const orig = window.renderSessionGrid;
+    if (orig && orig.__transferPatched) return;
+    window.renderSessionGrid = function () {
+      orig.apply(this, arguments);
+      // Après rendu, injecter les boutons dans chaque <th> de jour (skip premier th = "Catégorie")
+      const grid = document.getElementById('cycle-grid');
+      if (!grid) return;
+      grid.querySelectorAll('.session-grid-table').forEach((table, wk) => {
+        const ths = table.querySelectorAll('thead tr th');
+        // ths[0] = "Catégorie", ths[1..N] = jours
+        ths.forEach((th, idx) => {
+          if (idx === 0) return; // skip header ligne
+          const di = idx - 1;
+          if (th.querySelector('.cycle-to-session-btn')) return; // idempotent
+          const btn = document.createElement('button');
+          btn.className = 'cycle-to-session-btn';
+          btn.title = 'Transférer vers Séance+';
+          btn.innerHTML = '→ Séance+';
+          btn.style.cssText = 'display:block;margin:4px auto 0;padding:2px 7px;font-size:10px;font-weight:700;background:var(--card2);border:1px solid var(--accent);color:var(--accent);border-radius:5px;cursor:pointer;white-space:nowrap;letter-spacing:.5px';
+          btn.addEventListener('click', (e) => { e.stopPropagation(); transferCycleToSession(wk, di); });
+          th.appendChild(btn);
+        });
+      });
+    };
+    window.renderSessionGrid.__transferPatched = true;
+  }
+})();
