@@ -2393,3 +2393,85 @@ function transferCycleToSession(wk, di) {
     window.renderSessionGrid.__transferPatched = true;
   }
 })();
+
+// ===================================================
+// RÉORDONNEMENT DES LIGNES SESSION (↑ ↓)
+// Patch renderSessionRowsConfig pour ajouter des
+// boutons de déplacement. Rekeys les sessionCells
+// quand deux lignes sont swappées.
+// ===================================================
+
+function moveSessionRow(ri, dir) {
+  const rows = cycleData.rows;
+  const newRi = ri + dir;
+  if (newRi < 0 || newRi >= rows.length) return;
+
+  // Swap noms de lignes
+  [rows[ri], rows[newRi]] = [rows[newRi], rows[ri]];
+
+  // Remap sessionCells : clé = w{wk}-{ri}-{di}
+  const cells = cycleData.sessionCells;
+  const weeks = cycleData.weeks || 8;
+  const DAYS_N = 6; // DAYS_SESSION.length
+
+  for (let wk = 0; wk < weeks; wk++) {
+    for (let di = 0; di < DAYS_N; di++) {
+      const keyA = `w${wk}-${ri}-${di}`;
+      const keyB = `w${wk}-${newRi}-${di}`;
+      const tmp = cells[keyA];
+      if (cells[keyB] !== undefined) {
+        cells[keyA] = cells[keyB];
+      } else {
+        delete cells[keyA];
+      }
+      if (tmp !== undefined) {
+        cells[keyB] = tmp;
+      } else {
+        delete cells[keyB];
+      }
+    }
+  }
+
+  if (typeof renderSessionRowsConfig === 'function') renderSessionRowsConfig();
+  if (typeof renderCycleGrid === 'function') renderCycleGrid();
+  scheduleAutoSaveCycle();
+}
+
+// Patch renderSessionRowsConfig pour injecter les boutons ↑↓
+(function () {
+  if (window.__sessionRowMoveBound) return;
+  window.__sessionRowMoveBound = true;
+
+  function _patch() {
+    const orig = window.renderSessionRowsConfig;
+    if (!orig || orig.__movePatched) return;
+
+    window.renderSessionRowsConfig = function () {
+      const el = document.getElementById('session-rows-config');
+      if (!el || !cycleData || !cycleData.rows) { orig.apply(this, arguments); return; }
+      const rows = cycleData.rows;
+      el.innerHTML = rows.map((r, i) => `
+        <div style="display:flex;align-items:center;gap:6px">
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <button onclick="moveSessionRow(${i},-1)" ${i === 0 ? 'disabled' : ''}
+              style="padding:2px 7px;font-size:11px;line-height:1.4;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer;${i === 0 ? 'opacity:.3' : ''}">↑</button>
+            <button onclick="moveSessionRow(${i},1)" ${i === rows.length - 1 ? 'disabled' : ''}
+              style="padding:2px 7px;font-size:11px;line-height:1.4;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer;${i === rows.length - 1 ? 'opacity:.3' : ''}">↓</button>
+          </div>
+          <input type="text" class="form-input" value="${r}"
+            oninput="cycleData.rows[${i}]=this.value;renderCycleGrid();scheduleAutoSaveCycle()"
+            style="flex:1;padding:8px 12px;font-size:13px">
+          <button onclick="removeSessionRow(${i})"
+            style="padding:8px 10px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:8px;font-size:12px;cursor:pointer">✕</button>
+        </div>`).join('');
+    };
+    window.renderSessionRowsConfig.__movePatched = true;
+  }
+
+  // Tenter immédiatement, sinon attendre DOMContentLoaded
+  if (typeof renderSessionRowsConfig === 'function') {
+    _patch();
+  } else {
+    document.addEventListener('DOMContentLoaded', _patch);
+  }
+})();
