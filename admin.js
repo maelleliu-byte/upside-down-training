@@ -1382,7 +1382,7 @@ let cycleData = {
   cells: {},        // Vue cycle: "week-col"
   sessionCells: {}  // Vue session: "row-day" (day: 0=Lun..5=Sam)
 };
-const DAYS_SESSION=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+const DAYS_SESSION=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
 let cycleCellTarget = null;
 let selectedChipColor = '#e8ff47';
 let allCycles = [];
