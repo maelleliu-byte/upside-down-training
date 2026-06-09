@@ -2702,12 +2702,8 @@ function sendThemeChipToSession(text){
   if(typeof adminTab==='function'&&newSessionBtn) adminTab('new-session',newSessionBtn);
   if(typeof setEditorContent==='function'){
     // Convertir texte brut → HTML : sauts de ligne → <br>, envelopper dans <p>
-    const normalized = text.replace(/\\n/g, '\n');
-    const html = normalized
-      .split(/\n\n+/)
-      .map(para => `<p>${para.replace(/\n/g,'<br>')}</p>`)
-      .join('');
-    setEditorContent(html);
+    // L'éditeur a white-space:pre-wrap — injecter le texte brut directement
+    setEditorContent(text);
   }
   showToast('✅ Séance pré-remplie');
   const pageAdmin=document.getElementById('page-admin');
