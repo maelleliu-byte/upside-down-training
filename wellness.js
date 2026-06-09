@@ -3026,3 +3026,136 @@ document.addEventListener('DOMContentLoaded',()=>{
     } catch(e){ console.warn('loadAllCycles patch summary_row', e); }
   };
 })();
+
+// ===================================================
+// DÉPLACEMENT DES CHIPS ← → ↑ ↓
+// Fonctionne pour vue session (sessionCells) et
+// vue cycle/thème (themeCells)
+// ===================================================
+
+function _moveChip(bucket, keyFrom, chi, keyTo){
+  if(!bucket[keyFrom] || !bucket[keyFrom][chi]) return false;
+  const chip = bucket[keyFrom].splice(chi, 1)[0];
+  if(!bucket[keyTo]) bucket[keyTo] = [];
+  bucket[keyTo].push(chip);
+  return true;
+}
+
+// ── Vue Session ──────────────────────────────────────
+function moveSessionChip(wk, ri, di, chi, dri, ddi){
+  const rows = cycleData.rows;
+  const DAYS_N = 6;
+  const newRi = ri + dri;
+  const newDi = di + ddi;
+  if(newRi < 0 || newRi >= rows.length) return;
+  if(newDi < 0 || newDi >= DAYS_N) return;
+  const keyFrom = `w${wk}-${ri}-${di}`;
+  const keyTo   = `w${wk}-${newRi}-${newDi}`;
+  if(_moveChip(cycleData.sessionCells, keyFrom, chi, keyTo)){
+    if(typeof renderSessionGrid === 'function') renderSessionGrid();
+    scheduleAutoSaveCycle();
+  }
+}
+
+// ── Vue Cycle/Thème ──────────────────────────────────
+function moveThemeChip(wk, ti, di, chi, dti, ddi){
+  _ensureCycleThemes();
+  const themes = cycleData.themes;
+  const DAYS_N = 6;
+  const newTi = ti + dti;
+  const newDi = di + ddi;
+  if(newTi < 0 || newTi >= themes.length) return;
+  if(newDi < 0 || newDi >= DAYS_N) return;
+  const keyFrom = `t${wk}-${ti}-${di}`;
+  const keyTo   = `t${wk}-${newTi}-${newDi}`;
+  if(_moveChip(cycleData.themeCells, keyFrom, chi, keyTo)){
+    renderCycleGridNew();
+    scheduleAutoSaveCycle();
+  }
+}
+
+// ── Patch renderSessionGrid : injecter boutons ←→↑↓ ─
+(function(){
+  if(window.__sessionChipMoveBound) return;
+  window.__sessionChipMoveBound = true;
+
+  function _patch(){
+    const orig = window.renderSessionGrid;
+    if(!orig || orig.__chipMovePatchedSession) return;
+    window.renderSessionGrid = function(){
+      orig.apply(this, arguments);
+      const grid = document.getElementById('cycle-grid');
+      if(!grid) return;
+      // Injecter boutons dans chaque session-chip de la vue session
+      grid.querySelectorAll('.session-chip').forEach(chipEl => {
+        if(chipEl.querySelector('.chip-move-btns')) return;
+        const delBtn = chipEl.querySelector('.session-chip-del');
+        if(!delBtn) return;
+        // Lire les coords depuis le onclick du del btn
+        const delOnclick = delBtn.getAttribute('onclick')||'';
+        const keyMatch = delOnclick.match(/'(w\d+-(\d+)-(\d+))'/);
+        const chiMatch = delOnclick.match(/,(\d+)\)/);
+        if(!keyMatch || !chiMatch) return;
+        const key = keyMatch[1];
+        const km = key.match(/^w(\d+)-(\d+)-(\d+)$/);
+        if(!km) return;
+        const wk=parseInt(km[1]), ri=parseInt(km[2]), di=parseInt(km[3]);
+        const chi = parseInt(chiMatch[1]);
+        const rows = cycleData.rows||[];
+        const DAYS_N = 6;
+        const btnStyle = 'padding:1px 4px;font-size:9px;background:rgba(0,0,0,.3);border:none;color:inherit;border-radius:3px;cursor:pointer;opacity:.7;line-height:1.2';
+        const wrap = document.createElement('div');
+        wrap.className = 'chip-move-btns';
+        wrap.style.cssText = 'display:flex;gap:2px;flex-shrink:0';
+        wrap.innerHTML = `
+          ${ri>0         ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},-1,0)">↑</button>` : ''}
+          ${ri<rows.length-1 ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},1,0)">↓</button>` : ''}
+          ${di>0         ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},0,-1)">←</button>` : ''}
+          ${di<DAYS_N-1  ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},0,1)">→</button>` : ''}
+        `;
+        chipEl.insertBefore(wrap, delBtn);
+      });
+    };
+    window.renderSessionGrid.__chipMovePatchedSession = true;
+  }
+
+  if(typeof renderSessionGrid === 'function') _patch();
+  else document.addEventListener('DOMContentLoaded', _patch);
+})();
+
+// ── Patch renderCycleGridNew : injecter boutons ←→↑↓ ─
+// On injecte directement dans le HTML de renderCycleGridNew
+// via un post-patch sur le grid après rendu
+(function(){
+  if(window.__themeChipMoveBound) return;
+  window.__themeChipMoveBound = true;
+
+  const _origNew = window.renderCycleGridNew;
+  window.renderCycleGridNew = function(){
+    _origNew.apply(this, arguments);
+    _ensureCycleThemes();
+    const themes = cycleData.themes||[];
+    const DAYS_N = 6;
+    const grid = document.getElementById('cycle-grid');
+    if(!grid) return;
+    grid.querySelectorAll('td.session-cell[data-wk]').forEach(td=>{
+      const wk=parseInt(td.dataset.wk), ti=parseInt(td.dataset.ti), di=parseInt(td.dataset.di);
+      td.querySelectorAll('.session-chip').forEach((chipEl, chi)=>{
+        if(chipEl.querySelector('.chip-move-btns')) return;
+        const delBtn = chipEl.querySelector('.session-chip-del');
+        if(!delBtn) return;
+        const btnStyle = 'padding:1px 4px;font-size:9px;background:rgba(0,0,0,.3);border:none;color:inherit;border-radius:3px;cursor:pointer;opacity:.7;line-height:1.2';
+        const wrap = document.createElement('div');
+        wrap.className = 'chip-move-btns';
+        wrap.style.cssText = 'display:flex;gap:2px;flex-shrink:0';
+        wrap.innerHTML = `
+          ${ti>0            ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},-1,0)">↑</button>` : ''}
+          ${ti<themes.length-1 ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},1,0)">↓</button>` : ''}
+          ${di>0            ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},0,-1)">←</button>` : ''}
+          ${di<DAYS_N-1     ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},0,1)">→</button>` : ''}
+        `;
+        chipEl.insertBefore(wrap, delBtn);
+      });
+    });
+  };
+})();
