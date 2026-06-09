@@ -2504,7 +2504,32 @@ function renderCycleGridNew(){
     d.setDate(d.getDate() - (day===0?6:day-1)); return d;
   })();
 
-  let html = '';
+  if(!cycleData.summaryRow) cycleData.summaryRow = {};
+
+  // ── Ligne Résumé fixe en haut ─────────────────────
+  let html = `<div style="margin-bottom:18px">
+    <table class="session-grid-table"><thead><tr>
+      <th class="row-header" style="color:var(--accent)">Résumé</th>
+      ${DAYS_CYCLE.map(d=>`<th>${d}</th>`).join('')}
+    </tr></thead><tbody><tr>
+      <td class="session-row-label"><div class="session-row-label-inner"><span style="font-size:11px;font-weight:700;color:var(--muted)">Cycle</span></div></td>
+      ${DAYS_CYCLE.map((_,di)=>{
+        const key = `sum-${di}`;
+        const chips = cycleData.summaryRow[key]||[];
+        const chipsHtml = chips.map((chip,chi)=>{
+          const fg = isLightColor(chip.color)?'#111':'#fff';
+          return `<div class="session-chip" style="background:${chip.color};color:${fg};display:flex;align-items:center;gap:5px">
+            <span class="session-chip-text" style="flex:1;min-width:0" onclick="event.stopPropagation();editSummaryChip(${di},${chi})">${chip.text}</span>
+            <button class="session-chip-del" onclick="event.stopPropagation();removeSummaryChip(${di},${chi})" style="position:static;opacity:.7">✕</button>
+          </div>`;
+        }).join('');
+        return `<td class="session-cell" data-sum="1" data-di="${di}">
+          <div class="session-cell-inner">${chipsHtml}<button class="cycle-add-btn">+</button></div>
+        </td>`;
+      }).join('')}
+    </tr></tbody></table>
+  </div>`;
+
   for(let wk=0; wk<weeks; wk++){
     const wStart = new Date(startDate); wStart.setDate(startDate.getDate()+wk*7);
     const wEnd   = new Date(wStart);   wEnd.setDate(wStart.getDate()+6);
@@ -2570,6 +2595,14 @@ function renderCycleGridNew(){
     });
   });
 
+  // Bind td summary
+  if(grid) grid.querySelectorAll('td.session-cell[data-sum]').forEach(td=>{
+    td.addEventListener('click', function(ev){
+      if(ev.target.closest('.session-chip-del,.session-chip-text')) return;
+      openSummaryChipModal(parseInt(this.dataset.di));
+    });
+  });
+
   // Bind td → openThemeCellModal (via delegation pour éviter conflit avec boutons internes)
   if(grid) grid.querySelectorAll('td.session-cell[data-wk]').forEach(td=>{
     td.addEventListener('click', function(ev){
@@ -2579,6 +2612,33 @@ function renderCycleGridNew(){
     });
   });
 
+}
+
+// ── Ligne Résumé — fonctions ─────────────────────────
+function openSummaryChipModal(di, editIdx=null){
+  if(!cycleData.summaryRow) cycleData.summaryRow={};
+  _themeCellTarget = {summary:true, di, editIdx};
+  document.getElementById('cycle-cell-title').textContent = `Résumé — ${DAYS_CYCLE[di]}`;
+  document.getElementById('cycle-cell-subtitle').textContent = 'Résumé du cycle pour ce jour';
+  document.getElementById('cycle-cell-presets').style.display='none';
+  const key=`sum-${di}`;
+  const chip = editIdx!=null ? (cycleData.summaryRow[key]||[])[editIdx] : null;
+  document.getElementById('cycle-cell-input').value = chip?chip.text:'';
+  selectedChipColor = chip?chip.color:'#e8ff47';
+  document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color===selectedChipColor));
+  document.getElementById('cycle-cell-modal').classList.add('open');
+  _setChipAutoSaveStatus('idle');
+  setTimeout(()=>{ autoResizeCycleInput(document.getElementById('cycle-cell-input')); document.getElementById('cycle-cell-input').focus(); },300);
+}
+
+function editSummaryChip(di,chi){ openSummaryChipModal(di,chi); }
+
+function removeSummaryChip(di,chi){
+  if(!cycleData.summaryRow) return;
+  const key=`sum-${di}`;
+  if(cycleData.summaryRow[key]) cycleData.summaryRow[key].splice(chi,1);
+  renderCycleGridNew();
+  scheduleAutoSaveCycle();
 }
 
 // ── Modale texte libre pour chips thème ─────────────
@@ -2656,10 +2716,30 @@ function sendThemeChipToSession(text){
     // Si une cible thème est active, gérer ici
     if(_themeCellTarget && document.getElementById('cycle-cell-modal')?.classList.contains('open')){
       _ensureCycleThemes();
+      if(!cycleData.summaryRow) cycleData.summaryRow={};
       const inputEl = document.getElementById('cycle-cell-input');
       if(!inputEl) return;
       const text = inputEl.value.trim();
       const t = _themeCellTarget;
+
+      // Cas ligne résumé
+      if(t.summary){
+        const key=`sum-${t.di}`;
+        if(!text && t.editIdx==null) return;
+        _setChipAutoSaveStatus('saving');
+        if(!cycleData.summaryRow[key]) cycleData.summaryRow[key]=[];
+        if(t.editIdx!=null){
+          if(!text){ cycleData.summaryRow[key].splice(t.editIdx,1); _themeCellTarget.editIdx=null; }
+          else { cycleData.summaryRow[key][t.editIdx]={text,color:selectedChipColor}; }
+        } else {
+          cycleData.summaryRow[key].push({text,color:selectedChipColor});
+          _themeCellTarget.editIdx=cycleData.summaryRow[key].length-1;
+        }
+        renderCycleGridNew();
+        scheduleAutoSaveCycle();
+        setTimeout(()=>_setChipAutoSaveStatus('saved'),200);
+        return;
+      }
       const key = `t${t.wk}-${t.ti}-${t.di}`;
       if(!text && t.editIdx==null) return;
       _setChipAutoSaveStatus('saving');
@@ -2713,6 +2793,7 @@ function sendThemeChipToSession(text){
       columns:cycleData.columns, rows:cycleData.rows,
       cells:cycleData.cells, session_cells:cycleData.sessionCells,
       theme_cells:cycleData.themeCells, themes:cycleData.themes,
+      summary_row:cycleData.summaryRow||{},
       created_by:currentUser.id, studio_id:getStudioId()
     };
     try{
@@ -2738,10 +2819,11 @@ function sendThemeChipToSession(text){
     // Après chargement, récupérer themes + theme_cells depuis la DB
     if(!id) return;
     try{
-      const {data}=await sb.from('cycle_plans').select('themes,theme_cells').eq('id',id).single();
+      const {data}=await sb.from('cycle_plans').select('themes,theme_cells,summary_row').eq('id',id).single();
       if(data){
         if(data.themes) cycleData.themes=data.themes;
         if(data.theme_cells) cycleData.themeCells=data.theme_cells;
+        if(data.summary_row) cycleData.summaryRow=data.summary_row;
       }
     }catch(e){console.warn('loadCycle themes',e);}
     if(cycleMode==='cycle') renderCycleGridNew();
@@ -2867,7 +2949,20 @@ document.addEventListener('DOMContentLoaded',()=>{
 
   const _orig = window._cycleTopTags;
   window._cycleTopTags = function(c, max=4){
-    // 1) Lire themeCells (nouvelle structure)
+    // 0) Lire summaryRow en priorité (résumé explicite par jour)
+    const summaryRow = c.summary_row || {};
+    if(Object.keys(summaryRow).length){
+      const seen = new Set(); const tags = [];
+      Object.values(summaryRow).forEach(arr=>{
+        (arr||[]).forEach(chip=>{
+          const k=(chip.text||'').trim().toUpperCase();
+          if(!k||seen.has(k)) return;
+          seen.add(k);
+          tags.push({text:chip.text,color:chip.color||'#e8ff47',n:1});
+        });
+      });
+      if(tags.length) return tags.slice(0,max);
+    }
     const themeCells = c.theme_cells || {};
     const themes     = c.themes || [];
     const weeks      = parseInt(c.weeks) || 0;
