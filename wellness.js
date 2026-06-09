@@ -2412,7 +2412,7 @@ function moveSessionRow(ri, dir) {
   // Remap sessionCells : clé = w{wk}-{ri}-{di}
   const cells = cycleData.sessionCells;
   const weeks = cycleData.weeks || 8;
-  const DAYS_N = 6; // DAYS_SESSION.length
+  const DAYS_N = 7; // DAYS_SESSION.length
 
   for (let wk = 0; wk < weeks; wk++) {
     for (let di = 0; di < DAYS_N; di++) {
@@ -2483,7 +2483,7 @@ function moveSessionRow(ri, dir) {
 // ===================================================
 
 const CYCLE_THEMES_DEFAULT = ['Weightlifting','Gymnastics','Strongman','Renforcement','Skill','Bodybuilding'];
-const DAYS_CYCLE = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+const DAYS_CYCLE = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
 
 // Initialise cycleData.themes + cycleData.themeCells si absents
 function _ensureCycleThemes(){
@@ -2557,7 +2557,7 @@ function renderCycleGridNew(){
           const chipsHtml = chips.map((chip,chi)=>{
             const fg = isLightColor(chip.color)?'#111':'#fff';
             const themes = cycleData.themes||[];
-            const DAYS_N = 6;
+            const DAYS_N = 7;
             const mvBtn = (label, disabled, onclick) => `<button style="padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg};border-radius:3px;cursor:${disabled?'default':'pointer'};opacity:${disabled?'.2':'.8'};line-height:1.3" ${disabled?'disabled':''} onclick="${disabled?'event.stopPropagation()':'event.stopPropagation();'+onclick}">${label}</button>`;
             return `<div class="session-chip" style="background:${chip.color};color:${fg};${chip.done?'opacity:.55;text-decoration:line-through':''};display:flex;flex-direction:column;gap:4px;padding:6px 6px 5px">
               <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
@@ -3057,7 +3057,7 @@ function _moveChip(bucket, keyFrom, chi, keyTo){
 // ── Vue Session ──────────────────────────────────────
 function moveSessionChip(wk, ri, di, chi, dri, ddi){
   const rows = cycleData.rows;
-  const DAYS_N = 6;
+  const DAYS_N = 7;
   const newRi = ri + dri;
   const newDi = di + ddi;
   if(newRi < 0 || newRi >= rows.length) return;
@@ -3074,7 +3074,7 @@ function moveSessionChip(wk, ri, di, chi, dri, ddi){
 function moveThemeChip(wk, ti, di, chi, dti, ddi){
   _ensureCycleThemes();
   const themes = cycleData.themes;
-  const DAYS_N = 6;
+  const DAYS_N = 7;
   const newTi = ti + dti;
   const newDi = di + ddi;
   if(newTi < 0 || newTi >= themes.length) return;
@@ -3116,7 +3116,7 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
         const wk=parseInt(km[1]), ri=parseInt(km[2]), di=parseInt(km[3]);
         const chi = parseInt(chiMatch[1]);
         const rows = cycleData.rows||[];
-        const DAYS_N = 6;
+        const DAYS_N = 7;
         const fg = chipEl.style.color;
         const mvBtn = (label, disabled, fn) => {
           const s = `padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg||'inherit'};border-radius:3px;cursor:${disabled?'default':'pointer'};opacity:${disabled?'.2':'.8'};line-height:1.3`;
@@ -3161,3 +3161,97 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
 })();
 
 // (boutons ←→↑↓ vue cycle intégrés directement dans renderCycleGridNew)
+
+// ===================================================
+// PATCH openDuplicateCellSameCycle + openDuplicateCellToCycle
+// pour supporter _themeCellTarget (vue cycle nouvelle)
+// ===================================================
+(function(){
+  if(window.__dupCyclePatchBound) return;
+  window.__dupCyclePatchBound = true;
+
+  const _origSame = window.openDuplicateCellSameCycle;
+  window.openDuplicateCellSameCycle = function(){
+    // Si _themeCellTarget actif, construire un cycleCellTarget compatible
+    if(_themeCellTarget && !cycleCellTarget){
+      const t = _themeCellTarget;
+      if(t.summary) { showToast('⚠️ Duplication non disponible sur la ligne Résumé'); return; }
+      const key = `t${t.wk}-${t.ti}-${t.di}`;
+      const chips = (cycleData.themeCells[key]||[]);
+      if(!chips.length){ showToast('⚠️ Cette case est vide'); return; }
+      const totalWeeks = parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
+      const currentWeek = t.wk+1;
+      const input = prompt(`Dupliquer ce bloc vers quelle(s) semaine(s) ? (1-${totalWeeks})\nEx: 2  ou  2,3,5  ou  2-4`, String(Math.min(currentWeek+1,totalWeeks)));
+      if(!input) return;
+      const targets = new Set();
+      input.split(',').forEach(part=>{
+        const p=part.trim(); if(!p) return;
+        const range=p.match(/^(\d+)\s*-\s*(\d+)$/);
+        if(range){const a=parseInt(range[1]),b=parseInt(range[2]);for(let i=Math.min(a,b);i<=Math.max(a,b);i++)targets.add(i);}
+        else {const n=parseInt(p);if(!isNaN(n))targets.add(n);}
+      });
+      let added=0;
+      targets.forEach(wkOneBased=>{
+        if(wkOneBased<1||wkOneBased>totalWeeks) return;
+        if(wkOneBased===currentWeek) return;
+        const targetW=wkOneBased-1;
+        const newKey=`t${targetW}-${t.ti}-${t.di}`;
+        const cloned=JSON.parse(JSON.stringify(chips)).map(c=>({...c,done:false}));
+        cycleData.themeCells[newKey]=(cycleData.themeCells[newKey]||[]).concat(cloned);
+        added++;
+      });
+      if(!added){showToast('⚠️ Aucune semaine valide');return;}
+      closeCycleCellModal();
+      renderCycleGridNew();
+      scheduleAutoSaveCycle();
+      showToast(`✅ Bloc dupliqué sur ${added} semaine${added>1?'s':''}`);
+      return;
+    }
+    _origSame.apply(this, arguments);
+  };
+
+  const _origToCycle = window.openDuplicateCellToCycle;
+  window.openDuplicateCellToCycle = function(){
+    if(_themeCellTarget && !cycleCellTarget){
+      const t = _themeCellTarget;
+      if(t.summary){ showToast('⚠️ Duplication non disponible sur la ligne Résumé'); return; }
+      const key = `t${t.wk}-${t.ti}-${t.di}`;
+      const chips = (cycleData.themeCells[key]||[]);
+      if(!chips.length){ showToast('⚠️ Cette case est vide'); return; }
+      const others=(allCycles||[]).filter(c=>c.id!==cycleData.id);
+      if(!others.length){showToast('⚠️ Aucun autre cycle disponible');return;}
+      const sel=document.getElementById('dup-cycle-select');
+      sel.innerHTML=others.map(c=>`<option value="${c.id}">${(c.name||'Sans nom').replace(/</g,'&lt;')}</option>`).join('');
+      document.getElementById('dup-cycle-week').value=t.wk+1;
+      // Stocker la source dans _dupCellSource avec mode 'theme'
+      window._dupThemeCellSource={key,chips:JSON.parse(JSON.stringify(chips)),ti:t.ti,di:t.di};
+      document.getElementById('dup-cycle-modal').classList.add('open');
+      return;
+    }
+    _origToCycle.apply(this, arguments);
+  };
+
+  // Patch confirmDuplicateCellToCycle pour gérer mode theme
+  const _origConfirm = window.confirmDuplicateCellToCycle;
+  window.confirmDuplicateCellToCycle = async function(){
+    if(window._dupThemeCellSource){
+      const src = window._dupThemeCellSource;
+      const targetId = document.getElementById('dup-cycle-select').value;
+      const targetWeek = Math.max(1,parseInt(document.getElementById('dup-cycle-week').value)||1)-1;
+      if(!targetId){showToast('⚠️ Choisis un cycle');return;}
+      const {data:tc,error}=await sb.from('cycle_plans').select('*').eq('id',targetId).single();
+      if(error||!tc){showToast('⚠️ Cycle introuvable');return;}
+      const themeCells=tc.theme_cells||{};
+      const newKey=`t${targetWeek}-${src.ti}-${src.di}`;
+      themeCells[newKey]=(themeCells[newKey]||[]).concat(src.chips.map(c=>({...c,done:false})));
+      const {error:upErr}=await sb.from('cycle_plans').update({theme_cells:themeCells}).eq('id',targetId);
+      if(upErr){showToast('❌ Erreur: '+upErr.message);return;}
+      showToast('✅ Bloc dupliqué vers '+(tc.name||'cycle'));
+      window._dupThemeCellSource=null;
+      document.getElementById('dup-cycle-modal').classList.remove('open');
+      closeCycleCellModal();
+      return;
+    }
+    _origConfirm.apply(this, arguments);
+  };
+})();
