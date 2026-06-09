@@ -2537,6 +2537,7 @@ function renderCycleGridNew(){
                 style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1.5px solid ${fg};border-radius:3px;background:${chip.done?fg:'transparent'};color:${chip.done?(isLightColor(fg)?'#111':chip.color):fg};font-size:12px;line-height:1;cursor:pointer;user-select:none">${chip.done?'✓':''}</span>
               <span class="session-chip-text" style="flex:1;min-width:0" onclick="event.stopPropagation();editThemeChip(${wk},${ti},${di},${chi})">${chip.text}</span>
               <button class="session-chip-del" onclick="event.stopPropagation();removeThemeChip('${key}',${chi})" style="position:static;opacity:.7">✕</button>
+              <button onclick="event.stopPropagation();sendThemeChipToSession(${JSON.stringify(chip.text)})" title="Envoyer vers Séance+" style="flex-shrink:0;padding:1px 5px;font-size:9px;font-weight:700;background:rgba(0,0,0,.25);border:1px solid ${fg}55;color:${fg};border-radius:4px;cursor:pointer;white-space:nowrap;opacity:.8">→</button>
             </div>`;
           }).join('');
           return `<td class="session-cell" onclick="openThemeCellModal(${wk},${ti},${di})">
@@ -2561,21 +2562,6 @@ function renderCycleGridNew(){
     });
   });
 
-  // Injecter bouton → Séance+ dans chaque th jour (même logique que session)
-  if(grid) grid.querySelectorAll('.session-grid-table').forEach((table,wk)=>{
-    table.querySelectorAll('thead tr th').forEach((th,idx)=>{
-      if(idx===0) return;
-      const di = idx-1;
-      if(th.querySelector('.cycle-to-session-btn')) return;
-      const btn = document.createElement('button');
-      btn.className='cycle-to-session-btn';
-      btn.title='Transférer vers Séance+';
-      btn.innerHTML='→ Séance+';
-      btn.style.cssText='display:block;margin:4px auto 0;padding:2px 7px;font-size:10px;font-weight:700;background:var(--card2);border:1px solid var(--accent);color:var(--accent);border-radius:5px;cursor:pointer;white-space:nowrap;letter-spacing:.5px';
-      btn.addEventListener('click',(e)=>{e.stopPropagation(); transferCycleToSession(wk,di);});
-      th.appendChild(btn);
-    });
-  });
 }
 
 // ── Modale texte libre pour chips thème ─────────────
@@ -2628,6 +2614,19 @@ function toggleThemeChipDone(key,chi){
   arr[chi].done=!arr[chi].done;
   renderCycleGridNew();
   scheduleAutoSaveCycle();
+}
+
+// ── Envoyer une chip thème vers l'éditeur Séance+ ───
+function sendThemeChipToSession(text){
+  if(!text) return;
+  const newSessionBtn = Array.from(document.querySelectorAll('.admin-tab-btn'))
+    .find(b=>(b.getAttribute('onclick')||'').includes("'new-session'"));
+  if(typeof resetSessionForm==='function') resetSessionForm();
+  if(typeof adminTab==='function'&&newSessionBtn) adminTab('new-session',newSessionBtn);
+  if(typeof setEditorContent==='function') setEditorContent(text);
+  showToast('✅ Séance pré-remplie');
+  const pageAdmin=document.getElementById('page-admin');
+  if(pageAdmin) pageAdmin.scrollTop=0;
 }
 
 // ── Auto-save chip thème depuis modale ───────────────
