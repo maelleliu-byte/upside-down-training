@@ -2992,3 +2992,33 @@ document.addEventListener('DOMContentLoaded',()=>{
     return [];
   };
 })();
+
+// ===================================================
+// PATCH loadAllCycles — inclure summary_row + themes
+// dans la sélection pour alimenter _cycleTopTags
+// ===================================================
+(function(){
+  if(window.__loadAllCyclesPatchBound) return;
+  window.__loadAllCyclesPatchBound = true;
+  const _orig = window.loadAllCycles;
+  window.loadAllCycles = async function(){
+    await _orig.apply(this, arguments);
+    // Recharger summary_row + themes pour tous les cycles déjà dans allCycles
+    if(!allCycles || !allCycles.length) return;
+    try{
+      const ids = allCycles.map(c=>c.id).filter(Boolean);
+      if(!ids.length) return;
+      const {data} = await sb.from('cycle_plans')
+        .select('id,summary_row,themes,theme_cells')
+        .in('id', ids);
+      if(!data) return;
+      data.forEach(row=>{
+        const c = allCycles.find(x=>x.id===row.id);
+        if(!c) return;
+        if(row.summary_row) c.summary_row = row.summary_row;
+        if(row.themes)      c.themes      = row.themes;
+        if(row.theme_cells) c.theme_cells = row.theme_cells;
+      });
+    } catch(e){ console.warn('loadAllCycles patch summary_row', e); }
+  };
+})();
