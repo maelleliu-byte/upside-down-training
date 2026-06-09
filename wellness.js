@@ -2988,7 +2988,7 @@ document.addEventListener('DOMContentLoaded',()=>{
       if(sorted.length) return sorted;
     }
 
-    // 2) Fallback sur l'ancienne logique
-    return typeof _orig==='function' ? _orig.apply(this,arguments) : [];
+    // Pas de fallback sur l'ancienne logique
+    return [];
   };
 })();
