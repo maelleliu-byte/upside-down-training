@@ -48,6 +48,14 @@ const __origAdminTab=adminTab;
 adminTab=function(tab,btn){
   const card=document.getElementById('admin-athlete-card');const list=document.getElementById('admin-athletes-list');
   if(card)card.style.display='none';if(list)list.style.display='';
+  if(tab==='studios'){
+    document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+    if(btn)btn.classList.add('active');
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+    const panel=document.getElementById('admin-studios');
+    if(panel){panel.classList.add('active');if(typeof loadAdminStudios==='function')loadAdminStudios();}
+    return;
+  }
   __origAdminTab(tab,btn);
   if(tab==='wellness')loadWellnessAdmin();
 };
