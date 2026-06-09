@@ -2537,10 +2537,10 @@ function renderCycleGridNew(){
                 style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1.5px solid ${fg};border-radius:3px;background:${chip.done?fg:'transparent'};color:${chip.done?(isLightColor(fg)?'#111':chip.color):fg};font-size:12px;line-height:1;cursor:pointer;user-select:none">${chip.done?'✓':''}</span>
               <span class="session-chip-text" style="flex:1;min-width:0" onclick="event.stopPropagation();editThemeChip(${wk},${ti},${di},${chi})">${chip.text}</span>
               <button class="session-chip-del" onclick="event.stopPropagation();removeThemeChip('${key}',${chi})" style="position:static;opacity:.7">✕</button>
-              <button onclick="event.stopPropagation();sendThemeChipToSession(${JSON.stringify(chip.text)})" title="Envoyer vers Séance+" style="flex-shrink:0;padding:1px 5px;font-size:9px;font-weight:700;background:rgba(0,0,0,.25);border:1px solid ${fg}55;color:${fg};border-radius:4px;cursor:pointer;white-space:nowrap;opacity:.8">→</button>
+              <button class="theme-chip-send" data-text=${JSON.stringify(chip.text)} title="Envoyer vers Séance+" style="flex-shrink:0;padding:1px 5px;font-size:9px;font-weight:700;background:rgba(0,0,0,.25);border:1px solid ${fg}55;color:${fg};border-radius:4px;cursor:pointer;white-space:nowrap;opacity:.8">→</button>
             </div>`;
           }).join('');
-          return `<td class="session-cell" onclick="openThemeCellModal(${wk},${ti},${di})">
+          return `<td class="session-cell" data-wk="${wk}" data-ti="${ti}" data-di="${di}">
             <div class="session-cell-inner">${chipsHtml}<button class="cycle-add-btn">+</button></div>
           </td>`;
         }).join('')}
@@ -2559,6 +2559,23 @@ function renderCycleGridNew(){
       const k = this.getAttribute('data-toggle-key');
       const i = parseInt(this.getAttribute('data-toggle-idx'));
       toggleThemeChipDone(k,i);
+    });
+  });
+
+  // Bind boutons → (envoyer chip vers Séance+)
+  if(grid) grid.querySelectorAll('.theme-chip-send').forEach(btn=>{
+    btn.addEventListener('click', function(ev){
+      ev.stopPropagation(); ev.preventDefault();
+      sendThemeChipToSession(this.dataset.text);
+    });
+  });
+
+  // Bind td → openThemeCellModal (via delegation pour éviter conflit avec boutons internes)
+  if(grid) grid.querySelectorAll('td.session-cell[data-wk]').forEach(td=>{
+    td.addEventListener('click', function(ev){
+      if(ev.target.closest('.theme-chip-send,.session-chip-del,.chip-toggle,.session-chip-text')) return;
+      const wk=parseInt(this.dataset.wk), ti=parseInt(this.dataset.ti), di=parseInt(this.dataset.di);
+      openThemeCellModal(wk,ti,di);
     });
   });
 
