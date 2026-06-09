@@ -2700,7 +2700,14 @@ function sendThemeChipToSession(text){
     .find(b=>(b.getAttribute('onclick')||'').includes("'new-session'"));
   if(typeof resetSessionForm==='function') resetSessionForm();
   if(typeof adminTab==='function'&&newSessionBtn) adminTab('new-session',newSessionBtn);
-  if(typeof setEditorContent==='function') setEditorContent(text);
+  if(typeof setEditorContent==='function'){
+    // Convertir texte brut → HTML : sauts de ligne → <br>, envelopper dans <p>
+    const html = text
+      .split(/\n\n+/)
+      .map(para => `<p>${para.replace(/\n/g,'<br>')}</p>`)
+      .join('');
+    setEditorContent(html);
+  }
   showToast('✅ Séance pré-remplie');
   const pageAdmin=document.getElementById('page-admin');
   if(pageAdmin) pageAdmin.scrollTop=0;
