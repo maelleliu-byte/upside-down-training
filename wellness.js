@@ -2556,13 +2556,26 @@ function renderCycleGridNew(){
           const chips = (cycleData.themeCells[key]||[]);
           const chipsHtml = chips.map((chip,chi)=>{
             const fg = isLightColor(chip.color)?'#111':'#fff';
-            return `<div class="session-chip" style="background:${chip.color};color:${fg};${chip.done?'opacity:.55;text-decoration:line-through':''};display:flex;align-items:center;gap:5px">
-              <span class="chip-toggle" data-toggle-key="${key}" data-toggle-idx="${chi}" data-bucket="theme"
-                role="checkbox" aria-checked="${!!chip.done}" title="Traité"
-                style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1.5px solid ${fg};border-radius:3px;background:${chip.done?fg:'transparent'};color:${chip.done?(isLightColor(fg)?'#111':chip.color):fg};font-size:12px;line-height:1;cursor:pointer;user-select:none">${chip.done?'✓':''}</span>
-              <span class="session-chip-text" style="flex:1;min-width:0" onclick="event.stopPropagation();editThemeChip(${wk},${ti},${di},${chi})">${chip.text}</span>
-              <button class="session-chip-del" onclick="event.stopPropagation();removeThemeChip('${key}',${chi})" style="position:static;opacity:.7">✕</button>
-              <button class="theme-chip-send" data-text=${JSON.stringify(chip.text)} title="Envoyer vers Séance+" style="flex-shrink:0;padding:1px 5px;font-size:9px;font-weight:700;background:rgba(0,0,0,.25);border:1px solid ${fg}55;color:${fg};border-radius:4px;cursor:pointer;white-space:nowrap;opacity:.8">→</button>
+            const themes = cycleData.themes||[];
+            const DAYS_N = 6;
+            const mvStyle = `padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg};border-radius:3px;cursor:pointer;opacity:.8;line-height:1.3`;
+            return `<div class="session-chip" style="background:${chip.color};color:${fg};${chip.done?'opacity:.55;text-decoration:line-through':''};display:flex;flex-direction:column;gap:4px;padding:6px 6px 5px">
+              <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
+                <span class="chip-toggle" data-toggle-key="${key}" data-toggle-idx="${chi}" data-bucket="theme"
+                  role="checkbox" aria-checked="${!!chip.done}" title="Traité"
+                  style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border:1.5px solid ${fg};border-radius:3px;background:${chip.done?fg:'transparent'};color:${chip.done?(isLightColor(fg)?'#111':chip.color):fg};font-size:11px;line-height:1;cursor:pointer;user-select:none">${chip.done?'✓':''}</span>
+                <div style="display:flex;gap:2px;align-items:center">
+                  ${ti>0              ? `<button style="${mvStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},-1,0)">↑</button>` : ''}
+                  ${ti<themes.length-1? `<button style="${mvStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},1,0)">↓</button>` : ''}
+                  ${di>0              ? `<button style="${mvStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},0,-1)">←</button>` : ''}
+                  ${di<DAYS_N-1       ? `<button style="${mvStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},0,1)">→</button>` : ''}
+                  <button class="session-chip-del" onclick="event.stopPropagation();removeThemeChip('${key}',${chi})" style="padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg};border-radius:3px;cursor:pointer;opacity:.8">✕</button>
+                </div>
+              </div>
+              <span class="session-chip-text" style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5" onclick="event.stopPropagation();editThemeChip(${wk},${ti},${di},${chi})">${chip.text}</span>
+              <div style="display:flex;justify-content:flex-end">
+                <button class="theme-chip-send" data-text=${JSON.stringify(chip.text)} title="Envoyer vers Séance+" style="padding:2px 8px;font-size:9px;font-weight:700;background:rgba(0,0,0,.25);border:1px solid ${fg}55;color:${fg};border-radius:4px;cursor:pointer;opacity:.8">→ Séance+</button>
+              </div>
             </div>`;
           }).join('');
           return `<td class="session-cell" data-wk="${wk}" data-ti="${ti}" data-di="${di}">
@@ -3074,7 +3087,7 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
   }
 }
 
-// ── Patch renderSessionGrid : injecter boutons ←→↑↓ ─
+// ── Patch renderSessionGrid : restructurer chips avec barre haute ←→↑↓ ─
 (function(){
   if(window.__sessionChipMoveBound) return;
   window.__sessionChipMoveBound = true;
@@ -3086,12 +3099,13 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
       orig.apply(this, arguments);
       const grid = document.getElementById('cycle-grid');
       if(!grid) return;
-      // Injecter boutons dans chaque session-chip de la vue session
       grid.querySelectorAll('.session-chip').forEach(chipEl => {
         if(chipEl.querySelector('.chip-move-btns')) return;
-        const delBtn = chipEl.querySelector('.session-chip-del');
-        if(!delBtn) return;
-        // Lire les coords depuis le onclick du del btn
+        const delBtn   = chipEl.querySelector('.session-chip-del');
+        const toggle   = chipEl.querySelector('.chip-toggle');
+        const textSpan = chipEl.querySelector('.session-chip-text');
+        if(!delBtn || !toggle || !textSpan) return;
+
         const delOnclick = delBtn.getAttribute('onclick')||'';
         const keyMatch = delOnclick.match(/'(w\d+-(\d+)-(\d+))'/);
         const chiMatch = delOnclick.match(/,(\d+)\)/);
@@ -3103,17 +3117,39 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
         const chi = parseInt(chiMatch[1]);
         const rows = cycleData.rows||[];
         const DAYS_N = 6;
-        const btnStyle = 'padding:1px 4px;font-size:9px;background:rgba(0,0,0,.3);border:none;color:inherit;border-radius:3px;cursor:pointer;opacity:.7;line-height:1.2';
-        const wrap = document.createElement('div');
-        wrap.className = 'chip-move-btns';
-        wrap.style.cssText = 'display:flex;gap:2px;flex-shrink:0';
-        wrap.innerHTML = `
-          ${ri>0         ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},-1,0)">↑</button>` : ''}
-          ${ri<rows.length-1 ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},1,0)">↓</button>` : ''}
-          ${di>0         ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},0,-1)">←</button>` : ''}
-          ${di<DAYS_N-1  ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},0,1)">→</button>` : ''}
+        const fg = chipEl.style.color;
+        const btnStyle = `padding:1px 5px;font-size:9px;background:rgba(0,0,0,.25);border:none;color:${fg||'inherit'};border-radius:3px;cursor:pointer;opacity:.8;line-height:1.3`;
+
+        // Restructurer en flex-column
+        chipEl.style.flexDirection = 'column';
+        chipEl.style.alignItems    = '';
+        chipEl.style.gap           = '4px';
+        chipEl.style.padding       = '6px 6px 5px';
+
+        // Barre haute : case à cocher (gauche) + boutons direction + ✕ (droite)
+        const topBar = document.createElement('div');
+        topBar.className = 'chip-move-btns';
+        topBar.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:4px;width:100%';
+
+        const rightBtns = document.createElement('div');
+        rightBtns.style.cssText = 'display:flex;gap:2px;align-items:center';
+        rightBtns.innerHTML = `
+          ${ri>0              ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},-1,0)">↑</button>` : ''}
+          ${ri<rows.length-1  ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},1,0)">↓</button>` : ''}
+          ${di>0              ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},0,-1)">←</button>` : ''}
+          ${di<DAYS_N-1       ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveSessionChip(${wk},${ri},${di},${chi},0,1)">→</button>` : ''}
         `;
-        chipEl.insertBefore(wrap, delBtn);
+        rightBtns.appendChild(delBtn);
+
+        toggle.style.flexShrink = '0';
+        topBar.appendChild(toggle);
+        topBar.appendChild(rightBtns);
+
+        // Remettre dans l'ordre : barre haute, texte
+        chipEl.innerHTML = '';
+        chipEl.appendChild(topBar);
+        textSpan.style.cssText = 'white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5;width:100%';
+        chipEl.appendChild(textSpan);
       });
     };
     window.renderSessionGrid.__chipMovePatchedSession = true;
@@ -3123,39 +3159,4 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
   else document.addEventListener('DOMContentLoaded', _patch);
 })();
 
-// ── Patch renderCycleGridNew : injecter boutons ←→↑↓ ─
-// On injecte directement dans le HTML de renderCycleGridNew
-// via un post-patch sur le grid après rendu
-(function(){
-  if(window.__themeChipMoveBound) return;
-  window.__themeChipMoveBound = true;
-
-  const _origNew = window.renderCycleGridNew;
-  window.renderCycleGridNew = function(){
-    _origNew.apply(this, arguments);
-    _ensureCycleThemes();
-    const themes = cycleData.themes||[];
-    const DAYS_N = 6;
-    const grid = document.getElementById('cycle-grid');
-    if(!grid) return;
-    grid.querySelectorAll('td.session-cell[data-wk]').forEach(td=>{
-      const wk=parseInt(td.dataset.wk), ti=parseInt(td.dataset.ti), di=parseInt(td.dataset.di);
-      td.querySelectorAll('.session-chip').forEach((chipEl, chi)=>{
-        if(chipEl.querySelector('.chip-move-btns')) return;
-        const delBtn = chipEl.querySelector('.session-chip-del');
-        if(!delBtn) return;
-        const btnStyle = 'padding:1px 4px;font-size:9px;background:rgba(0,0,0,.3);border:none;color:inherit;border-radius:3px;cursor:pointer;opacity:.7;line-height:1.2';
-        const wrap = document.createElement('div');
-        wrap.className = 'chip-move-btns';
-        wrap.style.cssText = 'display:flex;gap:2px;flex-shrink:0';
-        wrap.innerHTML = `
-          ${ti>0            ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},-1,0)">↑</button>` : ''}
-          ${ti<themes.length-1 ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},1,0)">↓</button>` : ''}
-          ${di>0            ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},0,-1)">←</button>` : ''}
-          ${di<DAYS_N-1     ? `<button style="${btnStyle}" onclick="event.stopPropagation();moveThemeChip(${wk},${ti},${di},${chi},0,1)">→</button>` : ''}
-        `;
-        chipEl.insertBefore(wrap, delBtn);
-      });
-    });
-  };
-})();
+// (boutons ←→↑↓ vue cycle intégrés directement dans renderCycleGridNew)
