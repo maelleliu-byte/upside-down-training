@@ -2856,3 +2856,44 @@ document.addEventListener('DOMContentLoaded',()=>{
     }
   },800);
 });
+
+// ===================================================
+// PATCH _cycleTopTags — lit themeCells en priorité
+// pour alimenter le récap des cards de cycles
+// ===================================================
+(function(){
+  if(window.__cycleTopTagsBound) return;
+  window.__cycleTopTagsBound = true;
+
+  const _orig = window._cycleTopTags;
+  window._cycleTopTags = function(c, max=4){
+    // 1) Lire themeCells (nouvelle structure)
+    const themeCells = c.theme_cells || {};
+    const themes     = c.themes || [];
+    const weeks      = parseInt(c.weeks) || 0;
+
+    if(themes.length && Object.keys(themeCells).length){
+      // Compter les jours remplis par thème
+      const counts = {}; // { themeName: { n, color } }
+      for(let wk=0; wk<weeks; wk++){
+        themes.forEach((name,ti)=>{
+          for(let di=0; di<6; di++){
+            const arr = themeCells[`t${wk}-${ti}-${di}`]||[];
+            if(arr.length){
+              if(!counts[name]) counts[name]={n:0,color:arr[0].color||'#e8ff47'};
+              counts[name].n += arr.length;
+            }
+          }
+        });
+      }
+      const sorted = Object.entries(counts)
+        .sort((a,b)=>b[1].n-a[1].n)
+        .slice(0,max)
+        .map(([text,v])=>({text,color:v.color,n:v.n}));
+      if(sorted.length) return sorted;
+    }
+
+    // 2) Fallback sur l'ancienne logique
+    return typeof _orig==='function' ? _orig.apply(this,arguments) : [];
+  };
+})();
