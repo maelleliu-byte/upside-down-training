@@ -2475,3 +2475,368 @@ function moveSessionRow(ri, dir) {
     document.addEventListener('DOMContentLoaded', _patch);
   }
 })();
+
+// ===================================================
+// VUE CYCLE — REFONTE LAYOUT (blocs semaine, jours
+// en colonnes, thèmes en lignes) + réordonnement ↑↓
+// themeCells: clé = "t{wk}-{ti}-{di}"
+// ===================================================
+
+const CYCLE_THEMES_DEFAULT = ['Weightlifting','Gymnastics','Strongman','Renforcement','Skill','Bodybuilding'];
+const DAYS_CYCLE = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi'];
+
+// Initialise cycleData.themes + cycleData.themeCells si absents
+function _ensureCycleThemes(){
+  if(!cycleData.themes) cycleData.themes = [...CYCLE_THEMES_DEFAULT];
+  if(!cycleData.themeCells) cycleData.themeCells = {};
+}
+
+// ── Rendu principal de la vue cycle ──────────────────
+function renderCycleGridNew(){
+  _ensureCycleThemes();
+  const themes = cycleData.themes;
+  const weeks  = parseInt(document.getElementById('cycle-weeks')?.value) || cycleData.weeks || 8;
+  cycleData.weeks = weeks;
+
+  const startInput = document.getElementById('cycle-start-date')?.value;
+  const startDate  = startInput ? new Date(startInput+'T12:00:00') : (() => {
+    const d = new Date(); const day = d.getDay();
+    d.setDate(d.getDate() - (day===0?6:day-1)); return d;
+  })();
+
+  let html = '';
+  for(let wk=0; wk<weeks; wk++){
+    const wStart = new Date(startDate); wStart.setDate(startDate.getDate()+wk*7);
+    const wEnd   = new Date(wStart);   wEnd.setDate(wStart.getDate()+6);
+    const wLabel = `${wStart.getDate()}/${wStart.getMonth()+1} → ${wEnd.getDate()}/${wEnd.getMonth()+1}`;
+
+    html += `<div style="margin-bottom:18px">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--orange);margin:6px 2px 6px;padding:4px 0;border-bottom:1px solid var(--border2)">
+        SEMAINE ${wk+1} <span style="font-size:11px;color:var(--muted);font-weight:400;letter-spacing:0;font-family:inherit">${wLabel}</span>
+      </div>
+      <table class="session-grid-table"><thead><tr>
+        <th class="row-header">Thème</th>
+        ${DAYS_CYCLE.map(d=>`<th>${d}</th>`).join('')}
+      </tr></thead><tbody>`;
+
+    themes.forEach((theme,ti)=>{
+      html += `<tr>
+        <td class="session-row-label">
+          <div class="session-row-label-inner">
+            <span style="font-size:12px;font-weight:700;color:var(--text2)">${theme}</span>
+          </div>
+        </td>
+        ${DAYS_CYCLE.map((_,di)=>{
+          const key = `t${wk}-${ti}-${di}`;
+          const chips = (cycleData.themeCells[key]||[]);
+          const chipsHtml = chips.map((chip,chi)=>{
+            const fg = isLightColor(chip.color)?'#111':'#fff';
+            return `<div class="session-chip" style="background:${chip.color};color:${fg};${chip.done?'opacity:.55;text-decoration:line-through':''};display:flex;align-items:center;gap:5px">
+              <span class="chip-toggle" data-toggle-key="${key}" data-toggle-idx="${chi}" data-bucket="theme"
+                role="checkbox" aria-checked="${!!chip.done}" title="Traité"
+                style="flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border:1.5px solid ${fg};border-radius:3px;background:${chip.done?fg:'transparent'};color:${chip.done?(isLightColor(fg)?'#111':chip.color):fg};font-size:12px;line-height:1;cursor:pointer;user-select:none">${chip.done?'✓':''}</span>
+              <span class="session-chip-text" style="flex:1;min-width:0" onclick="event.stopPropagation();editThemeChip(${wk},${ti},${di},${chi})">${chip.text}</span>
+              <button class="session-chip-del" onclick="event.stopPropagation();removeThemeChip('${key}',${chi})" style="position:static;opacity:.7">✕</button>
+            </div>`;
+          }).join('');
+          return `<td class="session-cell" onclick="openThemeCellModal(${wk},${ti},${di})">
+            <div class="session-cell-inner">${chipsHtml}<button class="cycle-add-btn">+</button></div>
+          </td>`;
+        }).join('')}
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+  }
+
+  const grid = document.getElementById('cycle-grid');
+  if(grid){ grid.innerHTML = html; }
+
+  // Bind toggles chips thème
+  if(grid) grid.querySelectorAll('[data-bucket="theme"]').forEach(t=>{
+    t.addEventListener('click', function(ev){
+      ev.stopPropagation(); ev.preventDefault();
+      const k = this.getAttribute('data-toggle-key');
+      const i = parseInt(this.getAttribute('data-toggle-idx'));
+      toggleThemeChipDone(k,i);
+    });
+  });
+
+  // Injecter bouton → Séance+ dans chaque th jour (même logique que session)
+  if(grid) grid.querySelectorAll('.session-grid-table').forEach((table,wk)=>{
+    table.querySelectorAll('thead tr th').forEach((th,idx)=>{
+      if(idx===0) return;
+      const di = idx-1;
+      if(th.querySelector('.cycle-to-session-btn')) return;
+      const btn = document.createElement('button');
+      btn.className='cycle-to-session-btn';
+      btn.title='Transférer vers Séance+';
+      btn.innerHTML='→ Séance+';
+      btn.style.cssText='display:block;margin:4px auto 0;padding:2px 7px;font-size:10px;font-weight:700;background:var(--card2);border:1px solid var(--accent);color:var(--accent);border-radius:5px;cursor:pointer;white-space:nowrap;letter-spacing:.5px';
+      btn.addEventListener('click',(e)=>{e.stopPropagation(); transferCycleToSession(wk,di);});
+      th.appendChild(btn);
+    });
+  });
+}
+
+// ── Modale texte libre pour chips thème ─────────────
+let _themeCellTarget = null;
+
+function openThemeCellModal(wk,ti,di){
+  _ensureCycleThemes();
+  _themeCellTarget = {wk,ti,di,editIdx:null};
+  const theme = cycleData.themes[ti]||'—';
+  document.getElementById('cycle-cell-title').textContent = `Sem. ${wk+1} — ${theme} — ${DAYS_CYCLE[di]}`;
+  document.getElementById('cycle-cell-subtitle').textContent = 'Ajoute une séance';
+  document.getElementById('cycle-cell-presets').style.display='none';
+  document.getElementById('cycle-cell-input').value='';
+  selectedChipColor='#e8ff47';
+  document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color==='#e8ff47'));
+  document.getElementById('cycle-cell-modal').classList.add('open');
+  _setChipAutoSaveStatus('idle');
+  setTimeout(()=>{
+    autoResizeCycleInput(document.getElementById('cycle-cell-input'));
+    document.getElementById('cycle-cell-input').focus();
+  },300);
+}
+
+function editThemeChip(wk,ti,di,chi){
+  _ensureCycleThemes();
+  const key=`t${wk}-${ti}-${di}`;
+  const chip=(cycleData.themeCells[key]||[])[chi];
+  if(!chip)return;
+  _themeCellTarget={wk,ti,di,editIdx:chi};
+  document.getElementById('cycle-cell-title').textContent=`Sem. ${wk+1} — ${cycleData.themes[ti]||'—'} — ${DAYS_CYCLE[di]}`;
+  document.getElementById('cycle-cell-subtitle').textContent='Modifier';
+  document.getElementById('cycle-cell-presets').style.display='none';
+  document.getElementById('cycle-cell-input').value=chip.text;
+  selectedChipColor=chip.color||'#e8ff47';
+  document.querySelectorAll('.chip-color-btn').forEach(b=>b.classList.toggle('selected',b.dataset.color===chip.color));
+  document.getElementById('cycle-cell-modal').classList.add('open');
+  _setChipAutoSaveStatus('idle');
+  setTimeout(()=>autoResizeCycleInput(document.getElementById('cycle-cell-input')),0);
+}
+
+function removeThemeChip(key,chi){
+  if(cycleData.themeCells[key])cycleData.themeCells[key].splice(chi,1);
+  renderCycleGridNew();
+  scheduleAutoSaveCycle();
+}
+
+function toggleThemeChipDone(key,chi){
+  const arr=cycleData.themeCells[key];
+  if(!arr||!arr[chi])return;
+  arr[chi].done=!arr[chi].done;
+  renderCycleGridNew();
+  scheduleAutoSaveCycle();
+}
+
+// ── Auto-save chip thème depuis modale ───────────────
+// Patch _doAutoSaveCycleChip pour gérer le bucket thème
+(function(){
+  if(window.__themeChipSaveBound) return;
+  window.__themeChipSaveBound = true;
+  const _origSave = window._doAutoSaveCycleChip;
+  window._doAutoSaveCycleChip = function(){
+    // Si une cible thème est active, gérer ici
+    if(_themeCellTarget && document.getElementById('cycle-cell-modal')?.classList.contains('open')){
+      _ensureCycleThemes();
+      const inputEl = document.getElementById('cycle-cell-input');
+      if(!inputEl) return;
+      const text = inputEl.value.trim();
+      const t = _themeCellTarget;
+      const key = `t${t.wk}-${t.ti}-${t.di}`;
+      if(!text && t.editIdx==null) return;
+      _setChipAutoSaveStatus('saving');
+      if(!cycleData.themeCells[key]) cycleData.themeCells[key]=[];
+      if(t.editIdx!=null){
+        if(!text){ cycleData.themeCells[key].splice(t.editIdx,1); _themeCellTarget.editIdx=null; }
+        else { cycleData.themeCells[key][t.editIdx]={text,color:selectedChipColor,done:!!(cycleData.themeCells[key][t.editIdx]||{}).done}; }
+      } else {
+        cycleData.themeCells[key].push({text,color:selectedChipColor,done:false});
+        _themeCellTarget.editIdx = cycleData.themeCells[key].length-1;
+      }
+      renderCycleGridNew();
+      scheduleAutoSaveCycle();
+      setTimeout(()=>_setChipAutoSaveStatus('saved'),200);
+      return;
+    }
+    // Sinon comportement original
+    if(typeof _origSave==='function') _origSave.apply(this,arguments);
+  };
+})();
+
+// Fermeture modale : reset _themeCellTarget
+(function(){
+  if(window.__themeModalCloseBound) return;
+  window.__themeModalCloseBound = true;
+  const _origClose = window.closeCycleCellModal;
+  window.closeCycleCellModal = function(){
+    _themeCellTarget = null;
+    if(typeof _origClose==='function') _origClose.apply(this,arguments);
+  };
+})();
+
+// ── Patch autoSaveCycleNow pour persister themeCells ─
+(function(){
+  if(window.__themePersistBound) return;
+  window.__themePersistBound = true;
+  const _origAutoSave = window.autoSaveCycleNow;
+  window.autoSaveCycleNow = async function(){
+    _ensureCycleThemes();
+    // Injecter themes + themeCells dans le payload avant la sauvegarde
+    // On surcharge cycleData temporairement — autoSaveCycleNow lit cycleData directement
+    const _origPayloadFn = window.autoSaveCycleNow;
+    // Patch payload via surcharge sb.from (trop risqué) → on patch la fonction entière
+    if(!currentUser) return;
+    const name=(document.getElementById('cycle-name')?.value||'').trim()||cycleData.name||'Cycle sans nom';
+    const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
+    cycleData.name=name; cycleData.weeks=weeks;
+    const startDate=document.getElementById('cycle-start-date')?.value||null;
+    const payload={
+      name, weeks, mode:cycleMode, start_date:startDate,
+      columns:cycleData.columns, rows:cycleData.rows,
+      cells:cycleData.cells, session_cells:cycleData.sessionCells,
+      theme_cells:cycleData.themeCells, themes:cycleData.themes,
+      created_by:currentUser.id, studio_id:getStudioId()
+    };
+    try{
+      if(cycleData.id){ await sb.from('cycle_plans').update(payload).eq('id',cycleData.id); }
+      else {
+        const {data,error}=await sb.from('cycle_plans').insert(payload).select('id').single();
+        if(!error&&data){ cycleData.id=data.id; await loadAllCycles();
+          const sel=document.getElementById('cycle-selector'); if(sel)sel.value=cycleData.id; }
+      }
+      const ind=document.getElementById('cycle-autosave-indicator');
+      if(ind){ind.textContent='✓ Enregistré';ind.style.opacity='1';setTimeout(()=>{if(ind)ind.style.opacity='0';},1400);}
+    }catch(e){console.warn('autoSaveCycleNow theme',e);}
+  };
+})();
+
+// ── Patch loadCycle pour charger themes + themeCells ─
+(function(){
+  if(window.__themeLoadBound) return;
+  window.__themeLoadBound = true;
+  const _origLoad = window.loadCycle;
+  window.loadCycle = async function(id){
+    await _origLoad.apply(this,arguments);
+    // Après chargement, récupérer themes + theme_cells depuis la DB
+    if(!id) return;
+    try{
+      const {data}=await sb.from('cycle_plans').select('themes,theme_cells').eq('id',id).single();
+      if(data){
+        if(data.themes) cycleData.themes=data.themes;
+        if(data.theme_cells) cycleData.themeCells=data.theme_cells;
+      }
+    }catch(e){console.warn('loadCycle themes',e);}
+    if(cycleMode==='cycle') renderCycleGridNew();
+  };
+})();
+
+// ── Config thèmes (panneau Vue Cycle) ────────────────
+function renderCycleThemesConfig(){
+  _ensureCycleThemes();
+  const themes = cycleData.themes;
+  let el = document.getElementById('cycle-themes-config');
+  if(!el){
+    // Créer le panneau de config thèmes dans cycle-config-cycle
+    const container = document.getElementById('cycle-config-cycle');
+    if(!container) return;
+    const wrap = document.createElement('div');
+    wrap.id = 'cycle-themes-config-wrap';
+    wrap.style.cssText = 'width:100%;margin-top:8px;border-top:1px solid var(--border2);padding-top:10px';
+    wrap.innerHTML = `<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+      <span style="font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px">Thèmes (lignes)</span>
+      <button onclick="addCycleTheme()" style="padding:5px 10px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:7px;font-size:11px;cursor:pointer">+ Thème</button>
+    </div>
+    <div id="cycle-themes-config" style="display:flex;flex-direction:column;gap:6px"></div>`;
+    container.appendChild(wrap);
+    el = document.getElementById('cycle-themes-config');
+  }
+  el.innerHTML = themes.map((t,i)=>`
+    <div style="display:flex;align-items:center;gap:6px">
+      <div style="display:flex;flex-direction:column;gap:2px">
+        <button onclick="moveCycleTheme(${i},-1)" ${i===0?'disabled':''} style="padding:2px 7px;font-size:11px;line-height:1.4;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer;${i===0?'opacity:.3':''}">↑</button>
+        <button onclick="moveCycleTheme(${i},1)" ${i===themes.length-1?'disabled':''} style="padding:2px 7px;font-size:11px;line-height:1.4;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:4px;cursor:pointer;${i===themes.length-1?'opacity:.3':''}">↓</button>
+      </div>
+      <input type="text" class="form-input" value="${t}"
+        oninput="cycleData.themes[${i}]=this.value;renderCycleGridNew();scheduleAutoSaveCycle()"
+        style="flex:1;padding:8px 12px;font-size:13px">
+      ${themes.length>1?`<button onclick="removeCycleTheme(${i})" style="padding:8px 10px;background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.3);color:var(--red);border-radius:8px;font-size:12px;cursor:pointer">✕</button>`:''}
+    </div>`).join('');
+}
+
+function addCycleTheme(){
+  _ensureCycleThemes();
+  cycleData.themes.push('Nouveau thème');
+  renderCycleThemesConfig();
+  renderCycleGridNew();
+  scheduleAutoSaveCycle();
+}
+
+function removeCycleTheme(i){
+  _ensureCycleThemes();
+  cycleData.themes.splice(i,1);
+  renderCycleThemesConfig();
+  renderCycleGridNew();
+  scheduleAutoSaveCycle();
+}
+
+function moveCycleTheme(ti, dir){
+  _ensureCycleThemes();
+  const themes = cycleData.themes;
+  const newTi = ti+dir;
+  if(newTi<0||newTi>=themes.length) return;
+  [themes[ti],themes[newTi]] = [themes[newTi],themes[ti]];
+  // Remap themeCells
+  const cells = cycleData.themeCells;
+  const weeks = cycleData.weeks||8;
+  for(let wk=0;wk<weeks;wk++){
+    for(let di=0;di<6;di++){
+      const keyA=`t${wk}-${ti}-${di}`;
+      const keyB=`t${wk}-${newTi}-${di}`;
+      const tmp=cells[keyA];
+      if(cells[keyB]!==undefined){cells[keyA]=cells[keyB];}else{delete cells[keyA];}
+      if(tmp!==undefined){cells[keyB]=tmp;}else{delete cells[keyB];}
+    }
+  }
+  renderCycleThemesConfig();
+  renderCycleGridNew();
+  scheduleAutoSaveCycle();
+}
+
+// ── Patch setCycleMode pour brancher la nouvelle vue ─
+(function(){
+  if(window.__setCycleModeBound) return;
+  window.__setCycleModeBound = true;
+  const _origSetMode = window.setCycleMode;
+  window.setCycleMode = function(mode){
+    _origSetMode.apply(this,arguments);
+    if(mode==='cycle'){
+      _ensureCycleThemes();
+      renderCycleThemesConfig();
+      renderCycleGridNew();
+    }
+  };
+})();
+
+// ── Patch renderCycleGrid pour intercepter mode cycle ─
+(function(){
+  if(window.__renderCycleGridNewBound) return;
+  window.__renderCycleGridNewBound = true;
+  const _origRender = window.renderCycleGrid;
+  window.renderCycleGrid = function(){
+    if(cycleMode!=='cycle'){ _origRender.apply(this,arguments); return; }
+    renderCycleGridNew();
+  };
+})();
+
+// Init au chargement si on est en mode cycle
+document.addEventListener('DOMContentLoaded',()=>{
+  setTimeout(()=>{
+    if(cycleMode==='cycle'||!cycleMode){
+      _ensureCycleThemes();
+      renderCycleThemesConfig();
+      renderCycleGridNew();
+    }
+  },800);
+});
