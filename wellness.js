@@ -2740,10 +2740,10 @@ function sendThemeChipToSession(text){
   if(typeof resetSessionForm==='function') resetSessionForm();
   if(typeof adminTab==='function'&&newSessionBtn) adminTab('new-session',newSessionBtn);
   if(typeof setEditorContent==='function'){
-    // Convertir texte brut → HTML : sauts de ligne → <br>, envelopper dans <p>
-    // Convertir les \n littéraux en vrais sauts de ligne
     setEditorContent(text.replace(/\\n/g, '\n'));
   }
+  // Mémoriser le retour vers l'onglet Cycle (vue cycle ou vue session)
+  window._returnToCycleAfterSave = cycleMode || 'cycle';
   showToast('✅ Séance pré-remplie');
   const pageAdmin=document.getElementById('page-admin');
   if(pageAdmin) pageAdmin.scrollTop=0;
@@ -3280,4 +3280,53 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
     }
     _origConfirm.apply(this, arguments);
   };
+})();
+
+// ===================================================
+// PATCH retour vers onglet Cycle après publication
+// Quand la séance vient de sendThemeChipToSession,
+// _returnToCycleAfterSave = 'cycle' | 'session'
+// On intercepte avant le test _returnToPlanningAfterSave
+// ===================================================
+(function(){
+  if(window.__returnToCyclePatchBound) return;
+  window.__returnToCyclePatchBound = true;
+
+  function _doCycleReturn(){
+    const mode = window._returnToCycleAfterSave;
+    window._returnToCycleAfterSave = null;
+    // Aller sur page-admin > onglet Cycle
+    const cycleTabBtn = Array.from(document.querySelectorAll('.admin-tab-btn'))
+      .find(b=>(b.getAttribute('onclick')||'').includes("'cycle'"));
+    if(typeof adminTab==='function' && cycleTabBtn){
+      adminTab('cycle', cycleTabBtn);
+    }
+    // Rétablir le bon sous-mode (vue cycle ou vue session)
+    if(typeof setCycleMode === 'function'){
+      setCycleMode(mode === 'session' ? 'session' : 'cycle');
+    }
+  }
+
+  // Attendre que saveSession soit définie (elle l'est dans admin.js)
+  function _patchSaveSession(){
+    const _orig = window.saveSession;
+    if(!_orig || _orig.__returnToCyclePatch) return;
+    window.saveSession = async function(){
+      // Si flag cycle actif, on le consomme après l'exécution originale
+      const hasCycleReturn = !!window._returnToCycleAfterSave;
+      if(hasCycleReturn){
+        // Neutraliser les autres flags de retour pour éviter conflit
+        window._returnToPlanningAfterSave = false;
+        window._returnToSessionsAfterSave = false;
+      }
+      await _orig.apply(this, arguments);
+      if(hasCycleReturn) _doCycleReturn();
+    };
+    window.saveSession.__returnToCyclePatch = true;
+  }
+
+  if(typeof saveSession === 'function') _patchSaveSession();
+  else document.addEventListener('DOMContentLoaded', _patchSaveSession);
+  // Sécurité : réessayer après un court délai si admin.js charge après wellness.js
+  setTimeout(_patchSaveSession, 800);
 })();
