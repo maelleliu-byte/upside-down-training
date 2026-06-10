@@ -2627,6 +2627,32 @@ function renderCycleGridNew(){
 
 }
 
+// ===================================================
+// PATCH toggleChipDone — router vers toggleThemeChipDone
+// pour les clés de la vue cycle thème (préfixe "t")
+// et vers toggleSummaryChipDone pour "sum-"
+// ===================================================
+(function(){
+  if(window.__toggleChipDoneThemePatchBound) return;
+  window.__toggleChipDoneThemePatchBound = true;
+  const _orig = window.toggleChipDone;
+  window.toggleChipDone = async function(key, chi){
+    if(typeof key === 'string' && /^t\d+/.test(key)){
+      toggleThemeChipDone(key, chi);
+      return;
+    }
+    if(typeof key === 'string' && key.startsWith('sum-')){
+      const arr = (cycleData.summaryRow||{})[key];
+      if(!arr||!arr[chi]) return;
+      arr[chi].done = !arr[chi].done;
+      renderCycleGridNew();
+      scheduleAutoSaveCycle();
+      return;
+    }
+    if(typeof _orig === 'function') return _orig.apply(this, arguments);
+  };
+})();
+
 // ── Ligne Résumé — fonctions ─────────────────────────
 function openSummaryChipModal(di, editIdx=null){
   if(!cycleData.summaryRow) cycleData.summaryRow={};
