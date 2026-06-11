@@ -1201,13 +1201,24 @@ function dashCloseFiche(){
 }
 
 async function _dashLoadStats(id){
-  const {data:scores}=await sb.from('wod_scores').select('level').eq('athlete_id',id);
+  // Tous les scores de l'athlète
+  const {data:scores}=await sb.from('wod_scores').select('level,session_id').eq('athlete_id',id);
   const all=scores||[];
-  const total=all.length;
+
+  // Filtrer sur sessions type=wod uniquement (pas de FK → deux requêtes + join JS)
+  const sessionIds=[...new Set(all.map(s=>s.session_id).filter(Boolean))];
+  const wodSessionIds=new Set();
+  if(sessionIds.length){
+    const {data:sessions}=await sb.from('sessions').select('id,type').in('id',sessionIds);
+    (sessions||[]).forEach(s=>{if(s.type==='wod')wodSessionIds.add(s.id);});
+  }
+  const wodScores=all.filter(s=>s.session_id&&wodSessionIds.has(s.session_id));
+  const total=wodScores.length;
+
   const counts={rx:0,intermediate:0,scaled:0,foundation:0};
-  all.forEach(s=>{if(counts[s.level]!==undefined)counts[s.level]++;});
+  wodScores.forEach(s=>{if(counts[s.level]!==undefined)counts[s.level]++;});
   const pct=lvl=>total?Math.round(counts[lvl]/total*100)+'%':'—';
-  document.getElementById('df-total').textContent=total;
+  document.getElementById('df-total').textContent=all.length; // total tous types
   document.getElementById('df-rx').textContent=pct('rx');
   document.getElementById('df-inter').textContent=pct('intermediate');
   document.getElementById('df-scaled').textContent=pct('scaled');
