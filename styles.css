@@ -598,7 +598,7 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 .cycle-add-btn:hover{border-color:var(--orange);color:var(--orange)}
 
 /* MODAL CELLULE CYCLE */
-.cycle-cell-modal{background:var(--dark);border-radius:16px 16px 0 0;border-top:1px solid var(--border2);width:100%;max-width:430px;padding:20px 20px calc(20px + var(--safe-bottom));transform:translateY(20px);transition:transform .3s;max-height:85vh;overflow-y:auto}
+.cycle-cell-modal{background:var(--dark);border-radius:16px 16px 0 0;border-top:1px solid var(--border2);width:100%;max-width:430px;padding:20px 20px calc(20px + var(--safe-bottom));transform:translateY(20px);transition:transform .3s;max-height:95vh;overflow-y:auto}
 .chip-colors{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
 .chip-color-btn{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:all .2s;flex-shrink:0}
 .chip-color-btn.selected{border-color:#fff;transform:scale(1.2)}
