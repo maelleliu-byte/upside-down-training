@@ -154,10 +154,8 @@ async function buildSessionCard(s){
     s.scaling_foundation?`<div class="scaling-block scaling-block-found"><div class="scaling-label" style="color:var(--purple)">Fondation</div><div class="scaling-text">${s.scaling_foundation}</div></div>`:''
   ].join('');
 
-  const contentWithCharges=renderContentWithCharges(s.content||'');
-  // Si contient du HTML (éditeur riche) afficher tel quel, sinon convertir les \n en <br>
-  const isHtml=/<[a-z][\s\S]*>/i.test(contentWithCharges);
-  const contentHtml=isHtml?contentWithCharges:contentWithCharges.replace(/\n/g,'<br>');
+  // renderContentWithCharges normalise tout en <br> — pas besoin de test isHtml
+  const contentHtml=renderContentWithCharges(s.content||'');
   const isStrength=s.type==='strength'&&s.sets>0;
   const isMulti=s.multi_score&&s.score_count>0;
   const isText=s.score_type==='text';
@@ -327,23 +325,27 @@ function renderContentWithCharges(content){
   //   80%|BACKSQUAT|        ← ancienne sans format (rétro-compat)
   //   @80%[BackSquat]       ← très ancienne (rétro-compat)
   //
-  // Le contenu vient d'un contenteditable : les pipes peuvent être encapsulés
-  // dans des <span> ou contenir des &nbsp;.
-  // Stratégie : on remplace les séparateurs de blocs par un marqueur unique,
-  // on nettoie le HTML parasite des lignes contenant %|, on applique les regex,
-  // puis on remet les séparateurs.
-  const BLOCK_SEP='§§BLOCK§§';
+  // Le contenu vient d'un contenteditable Quill-like (<p>…</p> ou <div>…</div>).
+  // Stratégie :
+  //   1. Normaliser la structure bloc en \n
+  //   2. Nettoyer les balises parasites sur les lignes contenant %|
+  //   3. Appliquer les regex de charges
+  //   4. Convertir \n → <br>
+  const BLOCK_SEP='\n';
   let out=content||'';
 
-  // 1. Remplacer les séparateurs de blocs par le marqueur
-  out=out.replace(/<br\s*\/?>/gi,BLOCK_SEP)
-         .replace(/<\/p>/gi,BLOCK_SEP)
-         .replace(/<\/div>/gi,BLOCK_SEP);
+  // 1. Normaliser : <br> et fermetures de blocs → \n ; supprimer <p> <div> ouvrants
+  out=out
+    .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<\/(p|div|li)>/gi,'\n')
+    .replace(/<(p|div|li)[^>]*>/gi,'')
+    // Dédoublonner les \n multiples (contenteditable en génère souvent 2-3)
+    .replace(/\n{2,}/g,'\n')
+    .trim();
 
-  // 2. Traiter chaque ligne
-  out=out.split(BLOCK_SEP).map(line=>{
+  // 2. Traiter ligne par ligne — nettoyer le HTML parasite uniquement sur les lignes %|
+  out=out.split('\n').map(line=>{
     if(!/%\|/.test(line)&&!/@\s*\d/.test(line)) return line;
-    // Nettoyer le HTML parasite sur cette ligne uniquement
     return line
       .replace(/<[^>]+>/g,'')
       .replace(/&nbsp;/g,' ')
@@ -354,11 +356,11 @@ function renderContentWithCharges(content){
       .replace(/&#39;/g,"'")
       .replace(/[ \t]+/g,' ')
       .trim();
-  }).join(BLOCK_SEP);
+  }).join('\n');
 
-  // 3. Appliquer les regex de charges
+  // 3. Regex de charges
   // Syntaxe 1a : NN%|FORMAT|NOM|
-  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|§<\n]+)\|([^|§<\n]+)\|/g,(match,pct,fmt,mvtName)=>{
+  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|\n]+)\|([^|\n]+)\|/g,(match,pct,fmt,mvtName)=>{
     const pr=findPRByName(mvtName.trim(),fmt.trim());
     const mvt=findMovementByName(mvtName.trim());
     if(pr&&mvt){
@@ -375,7 +377,7 @@ function renderContentWithCharges(content){
     return match;
   });
   // Syntaxe 1b : NN%|NOM|
-  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|§<\n]+)\|/g,(match,pct,mvtName)=>{
+  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|\n]+)\|/g,(match,pct,mvtName)=>{
     const pr=findPRByName(mvtName.trim());
     const mvt=findMovementByName(mvtName.trim());
     if(pr&&mvt){
@@ -395,8 +397,8 @@ function renderContentWithCharges(content){
     return `@ ${pct}%`;
   });
 
-  // 4. Remettre les <br>
-  out=out.split(BLOCK_SEP).join('<br>');
+  // 4. \n → <br>
+  out=out.replace(/\n/g,'<br>');
   return out;
 }
 
