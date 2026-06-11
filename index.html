@@ -1074,6 +1074,8 @@
 <script src="abos.js"></script>
 <script src="wellness.js"></script>
 <script>
+/* Alias de la fiche admin (wellness.js) avant que openAthleteCard soit réécrite en inline */
+var _openAthleteFicheAdmin = openAthleteCard;
 /* Tous les modules sont chargés en amont - lazy-load désactivé */
 const _pageModules = {prog:true, pr:true, videos:true, admin:true, abos:true, profil:true};
 const _origGoPage = window.goPage;
@@ -2706,7 +2708,7 @@ function _injectAdminBadgesTab() {
       row.style.cursor = 'pointer';
       row.addEventListener('click', function(e){
         if(e.target.closest('.btn-delete')) return;
-        if(typeof openAthleteCard === 'function') openAthleteCard(id);
+        if(typeof _openAthleteFicheAdmin === 'function') _openAthleteFicheAdmin(id);
       });
     });
   };
