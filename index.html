@@ -723,19 +723,58 @@
 
     <!-- DASHBOARD COACH -->
     <div class="admin-panel" id="admin-dashboard">
-      <div style="margin-bottom:16px">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px">Vue d'ensemble</div>
-        <div style="font-size:12px;color:var(--muted)">Stats des 30 derniers jours</div>
+      <!-- VUE LISTE -->
+      <div id="dash-athletes-view">
+        <div style="margin-bottom:14px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px">Athlètes</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <input type="text" id="dash-search-input" placeholder="Rechercher un athlète…"
+            style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;color:var(--text);font-family:inherit;font-size:14px"
+            oninput="dashFilterAthletes()">
+        </div>
+        <div id="dash-athletes-list"></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px" id="dash-stats"></div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px">Athlètes inactifs <span style="font-size:12px;color:var(--muted);font-family:'DM Sans',sans-serif;font-weight:400">(pas scoré depuis 7j+)</span></div>
-      <div id="dash-inactive"></div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin:16px 0 10px">Top performers</div>
-      <div id="dash-top"></div>
-      <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin:16px 0 10px">Derniers scores</div>
-      <div id="dash-recent"></div>
-      <div id="dash-wellness-section" style="margin-top:32px"></div>
-      <div id="dash-athletes-section" style="margin-top:32px"></div>
+      <!-- VUE FICHE -->
+      <div id="dash-fiche-view" style="display:none">
+        <button class="afiche-back" onclick="dashCloseFiche()">‹ Retour aux athlètes</button>
+        <!-- En-tête -->
+        <div class="afiche-head">
+          <div class="afiche-avatar" id="df-avatar">?</div>
+          <div style="flex:1;min-width:0">
+            <div class="afiche-name" id="df-name">—</div>
+            <div class="afiche-sub" id="df-sub"></div>
+          </div>
+        </div>
+        <!-- Stats niveaux -->
+        <div class="afiche-stats" id="df-level-stats" style="grid-template-columns:repeat(4,1fr)">
+          <div class="afiche-stat"><div class="afiche-stat-num" id="df-rx" style="color:var(--accent)">—</div><div class="afiche-stat-lab">RX</div></div>
+          <div class="afiche-stat"><div class="afiche-stat-num" id="df-inter" style="color:var(--red)">—</div><div class="afiche-stat-lab">INTER</div></div>
+          <div class="afiche-stat"><div class="afiche-stat-num" id="df-scaled" style="color:var(--blue)">—</div><div class="afiche-stat-lab">SCALED</div></div>
+          <div class="afiche-stat"><div class="afiche-stat-num" id="df-fond" style="color:var(--purple)">—</div><div class="afiche-stat-lab">FOND.</div></div>
+        </div>
+        <div class="afiche-stat" style="background:var(--card2);border-radius:10px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px">
+          <div style="font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:1px">Total WODs</div>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text)" id="df-total">—</div>
+        </div>
+        <!-- Badges -->
+        <div class="afiche-h">BADGES</div>
+        <div id="df-badges" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px"></div>
+        <!-- Filtre PRs / Benchmarks -->
+        <div class="afiche-h">PRs &amp; BENCHMARKS</div>
+        <div class="pr-cats" id="df-cats" style="margin-bottom:12px">
+          <button class="cat-btn active" data-dfcat="all" onclick="dashFilterPRCat('all',this)">Tous</button>
+          <button class="cat-btn" data-dfcat="force" onclick="dashFilterPRCat('force',this)">Force</button>
+          <button class="cat-btn" data-dfcat="haltero" onclick="dashFilterPRCat('haltero',this)">Haltéro</button>
+          <button class="cat-btn" data-dfcat="gymnastic" onclick="dashFilterPRCat('gymnastic',this)">Gym</button>
+          <button class="cat-btn" data-dfcat="cardio" onclick="dashFilterPRCat('cardio',this)">Cardio</button>
+          <button class="cat-btn" data-dfcat="girl" onclick="dashFilterPRCat('girl',this)">Girls</button>
+          <button class="cat-btn" data-dfcat="hero" onclick="dashFilterPRCat('hero',this)">Hero</button>
+          <button class="cat-btn" data-dfcat="test" onclick="dashFilterPRCat('test',this)">Test</button>
+          <button class="cat-btn" data-dfcat="custom" onclick="dashFilterPRCat('custom',this)">Custom</button>
+        </div>
+        <div id="df-prs-list"></div>
+      </div>
     </div>
 
     <!-- BIBLIOTHÈQUE VIDÉOS -->
@@ -2685,30 +2724,6 @@ function _injectAdminBadgesTab() {
       return;
     }
     if(_orig)_orig(tab,btn);
-  };
-})();
-</script>
-<script>
-// Patch loadAdminAthletes : rend chaque athlete-row cliquable → ouvre la fiche athlète
-(function(){
-  var _origLoad = window.loadAdminAthletes;
-  window.loadAdminAthletes = async function(){
-    await _origLoad();
-    var list = document.getElementById('admin-athletes-list');
-    if(!list) return;
-    list.querySelectorAll('.athlete-row').forEach(function(row){
-      // récupère l'id depuis le btn-delete s'il existe
-      var del = row.querySelector('.btn-delete');
-      if(!del) return; // propre row (isMe sans bouton delete) → pas de fiche
-      var m = del.getAttribute('onclick') && del.getAttribute('onclick').match(/deleteAthlete\('([^']+)'/);
-      if(!m) return;
-      var id = m[1];
-      row.style.cursor = 'pointer';
-      row.addEventListener('click', function(e){
-        if(e.target.closest('.btn-delete')) return;
-        if(typeof openAdminAthleteCard === 'function') openAdminAthleteCard(id);
-      });
-    });
   };
 })();
 </script>

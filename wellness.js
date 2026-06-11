@@ -1094,7 +1094,7 @@ adminTab=function(tab,btn){
 };
 
 // ============================================
-// FICHE ATHLÈTE (clic depuis liste athlètes)
+// FICHE ATHLÈTE (onglet Athlètes)
 // ============================================
 async function openAdminAthleteCard(id){
   const card=document.getElementById('admin-athlete-card');
@@ -1127,15 +1127,239 @@ function closeAthleteCard(){
     if(tabBtn)adminTab('dashboard',tabBtn);
   }
 }
-// Ouvre la fiche athlète depuis le dashboard (sans onglet Athlètes)
+
+// ============================================
+// DASHBOARD — liste athlètes + fiche enrichie
+// ============================================
+let _dashAllAthletes=[];
+let _dashCurrentAthleteId=null;
+let _dashCurrentCat='all';
+let _dashPRsData=[];      // [{mid, name, cat, unit, series, last}]
+let _dashBenchData=[];    // [{id, name, cat, scores:[]}]
+
+async function loadDashboard(){
+  const studioId=getStudioId();
+  let q=sb.from('profiles').select('id,full_name,email,avatar_url,created_at').eq('role','athlete');
+  if(studioId){q=q.eq('studio_id',studioId);}else{q=q.is('studio_id',null);}
+  const {data}=await q.order('full_name');
+  _dashAllAthletes=data||[];
+  _renderDashList(_dashAllAthletes);
+  document.getElementById('dash-athletes-view').style.display='';
+  document.getElementById('dash-fiche-view').style.display='none';
+}
+
+function _renderDashList(athletes){
+  const list=document.getElementById('dash-athletes-list');
+  if(!athletes.length){list.innerHTML='<div style="color:var(--muted);font-size:13px;padding:8px 0">Aucun athlète.</div>';return;}
+  list.innerHTML=athletes.map(p=>{
+    const init=_initials(p.full_name||p.email);
+    const since=p.created_at?new Date(p.created_at).toLocaleDateString('fr-FR',{month:'short',year:'numeric'}):'';
+    return`<div class="athlete-row" style="cursor:pointer" onclick="dashOpenFiche('${p.id}')">
+      <div class="athlete-avatar">${init}</div>
+      <div style="flex:1;min-width:0">
+        <div class="athlete-name">${escapeHtml(p.full_name||'—')}</div>
+        <div class="athlete-email">${escapeHtml(p.email||'')}${since?' · depuis '+since:''}</div>
+      </div>
+      <span style="color:var(--muted);font-size:18px">›</span>
+    </div>`;
+  }).join('');
+}
+
+function dashFilterAthletes(){
+  const q=(document.getElementById('dash-search-input')?.value||'').toLowerCase();
+  if(!q){_renderDashList(_dashAllAthletes);return;}
+  _renderDashList(_dashAllAthletes.filter(a=>(a.full_name||'').toLowerCase().includes(q)||(a.email||'').toLowerCase().includes(q)));
+}
+
+async function dashOpenFiche(id){
+  _dashCurrentAthleteId=id;
+  _dashCurrentCat='all';
+  document.getElementById('dash-athletes-view').style.display='none';
+  document.getElementById('dash-fiche-view').style.display='';
+  document.getElementById('page-admin').scrollTop=0;
+  // Reset filtre
+  document.querySelectorAll('#df-cats .cat-btn').forEach(b=>b.classList.toggle('active',b.dataset.dfcat==='all'));
+
+  const {data:p}=await sb.from('profiles').select('*').eq('id',id).single();
+  if(!p)return;
+  document.getElementById('df-avatar').textContent=_initials(p.full_name||p.email);
+  document.getElementById('df-name').textContent=(p.full_name||'—').toUpperCase();
+  const since=p.created_at?new Date(p.created_at).toLocaleDateString('fr-FR',{month:'short',year:'numeric'}):'';
+  document.getElementById('df-sub').textContent=`${p.email||''}${since?' · depuis '+since:''}`;
+
+  await Promise.all([
+    _dashLoadStats(id),
+    _dashLoadBadges(id),
+    _dashLoadPRsAndBench(id),
+  ]);
+}
+
+function dashCloseFiche(){
+  document.getElementById('dash-fiche-view').style.display='none';
+  document.getElementById('dash-athletes-view').style.display='';
+  document.getElementById('page-admin').scrollTop=0;
+}
+
+async function _dashLoadStats(id){
+  const {data:scores}=await sb.from('wod_scores').select('level').eq('athlete_id',id);
+  const all=scores||[];
+  const total=all.length;
+  const counts={rx:0,intermediate:0,scaled:0,foundation:0};
+  all.forEach(s=>{if(counts[s.level]!==undefined)counts[s.level]++;});
+  const pct=lvl=>total?Math.round(counts[lvl]/total*100)+'%':'—';
+  document.getElementById('df-total').textContent=total;
+  document.getElementById('df-rx').textContent=pct('rx');
+  document.getElementById('df-inter').textContent=pct('intermediate');
+  document.getElementById('df-scaled').textContent=pct('scaled');
+  document.getElementById('df-fond').textContent=pct('foundation');
+}
+
+async function _dashLoadBadges(id){
+  const wrap=document.getElementById('df-badges');
+  wrap.innerHTML='<div style="color:var(--muted);font-size:12px">Chargement…</div>';
+  const {data:ab}=await sb.from('athlete_badges').select('badge_id,badges(*)').eq('athlete_id',id);
+  const badges=(ab||[]).map(x=>x.badges).filter(Boolean);
+  if(!badges.length){wrap.innerHTML='<div style="color:var(--muted);font-size:12px">Aucun badge.</div>';return;}
+  const RARITY={bronze:{color:'#cd7f32',stars:1},silver:{color:'#c0c0c0',stars:2},gold:{color:'#ffd700',stars:3},legendary:{color:'#e8ff47',stars:4}};
+  wrap.innerHTML=badges.map(b=>{
+    const r=RARITY[(b.rarity||'bronze').toLowerCase()]||RARITY.bronze;
+    return`<div title="${escapeHtml(b.name)}" style="
+      display:flex;flex-direction:column;align-items:center;gap:3px;
+      background:rgba(255,255,255,0.04);border:1px solid ${r.color}44;
+      border-radius:12px;padding:8px 10px;min-width:52px">
+      <div style="font-size:24px">${b.icon||'🏅'}</div>
+      <div style="font-size:9px;color:${r.color};font-weight:700;text-align:center;max-width:56px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(b.name)}</div>
+    </div>`;
+  }).join('');
+}
+
+async function _dashLoadPRsAndBench(id){
+  // PRs
+  const {data:prs}=await sb.from('athlete_prs')
+    .select('movement_id,value,recorded_at,format,created_at')
+    .eq('athlete_id',id).order('recorded_at',{ascending:true,nullsFirst:false});
+  const prRows=prs||[];
+  const byMov={};
+  prRows.forEach(pr=>{(byMov[pr.movement_id]=byMov[pr.movement_id]||[]).push(pr);});
+  const movIds=Object.keys(byMov);
+  let movMeta={};
+  if(movIds.length){
+    const {data:m}=await sb.from('movements').select('id,name,unit,category').in('id',movIds);
+    (m||[]).forEach(x=>{movMeta[x.id]={name:x.name,unit:x.unit||'',cat:x.category||'autre'};});
+  }
+  _dashPRsData=movIds.map(mid=>{
+    const series=byMov[mid].slice().sort((a,b)=>((a.recorded_at||a.created_at||'')+'').localeCompare((b.recorded_at||b.created_at||'')+'')); 
+    return{mid,name:movMeta[mid]?.name||'—',cat:movMeta[mid]?.cat||'autre',unit:movMeta[mid]?.unit||'',series,last:series[series.length-1],type:'pr'};
+  });
+
+  // Benchmarks
+  const {data:bscores}=await sb.from('benchmark_scores').select('benchmark_id,score_value,score_text,recorded_at,level').eq('athlete_id',id).order('recorded_at',{ascending:true});
+  const bRows=bscores||[];
+  const byBench={};
+  bRows.forEach(s=>{(byBench[s.benchmark_id]=byBench[s.benchmark_id]||[]).push(s);});
+  const benchIds=Object.keys(byBench);
+  let benchMeta={};
+  if(benchIds.length){
+    const {data:bm}=await sb.from('benchmarks').select('id,name,category').in('id',benchIds);
+    (bm||[]).forEach(x=>{benchMeta[x.id]={name:x.name,cat:x.category||'custom'};});
+  }
+  _dashBenchData=benchIds.map(bid=>{
+    const series=byBench[bid];
+    return{bid,name:benchMeta[bid]?.name||'—',cat:benchMeta[bid]?.cat||'custom',series,last:series[series.length-1],type:'bench'};
+  });
+
+  _dashRenderPRs();
+}
+
+function dashFilterPRCat(cat,btn){
+  _dashCurrentCat=cat;
+  document.querySelectorAll('#df-cats .cat-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  _dashRenderPRs();
+}
+
+const _BENCH_CATS_SET=new Set(['girl','test','hero','custom']);
+
+function _dashRenderPRs(){
+  const wrap=document.getElementById('df-prs-list');
+  const cat=_dashCurrentCat;
+
+  // filtrer PRs mouvements
+  let prs=_dashPRsData;
+  let bench=_dashBenchData;
+  if(cat!=='all'){
+    if(_BENCH_CATS_SET.has(cat)){
+      prs=[];
+      bench=bench.filter(b=>b.cat===cat);
+    }else{
+      prs=prs.filter(p=>p.cat===cat);
+      bench=[];
+    }
+  }
+
+  if(!prs.length&&!bench.length){
+    wrap.innerHTML='<div style="color:var(--muted);font-size:13px;padding:12px 0">Aucun résultat dans cette catégorie.</div>';
+    return;
+  }
+
+  const CAT_LABELS_LOCAL={haltero:'Haltérophilie',force:'Force',gymnastic:'Gymnastics',cardio:'Cardio',autre:'Autre'};
+
+  const prHtml=prs.map(it=>{
+    const {series,last,unit,name}=it;
+    const first=series[0]?.value;
+    const lastV=last.value;
+    const isTime=unit==='s'||unit==='min';
+    const delta=(typeof first==='number'&&typeof lastV==='number')?(lastV-first):null;
+    const trend=delta==null?'':(isTime?(delta>0?'down':'up'):(delta>0?'up':'down'));
+    const deltaTxt=!delta?'':(isTime
+      ?(delta>0?`+${Math.abs(delta).toFixed(0)}${unit}`:`-${Math.abs(delta).toFixed(0)}${unit}`)
+      :(delta>0?`+${Math.abs(delta).toFixed(1)}${unit}`:`-${Math.abs(delta).toFixed(1)}${unit}`));
+    const color=delta==null?'var(--accent)':(trend==='up'?'#47ff8c':'#ff8c47');
+    const valTxt=lastV+(unit||'');
+    const points=_sparkPoints(series.map(s=>s.value),isTime?'time':'val');
+    return`<div class="afiche-pr">
+      <div class="afiche-pr-head">
+        <div>
+          <div class="afiche-pr-name">${escapeHtml(name)}${last.format?` <span style="color:var(--muted);font-size:11px">· ${escapeHtml(last.format)}</span>`:''}
+            <span style="color:var(--muted);font-size:10px;margin-left:4px">${CAT_LABELS_LOCAL[it.cat]||it.cat}</span>
+          </div>
+          ${deltaTxt?`<div class="afiche-pr-trend ${trend==='down'?'down':''}">${deltaTxt} · ${series.length} entrée${series.length>1?'s':''}</div>`:''}
+        </div>
+        <div class="afiche-pr-val">${escapeHtml(String(valTxt))}</div>
+      </div>
+      <svg class="afiche-spark" viewBox="0 0 300 32" preserveAspectRatio="none">
+        <polyline points="${points}" fill="none" stroke="${color}" stroke-width="2"/>
+      </svg>
+    </div>`;
+  }).join('');
+
+  const BENCH_CAT_LABELS={girl:'Girl WOD',test:'Test Force',hero:'Hero WOD',custom:'Custom'};
+  const benchHtml=bench.map(it=>{
+    const {series,last,name}=it;
+    const lastVal=last.score_text||last.score_value||'—';
+    const levelColor={rx:'var(--accent)',intermediate:'var(--red)',scaled:'var(--blue)',foundation:'var(--purple)'}[last.level]||'var(--muted)';
+    return`<div class="afiche-pr">
+      <div class="afiche-pr-head">
+        <div>
+          <div class="afiche-pr-name">${escapeHtml(name)}
+            <span style="color:var(--muted);font-size:10px;margin-left:4px">${BENCH_CAT_LABELS[it.cat]||it.cat}</span>
+          </div>
+          <div class="afiche-pr-trend">${series.length} score${series.length>1?'s':''} · <span style="color:${levelColor}">${(last.level||'').toUpperCase()}</span></div>
+        </div>
+        <div class="afiche-pr-val">${escapeHtml(String(lastVal))}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  wrap.innerHTML=(prs.length?`<div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--muted);margin-bottom:8px">PR MOUVEMENTS</div>${prHtml}`:'')
+    +(bench.length?`<div style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:2px;color:var(--muted);margin:${prs.length?'16px':0} 0 8px">BENCHMARKS</div>${benchHtml}`:'');
+}
+
+// Ouvre la fiche athlète depuis le dashboard (legacy — redirige vers dashOpenFiche)
 async function openAthleteFicheFromDash(id){
-  document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
-  const panel=document.getElementById('admin-athletes');
-  panel.classList.add('active');
-  panel.dataset.returnTo='dashboard';
-  document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
-  if(typeof loadAdminAthletes==='function'){try{await loadAdminAthletes();}catch(e){}}
-  openAdminAthleteCard(id);
+  const tabBtn=document.querySelector('.admin-tab-btn[onclick*="dashboard"]');
+  if(tabBtn)adminTab('dashboard',tabBtn);
+  await dashOpenFiche(id);
 }
 
 async function _loadAthleteCardStats(id){
