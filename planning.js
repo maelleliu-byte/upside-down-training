@@ -292,12 +292,40 @@ function _formatChargeForMovement(mvt,bestPR,pct){
   const charge=Math.round((parseFloat(pct)/100)*bestPR.value*2)/2;
   return `${charge}${unit}`;
 }
+function openPRFromSession(mvtName,fmt){
+  // Navigue vers la page PR et ouvre directement le modal sur le bon format
+  const mvt=findMovementByName(mvtName);
+  if(!mvt)return;
+  goPage('pr');
+  // Petit délai pour laisser la page s'afficher avant d'ouvrir le modal
+  setTimeout(()=>openPRModal(mvt.id,fmt),200);
+}
+
 function renderContentWithCharges(content){
-  // 2 syntaxes acceptées :
-  //   80%|BACKSQUAT|     ← nouvelle (préférée)
-  //   @80%[BackSquat]    ← ancienne (rétro-compat)
+  // 3 syntaxes acceptées :
+  //   80%|3RM|BACK SQUAT|   ← nouvelle avec format (préférée)
+  //   80%|BACKSQUAT|        ← ancienne sans format (rétro-compat)
+  //   @80%[BackSquat]       ← très ancienne (rétro-compat)
   let out=content||'';
-  // Syntaxe 1 : NN%|NOM|  ou  NN.5%|NOM|
+  // Syntaxe 1a : NN%|FORMAT|NOM|  — avec format explicite (ex: 80%|3RM|Back Squat|)
+  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|]+)\|([^|]+)\|/g,(match,pct,fmt,mvtName)=>{
+    const pr=findPRByName(mvtName.trim(),fmt.trim());
+    const mvt=findMovementByName(mvtName.trim());
+    if(pr&&mvt){
+      const charge=_formatChargeForMovement(mvt,pr,pct);
+      const fmtLabel=fmt.trim().toUpperCase();
+      return `<span style="color:var(--muted)">${pct}% <span style="font-size:10px">${fmtLabel}</span></span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}</span>`;
+    }
+    // Format demandé mais PR absent → affiche le label avec indication manquante + lien
+    if(mvt){
+      const fmtLabel=fmt.trim().toUpperCase();
+      const mvtNameEsc=mvtName.trim().replace(/'/g,"\\'");
+      const fmtEsc=fmt.trim().replace(/'/g,"\\'");
+      return `<span style="color:var(--muted)">${pct}% <span style="font-size:10px">${fmtLabel}</span></span> <span onclick="openPRFromSession('${mvtNameEsc}','${fmtEsc}')" style="background:rgba(255,255,255,.06);color:var(--muted);padding:1px 7px;border-radius:5px;font-size:11px;cursor:pointer;text-decoration:underline dotted">+ Entrer ${fmtLabel}</span>`;
+    }
+    return match;
+  });
+  // Syntaxe 1b : NN%|NOM|  (sans format — utilise le meilleur PR toutes catégories)
   out=out.replace(/(\d+(?:\.\d+)?)%\|([^|]+)\|/g,(match,pct,mvtName)=>{
     const pr=findPRByName(mvtName.trim());
     const mvt=findMovementByName(mvtName.trim());
@@ -351,10 +379,21 @@ function findMovementByName(name){
   return best;
 }
 
-function findPRByName(name){
+function findPRByName(name,format){
   const mv=findMovementByName(name);
   if(!mv)return null;
   const prs=myPRs[mv.id]||[];
+  if(!prs.length)return null;
+  if(format){
+    // Cherche le meilleur PR du format demandé (ex: 3RM, 5RM…)
+    const normFmt=format.trim().toLowerCase().replace(/\s+/g,'');
+    const fmtPRs=prs.filter(p=>(p.format||'').toLowerCase().replace(/\s+/g,'')===normFmt);
+    if(fmtPRs.length){
+      // meilleur PR du format (max value)
+      return fmtPRs.reduce((a,b)=>b.value>a.value?b:a);
+    }
+    return null; // format demandé mais aucun PR pour ce format → ne pas afficher
+  }
   return prs[0]||null;
 }
 
