@@ -301,14 +301,51 @@ function openPRFromSession(mvtName,fmt){
   setTimeout(()=>openPRModal(mvt.id,fmt),200);
 }
 
+function _stripHtmlForRegex(html){
+  // Extrait le texte brut d'un fragment HTML produit par contenteditable :
+  // - supprime les balises mais conserve les sauts de ligne (<br>, </p>, </div>)
+  // - décode les entités HTML courantes (&nbsp; &amp; &lt; &gt;)
+  // - normalise les espaces multiples en un seul
+  const tmp=html
+    .replace(/<br\s*\/?>/gi,'\n')
+    .replace(/<\/p>/gi,'\n')
+    .replace(/<\/div>/gi,'\n')
+    .replace(/<[^>]+>/g,'')
+    .replace(/&nbsp;/g,' ')
+    .replace(/&amp;/g,'&')
+    .replace(/&lt;/g,'<')
+    .replace(/&gt;/g,'>')
+    .replace(/&quot;/g,'"')
+    .replace(/&#39;/g,"'")
+    .replace(/[ \t]+/g,' ');
+  return tmp;
+}
+
 function renderContentWithCharges(content){
   // 3 syntaxes acceptées :
   //   80%|3RM|BACK SQUAT|   ← nouvelle avec format (préférée)
   //   80%|BACKSQUAT|        ← ancienne sans format (rétro-compat)
   //   @80%[BackSquat]       ← très ancienne (rétro-compat)
+  //
+  // Le contenu vient d'un contenteditable : les pipes peuvent être
+  // encapsulés dans des <span> ou contenir des &nbsp;.
+  // On traite ligne par ligne : les lignes contenant %| sont nettoyées
+  // avant d'appliquer les regex ; les autres sont laissées intactes.
   let out=content||'';
+
+  // Découpe en blocs (séparés par <br>, </p>, </div>)
+  const parts=out.split(/(<br\s*\/?>|<\/p>|<\/div>)/gi);
+  out=parts.map(part=>{
+    // Si c'est un séparateur de bloc, on le garde tel quel
+    if(/^(<br\s*\/?>|<\/p>|<\/div>)$/i.test(part)) return part;
+    // Si la partie (ou son texte nu) contient une syntaxe %|, on nettoie
+    const hasFormula=/%\|/.test(part)||/@\s*\d/.test(part);
+    if(!hasFormula) return part;
+    return _stripHtmlForRegex(part);
+  }).join('');
+
   // Syntaxe 1a : NN%|FORMAT|NOM|  — avec format explicite (ex: 80%|3RM|Back Squat|)
-  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|]+)\|([^|]+)\|/g,(match,pct,fmt,mvtName)=>{
+  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|<\n]+)\|([^|<\n]+)\|/g,(match,pct,fmt,mvtName)=>{
     const pr=findPRByName(mvtName.trim(),fmt.trim());
     const mvt=findMovementByName(mvtName.trim());
     if(pr&&mvt){
@@ -326,7 +363,7 @@ function renderContentWithCharges(content){
     return match;
   });
   // Syntaxe 1b : NN%|NOM|  (sans format — utilise le meilleur PR toutes catégories)
-  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|]+)\|/g,(match,pct,mvtName)=>{
+  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|<\n]+)\|/g,(match,pct,mvtName)=>{
     const pr=findPRByName(mvtName.trim());
     const mvt=findMovementByName(mvtName.trim());
     if(pr&&mvt){
