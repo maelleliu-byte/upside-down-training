@@ -1096,7 +1096,7 @@ adminTab=function(tab,btn){
 // ============================================
 // FICHE ATHLÈTE (clic depuis liste athlètes)
 // ============================================
-async function openAthleteCard(id){
+async function openAdminAthleteCard(id){
   const card=document.getElementById('admin-athlete-card');
   const list=document.getElementById('admin-athletes-list');
   if(!card||!list)return;
@@ -1135,7 +1135,7 @@ async function openAthleteFicheFromDash(id){
   panel.dataset.returnTo='dashboard';
   document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
   if(typeof loadAdminAthletes==='function'){try{await loadAdminAthletes();}catch(e){}}
-  openAthleteCard(id);
+  openAdminAthleteCard(id);
 }
 
 async function _loadAthleteCardStats(id){
@@ -1323,7 +1323,7 @@ loadAdminAthletes=async function(){
       // récupère l'id depuis le bouton delete (qui contient l'id) ou via data-attr — fallback : skip
       const btn=row.querySelector('.btn-delete');
       const m=btn&&btn.getAttribute('onclick')&&btn.getAttribute('onclick').match(/deleteAthlete\('([^']+)'/);
-      if(m)openAthleteCard(m[1]);
+      if(m)openAdminAthleteCard(m[1]);
     });
   });
 };
