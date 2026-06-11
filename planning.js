@@ -327,25 +327,38 @@ function renderContentWithCharges(content){
   //   80%|BACKSQUAT|        ← ancienne sans format (rétro-compat)
   //   @80%[BackSquat]       ← très ancienne (rétro-compat)
   //
-  // Le contenu vient d'un contenteditable : les pipes peuvent être
-  // encapsulés dans des <span> ou contenir des &nbsp;.
-  // On traite ligne par ligne : les lignes contenant %| sont nettoyées
-  // avant d'appliquer les regex ; les autres sont laissées intactes.
+  // Le contenu vient d'un contenteditable : les pipes peuvent être encapsulés
+  // dans des <span> ou contenir des &nbsp;.
+  // Stratégie : on remplace les séparateurs de blocs par un marqueur unique,
+  // on nettoie le HTML parasite des lignes contenant %|, on applique les regex,
+  // puis on remet les séparateurs.
+  const BLOCK_SEP='§§BLOCK§§';
   let out=content||'';
 
-  // Découpe en blocs (séparés par <br>, </p>, </div>)
-  const parts=out.split(/(<br\s*\/?>|<\/p>|<\/div>)/gi);
-  out=parts.map(part=>{
-    // Si c'est un séparateur de bloc, on le garde tel quel
-    if(/^(<br\s*\/?>|<\/p>|<\/div>)$/i.test(part)) return part;
-    // Si la partie (ou son texte nu) contient une syntaxe %|, on nettoie
-    const hasFormula=/%\|/.test(part)||/@\s*\d/.test(part);
-    if(!hasFormula) return part;
-    return _stripHtmlForRegex(part);
-  }).join('');
+  // 1. Remplacer les séparateurs de blocs par le marqueur
+  out=out.replace(/<br\s*\/?>/gi,BLOCK_SEP)
+         .replace(/<\/p>/gi,BLOCK_SEP)
+         .replace(/<\/div>/gi,BLOCK_SEP);
 
-  // Syntaxe 1a : NN%|FORMAT|NOM|  — avec format explicite (ex: 80%|3RM|Back Squat|)
-  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|<\n]+)\|([^|<\n]+)\|/g,(match,pct,fmt,mvtName)=>{
+  // 2. Traiter chaque ligne
+  out=out.split(BLOCK_SEP).map(line=>{
+    if(!/%\|/.test(line)&&!/@\s*\d/.test(line)) return line;
+    // Nettoyer le HTML parasite sur cette ligne uniquement
+    return line
+      .replace(/<[^>]+>/g,'')
+      .replace(/&nbsp;/g,' ')
+      .replace(/&amp;/g,'&')
+      .replace(/&lt;/g,'<')
+      .replace(/&gt;/g,'>')
+      .replace(/&quot;/g,'"')
+      .replace(/&#39;/g,"'")
+      .replace(/[ \t]+/g,' ')
+      .trim();
+  }).join(BLOCK_SEP);
+
+  // 3. Appliquer les regex de charges
+  // Syntaxe 1a : NN%|FORMAT|NOM|
+  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|§<\n]+)\|([^|§<\n]+)\|/g,(match,pct,fmt,mvtName)=>{
     const pr=findPRByName(mvtName.trim(),fmt.trim());
     const mvt=findMovementByName(mvtName.trim());
     if(pr&&mvt){
@@ -353,7 +366,6 @@ function renderContentWithCharges(content){
       const fmtLabel=fmt.trim().toUpperCase();
       return `<span style="color:var(--muted)">${pct}% <span style="font-size:10px">${fmtLabel}</span></span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}</span>`;
     }
-    // Format demandé mais PR absent → affiche le label avec indication manquante + lien
     if(mvt){
       const fmtLabel=fmt.trim().toUpperCase();
       const mvtNameEsc=mvtName.trim().replace(/'/g,"\\'");
@@ -362,8 +374,8 @@ function renderContentWithCharges(content){
     }
     return match;
   });
-  // Syntaxe 1b : NN%|NOM|  (sans format — utilise le meilleur PR toutes catégories)
-  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|<\n]+)\|/g,(match,pct,mvtName)=>{
+  // Syntaxe 1b : NN%|NOM|
+  out=out.replace(/(\d+(?:\.\d+)?)%\|([^|§<\n]+)\|/g,(match,pct,mvtName)=>{
     const pr=findPRByName(mvtName.trim());
     const mvt=findMovementByName(mvtName.trim());
     if(pr&&mvt){
@@ -382,6 +394,9 @@ function renderContentWithCharges(content){
     }
     return `@ ${pct}%`;
   });
+
+  // 4. Remettre les <br>
+  out=out.split(BLOCK_SEP).join('<br>');
   return out;
 }
 
