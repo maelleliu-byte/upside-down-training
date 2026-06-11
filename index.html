@@ -2688,5 +2688,29 @@ function _injectAdminBadgesTab() {
   };
 })();
 </script>
+<script>
+// Patch loadAdminAthletes : rend chaque athlete-row cliquable → ouvre la fiche athlète
+(function(){
+  var _origLoad = window.loadAdminAthletes;
+  window.loadAdminAthletes = async function(){
+    await _origLoad();
+    var list = document.getElementById('admin-athletes-list');
+    if(!list) return;
+    list.querySelectorAll('.athlete-row').forEach(function(row){
+      // récupère l'id depuis le btn-delete s'il existe
+      var del = row.querySelector('.btn-delete');
+      if(!del) return; // propre row (isMe sans bouton delete) → pas de fiche
+      var m = del.getAttribute('onclick') && del.getAttribute('onclick').match(/deleteAthlete\('([^']+)'/);
+      if(!m) return;
+      var id = m[1];
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', function(e){
+        if(e.target.closest('.btn-delete')) return;
+        if(typeof openAthleteCard === 'function') openAthleteCard(id);
+      });
+    });
+  };
+})();
+</script>
 </body>
 </html>
