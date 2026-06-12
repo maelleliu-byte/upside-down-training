@@ -339,8 +339,8 @@ function renderContentWithCharges(content){
     .replace(/<br\s*\/?>/gi,'\n')
     .replace(/<\/(p|div|li)>/gi,'\n')
     .replace(/<(p|div|li)[^>]*>/gi,'')
-    // Dédoublonner les \n multiples (contenteditable en génère souvent 2-3)
-    .replace(/\n{2,}/g,'\n')
+    // Limiter à max 2 \n consécutifs (préserver les sauts de paragraphe)
+    .replace(/\n{3,}/g,'\n\n')
     .trim();
 
   // 2. Traiter ligne par ligne — nettoyer le HTML parasite uniquement sur les lignes %|
@@ -397,8 +397,8 @@ function renderContentWithCharges(content){
     return `@ ${pct}%`;
   });
 
-  // 4. \n → <br>
-  out=out.replace(/\n/g,'<br>');
+  // 4. \n → <br> (double saut = séparateur de bloc)
+  out=out.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
   return out;
 }
 
