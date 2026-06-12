@@ -3566,139 +3566,78 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
   setTimeout(_patchSaveSession, 800);
 })();
 
+
 // ===================================================
-// EXPORT CYCLE PDF
+// COLLAPSE / EXPAND SEMAINES - VUE CYCLE + VUE SESSION
+// Bouton collapse sur chaque header semaine
+// State: window.__cycleWeeksCollapsed (Set), persiste
+// cle: "cycle-{wk}" ou "session-{wk}"
 // ===================================================
-function exportCyclePDF(){
-  if(!cycleData || !cycleData.name){
-    showToast('⚠️ Aucun cycle chargé');
-    return;
-  }
+(function(){
+  if(window.__weekCollapsePatchBound) return;
+  window.__weekCollapsePatchBound = true;
 
-  function _esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-  function _chipHtml(chip){
-    const bg  = chip.color || '#555';
-    const fg  = isLightColor(bg) ? '#111' : '#fff';
-    const str = chip.done ? 'text-decoration:line-through;opacity:.6;' : '';
-    return `<div class="chip" style="background:${bg};color:${fg};${str}">${_esc(chip.text||'')}</div>`;
-  }
+  function _loadC(){ try{ return new Set(JSON.parse(localStorage.getItem('__cwc')||'[]')); }catch(e){ return new Set(); } }
+  function _saveC(s){ try{ localStorage.setItem('__cwc',JSON.stringify([...s])); }catch(e){} }
+  window.__cycleWeeksCollapsed = _loadC();
 
-  const isSession = (typeof cycleMode !== 'undefined' && cycleMode === 'session');
-  _ensureCycleThemes();
-
-  const weeks  = cycleData.weeks || 8;
-  const name   = cycleData.name  || 'Cycle';
-  const DAYS_S = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
-  const MO     = ['jan','fév','mar','avr','mai','jun','jul','aoû','sep','oct','nov','déc'];
-
-  const startInput = document.getElementById('cycle-start-date')?.value;
-  const startDate  = startInput ? new Date(startInput+'T12:00:00') : (() => {
-    const d = new Date(); const day = d.getDay();
-    d.setDate(d.getDate() - (day===0?6:day-1)); return d;
-  })();
-
-  let tableRows = '';
-  let subtitle  = '';
-
-  if(isSession){
-    // ── VUE SESSION ──────────────────────────────────
-    const rows = cycleData.rows || [];
-    subtitle = `${weeks} semaines · Vue Session`;
-    for(let wk=0; wk<weeks; wk++){
-      const wStart = new Date(startDate); wStart.setDate(startDate.getDate()+wk*7);
-      const wEnd   = new Date(wStart);   wEnd.setDate(wStart.getDate()+6);
-      const wLabel = `${wStart.getDate()} ${MO[wStart.getMonth()]} → ${wEnd.getDate()} ${MO[wEnd.getMonth()]}`;
-      tableRows += `<tr class="week-header-row">
-        <td colspan="${DAYS_S.length+1}">Semaine ${wk+1} <span class="week-range">${wLabel}</span></td>
-      </tr>`;
-      rows.forEach((row, ri) => {
-        tableRows += `<tr>
-          <td class="theme-label">${_esc(row)}</td>
-          ${DAYS_S.map((_,di) => {
-            const chips = (cycleData.sessionCells[`w${wk}-${ri}-${di}`]||[]);
-            return `<td class="cell">${chips.map(_chipHtml).join('')}</td>`;
-          }).join('')}
-        </tr>`;
-      });
+  window.toggleCycleWeek = function(key){
+    var s = window.__cycleWeeksCollapsed;
+    if(s.has(key)) s.delete(key); else s.add(key);
+    _saveC(s);
+    if(typeof cycleMode !== 'undefined'){
+      if(cycleMode==='session' && typeof renderSessionGrid==='function') renderSessionGrid();
+      else if(typeof renderCycleGridNew==='function') renderCycleGridNew();
     }
-  } else {
-    // ── VUE CYCLE (thèmes) ───────────────────────────
-    const themes = cycleData.themes || [];
-    subtitle = `${weeks} semaines · ${themes.length} thèmes`;
-    for(let wk=0; wk<weeks; wk++){
-      const wStart = new Date(startDate); wStart.setDate(startDate.getDate()+wk*7);
-      const wEnd   = new Date(wStart);   wEnd.setDate(wStart.getDate()+6);
-      const wLabel = `${wStart.getDate()} ${MO[wStart.getMonth()]} → ${wEnd.getDate()} ${MO[wEnd.getMonth()]}`;
-      tableRows += `<tr class="week-header-row">
-        <td colspan="${DAYS_S.length+1}">Semaine ${wk+1} <span class="week-range">${wLabel}</span></td>
-      </tr>`;
-      themes.forEach((theme, ti) => {
-        tableRows += `<tr>
-          <td class="theme-label">${_esc(theme)}</td>
-          ${DAYS_S.map((_,di) => {
-            const chips = (cycleData.themeCells[`t${wk}-${ti}-${di}`]||[]);
-            return `<td class="cell">${chips.map(_chipHtml).join('')}</td>`;
-          }).join('')}
-        </tr>`;
-      });
-    }
+  };
+
+  function _applyCollapse(grid, prefix){
+    var s = window.__cycleWeeksCollapsed;
+    var wkIdx = 0;
+    Array.from(grid.children).forEach(function(block){
+      if(block.tagName !== 'DIV') return;
+      var hdrEl = block.querySelector('div[style*="Bebas Neue"]');
+      if(!hdrEl) return;
+      var key = prefix + '-' + wkIdx;
+      var collapsed = s.has(key);
+      if(!block.getAttribute('data-wcb')){
+        block.setAttribute('data-wcb', key);
+        hdrEl.style.display = 'flex';
+        hdrEl.style.alignItems = 'center';
+        hdrEl.style.gap = '8px';
+        hdrEl.style.cursor = 'pointer';
+        var btn = document.createElement('button');
+        btn.className = 'week-collapse-btn';
+        btn.style.cssText = 'background:none;border:none;color:var(--muted);font-size:11px;cursor:pointer;padding:0 4px;line-height:1;flex-shrink:0;opacity:.8';
+        (function(k){ btn.onclick = function(e){ e.stopPropagation(); window.toggleCycleWeek(k); }; })(key);
+        hdrEl.insertBefore(btn, hdrEl.firstChild);
+        (function(k, b){ hdrEl.addEventListener('click', function(e){ if(e.target===b || (e.target.closest && e.target.closest('.week-collapse-btn'))) return; window.toggleCycleWeek(k); }); })(key, btn);
+      }
+      var btnEl = block.querySelector('.week-collapse-btn');
+      if(btnEl){ btnEl.innerHTML = collapsed ? '&#9654;' : '&#9660;'; btnEl.title = collapsed ? 'Developper' : 'Reduire'; }
+      var tbl = block.querySelector('table');
+      if(tbl) tbl.style.display = collapsed ? 'none' : '';
+      wkIdx++;
+    });
   }
 
-  const modeLabel = isSession ? 'VUE SESSION' : 'VUE CYCLE';
-
-  const html = `<!DOCTYPE html>
-<html lang="fr">
-<head>
-<meta charset="UTF-8">
-<title>${_esc(name)}</title>
-<style>
-  @page { size: A3 landscape; margin: 12mm 10mm; }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: Arial, sans-serif; font-size: 10px; color: #111; background: #fff; }
-  h1 { font-size: 20px; font-weight: 900; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
-  .mode-badge { display: inline-block; background: #111; color: #e8ff47; font-size: 9px; font-weight: 700;
-                letter-spacing: 1.5px; padding: 2px 8px; border-radius: 4px; margin-bottom: 8px; }
-  .subtitle { font-size: 11px; color: #666; margin-bottom: 14px; }
-  table { width: 100%; border-collapse: collapse; }
-  th { background: #111; color: #fff; font-size: 9px; font-weight: 700; text-transform: uppercase;
-       letter-spacing: 1px; padding: 5px 4px; text-align: center; border: 1px solid #333; }
-  td { border: 1px solid #ddd; vertical-align: top; padding: 3px; }
-  .theme-label { font-weight: 700; font-size: 9px; text-transform: uppercase; letter-spacing: .5px;
-                 color: #444; background: #f5f5f5; width: 90px; min-width: 90px; max-width: 90px;
-                 text-align: center; vertical-align: middle; word-break: break-word; }
-  .cell { min-width: 60px; }
-  .week-header-row td { background: #e8ff47; color: #111; font-weight: 900; font-size: 11px;
-                        letter-spacing: 1.5px; text-transform: uppercase; padding: 5px 8px;
-                        border: 1px solid #ccc; }
-  .week-range { font-weight: 400; font-size: 9px; color: #555; margin-left: 8px; letter-spacing: 0; }
-  .chip { border-radius: 4px; padding: 3px 5px; margin: 2px 0; font-size: 8.5px; line-height: 1.4;
-          word-break: break-word; white-space: pre-wrap; }
-  @media print {
-    button { display: none !important; }
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  function _patchFn(fnName, prefix){
+    var _orig = window[fnName];
+    if(!_orig || _orig.__weekCollapsePatch) return;
+    window[fnName] = function(){
+      _orig.apply(this, arguments);
+      var grid = document.getElementById('cycle-grid');
+      if(grid) _applyCollapse(grid, prefix);
+    };
+    window[fnName].__weekCollapsePatch = true;
   }
-  .print-btn { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px;
-               background: #e8ff47; color: #111; border: none; border-radius: 10px;
-               font-size: 13px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,.2); }
-</style>
-</head>
-<body>
-<h1>${_esc(name)}</h1>
-<div class="mode-badge">${modeLabel}</div>
-<p class="subtitle">${subtitle}</p>
-<table>
-  <thead><tr>
-    <th style="width:90px">Catégorie</th>
-    ${DAYS_S.map(d=>`<th>${d}</th>`).join('')}
-  </tr></thead>
-  <tbody>${tableRows}</tbody>
-</table>
-<button class="print-btn" onclick="window.print()">🖨 Imprimer / Enregistrer PDF</button>
-</body>
-</html>`;
 
-  const win = window.open('', '_blank');
-  if(!win){ showToast('⚠️ Popup bloqué — autorise les popups pour ce site'); return; }
-  win.document.write(html);
-  win.document.close();
-}
+  function _tryPatch(){
+    if(typeof renderCycleGridNew==='function') _patchFn('renderCycleGridNew','cycle');
+    if(typeof renderSessionGrid==='function')  _patchFn('renderSessionGrid','session');
+  }
+
+  _tryPatch();
+  document.addEventListener('DOMContentLoaded', _tryPatch);
+  setTimeout(_tryPatch, 800);
+})();
