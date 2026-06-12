@@ -3641,3 +3641,138 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
   document.addEventListener('DOMContentLoaded', _tryPatch);
   setTimeout(_tryPatch, 800);
 })();
+
+
+// ===================================================
+// COLLAPSE / EXPAND LIGNES (categories / themes)
+// Vue Session: "session-row-{ri}"
+// Vue Cycle:   "cycle-row-{wk}-{ti}"
+// Les lignes d'une meme categorie sont collapsees
+// globalement (meme ri = meme etat partout).
+// ===================================================
+(function(){
+  if(window.__rowCollapsePatchBound) return;
+  window.__rowCollapsePatchBound = true;
+
+  function _loadR(){ try{ return new Set(JSON.parse(localStorage.getItem('__crc')||'[]')); }catch(e){ return new Set(); } }
+  function _saveR(s){ try{ localStorage.setItem('__crc',JSON.stringify([...s])); }catch(e){} }
+  window.__cycleRowsCollapsed = _loadR();
+
+  window.toggleCycleRow = function(key){
+    var s = window.__cycleRowsCollapsed;
+    if(s.has(key)) s.delete(key); else s.add(key);
+    _saveR(s);
+    if(typeof cycleMode !== 'undefined'){
+      if(cycleMode==='session' && typeof renderSessionGrid==='function') renderSessionGrid();
+      else if(typeof renderCycleGridNew==='function') renderCycleGridNew();
+    }
+  };
+
+  // Applique le collapse sur les trs apres render
+  function _applyRowCollapse(grid, mode){
+    var s = window.__cycleRowsCollapsed;
+    if(mode === 'session'){
+      // Chaque tr dans chaque table => data-ri dans les td[data-wk]
+      // On identifie la ligne par position (ri) dans le tbody
+      grid.querySelectorAll('table tbody').forEach(function(tbody){
+        Array.from(tbody.querySelectorAll('tr')).forEach(function(tr, ri){
+          var key = 'session-row-' + ri;
+          var labelCell = tr.querySelector('td.session-row-label');
+          if(!labelCell) return;
+          var collapsed = s.has(key);
+          // Injecter bouton si pas encore fait
+          if(!tr.getAttribute('data-rcb')){
+            tr.setAttribute('data-rcb', key);
+            var inner = labelCell.querySelector('.session-row-label-inner');
+            if(inner){
+              var btn = document.createElement('button');
+              btn.className = 'row-collapse-btn';
+              btn.style.cssText = 'background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;padding:0 3px 0 0;line-height:1;flex-shrink:0;opacity:.8';
+              (function(k){ btn.onclick = function(e){ e.stopPropagation(); window.toggleCycleRow(k); }; })(key);
+              inner.insertBefore(btn, inner.firstChild);
+            }
+          }
+          var btn = tr.querySelector('.row-collapse-btn');
+          if(btn){ btn.innerHTML = collapsed ? '&#9654;' : '&#9660;'; btn.title = collapsed ? 'Developper' : 'Reduire'; }
+          // Masquer toutes les cellules sauf la colonne label
+          Array.from(tr.querySelectorAll('td')).forEach(function(td){
+            if(td.classList.contains('session-row-label')){
+              td.style.paddingBottom = collapsed ? '0' : '';
+              td.style.paddingTop = collapsed ? '0' : '';
+            } else {
+              td.style.display = collapsed ? 'none' : '';
+            }
+          });
+          // Reduire la hauteur de la ligne
+          tr.style.transition = 'opacity .15s';
+          if(collapsed){
+            var inner2 = labelCell.querySelector('.session-row-label-inner');
+            if(inner2){ inner2.style.minHeight = '0'; inner2.style.padding = '2px 0'; }
+          } else {
+            var inner3 = labelCell.querySelector('.session-row-label-inner');
+            if(inner3){ inner3.style.minHeight = ''; inner3.style.padding = ''; }
+          }
+        });
+      });
+    } else {
+      // Vue cycle: themes. Chaque tr dans chaque bloc semaine
+      // Meme theme (ti) = meme key partout pour coherence visuelle
+      grid.querySelectorAll('table tbody').forEach(function(tbody){
+        Array.from(tbody.querySelectorAll('tr')).forEach(function(tr, ti){
+          var key = 'cycle-row-' + ti;
+          var labelCell = tr.querySelector('td.session-row-label');
+          if(!labelCell) return;
+          var collapsed = s.has(key);
+          if(!tr.getAttribute('data-rcb')){
+            tr.setAttribute('data-rcb', key);
+            var inner = labelCell.querySelector('.session-row-label-inner');
+            if(inner){
+              var btn = document.createElement('button');
+              btn.className = 'row-collapse-btn';
+              btn.style.cssText = 'background:none;border:none;color:var(--muted);font-size:10px;cursor:pointer;padding:0 3px 0 0;line-height:1;flex-shrink:0;opacity:.8';
+              (function(k){ btn.onclick = function(e){ e.stopPropagation(); window.toggleCycleRow(k); }; })(key);
+              inner.insertBefore(btn, inner.firstChild);
+            }
+          }
+          var btn = tr.querySelector('.row-collapse-btn');
+          if(btn){ btn.innerHTML = collapsed ? '&#9654;' : '&#9660;'; btn.title = collapsed ? 'Developper' : 'Reduire'; }
+          Array.from(tr.querySelectorAll('td')).forEach(function(td){
+            if(td.classList.contains('session-row-label')){
+              td.style.paddingBottom = collapsed ? '2px' : '';
+              td.style.paddingTop = collapsed ? '2px' : '';
+            } else {
+              td.style.display = collapsed ? 'none' : '';
+            }
+          });
+          if(collapsed){
+            var inner2 = labelCell.querySelector('.session-row-label-inner');
+            if(inner2){ inner2.style.minHeight = '0'; inner2.style.padding = '2px 0'; }
+          } else {
+            var inner3 = labelCell.querySelector('.session-row-label-inner');
+            if(inner3){ inner3.style.minHeight = ''; inner3.style.padding = ''; }
+          }
+        });
+      });
+    }
+  }
+
+  function _patchRowFn(fnName, mode){
+    var _orig = window[fnName];
+    if(!_orig || _orig.__rowCollapsePatch) return;
+    window[fnName] = function(){
+      _orig.apply(this, arguments);
+      var grid = document.getElementById('cycle-grid');
+      if(grid) _applyRowCollapse(grid, mode);
+    };
+    window[fnName].__rowCollapsePatch = true;
+  }
+
+  function _tryRowPatch(){
+    if(typeof renderCycleGridNew==='function') _patchRowFn('renderCycleGridNew','cycle');
+    if(typeof renderSessionGrid==='function')  _patchRowFn('renderSessionGrid','session');
+  }
+
+  _tryRowPatch();
+  document.addEventListener('DOMContentLoaded', _tryRowPatch);
+  setTimeout(_tryRowPatch, 900);
+})();
