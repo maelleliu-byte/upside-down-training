@@ -2524,6 +2524,20 @@ function _matchCycleRowField(rowName) {
   return null;
 }
 
+// Convertit un texte brut de chip (avec sauts de ligne) en HTML sûr
+// pour l'éditeur contenteditable : échappe < > & puis transforme les
+// retours à la ligne (réels OU littéraux "\n") en <br>.
+function _plainToEditorHtml(txt) {
+  if (txt == null) return '';
+  return String(txt)
+    .replace(/\r\n?/g, '\n')   // CRLF / CR → LF
+    .replace(/\\n/g, '\n')     // séquences littérales "\n" → vrai saut
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
+}
+
 function transferCycleToSession(wk, di) {
   if (!cycleData || !cycleData.rows) { showToast('⚠️ Aucun cycle chargé'); return; }
 
@@ -2537,7 +2551,7 @@ function transferCycleToSession(wk, di) {
     const key = `w${wk}-${ri}-${di}`;
     const chips = cycleData.sessionCells[key] || [];
     if (!chips.length) return;
-    fields[field] = chips[0].text; // une chip par case
+    fields[field] = chips.map(c => (c && c.text != null ? c.text : '')).filter(t => t !== '').join('\n'); // toutes les chips de la case
     hasContent = true;
   });
 
@@ -2562,7 +2576,7 @@ function transferCycleToSession(wk, di) {
   }
 
   // Remplir les champs
-  if (fields.wod   !== null && typeof setEditorContent === 'function') setEditorContent(fields.wod);
+  if (fields.wod   !== null && typeof setEditorContent === 'function') setEditorContent(_plainToEditorHtml(fields.wod));
   if (fields.target !== null) { const el = document.getElementById('f-target');      if (el) el.value = fields.target; }
   if (fields.tips   !== null) { const el = document.getElementById('f-tips');        if (el) el.value = fields.tips; }
   if (fields.inter  !== null) { const el = document.getElementById('f-scaling-inter');      if (el) el.value = fields.inter; }
@@ -2975,7 +2989,7 @@ function sendThemeChipToSession(text){
   if(typeof resetSessionForm==='function') resetSessionForm();
   if(typeof adminTab==='function'&&newSessionBtn) adminTab('new-session',newSessionBtn);
   if(typeof setEditorContent==='function'){
-    setEditorContent(text.replace(/\\n/g, '\n'));
+    setEditorContent(_plainToEditorHtml(text));
   }
   // Mémoriser le retour vers l'onglet Cycle (vue cycle ou vue session)
   window._returnToCycleAfterSave = cycleMode || 'cycle';
