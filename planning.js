@@ -744,8 +744,42 @@ async function toggleReactionModal(scoreId){
   if(currentScoresSession)loadReactions(scoreId);
 }
 
+// ── Garantit une session JWT valide avant toute lecture RLS ──────────
+// Sur tablette/PWA laissée ouverte, le token expire (1h) ; sans session
+// valide auth.uid()=NULL et les policies score_reactions/score_comments
+// renvoient 0 ligne → on ne voit plus qui a liké/commenté.
+async function ensureAuth(){
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session)return false;
+    // expires_at en secondes epoch ; refresh proactif si <60s de marge
+    const now=Math.floor(Date.now()/1000);
+    if(session.expires_at && session.expires_at - now < 60){
+      const {data,error}=await sb.auth.refreshSession();
+      if(error||!data?.session)return false;
+      if(data.session.user)currentUser=data.session.user;
+    }
+    return true;
+  }catch(e){return false;}
+}
+
+// Recharge l'affichage des likes/commentaires du modal ouvert après un
+// refresh de token (sinon les listes restent vides post-réveil PWA).
+if(!window.__scoreAuthListenerBound){
+  window.__scoreAuthListenerBound=true;
+  sb.auth.onAuthStateChange((event,session)=>{
+    if((event==='TOKEN_REFRESHED'||event==='SIGNED_IN')&&session?.user){
+      currentUser=session.user;
+      if(typeof currentScoresSession!=='undefined'&&currentScoresSession){
+        renderScoresModal(currentScoresSession.sessionId,currentScoresSession.scoreType,currentScoresSession.sets);
+      }
+    }
+  });
+}
+
 // REACTIONS
 async function loadReactions(scoreId){
+  if(!(await ensureAuth()))return;
   const {data,count}=await sb.from('score_reactions').select('athlete_id,profiles(full_name)',{count:'exact'}).eq('score_id',scoreId);
   const countEl=document.getElementById(`react-count-${scoreId}`);
   const btn=document.getElementById(`react-${scoreId}`);
@@ -852,6 +886,7 @@ function toggleComments(scoreId){
   if(area?.classList.contains('open'))loadComments(scoreId);
 }
 async function loadComments(scoreId){
+  if(!(await ensureAuth()))return;
   const {data}=await sb.from('score_comments').select('*,profiles(full_name)').eq('score_id',scoreId).order('created_at');
   const listEl=document.getElementById(`comments-list-${scoreId}`);
   const count=(data||[]).length;
