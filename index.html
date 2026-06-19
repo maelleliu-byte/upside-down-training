@@ -2345,7 +2345,12 @@ let _awardingBadgeId = null;
 async function openAwardBadgeModal(badgeId) {
   _awardingBadgeId = badgeId;
   const badge = (_badgesCache || []).find(b => b.id === badgeId);
-  const { data: athletes } = await sb.from('profiles').select('id,full_name').order('full_name');
+  // MULTI-TENANT : filtrer les athlètes du studio courant uniquement
+  const _awardStudioId = getStudioId();
+  let _awardAthQ = sb.from('profiles').select('id,full_name').eq('role', 'athlete');
+  if (_awardStudioId) { _awardAthQ = _awardAthQ.eq('studio_id', _awardStudioId); }
+  else { _awardAthQ = _awardAthQ.is('studio_id', null); }
+  const { data: athletes } = await _awardAthQ.order('full_name');
 
   const existing = document.getElementById('award-badge-modal');
   if (existing) existing.remove();
