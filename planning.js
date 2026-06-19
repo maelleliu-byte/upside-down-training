@@ -722,7 +722,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
         ${noteHtml}
         <div class="score-actions">
           <button class="react-btn" id="react-${sc.id}" onclick="toggleReactionModal('${sc.id}')" oncontextmenu="showLikers('${sc.id}',event);return false"><span class="heart">🤍</span> <span id="react-count-${sc.id}" onclick="showLikers('${sc.id}',event)" style="cursor:pointer">0</span></button>
-          <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
+          <button class="react-btn comment-btn" id="comment-btn-${sc.id}" onclick="toggleComments('${sc.id}')">💬 <span id="comment-label-${sc.id}">Commenter</span></button>
           ${isMe?`<button class="react-btn" onclick="deleteOwnScore('${sc.id}')" title="Supprimer" style="margin-left:auto;color:var(--red)">🗑️</button>`:''}
         </div>
         <div class="comments-area" id="comments-${sc.id}">
@@ -854,8 +854,19 @@ function toggleComments(scoreId){
 async function loadComments(scoreId){
   const {data}=await sb.from('score_comments').select('*,profiles(full_name)').eq('score_id',scoreId).order('created_at');
   const listEl=document.getElementById(`comments-list-${scoreId}`);
+  const count=(data||[]).length;
+  // Indicateur sur le bouton : nombre de commentaires (visible au premier coup d'œil)
+  const labelEl=document.getElementById(`comment-label-${scoreId}`);
+  if(labelEl)labelEl.textContent=count?`${count} commentaire${count>1?'s':''}`:'Commenter';
+  const btnEl=document.getElementById(`comment-btn-${scoreId}`);
+  if(btnEl)btnEl.classList.toggle('has-comments',count>0);
+  // Si des commentaires existent, on ouvre la zone par défaut (on voit ceux des autres sans cliquer)
+  if(count>0){
+    const area=document.getElementById(`comments-${scoreId}`);
+    if(area)area.classList.add('open');
+  }
   if(!listEl)return;
-  if(!data||data.length===0){listEl.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0">Pas encore de commentaire.</div>';return;}
+  if(count===0){listEl.innerHTML='<div style="font-size:12px;color:var(--muted);padding:8px 0">Pas encore de commentaire.</div>';return;}
   listEl.innerHTML=data.map(c=>{
     const isMine=c.athlete_id===currentUser?.id;
     const delBtn=isMine?`<button onclick="deleteComment('${c.id}','${scoreId}')" title="Supprimer" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px;margin-left:6px;opacity:.6">🗑️</button>`:'';

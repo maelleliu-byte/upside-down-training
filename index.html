@@ -1021,9 +1021,13 @@
     <div class="modal-title">📋 Dupliquer la séance</div>
     <div class="modal-sub" id="dup-perso-session-name">—</div>
     <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Athlète de destination</label>
+      <select class="form-select" id="dup-perso-athlete"></select>
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
       <label class="form-label">Date de destination</label>
       <input type="date" class="modal-date" id="dup-perso-date">
-      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">La séance sera copiée à la date choisie, dans le même espace perso.</div>
+      <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">La séance sera copiée à la date choisie, dans l'espace perso de l'athlète sélectionné.</div>
     </div>
     <button class="btn-modal-save" onclick="confirmPersoDuplicate()">📋 Dupliquer</button>
     <button class="btn-modal-cancel" onclick="closeDupPersoModal()">Annuler</button>
