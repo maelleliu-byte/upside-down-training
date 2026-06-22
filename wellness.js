@@ -874,57 +874,156 @@ async function confirmPersoDuplicate(){
   renderPersoCalendar();
 }
 
-// ===== DUPLIQUER UNE SEMAINE ENTIÈRE (espace perso) =====
+// ===== DUPLIQUER UNE SEMAINE ENTIÈRE (espace perso) — V2 =====
 function openDupPersoWeekModal(){
   if(persoView!=='week'){showToast('⚠️ Passe en vue semaine d\'abord');return;}
   const dates=getWeekDates(persoOffset);
   const wk=getWeekNum(dates[0]);
   document.getElementById('dup-perso-week-source-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]} ${dates[0].getFullYear()}`;
+  // Reset à destination "même perso"
+  const destSel=document.getElementById('dup-perso-dest-type');
+  if(destSel) destSel.value='same';
+  document.getElementById('dup-perso-same-group').style.display='';
+  document.getElementById('dup-perso-athlete-group').style.display='none';
+  document.getElementById('dup-perso-prog-group').style.display='none';
   // Date cible par défaut = lundi semaine suivante
   const nextMon=new Date(dates[0]);nextMon.setDate(dates[0].getDate()+7);
-  document.getElementById('dup-perso-week-target-date').value=nextMon.toISOString().split('T')[0];
+  const nextMonStr=nextMon.toISOString().split('T')[0];
+  document.getElementById('dup-perso-week-target-date').value=nextMonStr;
+  document.getElementById('dup-perso-athlete-target-date').value=nextMonStr;
+  // Remplir athlètes (tous sauf l'athlète courant)
+  const athletes=persoAthletesCache.filter(a=>a.role!=='admin'&&a.id!==currentPersoAthlete?.id);
+  document.getElementById('dup-perso-target-athlete').innerHTML=athletes.length
+    ? athletes.map(a=>`<option value="${a.id}">${a.full_name||a.email||a.id}</option>`).join('')
+    : '<option value="">— Aucun autre athlète —</option>';
+  // Remplir programmes
+  const progs=window.programmes||[];
+  document.getElementById('dup-perso-target-prog').innerHTML=progs.length
+    ? progs.map(p=>`<option value="${p.id}" data-type="${p.type||''}" data-weeks="${p.total_weeks||0}">${p.icon||'💪'} ${p.name}</option>`).join('')
+    : '<option value="">— Aucun programme —</option>';
+  if(progs.length) onDupPersoProgChange();
   document.getElementById('dup-perso-week-modal').classList.add('open');
 }
 function closeDupPersoWeekModal(){
   document.getElementById('dup-perso-week-modal')?.classList.remove('open');
 }
-async function confirmDupPersoWeek(){
+function onDupPersoDestChange(){
+  const dest=document.getElementById('dup-perso-dest-type').value;
+  document.getElementById('dup-perso-same-group').style.display=dest==='same'?'':'none';
+  document.getElementById('dup-perso-athlete-group').style.display=dest==='other_athlete'?'':'none';
+  document.getElementById('dup-perso-prog-group').style.display=dest==='prog'?'':'none';
+}
+function onDupPersoProgChange(){
+  const sel=document.getElementById('dup-perso-target-prog');
+  const opt=sel.selectedOptions[0];
+  if(!opt)return;
+  const type=opt.getAttribute('data-type');
+  const weeks=parseInt(opt.getAttribute('data-weeks')||'0');
+  const oneshotDiv=document.getElementById('dup-perso-prog-oneshot');
+  const dateDiv=document.getElementById('dup-perso-prog-date');
+  if(type==='oneshot'&&weeks>0){
+    oneshotDiv.style.display='';
+    dateDiv.style.display='none';
+    document.getElementById('dup-perso-prog-target-week').innerHTML=
+      Array.from({length:weeks},(_,i)=>`<option value="${i+1}">Semaine ${i+1}</option>`).join('');
+  } else {
+    oneshotDiv.style.display='none';
+    dateDiv.style.display='';
+    const dates=getWeekDates(persoOffset);
+    const nextMon=new Date(dates[0]);nextMon.setDate(dates[0].getDate()+7);
+    document.getElementById('dup-perso-prog-target-date').value=nextMon.toISOString().split('T')[0];
+  }
+}
+async function confirmDupPersoWeekV2(){
   if(!currentPersoAthlete)return;
-  const tgtDateStr=document.getElementById('dup-perso-week-target-date').value;
-  if(!tgtDateStr){showToast('⚠️ Choisis une date');return;}
-  const srcMon=getWeekDates(persoOffset)[0];
-  const srcDates=getWeekDates(persoOffset).map(d=>d.toISOString().split('T')[0]);
-  const tgtPicked=new Date(tgtDateStr+'T12:00:00');
-  const tgtDay=tgtPicked.getDay();
-  const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
-  const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
-  if(diffDays===0){showToast('⚠️ Choisis une semaine différente');return;}
-  const btn=document.querySelector('#dup-perso-week-modal .btn-modal-save');
+  const dest=document.getElementById('dup-perso-dest-type').value;
+  const btn=document.getElementById('dup-perso-confirm-btn');
   if(btn){btn.disabled=true;btn.textContent='Copie...';}
   try{
+    const srcMon=getWeekDates(persoOffset)[0];
+    const srcDates=getWeekDates(persoOffset).map(d=>d.toISOString().split('T')[0]);
     const {data,error}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',srcDates);
     if(error){showToast('❌ '+error.message);return;}
     if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
-    // Pour sort_order, on décale simplement par jour ; pas besoin de recalculer
-    const rows=data.map(({id,created_at,...rest})=>{
-      const newDate=new Date(rest.date+'T12:00:00');
-      newDate.setDate(newDate.getDate()+diffDays);
-      return{...rest,date:newDate.toISOString().split('T')[0],created_by:currentUser.id};
-    });
-    const {error:e2}=await sb.from('personal_sessions').insert(rows);
-    if(e2){showToast('❌ '+e2.message);return;}
-    showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} copiée${rows.length>1?'s':''}`);
-    closeDupPersoWeekModal();
-    // Naviguer vers la semaine cible
-    const now=new Date();const nowDay=now.getDay();
-    const nowMon=new Date(now);nowMon.setDate(now.getDate()-(nowDay===0?6:nowDay-1));nowMon.setHours(0,0,0,0);
-    tgtMon.setHours(0,0,0,0);
-    persoOffset=Math.round((tgtMon-nowMon)/(7*24*60*60*1000));
-    renderPersoCalendar();
+
+    if(dest==='same'){
+      const tgtDateStr=document.getElementById('dup-perso-week-target-date').value;
+      if(!tgtDateStr){showToast('⚠️ Choisis une date');return;}
+      const tgtPicked=new Date(tgtDateStr+'T12:00:00');
+      const tgtDay=tgtPicked.getDay();
+      const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
+      const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
+      if(diffDays===0){showToast('⚠️ Choisis une semaine différente');return;}
+      const rows=data.map(({id,created_at,...rest})=>{
+        const d=new Date(rest.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
+        return{...rest,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+      });
+      const {error:e2}=await sb.from('personal_sessions').insert(rows);
+      if(e2){showToast('❌ '+e2.message);return;}
+      showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} copiée${rows.length>1?'s':''}`);
+      closeDupPersoWeekModal();
+      const now=new Date();const nowDay=now.getDay();
+      const nowMon=new Date(now);nowMon.setDate(now.getDate()-(nowDay===0?6:nowDay-1));nowMon.setHours(0,0,0,0);
+      tgtMon.setHours(0,0,0,0);
+      persoOffset=Math.round((tgtMon-nowMon)/(7*24*60*60*1000));
+      renderPersoCalendar();
+
+    } else if(dest==='other_athlete'){
+      const tgtAthId=document.getElementById('dup-perso-target-athlete').value;
+      if(!tgtAthId){showToast('⚠️ Aucun athlète sélectionné');return;}
+      const tgtDateStr=document.getElementById('dup-perso-athlete-target-date').value;
+      if(!tgtDateStr){showToast('⚠️ Choisis une date');return;}
+      const tgtPicked=new Date(tgtDateStr+'T12:00:00');
+      const tgtDay=tgtPicked.getDay();
+      const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
+      const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
+      const rows=data.map(({id,created_at,...rest})=>{
+        const d=new Date(rest.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
+        return{...rest,athlete_id:tgtAthId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+      });
+      const {error:e2}=await sb.from('personal_sessions').insert(rows);
+      if(e2){showToast('❌ '+e2.message);return;}
+      const ath=persoAthletesCache.find(a=>a.id===tgtAthId);
+      showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} → ${ath?.full_name||'athlète'}`);
+      closeDupPersoWeekModal();
+
+    } else if(dest==='prog'){
+      const tgtProgId=document.getElementById('dup-perso-target-prog').value;
+      if(!tgtProgId){showToast('⚠️ Aucun programme sélectionné');return;}
+      const tgtProg=getProgById(tgtProgId);
+      const tgtOneshot=isOneshotProg(tgtProg);
+      let rows;
+      if(tgtOneshot){
+        const tgtWeek=parseInt(document.getElementById('dup-perso-prog-target-week').value);
+        if(!tgtWeek){showToast('⚠️ Choisis une semaine');return;}
+        rows=data.map(({id,created_at,athlete_id,...rest})=>{
+          const d=new Date(rest.date+'T12:00:00');
+          const dow=d.getDay()===0?7:d.getDay(); // 1=Lun … 7=Dim
+          return{...rest,programme_id:tgtProgId,week_number:tgtWeek,day_of_week:dow,date:null,created_by:currentUser.id};
+        });
+      } else {
+        const tgtDateStr=document.getElementById('dup-perso-prog-target-date').value;
+        if(!tgtDateStr){showToast('⚠️ Choisis une date cible');return;}
+        const tgtPicked=new Date(tgtDateStr+'T12:00:00');
+        const tgtDay=tgtPicked.getDay();
+        const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
+        const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
+        rows=data.map(({id,created_at,athlete_id,...rest})=>{
+          const d=new Date(rest.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
+          return{...rest,programme_id:tgtProgId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+        });
+      }
+      const {error:e2}=await sb.from('sessions').insert(rows);
+      if(e2){showToast('❌ '+e2.message);return;}
+      showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} → ${tgtProg.name}`);
+      closeDupPersoWeekModal();
+    }
   } finally {
     if(btn){btn.disabled=false;btn.textContent='📋 Dupliquer la semaine';}
   }
 }
+// Alias rétrocompat
+async function confirmDupPersoWeek(){ return confirmDupPersoWeekV2(); }
 
 function enterPersoFormMode(athleteId){
   personalAthleteId=athleteId;
@@ -3807,3 +3906,238 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
   setTimeout(_tryAll, 1000);
   setTimeout(_tryAll, 2000);
 })();
+
+// ===== DUP WEEK PLANNING V2 (remplace openDupWeekModal d'admin.js) =====
+function openDupWeekModalV2(){
+  const progId=document.getElementById('admin-filter-prog')?.value;
+  if(!progId){showToast('⚠️ Aucun programme sélectionné');return;}
+  const prog=getProgById(progId);
+  const oneshot=isOneshotProg(prog);
+  const modal=document.getElementById('dup-week-modal');
+  if(!modal){showToast('⚠️ Modal introuvable');return;}
+
+  // Reset destination
+  const destSel=document.getElementById('dup-week-dest-type');
+  if(destSel) destSel.value='same_prog';
+
+  // Remplir source + groupes par défaut (même prog)
+  if(oneshot){
+    const weekNum=adminWeekOffset+1;
+    const total=prog.total_weeks||8;
+    document.getElementById('dup-week-source-label').textContent=`Semaine ${weekNum} / ${total}`;
+    document.getElementById('dup-week-oneshot-group').style.display='';
+    document.getElementById('dup-week-date-group').style.display='none';
+    const sel=document.getElementById('dup-week-target-week');
+    sel.innerHTML=Array.from({length:total},(_,i)=>{
+      const w=i+1;
+      return`<option value="${w}" ${w===weekNum?'disabled':''}>Semaine ${w}${w===weekNum?' (actuelle)':''}</option>`;
+    }).join('');
+    sel.value=String(Math.min(weekNum+1,total));
+  } else {
+    const dates=getWeekDates(adminWeekOffset);
+    const wk=getWeekNum(dates[0]);
+    document.getElementById('dup-week-source-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]} ${dates[0].getFullYear()}`;
+    document.getElementById('dup-week-oneshot-group').style.display='none';
+    document.getElementById('dup-week-date-group').style.display='';
+    const nextMon=new Date(dates[0]);nextMon.setDate(dates[0].getDate()+7);
+    document.getElementById('dup-week-target-date').value=nextMon.toISOString().split('T')[0];
+  }
+  const dl=document.getElementById('dup-week-date-label');
+  if(dl) dl.textContent='Lundi de la semaine cible';
+
+  // Masquer groupes spéciaux
+  document.getElementById('dup-week-other-prog-group').style.display='none';
+  document.getElementById('dup-week-perso-group').style.display='none';
+
+  // Remplir autres programmes
+  const otherProgs=(window.programmes||[]).filter(p=>p.id!==progId);
+  document.getElementById('dup-week-target-prog').innerHTML=otherProgs.length
+    ? otherProgs.map(p=>`<option value="${p.id}" data-type="${p.type||''}" data-weeks="${p.total_weeks||0}">${p.icon||'💪'} ${p.name}</option>`).join('')
+    : '<option value="">— Aucun autre programme —</option>';
+  if(otherProgs.length) onDupWeekTargetProgChange();
+
+  // Remplir athlètes perso
+  const athletes=persoAthletesCache.filter(a=>a.role!=='admin');
+  document.getElementById('dup-week-target-athlete').innerHTML=athletes.length
+    ? athletes.map(a=>`<option value="${a.id}">${a.full_name||a.email||a.id}</option>`).join('')
+    : '<option value="">— Aucun athlète —</option>';
+
+  modal.classList.add('open');
+}
+
+function onDupWeekDestChange(){
+  const dest=document.getElementById('dup-week-dest-type').value;
+  const progId=document.getElementById('admin-filter-prog')?.value;
+  const prog=getProgById(progId);
+  const oneshot=isOneshotProg(prog);
+
+  document.getElementById('dup-week-oneshot-group').style.display=(dest==='same_prog'&&oneshot)?'':'none';
+  document.getElementById('dup-week-date-group').style.display=
+    (dest==='same_prog'&&!oneshot)||(dest==='perso')||(dest==='perso'&&oneshot)?'':'none';
+  document.getElementById('dup-week-other-prog-group').style.display=dest==='other_prog'?'':'none';
+  document.getElementById('dup-week-perso-group').style.display=dest==='perso'?'':'none';
+
+  const dl=document.getElementById('dup-week-date-label');
+  if(dest==='perso'&&oneshot){
+    // one-shot→perso : on a besoin d'un lundi de référence
+    document.getElementById('dup-week-date-group').style.display='';
+    if(dl) dl.textContent='Lundi de référence (semaine cible)';
+    const now=new Date();const dd=now.getDay();
+    const mon=new Date(now);mon.setDate(now.getDate()-(dd===0?6:dd-1)+7);
+    document.getElementById('dup-week-target-date').value=mon.toISOString().split('T')[0];
+  } else if(dl){
+    dl.textContent='Lundi de la semaine cible';
+  }
+
+  if(dest==='other_prog') onDupWeekTargetProgChange();
+}
+
+function onDupWeekTargetProgChange(){
+  const sel=document.getElementById('dup-week-target-prog');
+  const opt=sel.selectedOptions[0];
+  if(!opt)return;
+  const type=opt.getAttribute('data-type');
+  const weeks=parseInt(opt.getAttribute('data-weeks')||'0');
+  const oDiv=document.getElementById('dup-week-other-prog-oneshot');
+  const dDiv=document.getElementById('dup-week-other-prog-date');
+  if(type==='oneshot'&&weeks>0){
+    oDiv.style.display='';
+    dDiv.style.display='none';
+    document.getElementById('dup-week-other-prog-week').innerHTML=
+      Array.from({length:weeks},(_,i)=>`<option value="${i+1}">Semaine ${i+1}</option>`).join('');
+  } else {
+    oDiv.style.display='none';
+    dDiv.style.display='';
+    const dates=getWeekDates(adminWeekOffset);
+    const nextMon=new Date(dates[0]);nextMon.setDate(dates[0].getDate()+7);
+    document.getElementById('dup-week-other-prog-target-date').value=nextMon.toISOString().split('T')[0];
+  }
+}
+
+async function confirmDupWeekV2(){
+  const dest=document.getElementById('dup-week-dest-type').value;
+  const progId=document.getElementById('admin-filter-prog')?.value;
+  if(!progId){showToast('⚠️ Aucun programme sélectionné');return;}
+  const prog=getProgById(progId);
+  const oneshot=isOneshotProg(prog);
+  const btn=document.getElementById('dup-week-confirm-btn');
+  if(btn){btn.disabled=true;btn.textContent='Copie...';}
+  try{
+    if(dest==='same_prog'){
+      // Délègue à la fonction existante d'admin.js (elle gère le close+reload)
+      await confirmDupWeek();
+      return;
+    }
+    if(dest==='other_prog') await _dupWeekToOtherProg(progId,prog,oneshot);
+    if(dest==='perso')      await _dupWeekToPerso(progId,prog,oneshot);
+  } finally {
+    if(btn){btn.disabled=false;btn.textContent='📋 Dupliquer la semaine';}
+  }
+}
+
+async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
+  const tgtProgId=document.getElementById('dup-week-target-prog').value;
+  if(!tgtProgId){showToast('⚠️ Aucun programme cible');return;}
+  const tgtProg=getProgById(tgtProgId);
+  const tgtOneshot=isOneshotProg(tgtProg);
+
+  // Charger sessions source
+  let data,error;
+  if(srcOneshot){
+    const srcWeek=adminWeekOffset+1;
+    ({data,error}=await sb.from('sessions').select('*').eq('programme_id',srcProgId).eq('week_number',srcWeek));
+  } else {
+    const srcDates=getWeekDates(adminWeekOffset).map(d=>d.toISOString().split('T')[0]);
+    ({data,error}=await sb.from('sessions').select('*').in('date',srcDates).eq('programme_id',srcProgId));
+  }
+  if(error){showToast('❌ '+error.message);return;}
+  if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
+
+  let rows;
+  if(tgtOneshot){
+    const tgtWeek=parseInt(document.getElementById('dup-week-other-prog-week').value);
+    if(!tgtWeek){showToast('⚠️ Choisis une semaine cible');return;}
+    if(srcOneshot){
+      // one-shot → one-shot
+      rows=data.map(({id,created_at,...rest})=>({...rest,programme_id:tgtProgId,week_number:tgtWeek,created_by:currentUser.id}));
+    } else {
+      // abo → one-shot : date → day_of_week
+      rows=data.map(({id,created_at,...rest})=>{
+        const d=new Date(rest.date+'T12:00:00');
+        const dow=d.getDay()===0?7:d.getDay();
+        return{...rest,programme_id:tgtProgId,week_number:tgtWeek,day_of_week:dow,date:null,created_by:currentUser.id};
+      });
+    }
+  } else {
+    const tgtDateStr=document.getElementById('dup-week-other-prog-target-date').value;
+    if(!tgtDateStr){showToast('⚠️ Choisis une date cible');return;}
+    const tgtPicked=new Date(tgtDateStr+'T12:00:00');
+    const tgtDay=tgtPicked.getDay();
+    const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
+    if(srcOneshot){
+      // one-shot → abo : week_number+day_of_week → date
+      rows=data.map(({id,created_at,...rest})=>{
+        const dow=(rest.day_of_week||1)-1;
+        const d=new Date(tgtMon);d.setDate(tgtMon.getDate()+dow);
+        return{...rest,programme_id:tgtProgId,date:d.toISOString().split('T')[0],week_number:null,day_of_week:null,created_by:currentUser.id};
+      });
+    } else {
+      // abo → abo
+      const srcMon=getWeekDates(adminWeekOffset)[0];
+      const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
+      if(diffDays===0){showToast('⚠️ Choisis une semaine différente');return;}
+      rows=data.map(({id,created_at,...rest})=>{
+        const d=new Date(rest.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
+        return{...rest,programme_id:tgtProgId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+      });
+    }
+  }
+  const {error:e2}=await sb.from('sessions').insert(rows);
+  if(e2){showToast('❌ '+e2.message);return;}
+  showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} → ${tgtProg.name}`);
+  closeDupWeekModal();
+  loadAdminCalendar();
+}
+
+async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
+  const athleteId=document.getElementById('dup-week-target-athlete').value;
+  if(!athleteId){showToast('⚠️ Aucun athlète sélectionné');return;}
+  const tgtDateStr=document.getElementById('dup-week-target-date').value;
+  if(!tgtDateStr){showToast('⚠️ Choisis un lundi cible');return;}
+  const tgtPicked=new Date(tgtDateStr+'T12:00:00');
+  const tgtDay=tgtPicked.getDay();
+  const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
+
+  let data,error;
+  if(srcOneshot){
+    const srcWeek=adminWeekOffset+1;
+    ({data,error}=await sb.from('sessions').select('*').eq('programme_id',srcProgId).eq('week_number',srcWeek));
+  } else {
+    const srcDates=getWeekDates(adminWeekOffset).map(d=>d.toISOString().split('T')[0]);
+    ({data,error}=await sb.from('sessions').select('*').in('date',srcDates).eq('programme_id',srcProgId));
+  }
+  if(error){showToast('❌ '+error.message);return;}
+  if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
+
+  let rows;
+  if(srcOneshot){
+    // week_number+day_of_week → date calculée depuis tgtMon
+    rows=data.map(({id,created_at,programme_id,week_number,day_of_week,...rest})=>{
+      const dow=(day_of_week||1)-1;
+      const d=new Date(tgtMon);d.setDate(tgtMon.getDate()+dow);
+      return{...rest,athlete_id:athleteId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+    });
+  } else {
+    const srcMon=getWeekDates(adminWeekOffset)[0];
+    const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
+    rows=data.map(({id,created_at,programme_id,week_number,day_of_week,...rest})=>{
+      const d=new Date(rest.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
+      return{...rest,athlete_id:athleteId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+    });
+  }
+  const {error:e2}=await sb.from('personal_sessions').insert(rows);
+  if(e2){showToast('❌ '+e2.message);return;}
+  const ath=persoAthletesCache.find(a=>a.id===athleteId);
+  showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} → ${ath?.full_name||'athlète'}`);
+  closeDupWeekModal();
+}

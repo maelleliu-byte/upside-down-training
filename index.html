@@ -476,7 +476,7 @@
         <div style="display:flex;gap:6px">
           <button class="arrow-btn" onclick="changeAdminWeek(-1)">‹</button>
           <button class="arrow-btn" onclick="changeAdminWeek(1)">›</button>
-          <button class="arrow-btn" onclick="openDupWeekModal()" title="Dupliquer la semaine entière" style="font-size:14px">📋</button>
+          <button class="arrow-btn" onclick="openDupWeekModalV2()" title="Dupliquer la semaine entière" style="font-size:14px">📋</button>
         </div>
       </div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px;color:var(--muted)" id="admin-cal-week-label">—</div>
@@ -485,20 +485,48 @@
 
     <!-- MODAL DUPLIQUER SEMAINE ENTIÈRE -->
     <div class="modal-overlay" id="dup-week-modal">
-      <div class="modal-box">
+      <div class="modal-box" style="position:relative">
+        <button onclick="closeDupWeekModal()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);font-size:24px;line-height:1;cursor:pointer;padding:4px 6px">×</button>
         <div class="modal-title">📋 Dupliquer la semaine</div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Source : <strong id="dup-week-source-label">—</strong></div>
-        <!-- Mode one-shot -->
+        <!-- Sélecteur destination -->
+        <div class="form-group">
+          <label class="form-label">Destination</label>
+          <select class="form-select" id="dup-week-dest-type" onchange="onDupWeekDestChange()">
+            <option value="same_prog">Même programme</option>
+            <option value="other_prog">Autre programme</option>
+            <option value="perso">Espace perso d'un athlète</option>
+          </select>
+        </div>
+        <!-- Mode one-shot (même prog) -->
         <div id="dup-week-oneshot-group" class="form-group" style="display:none">
           <label class="form-label">Semaine de destination</label>
           <select class="form-select" id="dup-week-target-week"></select>
         </div>
-        <!-- Mode abonnement -->
+        <!-- Date (même prog abo / perso) -->
         <div id="dup-week-date-group" class="form-group">
-          <label class="form-label">Lundi de la semaine cible</label>
+          <label class="form-label" id="dup-week-date-label">Lundi de la semaine cible</label>
           <input type="date" class="form-input" id="dup-week-target-date">
         </div>
-        <button class="btn-modal-save" onclick="confirmDupWeek()">📋 Dupliquer la semaine</button>
+        <!-- Autre programme -->
+        <div id="dup-week-other-prog-group" class="form-group" style="display:none">
+          <label class="form-label">Programme cible</label>
+          <select class="form-select" id="dup-week-target-prog" onchange="onDupWeekTargetProgChange()"></select>
+          <div id="dup-week-other-prog-oneshot" style="display:none;margin-top:10px">
+            <label class="form-label">Semaine cible dans ce programme</label>
+            <select class="form-select" id="dup-week-other-prog-week"></select>
+          </div>
+          <div id="dup-week-other-prog-date" style="display:none;margin-top:10px">
+            <label class="form-label">Lundi de la semaine cible</label>
+            <input type="date" class="form-input" id="dup-week-other-prog-target-date">
+          </div>
+        </div>
+        <!-- Espace perso athlète -->
+        <div id="dup-week-perso-group" class="form-group" style="display:none">
+          <label class="form-label">Athlète</label>
+          <select class="form-select" id="dup-week-target-athlete"></select>
+        </div>
+        <button class="btn-modal-save" id="dup-week-confirm-btn" onclick="confirmDupWeekV2()">📋 Dupliquer la semaine</button>
         <button class="btn-secondary" onclick="closeDupWeekModal()" style="margin-top:8px;width:100%">Annuler</button>
       </div>
     </div>
@@ -710,14 +738,47 @@
 
     <!-- MODAL DUPLIQUER SEMAINE ENTIÈRE (espace perso) -->
     <div class="modal-overlay" id="dup-perso-week-modal">
-      <div class="modal-box">
+      <div class="modal-box" style="position:relative">
+        <button onclick="closeDupPersoWeekModal()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);font-size:24px;line-height:1;cursor:pointer;padding:4px 6px">×</button>
         <div class="modal-title">📋 Dupliquer la semaine</div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Source : <strong id="dup-perso-week-source-label">—</strong></div>
+        <!-- Sélecteur destination -->
         <div class="form-group">
+          <label class="form-label">Destination</label>
+          <select class="form-select" id="dup-perso-dest-type" onchange="onDupPersoDestChange()">
+            <option value="same">Même espace perso</option>
+            <option value="other_athlete">Autre athlète (espace perso)</option>
+            <option value="prog">Vers un programme</option>
+          </select>
+        </div>
+        <!-- Même espace perso -->
+        <div id="dup-perso-same-group" class="form-group">
           <label class="form-label">Lundi de la semaine cible</label>
           <input type="date" class="form-input" id="dup-perso-week-target-date">
         </div>
-        <button class="btn-modal-save" onclick="confirmDupPersoWeek()">📋 Dupliquer la semaine</button>
+        <!-- Autre athlète -->
+        <div id="dup-perso-athlete-group" class="form-group" style="display:none">
+          <label class="form-label">Athlète cible</label>
+          <select class="form-select" id="dup-perso-target-athlete"></select>
+          <div style="margin-top:10px">
+            <label class="form-label">Lundi de la semaine cible</label>
+            <input type="date" class="form-input" id="dup-perso-athlete-target-date">
+          </div>
+        </div>
+        <!-- Vers programme -->
+        <div id="dup-perso-prog-group" class="form-group" style="display:none">
+          <label class="form-label">Programme</label>
+          <select class="form-select" id="dup-perso-target-prog" onchange="onDupPersoProgChange()"></select>
+          <div id="dup-perso-prog-oneshot" style="display:none;margin-top:10px">
+            <label class="form-label">Semaine de destination</label>
+            <select class="form-select" id="dup-perso-prog-target-week"></select>
+          </div>
+          <div id="dup-perso-prog-date" style="display:none;margin-top:10px">
+            <label class="form-label">Lundi de la semaine cible</label>
+            <input type="date" class="form-input" id="dup-perso-prog-target-date">
+          </div>
+        </div>
+        <button class="btn-modal-save" id="dup-perso-confirm-btn" onclick="confirmDupPersoWeekV2()">📋 Dupliquer la semaine</button>
         <button class="btn-secondary" onclick="closeDupPersoWeekModal()" style="margin-top:8px;width:100%">Annuler</button>
       </div>
     </div>
