@@ -897,7 +897,7 @@ function openDupPersoWeekModal(){
     ? athletes.map(a=>`<option value="${a.id}">${a.full_name||a.email||a.id}</option>`).join('')
     : '<option value="">— Aucun autre athlète —</option>';
   // Remplir programmes
-  const progs=window.programmes||[];
+  const progs=programmes||[];
   document.getElementById('dup-perso-target-prog').innerHTML=progs.length
     ? progs.map(p=>`<option value="${p.id}" data-type="${p.type||''}" data-weeks="${p.total_weeks||0}">${p.icon||'💪'} ${p.name}</option>`).join('')
     : '<option value="">— Aucun programme —</option>';
@@ -3908,7 +3908,7 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
 })();
 
 // ===== DUP WEEK PLANNING V2 (remplace openDupWeekModal d'admin.js) =====
-function openDupWeekModalV2(){
+async function openDupWeekModalV2(){
   const progId=document.getElementById('admin-filter-prog')?.value;
   if(!progId){showToast('⚠️ Aucun programme sélectionné');return;}
   const prog=getProgById(progId);
@@ -3950,13 +3950,16 @@ function openDupWeekModalV2(){
   document.getElementById('dup-week-perso-group').style.display='none';
 
   // Remplir autres programmes
-  const otherProgs=(window.programmes||[]).filter(p=>p.id!==progId);
+  const otherProgs=(programmes||[]).filter(p=>p.id!==progId);
   document.getElementById('dup-week-target-prog').innerHTML=otherProgs.length
     ? otherProgs.map(p=>`<option value="${p.id}" data-type="${p.type||''}" data-weeks="${p.total_weeks||0}">${p.icon||'💪'} ${p.name}</option>`).join('')
     : '<option value="">— Aucun autre programme —</option>';
   if(otherProgs.length) onDupWeekTargetProgChange();
 
-  // Remplir athlètes perso
+  // Remplir athlètes perso (fetch si cache vide car espace perso pas encore visité)
+  if(!persoAthletesCache.length){
+    try{ await loadPersoAthletes(); } catch(e){ console.warn('perso athletes load',e); }
+  }
   const athletes=persoAthletesCache.filter(a=>a.role!=='admin');
   document.getElementById('dup-week-target-athlete').innerHTML=athletes.length
     ? athletes.map(a=>`<option value="${a.id}">${a.full_name||a.email||a.id}</option>`).join('')
