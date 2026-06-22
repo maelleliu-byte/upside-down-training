@@ -977,9 +977,11 @@ async function confirmDupPersoWeekV2(){
       const tgtDay=tgtPicked.getDay();
       const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
       const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
-      const rows=data.map(({id,created_at,...rest})=>{
-        const d=new Date(rest.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
-        return{...rest,athlete_id:tgtAthId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+      const rows=data.map(s=>{
+        const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
+        return{title:s.title||null,content:s.content||null,type:s.type||null,
+               color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+               athlete_id:tgtAthId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
       });
       const {error:e2}=await sb.from('personal_sessions').insert(rows);
       if(e2){showToast('❌ '+e2.message);return;}
@@ -993,13 +995,19 @@ async function confirmDupPersoWeekV2(){
       const tgtProg=getProgById(tgtProgId);
       const tgtOneshot=isOneshotProg(tgtProg);
       let rows;
+      // Whitelist : uniquement les colonnes existantes dans sessions
+      const _toProg=(s,extra)=>({
+        title:s.title||null,content:s.content||null,type:s.type||null,
+        color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+        created_by:currentUser.id,...extra
+      });
       if(tgtOneshot){
         const tgtWeek=parseInt(document.getElementById('dup-perso-prog-target-week').value);
         if(!tgtWeek){showToast('⚠️ Choisis une semaine');return;}
-        rows=data.map(({id,created_at,athlete_id,...rest})=>{
-          const d=new Date(rest.date+'T12:00:00');
-          const dow=d.getDay()===0?7:d.getDay(); // 1=Lun … 7=Dim
-          return{...rest,programme_id:tgtProgId,week_number:tgtWeek,day_of_week:dow,date:null,created_by:currentUser.id};
+        rows=data.map(s=>{
+          const d=new Date(s.date+'T12:00:00');
+          const dow=d.getDay()===0?7:d.getDay();
+          return _toProg(s,{programme_id:tgtProgId,week_number:tgtWeek,day_of_week:dow});
         });
       } else {
         const tgtDateStr=document.getElementById('dup-perso-prog-target-date').value;
@@ -1008,9 +1016,9 @@ async function confirmDupPersoWeekV2(){
         const tgtDay=tgtPicked.getDay();
         const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
         const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
-        rows=data.map(({id,created_at,athlete_id,...rest})=>{
-          const d=new Date(rest.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
-          return{...rest,programme_id:tgtProgId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+        rows=data.map(s=>{
+          const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
+          return _toProg(s,{programme_id:tgtProgId,date:d.toISOString().split('T')[0]});
         });
       }
       const {error:e2}=await sb.from('sessions').insert(rows);
@@ -4056,19 +4064,25 @@ async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
   if(error){showToast('❌ '+error.message);return;}
   if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
 
+  // Helper whitelist sessions (colonnes communes + champs cibles)
+  const _toSess=(s,extra)=>({
+    title:s.title||null,content:s.content||null,type:s.type||null,
+    color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+    created_by:currentUser.id,...extra
+  });
   let rows;
   if(tgtOneshot){
     const tgtWeek=parseInt(document.getElementById('dup-week-other-prog-week').value);
     if(!tgtWeek){showToast('⚠️ Choisis une semaine cible');return;}
     if(srcOneshot){
       // one-shot → one-shot
-      rows=data.map(({id,created_at,...rest})=>({...rest,programme_id:tgtProgId,week_number:tgtWeek,created_by:currentUser.id}));
+      rows=data.map(s=>_toSess(s,{programme_id:tgtProgId,week_number:tgtWeek,day_of_week:s.day_of_week||null}));
     } else {
       // abo → one-shot : date → day_of_week
-      rows=data.map(({id,created_at,...rest})=>{
-        const d=new Date(rest.date+'T12:00:00');
+      rows=data.map(s=>{
+        const d=new Date(s.date+'T12:00:00');
         const dow=d.getDay()===0?7:d.getDay();
-        return{...rest,programme_id:tgtProgId,week_number:tgtWeek,day_of_week:dow,date:null,created_by:currentUser.id};
+        return _toSess(s,{programme_id:tgtProgId,week_number:tgtWeek,day_of_week:dow});
       });
     }
   } else {
@@ -4079,19 +4093,19 @@ async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
     const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
     if(srcOneshot){
       // one-shot → abo : week_number+day_of_week → date
-      rows=data.map(({id,created_at,...rest})=>{
-        const dow=(rest.day_of_week||1)-1;
+      rows=data.map(s=>{
+        const dow=(s.day_of_week||1)-1;
         const d=new Date(tgtMon);d.setDate(tgtMon.getDate()+dow);
-        return{...rest,programme_id:tgtProgId,date:d.toISOString().split('T')[0],week_number:null,day_of_week:null,created_by:currentUser.id};
+        return _toSess(s,{programme_id:tgtProgId,date:d.toISOString().split('T')[0]});
       });
     } else {
       // abo → abo
       const srcMon=getWeekDates(adminWeekOffset)[0];
       const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
       if(diffDays===0){showToast('⚠️ Choisis une semaine différente');return;}
-      rows=data.map(({id,created_at,...rest})=>{
-        const d=new Date(rest.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
-        return{...rest,programme_id:tgtProgId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+      rows=data.map(s=>{
+        const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
+        return _toSess(s,{programme_id:tgtProgId,date:d.toISOString().split('T')[0]});
       });
     }
   }
@@ -4122,20 +4136,26 @@ async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
   if(error){showToast('❌ '+error.message);return;}
   if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
 
+  // Whitelist : uniquement les colonnes existantes dans personal_sessions
+  const _toPerso=(s,date)=>({
+    title:s.title||null,content:s.content||null,type:s.type||null,
+    color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+    athlete_id:athleteId,date,created_by:currentUser.id
+  });
   let rows;
   if(srcOneshot){
     // week_number+day_of_week → date calculée depuis tgtMon
-    rows=data.map(({id,created_at,programme_id,week_number,day_of_week,...rest})=>{
-      const dow=(day_of_week||1)-1;
+    rows=data.map(s=>{
+      const dow=(s.day_of_week||1)-1;
       const d=new Date(tgtMon);d.setDate(tgtMon.getDate()+dow);
-      return{...rest,athlete_id:athleteId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+      return _toPerso(s,d.toISOString().split('T')[0]);
     });
   } else {
     const srcMon=getWeekDates(adminWeekOffset)[0];
     const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
-    rows=data.map(({id,created_at,programme_id,week_number,day_of_week,...rest})=>{
-      const d=new Date(rest.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
-      return{...rest,athlete_id:athleteId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
+    rows=data.map(s=>{
+      const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
+      return _toPerso(s,d.toISOString().split('T')[0]);
     });
   }
   const {error:e2}=await sb.from('personal_sessions').insert(rows);
