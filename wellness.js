@@ -4164,3 +4164,109 @@ async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
   showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} → ${ath?.full_name||'athlète'}`);
   closeDupWeekModal();
 }
+
+// ===================================================
+// PROGRAMMES GRATUITS — is_free support
+// ===================================================
+
+// Toggle visibilité du champ prix quand "gratuit" est coché
+function onNpFreeChange(){
+  const isFree=document.getElementById('np-is-free')?.checked;
+  const row=document.getElementById('np-price-row');
+  if(row)row.style.display=isFree?'none':'';
+}
+
+// Patch saveNewProg pour transmettre is_free et réinitialiser la checkbox
+(function(){
+  if(typeof saveNewProg!=='function')return;
+  const _orig=saveNewProg;
+  window.saveNewProg=async function(){
+    const isFreeEl=document.getElementById('np-is-free');
+    const isFree=isFreeEl?.checked||false;
+    // Si gratuit, forcer prix à null avant appel original
+    if(isFree){
+      const priceEl=document.getElementById('np-price');
+      if(priceEl)priceEl.value='';
+    }
+    // Appel original (crée le programme)
+    // On intercepte l'insert en patchant temporairement sb.from
+    const _origFrom=sb.from.bind(sb);
+    let patched=false;
+    sb.from=function(table){
+      const builder=_origFrom(table);
+      if(table==='programmes'&&!patched){
+        patched=true;
+        const _origInsert=builder.insert.bind(builder);
+        builder.insert=function(payload,...args){
+          if(Array.isArray(payload))payload=payload.map(r=>({...r,is_free:isFree}));
+          else payload={...payload,is_free:isFree};
+          return _origInsert(payload,...args);
+        };
+      }
+      return builder;
+    };
+    await _orig();
+    sb.from=_origFrom;
+    // Réinitialiser la checkbox et réafficher le champ prix
+    if(isFreeEl)isFreeEl.checked=false;
+    const row=document.getElementById('np-price-row');
+    if(row)row.style.display='';
+  };
+})();
+
+// Patch renderPlans pour gérer les programmes gratuits
+(function(){
+  if(typeof renderPlans!=='function')return;
+  const _orig=renderPlans;
+  window.renderPlans=async function(){
+    await loadMyAccess();
+    const list=document.getElementById('plans-list');
+    const cards=programmes.map(p=>{
+      const slug=p.slug;
+      const stripeCfg=(typeof STRIPE_PLANS!=='undefined')?STRIPE_PLANS[slug]:null;
+      const access=myAccess.has(slug)||myAccessIds.has(p.id)||currentProfile?.role==='admin';
+      const icon=stripeCfg?.icon||p.icon||'💪';
+      const name=stripeCfg?.name||p.name;
+      const color=stripeCfg?.color||p.color||'#999';
+      const isOneshot=p.type==='oneshot';
+      const priceVal=(isOneshot?p.price_oneshot:p.price_monthly)||(stripeCfg?.price?parseFloat(stripeCfg.price):null);
+      const price=p.is_free?'Gratuit':(priceVal?priceVal+'€':'—');
+      const period=p.is_free?'':(priceVal?(isOneshot?'':'/mois'):'');
+      const desc=stripeCfg?.desc||p.description||'';
+      const features=stripeCfg?.features||[];
+      const stripePriceId=p.stripe_price_id||stripeCfg?.priceId;
+      let actionHtml;
+      if(access){
+        actionHtml=`<div class="access-badge">✓ Accès actif</div>`;
+      } else if(p.is_free){
+        actionHtml=`<button class="btn-subscribe locked" onclick="claimFreeAccess('${p.id}')" style="background:var(--yellow);color:#000">🎁 Accéder gratuitement</button>`;
+      } else if(stripePriceId){
+        actionHtml=`<button class="btn-subscribe locked" onclick="subscribeToProg('${p.id}')">💳 ${isOneshot?'Acheter':"S'abonner"} — ${price}${period}${isOneshot?'':`<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">14 jours d'essai gratuits</div>`}</button>`;
+      } else {
+        actionHtml=`<div style="text-align:center;padding:14px;background:rgba(255,140,71,.1);border:1px dashed rgba(255,140,71,.4);border-radius:10px;color:var(--orange);font-size:12px;font-weight:700">⚠️ Paiement non configuré</div>`;
+      }
+      return`<div class="plan-card ${slug==='affiliate'?'featured':''}">
+        <div class="plan-header"><div><div class="plan-name" style="color:${color}">${name}</div></div><div><div class="plan-price-val">${price}</div><div class="plan-price-period">${period}</div></div></div>
+        ${desc?`<div class="plan-desc">${desc}</div>`:''}
+        ${features.length?`<div class="plan-features">${features.map(f=>`<div class="plan-feature">${f}</div>`).join('')}</div>`:''}
+        ${actionHtml}
+      </div>`;
+    }).join('');
+    list.innerHTML=cards||'<div style="padding:40px;text-align:center;color:var(--muted);font-size:13px">Aucun programme disponible</div>';
+  };
+})();
+
+// Accès gratuit sans Stripe
+async function claimFreeAccess(programmeId){
+  if(!currentUser){showToast('⚠️ Connecte-toi d\'abord');return;}
+  const prog=programmes.find(p=>p.id===programmeId);
+  if(!prog||!prog.is_free){showToast('❌ Programme non gratuit');return;}
+  showToast('⏳ Activation en cours...');
+  const {error}=await sb.from('programme_access').upsert({
+    athlete_id:currentUser.id,
+    programme_id:programmeId
+  },{onConflict:'athlete_id,programme_id'});
+  if(error){showToast('❌ '+error.message);return;}
+  showToast('🎁 Accès activé !');
+  await renderPlans();
+}

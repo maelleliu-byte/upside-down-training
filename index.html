@@ -255,7 +255,13 @@
         <div class="new-prog-title">Nouveau programme</div>
         <div class="form-group"><label class="form-label">Nom</label><input type="text" class="form-input" id="np-name" placeholder="Ex: Strength & Conditioning"></div>
         <div class="form-group"><label class="form-label">Description</label><input type="text" class="form-input" id="np-desc" placeholder="Description courte"></div>
-        <div class="form-row">
+        <div class="form-group">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--text)">
+            <input type="checkbox" id="np-is-free" onchange="onNpFreeChange()" style="width:18px;height:18px;cursor:pointer;accent-color:var(--yellow)">
+            Programme gratuit (accès libre sans carte bancaire)
+          </label>
+        </div>
+        <div id="np-price-row" class="form-row">
           <div class="form-group"><label class="form-label">Prix/mois (€)</label><input type="number" class="form-input" id="np-price" placeholder="0"></div>
           <div class="form-group"><label class="form-label">Type</label><select class="form-select" id="np-type" onchange="onNpTypeChange()"><option value="subscription">Abonnement</option><option value="oneshot">One-shot</option></select></div>
         </div>
