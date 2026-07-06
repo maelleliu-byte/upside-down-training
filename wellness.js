@@ -2969,7 +2969,7 @@ function renderCycleGridNew(){
               </div>
               <span class="session-chip-text" style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5" onclick="event.stopPropagation();editThemeChip(${wk},${ti},${di},${chi})">${chip.text}</span>
               <div style="display:flex;justify-content:flex-end">
-                <button class="theme-chip-send" data-text=${JSON.stringify(chip.text)} title="Envoyer vers Séance+" style="padding:2px 8px;font-size:9px;font-weight:700;background:rgba(0,0,0,.25);border:1px solid ${fg}55;color:${fg};border-radius:4px;cursor:pointer;opacity:.8">→ Séance+</button>
+                <button class="theme-chip-send" data-wk="${wk}" data-ti="${ti}" data-di="${di}" data-chi="${chi}" title="Envoyer vers Séance+" style="padding:2px 8px;font-size:9px;font-weight:700;background:rgba(0,0,0,.25);border:1px solid ${fg}55;color:${fg};border-radius:4px;cursor:pointer;opacity:.8">→ Séance+</button>
               </div>
             </div>`;
           }).join('');
@@ -2999,7 +2999,11 @@ function renderCycleGridNew(){
   if(grid) grid.querySelectorAll('.theme-chip-send').forEach(btn=>{
     btn.addEventListener('click', function(ev){
       ev.stopPropagation(); ev.preventDefault();
-      sendThemeChipToSession(this.dataset.text);
+      // Lecture directe dans le modèle (les attributs HTML tronquent
+      // le texte au premier guillemet " — bug transfert incomplet)
+      const key = `t${this.dataset.wk}-${this.dataset.ti}-${this.dataset.di}`;
+      const chip = ((cycleData.themeCells||{})[key]||[])[parseInt(this.dataset.chi)];
+      if(chip && chip.text!=null) sendThemeChipToSession(String(chip.text));
     });
   });
 
@@ -4270,112 +4274,3 @@ async function claimFreeAccess(programmeId){
   showToast('🎁 Accès activé !');
   await renderPlans();
 }
-
-// ===================================================
-// FIX MISE EN PAGE SÉANCE+ — renderContentWithCharges
-// Bug 1 (sauts de ligne) : l'ouverture de bloc <div>/<p> était
-// supprimée sans générer de \n → "A<div>B</div>" rendait "AB"
-// (structure typique du contenteditable Android : 1re ligne en
-// texte nu, suivantes en <div>). Le saut entre ligne 1 et 2
-// disparaissait. Les lignes vides multiples étaient aussi
-// écrasées en une seule.
-// Bug 2 (formatage) : toute ligne contenant "@ <chiffre>"
-// (ex "Deadlift @ 100kg") perdait TOUT son HTML. On ne strip
-// désormais que les vraies lignes de charge (NN%|...| / @NN%[...]).
-// ===================================================
-(function () {
-  if (window.__chargeLineFormatFixBound) return;
-  window.__chargeLineFormatFixBound = true;
-
-  function _install() {
-    const orig = window.renderContentWithCharges;
-    if (typeof orig !== 'function' || orig.__formatFixPatched) return;
-
-    const RX_CHARGE_PIPE = /\d+(?:\.\d+)?%\|[^|\n]+\|/;      // 80%|1RM|Back Squat|  et  80%|Back Squat|
-    const RX_CHARGE_AT   = /@\s*\d+(?:\.\d+)?%\s*\[[^\]]+\]/; // @80%[BackSquat]
-
-    function _stripLine(line) {
-      return line
-        .replace(/<[^>]+>/g, '')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/[ \t]+/g, ' ')
-        .trim();
-    }
-
-    window.renderContentWithCharges = function (content) {
-      let out = content || '';
-
-      // 1. Normaliser la structure bloc en \n
-      out = out
-        // bloc vide (<div><br></div>, <p></p>…) = exactement UNE ligne vide
-        .replace(/<(div|p|li)[^>]*>\s*(?:<br\s*\/?>)?\s*<\/\1>/gi, '\n')
-        .replace(/<br\s*\/?>/gi, '\n')
-        // OUVERTURE de bloc = nouvelle ligne (fix "AB" collés)
-        .replace(/<(div|p|li)[^>]*>/gi, '\n')
-        // fermeture = rien (sinon double saut par ligne)
-        .replace(/<\/(div|p|li)>/gi, '')
-        // Cap : max 2 lignes vides consécutives
-        .replace(/\n{4,}/g, '\n\n\n')
-        .trim();
-
-      // 2. Strip HTML UNIQUEMENT sur les vraies lignes de charge
-      out = out.split('\n').map(line => {
-        const plain = _stripLine(line);
-        if (RX_CHARGE_PIPE.test(plain) || RX_CHARGE_AT.test(plain)) return plain;
-        return line; // ← ligne normale : formatage conservé
-      }).join('\n');
-
-      // 3. Regex de charges (identiques à l'original)
-      out = out.replace(/(\d+(?:\.\d+)?)%\|([^|\n]+)\|([^|\n]+)\|/g, (match, pct, fmt, mvtName) => {
-        const pr = findPRByName(mvtName.trim(), fmt.trim());
-        const mvt = findMovementByName(mvtName.trim());
-        if (pr && mvt) {
-          const charge = _formatChargeForMovement(mvt, pr, pct);
-          const fmtLabel = fmt.trim().toUpperCase();
-          return `<span style="color:var(--muted)">${pct}% <span style="font-size:10px">${fmtLabel}</span></span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}</span>`;
-        }
-        if (mvt) {
-          const fmtLabel = fmt.trim().toUpperCase();
-          const mvtNameEsc = mvtName.trim().replace(/'/g, "\\'");
-          const fmtEsc = fmt.trim().replace(/'/g, "\\'");
-          return `<span style="color:var(--muted)">${pct}% <span style="font-size:10px">${fmtLabel}</span></span> <span onclick="openPRFromSession('${mvtNameEsc}','${fmtEsc}')" style="background:rgba(255,255,255,.06);color:var(--muted);padding:1px 7px;border-radius:5px;font-size:11px;cursor:pointer;text-decoration:underline dotted">+ Entrer ${fmtLabel}</span>`;
-        }
-        return match;
-      });
-      out = out.replace(/(\d+(?:\.\d+)?)%\|([^|\n]+)\|/g, (match, pct, mvtName) => {
-        const pr = findPRByName(mvtName.trim());
-        const mvt = findMovementByName(mvtName.trim());
-        if (pr && mvt) {
-          const charge = _formatChargeForMovement(mvt, pr, pct);
-          return `<span style="color:var(--muted)">${pct}%</span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}</span>`;
-        }
-        return `${pct}%|${mvtName}|`;
-      });
-      out = out.replace(/(@\s*(\d+(?:\.\d+)?)%\s*\[([^\]]+)\])/gi, (match, full, pct, mvtName) => {
-        const pr = findPRByName(mvtName.trim());
-        const mvt = findMovementByName(mvtName.trim());
-        if (pr && mvt) {
-          const charge = _formatChargeForMovement(mvt, pr, pct);
-          return `<span style="color:var(--muted)">@ ${pct}%</span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}</span>`;
-        }
-        return `@ ${pct}%`;
-      });
-
-      // 4. \n → <br>
-      out = out.replace(/\n/g, '<br>');
-      return out;
-    };
-    window.renderContentWithCharges.__formatFixPatched = true;
-  }
-
-  if (typeof window.renderContentWithCharges === 'function') {
-    _install();
-  } else {
-    document.addEventListener('DOMContentLoaded', _install);
-  }
-})();
