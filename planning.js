@@ -467,6 +467,16 @@ function findPRByName(name,format){
     }
     return null; // format demandé mais aucun PR pour ce format → ne pas afficher
   }
+  // Pas de format précisé : pour les mouvements de course, ne pas prendre le PR
+  // le plus récent au hasard (ex: un "Test 3min") — privilégier la Vitesse Critique,
+  // qui est la référence pour les calculs de % d'allure.
+  const unit=(mv.unit||'').toLowerCase();
+  const mvName=(mv.name||'').toLowerCase();
+  const isRunMovement=unit.includes('km/h')||unit.includes('min/km')||unit.includes('pace')||unit.includes('allure')||unit.includes('vitesse')||mvName==='run'||mvName.includes('course')||mvName.includes('cours')||mvName.includes('jog')||mvName.includes('vma');
+  if(isRunMovement){
+    const vcPRs=prs.filter(p=>(p.format||'').toLowerCase().replace(/\s+/g,'').includes('vitessecritique'));
+    if(vcPRs.length)return vcPRs.reduce((a,b)=>b.value>a.value?b:a);
+  }
   return prs[0]||null;
 }
 
