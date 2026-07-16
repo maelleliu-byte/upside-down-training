@@ -259,6 +259,16 @@ function _kmhToPaceStr(kmh){
   const s=Math.round(secPerKm%60);
   return `${m}:${String(s).padStart(2,'0')}/km`;
 }
+function _extractRunDistanceKm(fmt){
+  // Déduit une distance (en km) à partir du libellé de format PR (ex: "5K", "10km", "Semi", "Marathon")
+  if(!fmt)return null;
+  const f=fmt.toLowerCase();
+  if(f.includes('marathon')&&!f.includes('semi'))return 42.195;
+  if(f.includes('semi'))return 21.0975;
+  const m=f.match(/(\d+(?:[.,]\d+)?)\s*k(m)?\b/);
+  if(m)return parseFloat(m[1].replace(',','.'));
+  return null;
+}
 function _formatChargeForMovement(mvt,bestPR,pct){
   // Détermine le mode (number/time/rounds/run) et calcule la valeur cible à pct%
   const fmt=bestPR?.format||null;
@@ -276,7 +286,16 @@ function _formatChargeForMovement(mvt,bestPR,pct){
   if(mode==='time'){
     // bestPR.value en secondes — % du temps n'a pas de sens classique → on l'applique quand même
     const target=Math.round((parseFloat(pct)/100)*bestPR.value);
-    return formatPRValue(target,'time');
+    const timeStr=formatPRValue(target,'time');
+    // Si le format correspond à une distance de course connue (5K, 10K, Semi, Marathon…),
+    // on affiche aussi la vitesse (km/h) et l'allure (min/km) équivalentes
+    const distKm=_extractRunDistanceKm(fmt);
+    if(distKm&&target>0){
+      const speedKmh=Math.round((distKm/(target/3600))*10)/10;
+      const pace=_kmhToPaceStr(speedKmh);
+      return `${timeStr} <span style="opacity:.7">(${speedKmh} km/h · ${pace})</span>`;
+    }
+    return timeStr;
   }
   if(mode==='rounds'){
     const r=Math.floor(bestPR.value/1000);
@@ -438,30 +457,17 @@ function findPRByName(name,format){
   if(!mv)return null;
   const prs=myPRs[mv.id]||[];
   if(!prs.length)return null;
-  const _nf=f=>(f||'').toString().trim().toLowerCase().replace(/\s+/g,'');
-  // Meilleur PR d'une liste : min pour les temps, max sinon
-  const _bestOf=list=>{
-    if(!list||!list.length)return null;
-    const mode=getPRModeFor(mv,list[0].format||null);
-    return mode==='time'
-      ? list.reduce((a,b)=>b.value<a.value?b:a)
-      : list.reduce((a,b)=>b.value>a.value?b:a);
-  };
   if(format){
     // Cherche le meilleur PR du format demandé (ex: 3RM, 5RM…)
-    const normFmt=_nf(format);
-    // Les PR sans format sont assimilés au 1RM (legacy)
-    const fmtPRs=prs.filter(p=>_nf(p.format)===normFmt||(!_nf(p.format)&&/^1rm$/.test(normFmt)));
-    if(fmtPRs.length)return _bestOf(fmtPRs);
+    const normFmt=format.trim().toLowerCase().replace(/\s+/g,'');
+    const fmtPRs=prs.filter(p=>(p.format||'').toLowerCase().replace(/\s+/g,'')===normFmt);
+    if(fmtPRs.length){
+      // meilleur PR du format (max value)
+      return fmtPRs.reduce((a,b)=>b.value>a.value?b:a);
+    }
     return null; // format demandé mais aucun PR pour ce format → ne pas afficher
   }
-  // Sans format demandé : priorité au meilleur 1RM, sinon meilleur PR sans format,
-  // sinon meilleur tous formats confondus (jamais "le plus récent")
-  const oneRM=prs.filter(p=>/^1rm$/.test(_nf(p.format)));
-  if(oneRM.length)return _bestOf(oneRM);
-  const noFmt=prs.filter(p=>!_nf(p.format));
-  if(noFmt.length)return _bestOf(noFmt);
-  return _bestOf(prs);
+  return prs[0]||null;
 }
 
 function selectLevel(sessionId,level,btn){
