@@ -1,7 +1,7 @@
 // STRIPE / ABOS
 async function loadMyAccess(){
   if(!currentUser)return;
-  const {data,error}=await sb.from('programme_access').select('programme_id').eq('athlete_id',currentUser.id);
+  const {data,error}=await sb.from('programme_access').select('programme_id,expires_at').eq('athlete_id',currentUser.id).or(`expires_at.is.null,expires_at.gt.${new Date().toISOString()}`);
   myAccessIds=new Set((data||[]).map(a=>a.programme_id).filter(Boolean));
   myAccess=new Set();
   programmes.forEach(p=>{
