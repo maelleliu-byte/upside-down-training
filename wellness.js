@@ -2969,7 +2969,7 @@ function renderCycleGridNew(){
               </div>
               <span class="session-chip-text" style="white-space:pre-wrap;word-break:break-word;font-size:12px;line-height:1.5" onclick="event.stopPropagation();editThemeChip(${wk},${ti},${di},${chi})">${chip.text}</span>
               <div style="display:flex;justify-content:flex-end">
-                <button class="theme-chip-send" data-wk="${wk}" data-ti="${ti}" data-di="${di}" data-chi="${chi}" title="Envoyer vers Séance+" style="padding:2px 8px;font-size:9px;font-weight:700;background:rgba(0,0,0,.25);border:1px solid ${fg}55;color:${fg};border-radius:4px;cursor:pointer;opacity:.8">→ Séance+</button>
+                <button class="theme-chip-send" data-text=${JSON.stringify(chip.text)} title="Envoyer vers Séance+" style="padding:2px 8px;font-size:9px;font-weight:700;background:rgba(0,0,0,.25);border:1px solid ${fg}55;color:${fg};border-radius:4px;cursor:pointer;opacity:.8">→ Séance+</button>
               </div>
             </div>`;
           }).join('');
@@ -2999,11 +2999,7 @@ function renderCycleGridNew(){
   if(grid) grid.querySelectorAll('.theme-chip-send').forEach(btn=>{
     btn.addEventListener('click', function(ev){
       ev.stopPropagation(); ev.preventDefault();
-      // Lecture directe dans le modèle (les attributs HTML tronquent
-      // le texte au premier guillemet " — bug transfert incomplet)
-      const key = `t${this.dataset.wk}-${this.dataset.ti}-${this.dataset.di}`;
-      const chip = ((cycleData.themeCells||{})[key]||[])[parseInt(this.dataset.chi)];
-      if(chip && chip.text!=null) sendThemeChipToSession(String(chip.text));
+      sendThemeChipToSession(this.dataset.text);
     });
   });
 
@@ -4144,6 +4140,7 @@ async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
   const _toPerso=(s,date)=>({
     title:s.title||null,content:s.content||null,type:s.type||null,
     color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+    youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
     athlete_id:athleteId,date,created_by:currentUser.id
   });
   let rows;
