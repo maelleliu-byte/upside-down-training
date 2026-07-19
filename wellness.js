@@ -981,6 +981,7 @@ async function confirmDupPersoWeekV2(){
         const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
         return{title:s.title||null,content:s.content||null,type:s.type||null,
                color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+               youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
                athlete_id:tgtAthId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
       });
       const {error:e2}=await sb.from('personal_sessions').insert(rows);
@@ -999,6 +1000,7 @@ async function confirmDupPersoWeekV2(){
       const _toProg=(s,extra)=>({
         title:s.title||null,content:s.content||null,type:s.type||null,
         color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+        youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
         created_by:currentUser.id,...extra
       });
       if(tgtOneshot){
@@ -4068,6 +4070,7 @@ async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
   const _toSess=(s,extra)=>({
     title:s.title||null,content:s.content||null,type:s.type||null,
     color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+    youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
     created_by:currentUser.id,...extra
   });
   let rows;
