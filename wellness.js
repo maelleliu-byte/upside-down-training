@@ -980,7 +980,7 @@ async function confirmDupPersoWeekV2(){
       const rows=data.map(s=>{
         const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
         return{title:s.title||null,content:s.content||null,type:s.type||null,
-               color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+               color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
                youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
                athlete_id:tgtAthId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
       });
@@ -999,7 +999,7 @@ async function confirmDupPersoWeekV2(){
       // Whitelist : uniquement les colonnes existantes dans sessions
       const _toProg=(s,extra)=>({
         title:s.title||null,content:s.content||null,type:s.type||null,
-        color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+        color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
         youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
         created_by:currentUser.id,...extra
       });
@@ -4069,7 +4069,7 @@ async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
   // Helper whitelist sessions (colonnes communes + champs cibles)
   const _toSess=(s,extra)=>({
     title:s.title||null,content:s.content||null,type:s.type||null,
-    color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+    color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
     youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
     created_by:currentUser.id,...extra
   });
@@ -4142,7 +4142,7 @@ async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
   // Whitelist : uniquement les colonnes existantes dans personal_sessions
   const _toPerso=(s,date)=>({
     title:s.title||null,content:s.content||null,type:s.type||null,
-    color:s.color||null,sort_order:s.sort_order||null,studio_id:s.studio_id||null,
+    color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
     youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
     athlete_id:athleteId,date,created_by:currentUser.id
   });
