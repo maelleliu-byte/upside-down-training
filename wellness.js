@@ -4274,3 +4274,95 @@ async function claimFreeAccess(programmeId){
   showToast('🎁 Accès activé !');
   await renderPlans();
 }
+
+// ===== Export PDF du cycle (Vue Cycle + Vue Séance) — via impression navigateur =====
+if(!window.__exportCyclePDFBound){
+  window.__exportCyclePDFBound=true;
+
+  window.exportCyclePDF=function(){
+    if(typeof cycleData==='undefined'||!cycleData){showToast('⚠️ Charge ou crée un cycle d\'abord');return;}
+    const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
+    const name=cycleData.name||document.getElementById('cycle-name')?.value||'Cycle sans nom';
+    const cols=cycleData.columns||[];
+    const rows=cycleData.rows||[];
+    const days=(typeof DAYS_SESSION!=='undefined')?DAYS_SESSION:['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+
+    const startInput=document.getElementById('cycle-start-date')?.value;
+    const startDate=startInput?new Date(startInput+'T12:00:00'):new Date();
+    if(!startInput){
+      const day=startDate.getDay();
+      startDate.setDate(startDate.getDate()-(day===0?6:day-1));
+    }
+
+    const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+    // ---- Vue Cycle (thème/WOD/Force/Skill par semaine) ----
+    let cycleHtml=`<h2>Vue Cycle</h2><table><thead><tr><th>Semaine</th>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>`;
+    for(let w=0;w<weeks;w++){
+      const wStart=new Date(startDate);wStart.setDate(startDate.getDate()+w*7);
+      const wEnd=new Date(wStart);wEnd.setDate(wStart.getDate()+6);
+      const wLabel=`${wStart.getDate()}/${wStart.getMonth()+1} → ${wEnd.getDate()}/${wEnd.getMonth()+1}`;
+      cycleHtml+=`<tr><td class="wk"><b>Sem. ${w+1}</b><br><span class="dates">${wLabel}</span></td>`;
+      cols.forEach((c,ci)=>{
+        const key=`${w}-${ci}`;
+        const chips=(cycleData.cells[key]||[]);
+        const chipsHtml=chips.map(chip=>`<div class="chip" style="border-left:3px solid ${chip.color||'#999'}">${chip.done?'✓ ':''}${esc(chip.text)}</div>`).join('')||'<span class="empty">—</span>';
+        cycleHtml+=`<td>${chipsHtml}</td>`;
+      });
+      cycleHtml+='</tr>';
+    }
+    cycleHtml+='</tbody></table>';
+
+    // ---- Vue Séance (jour par jour, toutes les semaines) ----
+    let sessionHtml=`<h2>Vue Séance</h2>`;
+    for(let wk=0;wk<weeks;wk++){
+      const wStart=new Date(startDate);wStart.setDate(startDate.getDate()+wk*7);
+      const wEnd=new Date(wStart);wEnd.setDate(wStart.getDate()+6);
+      const wLabel=`${wStart.getDate()}/${wStart.getMonth()+1} → ${wEnd.getDate()}/${wEnd.getMonth()+1}`;
+      sessionHtml+=`<h3>Semaine ${wk+1} <span class="dates">(${wLabel})</span></h3>`;
+      sessionHtml+=`<table><thead><tr><th>Catégorie</th>${days.map(d=>`<th>${esc(d)}</th>`).join('')}</tr></thead><tbody>`;
+      rows.forEach((row,ri)=>{
+        sessionHtml+=`<tr><td class="cat"><b>${esc(row)}</b></td>`;
+        days.forEach((_,di)=>{
+          const key=`w${wk}-${ri}-${di}`;
+          const chips=(cycleData.sessionCells[key]||[]);
+          const chipsHtml=chips.map(chip=>`<div class="chip" style="background:${chip.color||'#e8ff47'}22;border-left:3px solid ${chip.color||'#e8ff47'}">${chip.done?'✓ ':''}${esc(chip.text)}</div>`).join('')||'<span class="empty">—</span>';
+          sessionHtml+=`<td>${chipsHtml}</td>`;
+        });
+        sessionHtml+='</tr>';
+      });
+      sessionHtml+='</tbody></table>';
+    }
+
+    const doc=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(name)}</title>
+    <style>
+      @page{size:A4 landscape;margin:12mm}
+      body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:10px}
+      h1{font-size:20px;margin:0 0 4px}
+      h2{font-size:16px;margin:22px 0 8px;border-bottom:2px solid #111;padding-bottom:4px;page-break-before:always}
+      h2:first-of-type{page-break-before:avoid}
+      h3{font-size:13px;margin:16px 0 6px;color:#444}
+      .subtitle{color:#666;font-size:12px;margin-bottom:14px}
+      table{width:100%;border-collapse:collapse;margin-bottom:10px;table-layout:fixed}
+      th,td{border:1px solid #ccc;padding:5px 6px;vertical-align:top;font-size:10.5px;word-wrap:break-word}
+      th{background:#f0f0f0;text-align:left}
+      td.wk,td.cat{white-space:nowrap;width:90px;background:#fafafa}
+      .dates{color:#888;font-size:9.5px;font-weight:normal}
+      .chip{margin-bottom:3px;padding:2px 4px;background:#f6f6f6;border-radius:2px}
+      .empty{color:#ccc}
+      @media print{ h2{page-break-before:always} h2:first-of-type{page-break-before:avoid} }
+    </style></head><body>
+      <h1>${esc(name)}</h1>
+      <div class="subtitle">${weeks} semaines — Export du ${new Date().toLocaleDateString('fr-FR')}</div>
+      ${cycleHtml}
+      ${sessionHtml}
+    </body></html>`;
+
+    const w=window.open('','_blank');
+    if(!w){showToast('⚠️ Autorise les pop-ups pour exporter en PDF');return;}
+    w.document.open();
+    w.document.write(doc);
+    w.document.close();
+    w.onload=function(){setTimeout(()=>{w.focus();w.print();},300);};
+  };
+}
