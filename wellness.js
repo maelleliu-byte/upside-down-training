@@ -4275,94 +4275,172 @@ async function claimFreeAccess(programmeId){
   await renderPlans();
 }
 
-// ===== Export PDF du cycle (Vue Cycle + Vue Séance) — via impression navigateur =====
-if(!window.__exportCyclePDFBound){
-  window.__exportCyclePDFBound=true;
+// ===================================================
+// TRANSFERT CYCLE → ESPACE PERSO (un seul athlète)
+// Ajoute un bouton "→ Perso" à côté de "→ Séance+"
+// dans la Vue Session du cycle. Permet de créer un
+// cycle et d'envoyer directement une case vers
+// l'espace perso d'un athlète (pas besoin d'un
+// programme dédié pour un seul athlète).
+// ===================================================
+(function(){
+  if(window.__cycleToPersoBound) return;
+  window.__cycleToPersoBound = true;
 
-  window.exportCyclePDF=function(){
-    if(typeof cycleData==='undefined'||!cycleData){showToast('⚠️ Charge ou crée un cycle d\'abord');return;}
-    const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cycleData.weeks||8;
-    const name=cycleData.name||document.getElementById('cycle-name')?.value||'Cycle sans nom';
-    const cols=cycleData.columns||[];
-    const rows=cycleData.rows||[];
-    const days=(typeof DAYS_SESSION!=='undefined')?DAYS_SESSION:['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  // ---- Extraction des champs d'une case (réutilise le même mapping que transferCycleToSession) ----
+  function _extractCycleSessionFields(wk, di){
+    const fields = { wod:null, target:null, tips:null, intensity:null, inter:null, scaled:null, foundation:null };
+    let hasContent = false;
+    if(!cycleData || !cycleData.rows) return { fields, hasContent };
+    cycleData.rows.forEach((rowName, ri) => {
+      const field = _matchCycleRowField(rowName);
+      if(!field) return;
+      const key = `w${wk}-${ri}-${di}`;
+      const chips = cycleData.sessionCells[key] || [];
+      if(!chips.length) return;
+      fields[field] = chips.map(c => (c && c.text != null ? c.text : '')).filter(t => t !== '').join('\n');
+      hasContent = true;
+    });
+    return { fields, hasContent };
+  }
 
-    const startInput=document.getElementById('cycle-start-date')?.value;
-    const startDate=startInput?new Date(startInput+'T12:00:00'):new Date();
-    if(!startInput){
-      const day=startDate.getDay();
-      startDate.setDate(startDate.getDate()-(day===0?6:day-1));
+  function _fillFormFromCycleFields(fields, wk, di){
+    const startDateEl = document.getElementById('cycle-start-date');
+    const startDate = startDateEl ? startDateEl.value : null;
+    if(startDate){
+      try{
+        const base = new Date(startDate + 'T12:00:00');
+        base.setDate(base.getDate() + wk * 7 + di);
+        document.getElementById('f-date').value = base.toISOString().split('T')[0];
+      }catch(e){}
     }
-
-    const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-
-    // ---- Vue Cycle (thème/WOD/Force/Skill par semaine) ----
-    let cycleHtml=`<h2>Vue Cycle</h2><table><thead><tr><th>Semaine</th>${cols.map(c=>`<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>`;
-    for(let w=0;w<weeks;w++){
-      const wStart=new Date(startDate);wStart.setDate(startDate.getDate()+w*7);
-      const wEnd=new Date(wStart);wEnd.setDate(wStart.getDate()+6);
-      const wLabel=`${wStart.getDate()}/${wStart.getMonth()+1} → ${wEnd.getDate()}/${wEnd.getMonth()+1}`;
-      cycleHtml+=`<tr><td class="wk"><b>Sem. ${w+1}</b><br><span class="dates">${wLabel}</span></td>`;
-      cols.forEach((c,ci)=>{
-        const key=`${w}-${ci}`;
-        const chips=(cycleData.cells[key]||[]);
-        const chipsHtml=chips.map(chip=>`<div class="chip" style="border-left:3px solid ${chip.color||'#999'}">${chip.done?'✓ ':''}${esc(chip.text)}</div>`).join('')||'<span class="empty">—</span>';
-        cycleHtml+=`<td>${chipsHtml}</td>`;
-      });
-      cycleHtml+='</tr>';
+    if(fields.wod !== null && typeof setEditorContent === 'function') setEditorContent(_plainToEditorHtml(fields.wod));
+    if(fields.target !== null){ const el=document.getElementById('f-target'); if(el) el.value=fields.target; }
+    if(fields.tips !== null){ const el=document.getElementById('f-tips'); if(el) el.value=fields.tips; }
+    if(fields.inter !== null){ const el=document.getElementById('f-scaling-inter'); if(el) el.value=fields.inter; }
+    if(fields.scaled !== null){ const el=document.getElementById('f-scaling-scaled'); if(el) el.value=fields.scaled; }
+    if(fields.foundation !== null){ const el=document.getElementById('f-scaling-foundation'); if(el) el.value=fields.foundation; }
+    if(fields.intensity !== null){
+      const v=parseInt(fields.intensity);
+      if(!isNaN(v)){
+        const el=document.getElementById('f-intensity'); const lbl=document.getElementById('f-int-val');
+        if(el) el.value=v; if(lbl) lbl.textContent=v;
+      }
     }
-    cycleHtml+='</tbody></table>';
+  }
 
-    // ---- Vue Séance (jour par jour, toutes les semaines) ----
-    let sessionHtml=`<h2>Vue Séance</h2>`;
-    for(let wk=0;wk<weeks;wk++){
-      const wStart=new Date(startDate);wStart.setDate(startDate.getDate()+wk*7);
-      const wEnd=new Date(wStart);wEnd.setDate(wStart.getDate()+6);
-      const wLabel=`${wStart.getDate()}/${wStart.getMonth()+1} → ${wEnd.getDate()}/${wEnd.getMonth()+1}`;
-      sessionHtml+=`<h3>Semaine ${wk+1} <span class="dates">(${wLabel})</span></h3>`;
-      sessionHtml+=`<table><thead><tr><th>Catégorie</th>${days.map(d=>`<th>${esc(d)}</th>`).join('')}</tr></thead><tbody>`;
-      rows.forEach((row,ri)=>{
-        sessionHtml+=`<tr><td class="cat"><b>${esc(row)}</b></td>`;
-        days.forEach((_,di)=>{
-          const key=`w${wk}-${ri}-${di}`;
-          const chips=(cycleData.sessionCells[key]||[]);
-          const chipsHtml=chips.map(chip=>`<div class="chip" style="background:${chip.color||'#e8ff47'}22;border-left:3px solid ${chip.color||'#e8ff47'}">${chip.done?'✓ ':''}${esc(chip.text)}</div>`).join('')||'<span class="empty">—</span>';
-          sessionHtml+=`<td>${chipsHtml}</td>`;
-        });
-        sessionHtml+='</tr>';
-      });
-      sessionHtml+='</tbody></table>';
-    }
+  // ---- Modal athlète (créée dynamiquement, une seule fois) ----
+  let _pendingCyclePerso = null; // {wk, di}
 
-    const doc=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${esc(name)}</title>
-    <style>
-      @page{size:A4 landscape;margin:12mm}
-      body{font-family:Arial,Helvetica,sans-serif;color:#111;padding:10px}
-      h1{font-size:20px;margin:0 0 4px}
-      h2{font-size:16px;margin:22px 0 8px;border-bottom:2px solid #111;padding-bottom:4px;page-break-before:always}
-      h2:first-of-type{page-break-before:avoid}
-      h3{font-size:13px;margin:16px 0 6px;color:#444}
-      .subtitle{color:#666;font-size:12px;margin-bottom:14px}
-      table{width:100%;border-collapse:collapse;margin-bottom:10px;table-layout:fixed}
-      th,td{border:1px solid #ccc;padding:5px 6px;vertical-align:top;font-size:10.5px;word-wrap:break-word}
-      th{background:#f0f0f0;text-align:left}
-      td.wk,td.cat{white-space:nowrap;width:90px;background:#fafafa}
-      .dates{color:#888;font-size:9.5px;font-weight:normal}
-      .chip{margin-bottom:3px;padding:2px 4px;background:#f6f6f6;border-radius:2px}
-      .empty{color:#ccc}
-      @media print{ h2{page-break-before:always} h2:first-of-type{page-break-before:avoid} }
-    </style></head><body>
-      <h1>${esc(name)}</h1>
-      <div class="subtitle">${weeks} semaines — Export du ${new Date().toLocaleDateString('fr-FR')}</div>
-      ${cycleHtml}
-      ${sessionHtml}
-    </body></html>`;
+  function _ensureModal(){
+    if(document.getElementById('cycle-to-perso-modal')) return;
+    const div = document.createElement('div');
+    div.className = 'modal-overlay';
+    div.id = 'cycle-to-perso-modal';
+    div.innerHTML = `
+      <div class="modal-box" style="position:relative">
+        <button onclick="closeCycleToPersoModal()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);font-size:24px;line-height:1;cursor:pointer;padding:4px 6px">×</button>
+        <div class="modal-title">👤 Envoyer vers l'espace perso</div>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Choisis l'athlète qui recevra cette séance.</div>
+        <div class="form-group">
+          <label class="form-label">Athlète</label>
+          <select class="form-select" id="cycle-to-perso-athlete"><option value="">Chargement…</option></select>
+        </div>
+        <button class="btn-modal-save" onclick="confirmCycleToPerso()">👤 Envoyer vers l'espace perso</button>
+        <button class="btn-secondary" onclick="closeCycleToPersoModal()" style="margin-top:8px;width:100%">Annuler</button>
+      </div>`;
+    document.body.appendChild(div);
+  }
 
-    const w=window.open('','_blank');
-    if(!w){showToast('⚠️ Autorise les pop-ups pour exporter en PDF');return;}
-    w.document.open();
-    w.document.write(doc);
-    w.document.close();
-    w.onload=function(){setTimeout(()=>{w.focus();w.print();},300);};
+  window.closeCycleToPersoModal = function(){
+    const m = document.getElementById('cycle-to-perso-modal');
+    if(m) m.classList.remove('open');
+    _pendingCyclePerso = null;
   };
-}
+
+  window.transferCycleToPerso = async function(wk, di){
+    if(!cycleData || !cycleData.rows){ showToast('⚠️ Aucun cycle chargé'); return; }
+    const { hasContent } = _extractCycleSessionFields(wk, di);
+    if(!hasContent){ showToast('⚠️ Aucun contenu dans cette colonne'); return; }
+    _pendingCyclePerso = { wk, di };
+    _ensureModal();
+    const sel = document.getElementById('cycle-to-perso-athlete');
+    sel.innerHTML = '<option value="">Chargement…</option>';
+    document.getElementById('cycle-to-perso-modal').classList.add('open');
+    const mixed = (typeof loadMixedAthletes === 'function') ? await loadMixedAthletes() : [];
+    if(!mixed.length){
+      sel.innerHTML = '<option value="">— Aucun athlète —</option>';
+    } else {
+      sel.innerHTML = mixed.map(a => `<option value="${a.id}">${escapeHtml(a.full_name||a.email||'Athlète')}</option>`).join('');
+    }
+  };
+
+  window.confirmCycleToPerso = async function(){
+    if(!_pendingCyclePerso) { closeCycleToPersoModal(); return; }
+    const athleteId = document.getElementById('cycle-to-perso-athlete').value;
+    if(!athleteId){ showToast('⚠️ Choisis un athlète'); return; }
+    const { wk, di } = _pendingCyclePerso;
+    const { fields, hasContent } = _extractCycleSessionFields(wk, di);
+    if(!hasContent){ showToast('⚠️ Aucun contenu dans cette colonne'); closeCycleToPersoModal(); return; }
+
+    // S'assurer que l'athlète est en cache pour l'affichage du bandeau perso
+    if(!persoAthletesCache.find(a => a.id === athleteId)){
+      const { data: ath } = await sb.from('profiles').select('*').eq('id', athleteId).single();
+      if(ath) persoAthletesCache.push(ath);
+    }
+
+    closeCycleToPersoModal();
+
+    window._returnToSessionsAfterSave = false;
+    window._returnToPlanningAfterSave = false;
+    const newSessionBtn = Array.from(document.querySelectorAll('.admin-tab-btn'))
+      .find(b => (b.getAttribute('onclick') || '').includes("'new-session'"));
+    if(typeof resetSessionForm === 'function') resetSessionForm();
+    if(typeof adminTab === 'function' && newSessionBtn) adminTab('new-session', newSessionBtn);
+
+    enterPersoFormMode(athleteId);
+    _fillFormFromCycleFields(fields, wk, di);
+    window._returnToCycleAfterSave = cycleMode || 'session';
+
+    showToast('✅ Champs pré-remplis (espace perso)');
+    const pageAdmin = document.getElementById('page-admin');
+    if(pageAdmin) pageAdmin.scrollTop = 0;
+  };
+
+  // ---- Injection du bouton "→ Perso" à côté de "→ Séance+" ----
+  function _patchRenderSessionGridForPerso(){
+    const orig = window.renderSessionGrid;
+    if(!orig || orig.__transferPersoPatched) return;
+    window.renderSessionGrid = function(){
+      orig.apply(this, arguments);
+      const grid = document.getElementById('cycle-grid');
+      if(!grid) return;
+      grid.querySelectorAll('.session-grid-table').forEach((table, wk) => {
+        const ths = table.querySelectorAll('thead tr th');
+        ths.forEach((th, idx) => {
+          if(idx === 0) return;
+          const di = idx - 1;
+          if(th.querySelector('.cycle-to-perso-btn')) return; // idempotent
+          const btn = document.createElement('button');
+          btn.className = 'cycle-to-perso-btn';
+          btn.title = "Envoyer vers l'espace perso d'un athlète";
+          btn.innerHTML = '→ Perso';
+          btn.style.cssText = 'display:block;margin:3px auto 0;padding:2px 7px;font-size:10px;font-weight:700;background:var(--card2);border:1px solid #e8ff47;color:#e8ff47;border-radius:5px;cursor:pointer;white-space:nowrap;letter-spacing:.5px';
+          btn.addEventListener('click', (e) => { e.stopPropagation(); transferCycleToPerso(wk, di); });
+          th.appendChild(btn);
+        });
+      });
+    };
+    window.renderSessionGrid.__transferPersoPatched = true;
+  }
+
+  if(typeof window.renderSessionGrid === 'function'){
+    _patchRenderSessionGridForPerso();
+  } else {
+    document.addEventListener('DOMContentLoaded', () => {
+      if(typeof renderSessionGrid === 'function') _patchRenderSessionGridForPerso();
+    });
+  }
+  // Sécurité si le patch "→ Séance+" (chargé avant) redéfinit renderSessionGrid après nous
+  setTimeout(_patchRenderSessionGridForPerso, 900);
+})();
