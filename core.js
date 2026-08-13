@@ -93,6 +93,18 @@ function authTab(mode){
   document.querySelector('.btn-auth').textContent=mode==='login'?'Se connecter':'Créer mon compte';
   document.getElementById('auth-error').textContent='';
 }
+// Attend que window.__STUDIO__ soit résolu (le fetch bootstrap de index.html est async).
+// Évite un signup où studio_id part à NULL parce que l'utilisateur a cliqué trop vite.
+function waitForStudioReady(timeoutMs){
+  timeoutMs=timeoutMs||8000;
+  if(window.__STUDIO__)return Promise.resolve(window.__STUDIO__);
+  return new Promise(resolve=>{
+    let done=false;
+    const onReady=e=>{if(done)return;done=true;window.removeEventListener('studio:ready',onReady);resolve(e.detail||window.__STUDIO__);};
+    window.addEventListener('studio:ready',onReady);
+    setTimeout(()=>{if(done)return;done=true;window.removeEventListener('studio:ready',onReady);resolve(window.__STUDIO__||null);},timeoutMs);
+  });
+}
 async function doAuth(){
   const email=document.getElementById('auth-email').value.trim();
   const pwd=document.getElementById('auth-pwd').value;
@@ -105,6 +117,21 @@ async function doAuth(){
     res=await sb.auth.signInWithPassword({email,password:pwd});
   } else {
     if(!name){errEl.textContent='Prénom et nom requis';return;}
+    // Sécurité multi-tenant : ne jamais créer un compte tant que le studio de l'URL
+    // n'est pas résolu — sinon le profil part avec studio_id NULL (= Upside Down).
+    if(!window.__STUDIO__){
+      const btn=document.querySelector('.btn-auth');
+      const prevTxt=btn?btn.textContent:null;
+      if(btn){btn.disabled=true;btn.textContent='Chargement du studio…';}
+      await waitForStudioReady();
+      if(btn){btn.disabled=false;btn.textContent=prevTxt||'Créer mon compte';}
+    }
+    if(window.__STUDIO_SLUG__&&window.__STUDIO_SLUG__!=='upside'&&!window.__STUDIO__?.id){
+      // Slug présent dans l'URL mais studio jamais résolu (erreur réseau / slug invalide) :
+      // on refuse de créer le compte plutôt que de le rattacher au mauvais studio.
+      errEl.textContent="Impossible de vérifier le studio. Recharge la page et réessaie.";
+      return;
+    }
     res=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:name}}});
     // Après signup : assigner le studio courant au profil
     if(!res.error&&res.data.user){
