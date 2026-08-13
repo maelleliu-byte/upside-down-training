@@ -1573,6 +1573,7 @@ function _injectBadgesSectionInProfil() {
 // ============================================================
 
 const COLOR_THEMES = [
+  { id: 'teal',    label: 'Teal',       dark: '#2dd4bf', darkText: '#000', light: '#0d7d72', lightText: '#fff' },
   { id: 'yellow',  label: 'Sandglass',  dark: '#e8ff47', darkText: '#000', light: '#5a6810', lightText: '#fff' },
   { id: 'blue',    label: 'Aqua',       dark: '#47c8ff', darkText: '#000', light: '#0b5e94', lightText: '#fff' },
   { id: 'orange',  label: 'Ember',      dark: '#ff8c47', darkText: '#000', light: '#a8470a', lightText: '#fff' },
@@ -1584,6 +1585,15 @@ const COLOR_THEMES = [
 ];
 
 function applyColorTheme(themeId) {
+  // 'studio' = suit automatiquement la couleur du studio (accent_color), pas de couleur codée en dur
+  if (themeId === 'studio') {
+    const studioColor = (window.__STUDIO__ && window.__STUDIO__.accent_color) || '#e8ff47';
+    document.documentElement.style.setProperty('--accent', studioColor);
+    try { localStorage.removeItem('upside-color-theme'); } catch (e) {}
+    const picker = document.getElementById('color-theme-picker');
+    if (picker) picker.remove();
+    return;
+  }
   const theme = COLOR_THEMES.find(t => t.id === themeId) || COLOR_THEMES[0];
   const isDark = (document.documentElement.getAttribute('data-theme') || 'dark') !== 'light';
   const accentColor = isDark ? theme.dark : theme.light;
@@ -1598,6 +1608,7 @@ function initColorTheme() {
   try {
     const saved = localStorage.getItem('upside-color-theme');
     if (saved) applyColorTheme(saved);
+    // sinon : on laisse la couleur du studio (accent_color) déjà appliquée par index.html
   } catch (e) {}
 }
 
@@ -1605,13 +1616,26 @@ function openColorThemePicker() {
   const existing = document.getElementById('color-theme-picker');
   if (existing) { existing.remove(); return; }
 
-  const saved = (() => { try { return localStorage.getItem('upside-color-theme') || 'yellow'; } catch (e) { return 'yellow'; } })();
+  const saved = (() => { try { return localStorage.getItem('upside-color-theme') || 'studio'; } catch (e) { return 'studio'; } })();
+  const studioColor = (window.__STUDIO__ && window.__STUDIO__.accent_color) || '#e8ff47';
 
   const picker = document.createElement('div');
   picker.id = 'color-theme-picker';
   picker.innerHTML = `
     <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px">Couleur d'accentuation</div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+      <button onclick="applyColorTheme('studio')" style="
+        display:flex;flex-direction:column;align-items:center;gap:6px;
+        background:transparent;border:none;cursor:pointer;padding:8px 4px;
+        border-radius:10px;transition:background 0.15s;
+      " onmouseover="this.style.background='var(--card2)'" onmouseout="this.style.background='transparent'">
+        <div style="
+          width:32px;height:32px;border-radius:50%;background:${studioColor};
+          border:3px solid ${saved === 'studio' ? 'var(--text)' : 'transparent'};
+          transition:border-color 0.2s;box-shadow:0 0 0 1px rgba(255,255,255,0.1);
+        "></div>
+        <span style="font-size:10px;font-weight:600;color:var(--text2)">Studio</span>
+      </button>
       ${COLOR_THEMES.map(t => `
         <button onclick="applyColorTheme('${t.id}')" style="
           display:flex;flex-direction:column;align-items:center;gap:6px;
