@@ -4669,7 +4669,7 @@ async function claimFreeAccess(programmeId){
     btn.className = 'menu-item';
     btn.id = 'cancel-sub-btn';
     btn.style.cursor = 'pointer';
-    btn.onclick = openManageSubscription;
+    btn.onclick = () => openManageSubscription();
     btn.innerHTML = '<span class="menu-item-label">💳 Gérer / résilier mon abonnement</span><span>›</span>';
     logoutBtn.insertAdjacentElement('beforebegin', btn);
   }
