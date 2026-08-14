@@ -1322,6 +1322,58 @@ async function _dashDeleteAthlete(id,name){
   await loadDashboard();
 }
 
+// ============================================
+// PATCH — deleteAthlete() annule aussi l'abonnement Stripe
+// (override complet plutôt que wrapper : la fonction d'origine dans
+// admin.js fait déjà son propre confirm(), on ne veut pas de double popup)
+// ============================================
+(function(){
+  if(window.__patchDeleteAthleteBound)return;
+  window.__patchDeleteAthleteBound=true;
+
+  window.deleteAthlete=async function(id,name){
+    if(!confirm(`⚠️ Supprimer définitivement "${name}" ?\n\nSon abonnement Stripe sera annulé et toutes ses données (scores, PR, séances perso) seront effacées.\n\nCette action est irréversible.`))return;
+
+    // 1) Annulation Stripe côté serveur (avant toute suppression en base)
+    try{
+      const {data:{session}}=await sb.auth.getSession();
+      if(session?.access_token){
+        const resp=await fetch('/.netlify/functions/cancel-athlete-subscriptions',{
+          method:'POST',
+          headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},
+          body:JSON.stringify({athlete_id:id})
+        });
+        const data=await resp.json().catch(()=>({}));
+        if(!resp.ok||data.errors?.length){
+          console.warn('cancel-athlete-subscriptions',data);
+          if(!confirm(`⚠️ L'annulation Stripe a rencontré un problème (${data.error||data.errors?.[0]?.error||'erreur inconnue'}).\n\nContinuer quand même la suppression de l'athlète ?`))return;
+        }
+      }else{
+        console.warn('Pas de session — annulation Stripe ignorée');
+      }
+    }catch(e){
+      console.error('cancel-athlete-subscriptions failed',e);
+      if(!confirm(`⚠️ Impossible de contacter Stripe (${e.message}).\n\nContinuer quand même la suppression de l'athlète ?`))return;
+    }
+
+    // 2) Cascade de suppression des données (identique à l'ancienne logique)
+    const tables=['wod_scores','athlete_prs','athlete_scores','athlete_programmes','programme_access','personal_sessions','bench_scores','benchmark_scores','session_notes'];
+    for(const t of tables){
+      const r=await sb.from(t).delete().eq('athlete_id',id);
+      if(r.error)console.warn(t,r.error.message);
+    }
+    const {error,data}=await sb.from('profiles').delete().eq('id',id).select();
+    if(error){showToast('❌ '+error.message);console.error('delete profile',error);return;}
+    if(!data||data.length===0){
+      showToast('⚠️ Athlète non supprimé (RLS ?). Vérifie la console.');
+      console.warn('Profile delete returned no rows. Probable RLS policy manquante pour DELETE sur profiles.');
+      return;
+    }
+    showToast('🗑 Athlète supprimé (abonnement Stripe annulé)');
+    if(typeof loadAdminAthletes==='function')loadAdminAthletes();
+  };
+})();
+
 function dashFilterAthletes(){
   const q=(document.getElementById('dash-search-input')?.value||'').toLowerCase();
   if(!q){_renderDashList(_dashAllAthletes);return;}
