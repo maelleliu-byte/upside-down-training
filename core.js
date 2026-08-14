@@ -132,13 +132,17 @@ async function doAuth(){
       errEl.textContent="Impossible de vérifier le studio. Recharge la page et réessaie.";
       return;
     }
-    res=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:name}}});
-    // Après signup : assigner le studio courant au profil
-    if(!res.error&&res.data.user){
-      const studioId=window.__STUDIO__?.id||null;
-      const profileData={id:res.data.user.id,email,full_name:name,role:'athlete'};
-      if(studioId)profileData.studio_id=studioId;
-      await sb.from('profiles').upsert(profileData,{onConflict:'id'});
+    // MULTI-TENANT FIX (14/08) : le studio_id doit être assigné DÈS l'INSERT
+    // par le trigger handle_new_user() côté serveur — un athlete ne peut pas
+    // s'auto-assigner un studio après coup (bloqué par profiles_guard_privileged_cols).
+    const joinSlug=(window.__STUDIO_SLUG__&&window.__STUDIO_SLUG__!=='upside')?window.__STUDIO_SLUG__:null;
+    res=await sb.auth.signUp({email,password:pwd,options:{data:{full_name:name,join_studio_slug:joinSlug}}});
+    // Vérif de cohérence (le trigger a déjà fait le travail — pas d'upsert ici)
+    if(!res.error&&res.data.user&&joinSlug){
+      const {data:chk}=await sb.from('profiles').select('studio_id').eq('id',res.data.user.id).maybeSingle();
+      if(chk&&chk.studio_id==null){
+        console.error('[signup] studio_id non assigné pour le slug',joinSlug,'— studio inactif ou introuvable ?');
+      }
     }
   }
   if(res.error){errEl.textContent=res.error.message;return;}
