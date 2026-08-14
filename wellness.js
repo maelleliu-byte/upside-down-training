@@ -4747,3 +4747,463 @@ async function claimFreeAccess(programmeId){
     document.body.appendChild(modal);
   }
 })();
+/* ============================================================
+   PATCH — à coller à la FIN de wellness.js
+   1) Coach : ajouter / modifier un PR d'un athlète (fiche athlète admin)
+   2) Couleur du bloc séance auto-liée au TYPE, configurable par studio
+      (page Admin → nouvel onglet "🎨 Couleurs")
+   ============================================================ */
+(function(){
+  if(window.__patchBound_coachPrColor) return;
+  window.__patchBound_coachPrColor = true;
+
+  /* ---------------------------------------------------------
+     1) COACH → AJOUTER / MODIFIER LES PR D'UN ATHLÈTE
+     --------------------------------------------------------- */
+
+  let _coachPrAthleteId = null;
+  let _coachPrEditingId = null;
+
+  function ensureCoachPrModal(){
+    if(document.getElementById('coach-pr-modal')) return;
+    const div = document.createElement('div');
+    div.id = 'coach-pr-modal';
+    div.className = 'modal';
+    div.innerHTML = `
+      <div class="modal-content" style="max-width:420px">
+        <div class="modal-header">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px">🏆 PR de l'athlète</div>
+          <button class="modal-close" onclick="closeCoachPrModal()">✕</button>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mouvement</label>
+          <select class="form-select" id="coach-pr-movement"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Format (optionnel — ex: 1RM, 3RM, Max reps…)</label>
+          <input type="text" class="form-input" id="coach-pr-format" placeholder="1RM">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Valeur</label>
+            <input type="number" step="0.5" class="form-input" id="coach-pr-value" placeholder="Ex: 100">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-input" id="coach-pr-date">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Note (optionnel)</label>
+          <input type="text" class="form-input" id="coach-pr-note" placeholder="Contexte, ressenti...">
+        </div>
+        <button class="btn-primary" onclick="saveCoachPR()">Enregistrer le PR</button>
+      </div>`;
+    document.body.appendChild(div);
+  }
+
+  window.openCoachPrModal = async function(athleteId, prToEdit){
+    ensureCoachPrModal();
+    _coachPrAthleteId = athleteId;
+    _coachPrEditingId = prToEdit ? prToEdit.id : null;
+
+    if(typeof movements === 'undefined' || !movements || !movements.length){
+      if(typeof loadMovements === 'function') await loadMovements();
+    }
+    const sel = document.getElementById('coach-pr-movement');
+    sel.innerHTML = (window.movements||[]).slice().sort((a,b)=>a.name.localeCompare(b.name))
+      .map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+
+    document.getElementById('coach-pr-format').value = prToEdit?.format || '';
+    document.getElementById('coach-pr-value').value = prToEdit?.value ?? '';
+    document.getElementById('coach-pr-date').value = prToEdit?.recorded_at || new Date().toISOString().split('T')[0];
+    document.getElementById('coach-pr-note').value = prToEdit?.note || '';
+    if(prToEdit?.movement_id) sel.value = prToEdit.movement_id;
+
+    document.getElementById('coach-pr-modal').classList.add('open');
+  };
+
+  window.closeCoachPrModal = function(){
+    const m = document.getElementById('coach-pr-modal');
+    if(m) m.classList.remove('open');
+    _coachPrAthleteId = null;
+    _coachPrEditingId = null;
+  };
+
+  window.saveCoachPR = async function(){
+    if(!_coachPrAthleteId){showToast('❌ Athlète introuvable');return;}
+    const movementId = document.getElementById('coach-pr-movement').value;
+    const format = document.getElementById('coach-pr-format').value.trim() || null;
+    const value = parseFloat(document.getElementById('coach-pr-value').value);
+    const date = document.getElementById('coach-pr-date').value || new Date().toISOString().split('T')[0];
+    const note = document.getElementById('coach-pr-note').value.trim() || null;
+    if(!movementId || isNaN(value)){showToast('⚠️ Mouvement et valeur requis');return;}
+
+    let error;
+    if(_coachPrEditingId){
+      ({error} = await sb.from('athlete_prs')
+        .update({movement_id:movementId, value, recorded_at:date, format, note})
+        .eq('id', _coachPrEditingId));
+    } else {
+      ({error} = await sb.from('athlete_prs')
+        .insert({athlete_id:_coachPrAthleteId, movement_id:movementId, value, recorded_at:date, format, note}));
+    }
+    if(error){showToast('❌ '+error.message);console.error('saveCoachPR', error);return;}
+    showToast(_coachPrEditingId ? '✅ PR modifié' : '🏆 PR ajouté');
+    closeCoachPrModal();
+    if(typeof _loadAthleteCardPRs === 'function') _loadAthleteCardPRs(_coachPrAthleteId);
+  };
+
+  window.deleteCoachPR = async function(prId, athleteId){
+    if(!confirm('Supprimer ce PR ?')) return;
+    const {error} = await sb.from('athlete_prs').delete().eq('id', prId);
+    if(error){showToast('❌ '+error.message);return;}
+    showToast('🗑 PR supprimé');
+    if(typeof _loadAthleteCardPRs === 'function') _loadAthleteCardPRs(athleteId);
+  };
+
+  const _origLoadAthleteCardPRs = window._loadAthleteCardPRs;
+  window._loadAthleteCardPRs = async function(id){
+    await _origLoadAthleteCardPRs(id);
+    const wrap = document.getElementById('ac-prs');
+    if(!wrap) return;
+
+    if(!document.getElementById('coach-pr-add-btn')){
+      const btn = document.createElement('button');
+      btn.id = 'coach-pr-add-btn';
+      btn.className = 'btn-secondary';
+      btn.style.cssText = 'margin-bottom:10px;padding:8px 12px;font-size:12px';
+      btn.textContent = '＋ Ajouter / modifier un PR';
+      btn.onclick = () => openCoachPrModal(id);
+      wrap.parentNode.insertBefore(btn, wrap);
+    } else {
+      document.getElementById('coach-pr-add-btn').onclick = () => openCoachPrModal(id);
+    }
+
+    try{
+      const {data: prs} = await sb.from('athlete_prs')
+        .select('id,movement_id,value,recorded_at,format,note')
+        .eq('athlete_id', id)
+        .order('recorded_at', {ascending:false});
+      const byMov = {};
+      (prs||[]).forEach(p=>{ if(!byMov[p.movement_id]) byMov[p.movement_id]=p; });
+      wrap.querySelectorAll('.afiche-pr').forEach((el, idx) => {
+        el.style.cursor = 'pointer';
+        el.onclick = (ev) => {
+          ev.stopPropagation();
+          const items = Object.values(byMov);
+          const pr = items[idx];
+          if(pr) openCoachPrModal(id, pr);
+        };
+      });
+    }catch(e){console.warn('coach pr clickable', e);}
+  };
+
+  /* ---------------------------------------------------------
+     2) COULEUR DU BLOC SÉANCE ↔ TYPE, PARAMÉTRABLE PAR STUDIO
+     --------------------------------------------------------- */
+
+  const DEFAULT_TYPE_COLORS = {
+    wod:            '#e8ff47',
+    strength:       '#ff4747',
+    weightlifting:  '#c847ff',
+    gymnastics:     '#47c8ff',
+    renforcement:   '#ff8c47',
+    bodybuilding:   '#ffd147',
+    skill:          '#47ff8c',
+    warmup:         '#ffffff',
+    mobility:       '#47ffd1',
+    engine:         '#7c47ff',
+    run:            '#ff47c8',
+  };
+  const TYPE_LABELS = {
+    wod:'WOD', strength:'Force', weightlifting:'Weightlifting', gymnastics:'Gymnastics',
+    renforcement:'Renforcement', bodybuilding:'Bodybuilding', skill:'Skill',
+    warmup:'Échauffement', mobility:'Mobilité', engine:'Engine', run:'Run'
+  };
+  const COLOR_PALETTE = ['#e8ff47','#ff4747','#47c8ff','#ff8c47','#c847ff','#47ff8c','#ffd147','#ff47c8','#47ffd1','#7c47ff','#ff6b47','#ffffff'];
+
+  function _safeCopy(o){return JSON.parse(JSON.stringify(o));}
+  let _typeColors = _safeCopy(DEFAULT_TYPE_COLORS);
+  let _typeColorsLoaded = false;
+
+  async function loadTypeColors(){
+    const studioId = (typeof getStudioId === 'function') ? getStudioId() : null;
+    try{
+      let q = sb.from('session_type_colors').select('type,color');
+      q = studioId ? q.eq('studio_id', studioId) : q.is('studio_id', null);
+      const {data, error} = await q;
+      if(error) console.warn('loadTypeColors', error);
+      _typeColors = _safeCopy(DEFAULT_TYPE_COLORS);
+      (data||[]).forEach(row=>{ _typeColors[row.type] = row.color; });
+    }catch(e){
+      console.warn('loadTypeColors failed', e);
+      _typeColors = _safeCopy(DEFAULT_TYPE_COLORS);
+    }
+    _typeColorsLoaded = true;
+  }
+
+  async function saveTypeColor(type, color){
+    const studioId = (typeof getStudioId === 'function') ? getStudioId() : null;
+    // update d'abord (gère le cas studio_id NULL proprement), insert si rien mis à jour
+    let upd;
+    if(studioId){
+      upd = await sb.from('session_type_colors').update({color}).eq('studio_id', studioId).eq('type', type).select();
+    } else {
+      upd = await sb.from('session_type_colors').update({color}).is('studio_id', null).eq('type', type).select();
+    }
+    if(upd.error){ showToast('❌ '+upd.error.message); console.error('saveTypeColor update', upd.error); return false; }
+    if(!upd.data || !upd.data.length){
+      const ins = await sb.from('session_type_colors').insert({ studio_id: studioId, type, color });
+      if(ins.error){ showToast('❌ '+ins.error.message); console.error('saveTypeColor insert', ins.error); return false; }
+    }
+    _typeColors[type] = color;
+    return true;
+  }
+
+  let _colorManuallySet = false;
+
+  const _origSelectSessionColor = window.selectSessionColor;
+  window.selectSessionColor = function(color, el){
+    _colorManuallySet = true;
+    return _origSelectSessionColor(color, el);
+  };
+
+  window.onFTypeChange = async function(){
+    if(typeof toggleSetsField === 'function') toggleSetsField();
+    if(_colorManuallySet) return;
+    if(!_typeColorsLoaded) await loadTypeColors();
+
+    const type = document.getElementById('f-type')?.value;
+    const color = _typeColors[type];
+    if(!color) return;
+
+    selectedSessionColor = color;
+    document.querySelectorAll('#f-colors .color-swatch').forEach(s=>s.classList.remove('selected'));
+    const swatch = document.querySelector(`#f-colors .color-swatch[data-color="${color}"]`);
+    if(swatch) swatch.classList.add('selected');
+  };
+
+  const _origResetSessionForm = window.resetSessionForm;
+  window.resetSessionForm = function(){
+    _colorManuallySet = false;
+    _origResetSessionForm();
+    if(typeof onFTypeChange === 'function') onFTypeChange();
+  };
+
+  const _origEditSession = window.editSession;
+  if(typeof _origEditSession === 'function'){
+    window.editSession = async function(...args){
+      const r = await _origEditSession(...args);
+      _colorManuallySet = true;
+      return r;
+    };
+  }
+
+  window.addEventListener('load', ()=>{ setTimeout(()=>{ loadTypeColors(); }, 1500); });
+
+  /* ---------------------------------------------------------
+     PANNEAU DE PARAMÉTRAGE — Admin → onglet "🎨 Couleurs"
+     --------------------------------------------------------- */
+
+  function ensureColorsTabButton(){
+    const anyTabBtn = document.querySelector('.admin-tab-btn');
+    if(!anyTabBtn) return;
+    const bar = anyTabBtn.parentElement;
+    if(!bar || document.getElementById('admin-colors-tab-btn')) return;
+    const btn = document.createElement('button');
+    btn.id = 'admin-colors-tab-btn';
+    btn.className = 'admin-tab-btn';
+    btn.textContent = '🎨 Couleurs';
+    btn.onclick = () => adminTabColors(btn);
+    bar.appendChild(btn);
+  }
+
+  function ensureColorsPanel(){
+    if(document.getElementById('admin-colors')) return;
+    const adminPage = document.getElementById('page-admin');
+    if(!adminPage) return;
+    const panel = document.createElement('div');
+    panel.className = 'admin-panel';
+    panel.id = 'admin-colors';
+    panel.innerHTML = `
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:6px">🎨 COULEURS DES SÉANCES</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+        Personnalise la couleur automatiquement appliquée à chaque type de séance.
+        Ce réglage est propre à ton studio.
+      </div>
+      <div id="admin-colors-list"></div>
+    `;
+    const panels = adminPage.querySelectorAll('.admin-panel');
+    const lastPanel = panels[panels.length - 1];
+    if(lastPanel) lastPanel.insertAdjacentElement('afterend', panel);
+    else adminPage.appendChild(panel);
+  }
+
+  window.adminTabColors = async function(btn){
+    document.querySelectorAll('.admin-tab-btn').forEach(b=>b.classList.remove('active'));
+    if(btn) btn.classList.add('active');
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+    ensureColorsPanel();
+    document.getElementById('admin-colors').classList.add('active');
+    if(!_typeColorsLoaded) await loadTypeColors();
+    renderColorsPanel();
+  };
+
+  function renderColorsPanel(){
+    const list = document.getElementById('admin-colors-list');
+    if(!list) return;
+    list.innerHTML = Object.keys(TYPE_LABELS).map(type=>{
+      const color = _typeColors[type] || DEFAULT_TYPE_COLORS[type];
+      const swatches = COLOR_PALETTE.map(c=>{
+        const sel = c.toLowerCase()===color.toLowerCase();
+        return `<button type="button" onclick="setTypeColor('${type}','${c}')" title="${c}"
+          style="width:28px;height:28px;border-radius:50%;background:${c};cursor:pointer;
+          border:${sel?'3px solid var(--text)':'2px solid var(--border2)'};padding:0;flex-shrink:0"></button>`;
+      }).join('');
+      return `<div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--border)">
+        <div style="width:90px;font-size:13px;font-weight:600;flex-shrink:0">${TYPE_LABELS[type]}</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;flex:1">${swatches}</div>
+        <input type="color" value="${color}" onchange="setTypeColor('${type}',this.value)"
+          style="width:32px;height:28px;border:none;border-radius:6px;cursor:pointer;background:none;padding:0;flex-shrink:0">
+      </div>`;
+    }).join('');
+  }
+
+  window.setTypeColor = async function(type, color){
+    const ok = await saveTypeColor(type, color);
+    if(ok){
+      showToast('✅ Couleur mise à jour');
+      renderColorsPanel();
+    }
+  };
+
+  const _origGoPage2 = window.goPage;
+  if(typeof _origGoPage2 === 'function'){
+    window.goPage = async function(p){
+      await _origGoPage2(p);
+      if(p==='admin') setTimeout(ensureColorsTabButton, 200);
+    };
+  }
+
+  /* ---------------------------------------------------------
+     3) CRÉER UN ATHLÈTE DIRECTEMENT DEPUIS L'ADMIN
+        (en plus du lien /register) — même onglet "🎨 Couleurs"
+        renommé en "⚙️ Paramètres" pour héberger les deux blocs.
+     --------------------------------------------------------- */
+
+  // Renomme le bouton d'onglet une fois créé, et ajoute le bloc de création
+  const _origEnsureColorsTabButton = ensureColorsTabButton;
+  function ensureSettingsTabButton(){
+    const anyTabBtn = document.querySelector('.admin-tab-btn');
+    if(!anyTabBtn) return;
+    const bar = anyTabBtn.parentElement;
+    if(!bar) return;
+    let btn = document.getElementById('admin-colors-tab-btn');
+    if(!btn){
+      btn = document.createElement('button');
+      btn.id = 'admin-colors-tab-btn';
+      btn.className = 'admin-tab-btn';
+      btn.onclick = () => adminTabColors(btn);
+      bar.appendChild(btn);
+    }
+    btn.textContent = '⚙️ Paramètres';
+  }
+
+  function ensureCreateAthleteBlock(){
+    const panel = document.getElementById('admin-colors');
+    if(!panel || document.getElementById('admin-create-athlete-block')) return;
+    const block = document.createElement('div');
+    block.id = 'admin-create-athlete-block';
+    block.style.cssText = 'margin-top:28px;padding-top:20px;border-top:1px solid var(--border)';
+    block.innerHTML = `
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:6px">👤 CRÉER UN ATHLÈTE</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:16px">
+        Crée directement un compte athlète dans ton studio, sans passer par le lien d'inscription.
+      </div>
+      <div class="form-group"><label class="form-label">Nom complet</label>
+        <input type="text" class="form-input" id="ca-name" placeholder="Ex: Julie Martin"></div>
+      <div class="form-group"><label class="form-label">Email</label>
+        <input type="email" class="form-input" id="ca-email" placeholder="julie@exemple.fr"></div>
+      <div class="form-row">
+        <div class="form-group"><label class="form-label">Genre (optionnel)</label>
+          <select class="form-select" id="ca-gender">
+            <option value="">—</option>
+            <option value="female">Femme</option>
+            <option value="male">Homme</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Mot de passe (optionnel)</label>
+          <input type="text" class="form-input" id="ca-password" placeholder="Auto-généré si vide"></div>
+      </div>
+      <button class="btn-primary" id="ca-submit-btn" onclick="createAthleteFromAdmin()">Créer l'athlète</button>
+      <div id="ca-result" style="margin-top:12px;font-size:13px"></div>
+    `;
+    panel.appendChild(block);
+  }
+
+  window.createAthleteFromAdmin = async function(){
+    const btn = document.getElementById('ca-submit-btn');
+    const resultEl = document.getElementById('ca-result');
+    const full_name = document.getElementById('ca-name').value.trim();
+    const email = document.getElementById('ca-email').value.trim();
+    const gender = document.getElementById('ca-gender').value || null;
+    const password = document.getElementById('ca-password').value.trim() || null;
+
+    if(!full_name || !email){ showToast('⚠️ Nom et email requis'); return; }
+
+    btn.disabled = true;
+    btn.textContent = 'Création…';
+    resultEl.innerHTML = '';
+
+    try{
+      const { data: { session } } = await sb.auth.getSession();
+      if(!session?.access_token) throw new Error('Session expirée — recharge la page');
+
+      const resp = await fetch('/.netlify/functions/create-athlete', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`
+        },
+        body: JSON.stringify({ full_name, email, gender, password })
+      });
+      const data = await resp.json();
+      if(!resp.ok) throw new Error(data.error || 'Erreur inconnue');
+
+      showToast('✅ Athlète créé');
+      let html = `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px">
+        <b>${data.athlete.full_name}</b> (${data.athlete.email}) a été créé(e).`;
+      if(data.temp_password){
+        html += `<br>Mot de passe temporaire : <code style="background:var(--card2);padding:2px 6px;border-radius:4px">${data.temp_password}</code>
+          <div style="color:var(--muted);font-size:11px;margin-top:4px">Transmets-le à l'athlète — il pourra le changer depuis son profil.</div>`;
+      }
+      html += `</div>`;
+      resultEl.innerHTML = html;
+
+      document.getElementById('ca-name').value = '';
+      document.getElementById('ca-email').value = '';
+      document.getElementById('ca-gender').value = '';
+      document.getElementById('ca-password').value = '';
+
+      if(typeof loadAdminAthletes === 'function') loadAdminAthletes();
+    }catch(e){
+      showToast('❌ '+e.message);
+      resultEl.innerHTML = `<div style="color:var(--red)">${e.message}</div>`;
+    }finally{
+      btn.disabled = false;
+      btn.textContent = "Créer l'athlète";
+    }
+  };
+
+  // Surcharge adminTabColors pour aussi injecter le bloc création + renommer l'onglet
+  const _origAdminTabColors = window.adminTabColors;
+  window.adminTabColors = async function(btn){
+    await _origAdminTabColors(btn);
+    ensureCreateAthleteBlock();
+  };
+
+  // Remplace l'appel d'origine par la version qui renomme le bouton
+  ensureColorsTabButton = ensureSettingsTabButton;
+
+})();
