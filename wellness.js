@@ -4586,3 +4586,110 @@ async function claimFreeAccess(programmeId){
   };
 
 })();
+
+/* ============================================================
+   PATCH 2 — Visibilité manuelle pour TOUTE la semaine affichée
+   Ajoute un bouton 📅 à côté de ‹ › dans l'onglet Planning (admin)
+   ============================================================ */
+(function(){
+  if(window.__patchWeekVisibleFrom)return;
+  window.__patchWeekVisibleFrom=true;
+
+  function injectWeekVisibilityButton(){
+    if(document.getElementById('week-visibility-btn'))return;
+    const dupBtn=document.querySelector('[onclick="openDupWeekModalV2()"]')||document.querySelector('[onclick^="openDupWeekModal"]');
+    if(!dupBtn)return;
+    const btn=document.createElement('button');
+    btn.className='arrow-btn';
+    btn.id='week-visibility-btn';
+    btn.title="Programmer l'apparition de toute la semaine";
+    btn.style.fontSize='14px';
+    btn.textContent='📅';
+    btn.onclick=openWeekVisibilityModal;
+    dupBtn.insertAdjacentElement('afterend',btn);
+  }
+
+  function buildModal(){
+    if(document.getElementById('week-vis-modal'))return;
+    const modal=document.createElement('div');
+    modal.id='week-vis-modal';
+    modal.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center';
+    modal.innerHTML=`
+      <div style="background:var(--card,#1a1a1a);border:1px solid var(--border2,#333);border-radius:14px;padding:20px;width:min(320px,90vw)">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:12px" id="week-vis-title">Programmer la semaine</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input type="date" id="week-vis-date" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2,#333);background:var(--card2,#111);color:var(--text,#fff)">
+          <input type="time" id="week-vis-time" value="09:00" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2,#333);background:var(--card2,#111);color:var(--text,#fff)">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button id="week-vis-apply" style="padding:10px;border-radius:10px;border:none;background:var(--accent,#e8ff47);color:#000;font-weight:700;cursor:pointer">Programmer cette date</button>
+          <button id="week-vis-now" style="padding:10px;border-radius:10px;border:1px solid var(--border2,#333);background:transparent;color:var(--text,#fff);cursor:pointer">👁 Rendre visible maintenant</button>
+          <button id="week-vis-reset" style="padding:10px;border-radius:10px;border:1px solid var(--border2,#333);background:transparent;color:var(--muted,#999);cursor:pointer">↩ Repasser en mode auto (semaine en cours)</button>
+          <button id="week-vis-cancel" style="padding:8px;border-radius:10px;border:none;background:transparent;color:var(--muted,#999);cursor:pointer">Annuler</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('week-vis-cancel').onclick=()=>{modal.style.display='none';};
+    document.getElementById('week-vis-apply').onclick=()=>applyWeekVisibility('scheduled');
+    document.getElementById('week-vis-now').onclick=()=>applyWeekVisibility('now');
+    document.getElementById('week-vis-reset').onclick=()=>applyWeekVisibility('reset');
+  }
+
+  function openWeekVisibilityModal(){
+    buildModal();
+    const progId=document.getElementById('admin-filter-prog')?.value;
+    const prog=typeof getProgById==='function'?getProgById(progId):null;
+    const oneshot=typeof isOneshotProg==='function'&&isOneshotProg(prog);
+    const label=oneshot
+      ?`Semaine ${adminWeekOffset+1} / ${prog?.total_weeks||8}`
+      :(typeof getWeekDates==='function'?(()=>{const d=getWeekDates(adminWeekOffset);return `Semaine du ${d[0].getDate()}/${d[0].getMonth()+1} au ${d[6].getDate()}/${d[6].getMonth()+1}`;})():'la semaine affichée');
+    document.getElementById('week-vis-title').textContent=`Programmer : ${label}`;
+    document.getElementById('week-vis-date').value='';
+    document.getElementById('week-vis-time').value='09:00';
+    document.getElementById('week-vis-modal').style.display='flex';
+  }
+
+  async function applyWeekVisibility(mode){
+    const progId=document.getElementById('admin-filter-prog')?.value;
+    if(!progId){showToast('⚠️ Choisis un programme');return;}
+    const prog=typeof getProgById==='function'?getProgById(progId):null;
+    const oneshot=typeof isOneshotProg==='function'&&isOneshotProg(prog);
+
+    let visibleFrom;
+    if(mode==='now')visibleFrom=new Date().toISOString();
+    else if(mode==='reset')visibleFrom=null;
+    else{
+      const d=document.getElementById('week-vis-date').value;
+      const t=document.getElementById('week-vis-time').value||'00:00';
+      if(!d){showToast('⚠️ Choisis une date');return;}
+      visibleFrom=new Date(`${d}T${t}:00`).toISOString();
+    }
+
+    let q=sb.from('sessions').update({visible_from:visibleFrom});
+    if(oneshot){
+      q=q.eq('programme_id',progId).eq('week_number',adminWeekOffset+1);
+    } else {
+      const isos=getWeekDates(adminWeekOffset).map(d=>d.toISOString().split('T')[0]);
+      q=q.eq('programme_id',progId).in('date',isos);
+    }
+    const {error,data}=await q.select('id');
+    if(error){showToast('❌ '+error.message);return;}
+    document.getElementById('week-vis-modal').style.display='none';
+    const n=data?.length||0;
+    if(mode==='reset')showToast(`↩ ${n} séance${n>1?'s':''} repassée${n>1?'s':''} en mode auto`);
+    else if(mode==='now')showToast(`👁 ${n} séance${n>1?'s':''} rendue${n>1?'s':''} visible${n>1?'s':''}`);
+    else showToast(`📅 ${n} séance${n>1?'s':''} programmée${n>1?'s':''}`);
+    if(typeof loadAdminCalendar==='function')loadAdminCalendar();
+  }
+
+  // Injecte le bouton à chaque affichage du calendrier admin
+  const __origLoadAdminCalendarWV=window.loadAdminCalendar;
+  if(typeof __origLoadAdminCalendarWV==='function'){
+    window.loadAdminCalendar=async function(...args){
+      const r=await __origLoadAdminCalendarWV.apply(this,args);
+      injectWeekVisibilityButton();
+      return r;
+    };
+  }
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(injectWeekVisibilityButton,800));
+})();
