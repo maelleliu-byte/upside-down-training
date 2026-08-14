@@ -183,7 +183,7 @@ function renderPersoAthletes(){
   const el=document.getElementById('perso-athletes-list');
   if(!el)return;
 
-  const all=persoAthletesCache.filter(a=>a.role!=='admin');
+  const all=persoAthletesCache;
 
   // 3 buckets
   const favs=[]; const actifs=[]; const inactifs=[];
@@ -798,14 +798,14 @@ async function persoDuplicateSession(id){
 async function populatePersoDupAthletes(selectedId){
   const sel=document.getElementById('dup-perso-athlete');
   if(!sel)return;
-  let list=persoAthletesCache.filter(a=>a.role!=='admin');
+  let list=persoAthletesCache;
   if(!list.length){
     // Fallback : charger les profils du studio si le cache est vide
     const _sid=currentProfile?.studio_id??null;
     let q=sb.from('profiles').select('id,full_name,role');
     q=_sid?q.eq('studio_id',_sid):q.is('studio_id',null);
     const {data}=await q.order('full_name');
-    list=(data||[]).filter(a=>a.role!=='admin');
+    list=(data||[]);
   }
   // Garantir la présence de l'athlète source
   if(selectedId&&!list.find(a=>a.id===selectedId)){
@@ -892,7 +892,7 @@ function openDupPersoWeekModal(){
   document.getElementById('dup-perso-week-target-date').value=nextMonStr;
   document.getElementById('dup-perso-athlete-target-date').value=nextMonStr;
   // Remplir athlètes (tous sauf l'athlète courant)
-  const athletes=persoAthletesCache.filter(a=>a.role!=='admin'&&a.id!==currentPersoAthlete?.id);
+  const athletes=persoAthletesCache.filter(a=>a.id!==currentPersoAthlete?.id);
   document.getElementById('dup-perso-target-athlete').innerHTML=athletes.length
     ? athletes.map(a=>`<option value="${a.id}">${a.full_name||a.email||a.id}</option>`).join('')
     : '<option value="">— Aucun autre athlète —</option>';
@@ -3970,7 +3970,7 @@ async function openDupWeekModalV2(){
   if(!persoAthletesCache.length){
     try{ await loadPersoAthletes(); } catch(e){ console.warn('perso athletes load',e); }
   }
-  const athletes=persoAthletesCache.filter(a=>a.role!=='admin');
+  const athletes=persoAthletesCache;
   document.getElementById('dup-week-target-athlete').innerHTML=athletes.length
     ? athletes.map(a=>`<option value="${a.id}">${a.full_name||a.email||a.id}</option>`).join('')
     : '<option value="">— Aucun athlète —</option>';
