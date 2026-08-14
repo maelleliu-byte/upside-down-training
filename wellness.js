@@ -4649,3 +4649,101 @@ async function claimFreeAccess(programmeId){
   }
   document.addEventListener('DOMContentLoaded',()=>setTimeout(injectPersoWeekVisibilityButton,800));
 })();
+
+// ============================================================
+// RÉSILIATION ABONNEMENT — bouton dans la page Profil
+// ============================================================
+(function () {
+  if (window.__cancelSubPatchBound) return;
+  window.__cancelSubPatchBound = true;
+
+  // ── Injection du bouton dans le menu Profil ──
+  function _injectCancelSubButton() {
+    if (document.getElementById('cancel-sub-btn')) return;
+    const profilPage = document.getElementById('page-profil');
+    if (!profilPage) return;
+    const logoutBtn = profilPage.querySelector('.btn-logout');
+    if (!logoutBtn) return;
+
+    const btn = document.createElement('div');
+    btn.className = 'menu-item';
+    btn.id = 'cancel-sub-btn';
+    btn.style.cursor = 'pointer';
+    btn.onclick = openManageSubscription;
+    btn.innerHTML = '<span class="menu-item-label">💳 Gérer / résilier mon abonnement</span><span>›</span>';
+    logoutBtn.insertAdjacentElement('beforebegin', btn);
+  }
+
+  // Hook goPage pour injecter le bouton à chaque arrivée sur Profil
+  document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(() => {
+      if (typeof goPage === 'function') {
+        const _existingGoPage = goPage;
+        window.goPage = async function (page) {
+          await _existingGoPage.apply(this, arguments);
+          if (page === 'profil') _injectCancelSubButton();
+        };
+      }
+    }, 1200);
+  });
+
+  // ── Logique principale ──
+  window.openManageSubscription = async function (programmeId) {
+    if (!currentUser) { showToast('⚠️ Connecte-toi d\'abord'); return; }
+    showToast('⏳ Chargement...');
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      const token = session?.access_token;
+      if (!token) { showToast('⚠️ Session expirée — reconnecte-toi'); return; }
+
+      const fnUrl = (window.SUPABASE_URL || sb.supabaseUrl || '').replace(/\/$/, '') + '/functions/v1/create-billing-portal-session';
+      const res = await fetch(fnUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        body: JSON.stringify(programmeId ? { programme_id: programmeId } : {})
+      });
+      const data = await res.json();
+
+      if (data.error) { showToast('❌ ' + data.error); return; }
+
+      if (data.choices && data.choices.length) {
+        _showSubscriptionChoiceModal(data.choices);
+        return;
+      }
+
+      if (data.url) {
+        window.location.href = data.url;
+      } else {
+        showToast('❌ Impossible d\'ouvrir la gestion d\'abonnement');
+      }
+    } catch (e) {
+      console.error('openManageSubscription error', e);
+      showToast('❌ Erreur : ' + e.message);
+    }
+  };
+
+  // ── Petit modal si plusieurs abonnements actifs ──
+  function _showSubscriptionChoiceModal(choices) {
+    document.getElementById('cancel-sub-choice-modal')?.remove();
+    const modal = document.createElement('div');
+    modal.id = 'cancel-sub-choice-modal';
+    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px';
+    modal.innerHTML = `
+      <div style="background:var(--card,#161616);border:1px solid var(--border2,#2a2a2a);border-radius:16px;padding:20px;width:100%;max-width:340px">
+        <div style="font-weight:700;font-size:15px;margin-bottom:14px;color:var(--text,#f0f0f0)">Quel abonnement gérer ?</div>
+        <div style="display:flex;flex-direction:column;gap:8px" id="cancel-sub-choice-list"></div>
+        <button id="cancel-sub-choice-close" style="margin-top:14px;width:100%;padding:10px;border-radius:10px;background:var(--card2,#222);border:1px solid var(--border2,#2a2a2a);color:var(--muted,#999);font-weight:600;cursor:pointer">Annuler</button>
+      </div>`;
+    const list = modal.querySelector('#cancel-sub-choice-list');
+    choices.forEach(c => {
+      const item = document.createElement('button');
+      item.textContent = c.name;
+      item.style.cssText = 'padding:12px;border-radius:10px;background:var(--card2,#222);border:1px solid var(--border2,#2a2a2a);color:var(--text,#f0f0f0);font-weight:600;text-align:left;cursor:pointer';
+      item.onclick = () => { modal.remove(); openManageSubscription(c.programme_id); };
+      list.appendChild(item);
+    });
+    modal.querySelector('#cancel-sub-choice-close').onclick = () => modal.remove();
+    modal.addEventListener('click', e => { if (e.target === modal) modal.remove(); });
+    document.body.appendChild(modal);
+  }
+})();
