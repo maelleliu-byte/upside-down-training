@@ -4778,7 +4778,10 @@ async function claimFreeAccess(programmeId){
         </div>
         <div class="form-group">
           <label class="form-label">Mouvement</label>
-          <select class="form-select" id="coach-pr-movement"></select>
+          <input type="text" class="form-input" id="coach-pr-movement-search" placeholder="Rechercher un mouvement…" autocomplete="off">
+          <div id="coach-pr-movement-list" style="max-height:180px;overflow-y:auto;margin-top:8px;border:1.5px solid var(--border2);border-radius:10px;background:var(--dark)"></div>
+          <div id="coach-pr-movement-selected" style="margin-top:8px;font-size:12px;color:var(--accent);font-weight:700"></div>
+          <input type="hidden" id="coach-pr-movement">
         </div>
         <div class="form-group">
           <label class="form-label">Format (optionnel — ex: 1RM, 3RM, Max reps…)</label>
@@ -4802,6 +4805,44 @@ async function claimFreeAccess(programmeId){
         <button class="btn-modal-cancel" onclick="closeCoachPrModal()">Annuler</button>
       </div>`;
     document.body.appendChild(overlay);
+
+    document.getElementById('coach-pr-movement-search').addEventListener('input', (e)=>{
+      _renderCoachPrMovementList(e.target.value.trim().toLowerCase());
+    });
+  }
+
+  let _coachPrAllMovements = [];
+
+  function _renderCoachPrMovementList(filter){
+    const list = document.getElementById('coach-pr-movement-list');
+    if(!list) return;
+    const q = (filter||'').toLowerCase();
+    const filtered = q
+      ? _coachPrAllMovements.filter(m => m.name.toLowerCase().includes(q))
+      : _coachPrAllMovements;
+    if(!filtered.length){
+      list.innerHTML = '<div style="padding:10px;color:var(--muted);font-size:12px">Aucun mouvement trouvé.</div>';
+      return;
+    }
+    const currentId = document.getElementById('coach-pr-movement').value;
+    list.innerHTML = filtered.slice(0, 100).map(m => `
+      <div class="coach-pr-mv-item" data-id="${m.id}" style="padding:9px 12px;cursor:pointer;font-size:13px;
+        background:${m.id===currentId?'var(--card2)':'transparent'};
+        color:${m.id===currentId?'var(--accent)':'var(--text)'};
+        border-bottom:1px solid var(--border)">${escapeHtml(m.name)}</div>
+    `).join('');
+    list.querySelectorAll('.coach-pr-mv-item').forEach(el=>{
+      el.onclick = () => _selectCoachPrMovement(el.dataset.id);
+    });
+  }
+
+  function _selectCoachPrMovement(id){
+    const mv = _coachPrAllMovements.find(m=>m.id===id);
+    if(!mv) return;
+    document.getElementById('coach-pr-movement').value = id;
+    document.getElementById('coach-pr-movement-selected').textContent = '✓ ' + mv.name;
+    document.getElementById('coach-pr-movement-search').value = '';
+    _renderCoachPrMovementList('');
   }
 
   window.openCoachPrModal = async function(athleteId, prToEdit){
@@ -4809,18 +4850,25 @@ async function claimFreeAccess(programmeId){
     _coachPrAthleteId = athleteId;
     _coachPrEditingId = prToEdit ? prToEdit.id : null;
 
-    if(typeof movements === 'undefined' || !movements || !movements.length){
-      if(typeof loadMovements === 'function') await loadMovements();
+    // Recharge toujours une liste fraîche (évite les cas où `movements` n'est
+    // pas encore prêt côté core.js selon le moment où le coach ouvre le modal)
+    const {data: movs, error: movsErr} = await sb.from('movements').select('id,name').eq('is_active', true).order('name');
+    if(movsErr) console.warn('openCoachPrModal movements', movsErr);
+    _coachPrAllMovements = movs || [];
+
+    document.getElementById('coach-pr-movement').value = prToEdit?.movement_id || '';
+    document.getElementById('coach-pr-movement-search').value = '';
+    document.getElementById('coach-pr-movement-selected').textContent = '';
+    if(prToEdit?.movement_id){
+      const mv = _coachPrAllMovements.find(m=>m.id===prToEdit.movement_id);
+      if(mv) document.getElementById('coach-pr-movement-selected').textContent = '✓ ' + mv.name;
     }
-    const sel = document.getElementById('coach-pr-movement');
-    sel.innerHTML = (window.movements||[]).slice().sort((a,b)=>a.name.localeCompare(b.name))
-      .map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+    _renderCoachPrMovementList('');
 
     document.getElementById('coach-pr-format').value = prToEdit?.format || '';
     document.getElementById('coach-pr-value').value = prToEdit?.value ?? '';
     document.getElementById('coach-pr-date').value = prToEdit?.recorded_at || new Date().toISOString().split('T')[0];
     document.getElementById('coach-pr-note').value = prToEdit?.note || '';
-    if(prToEdit?.movement_id) sel.value = prToEdit.movement_id;
 
     document.getElementById('coach-pr-modal').classList.add('open');
   };
@@ -4839,7 +4887,8 @@ async function claimFreeAccess(programmeId){
     const value = parseFloat(document.getElementById('coach-pr-value').value);
     const date = document.getElementById('coach-pr-date').value || new Date().toISOString().split('T')[0];
     const note = document.getElementById('coach-pr-note').value.trim() || null;
-    if(!movementId || isNaN(value)){showToast('⚠️ Mouvement et valeur requis');return;}
+    if(!movementId){showToast('⚠️ Choisis un mouvement dans la liste');return;}
+    if(isNaN(value)){showToast('⚠️ Valeur requise');return;}
 
     let error;
     if(_coachPrEditingId){
