@@ -1302,15 +1302,24 @@ function _renderDashList(athletes){
   list.innerHTML=athletes.map(p=>{
     const init=_initials(p.full_name||p.email);
     const since=p.created_at?new Date(p.created_at).toLocaleDateString('fr-FR',{month:'short',year:'numeric'}):'';
+    const isMe=currentUser&&p.id===currentUser.id;
+    const nameEsc=(p.full_name||p.email||'?').replace(/'/g,"\\'");
     return`<div class="athlete-row" style="cursor:pointer" onclick="dashOpenFiche('${p.id}')">
       <div class="athlete-avatar">${init}</div>
       <div style="flex:1;min-width:0">
         <div class="athlete-name">${escapeHtml(p.full_name||'—')}</div>
         <div class="athlete-email">${escapeHtml(p.email||'')}${since?' · depuis '+since:''}</div>
       </div>
+      ${isMe?'':`<button class="btn-delete" onclick="event.stopPropagation();_dashDeleteAthlete('${p.id}','${nameEsc}')">✕</button>`}
       <span style="color:var(--muted);font-size:18px">›</span>
     </div>`;
   }).join('');
+}
+async function _dashDeleteAthlete(id,name){
+  if(typeof deleteAthlete!=='function')return;
+  await deleteAthlete(id,name);
+  // deleteAthlete() rafraîchit la liste admin classique ; on resynchronise la vue dashboard
+  await loadDashboard();
 }
 
 function dashFilterAthletes(){
