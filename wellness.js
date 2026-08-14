@@ -1395,7 +1395,7 @@ async function _dashLoadBadges(id){
 async function _dashLoadPRsAndBench(id){
   // PRs
   const {data:prs}=await sb.from('athlete_prs')
-    .select('movement_id,value,recorded_at,format,created_at')
+    .select('id,movement_id,value,recorded_at,format,note,created_at')
     .eq('athlete_id',id).order('recorded_at',{ascending:true,nullsFirst:false});
   const prRows=prs||[];
   const byMov={};
@@ -4766,14 +4766,15 @@ async function claimFreeAccess(programmeId){
 
   function ensureCoachPrModal(){
     if(document.getElementById('coach-pr-modal')) return;
-    const div = document.createElement('div');
-    div.id = 'coach-pr-modal';
-    div.className = 'modal';
-    div.innerHTML = `
-      <div class="modal-content" style="max-width:420px">
-        <div class="modal-header">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1.5px">🏆 PR de l'athlète</div>
-          <button class="modal-close" onclick="closeCoachPrModal()">✕</button>
+    const overlay = document.createElement('div');
+    overlay.id = 'coach-pr-modal';
+    overlay.className = 'modal-overlay';
+    overlay.onclick = (e) => { if(e.target === overlay) closeCoachPrModal(); };
+    overlay.innerHTML = `
+      <div class="modal">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+          <div class="modal-title" style="margin-bottom:0">🏆 PR de l'athlète</div>
+          <button onclick="closeCoachPrModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px">✕</button>
         </div>
         <div class="form-group">
           <label class="form-label">Mouvement</label>
@@ -4797,9 +4798,10 @@ async function claimFreeAccess(programmeId){
           <label class="form-label">Note (optionnel)</label>
           <input type="text" class="form-input" id="coach-pr-note" placeholder="Contexte, ressenti...">
         </div>
-        <button class="btn-primary" onclick="saveCoachPR()">Enregistrer le PR</button>
+        <button class="btn-modal-save" onclick="saveCoachPR()">Enregistrer le PR</button>
+        <button class="btn-modal-cancel" onclick="closeCoachPrModal()">Annuler</button>
       </div>`;
-    document.body.appendChild(div);
+    document.body.appendChild(overlay);
   }
 
   window.openCoachPrModal = async function(athleteId, prToEdit){
@@ -4851,7 +4853,7 @@ async function claimFreeAccess(programmeId){
     if(error){showToast('❌ '+error.message);console.error('saveCoachPR', error);return;}
     showToast(_coachPrEditingId ? '✅ PR modifié' : '🏆 PR ajouté');
     closeCoachPrModal();
-    if(typeof _loadAthleteCardPRs === 'function') _loadAthleteCardPRs(_coachPrAthleteId);
+    _refreshPRView(_coachPrAthleteId);
   };
 
   window.deleteCoachPR = async function(prId, athleteId){
@@ -4859,45 +4861,64 @@ async function claimFreeAccess(programmeId){
     const {error} = await sb.from('athlete_prs').delete().eq('id', prId);
     if(error){showToast('❌ '+error.message);return;}
     showToast('🗑 PR supprimé');
-    if(typeof _loadAthleteCardPRs === 'function') _loadAthleteCardPRs(athleteId);
+    _refreshPRView(athleteId);
   };
 
-  const _origLoadAthleteCardPRs = window._loadAthleteCardPRs;
-  window._loadAthleteCardPRs = async function(id){
-    await _origLoadAthleteCardPRs(id);
-    const wrap = document.getElementById('ac-prs');
+  // Rendu de la fiche athlète DANS L'ONGLET DASHBOARD (dashOpenFiche → _dashRenderPRs)
+  // C'est ici que le coach clique un athlète depuis le Dashboard.
+  const _origDashRenderPRs = window._dashRenderPRs;
+  window._dashRenderPRs = function(){
+    _origDashRenderPRs();
+    const wrap = document.getElementById('df-prs-list');
     if(!wrap) return;
+    const athleteId = _dashCurrentAthleteId;
+    if(!athleteId) return;
 
-    if(!document.getElementById('coach-pr-add-btn')){
-      const btn = document.createElement('button');
+    // Bouton "+ Ajouter / modifier un PR" au-dessus de la liste
+    let btn = document.getElementById('coach-pr-add-btn');
+    if(!btn){
+      btn = document.createElement('button');
       btn.id = 'coach-pr-add-btn';
       btn.className = 'btn-secondary';
       btn.style.cssText = 'margin-bottom:10px;padding:8px 12px;font-size:12px';
-      btn.textContent = '＋ Ajouter / modifier un PR';
-      btn.onclick = () => openCoachPrModal(id);
       wrap.parentNode.insertBefore(btn, wrap);
-    } else {
-      document.getElementById('coach-pr-add-btn').onclick = () => openCoachPrModal(id);
     }
+    btn.textContent = '＋ Ajouter / modifier un PR';
+    btn.onclick = () => openCoachPrModal(athleteId);
 
-    try{
-      const {data: prs} = await sb.from('athlete_prs')
-        .select('id,movement_id,value,recorded_at,format,note')
-        .eq('athlete_id', id)
-        .order('recorded_at', {ascending:false});
-      const byMov = {};
-      (prs||[]).forEach(p=>{ if(!byMov[p.movement_id]) byMov[p.movement_id]=p; });
-      wrap.querySelectorAll('.afiche-pr').forEach((el, idx) => {
-        el.style.cursor = 'pointer';
-        el.onclick = (ev) => {
-          ev.stopPropagation();
-          const items = Object.values(byMov);
-          const pr = items[idx];
-          if(pr) openCoachPrModal(id, pr);
-        };
-      });
-    }catch(e){console.warn('coach pr clickable', e);}
+    // Cartes PR mouvements cliquables → édition rapide.
+    // _dashPRsData contient déjà mid (movement_id) + le dernier PR (last) : matching fiable,
+    // pas besoin de re-fetch ni de deviner via le nom affiché.
+    const prCards = wrap.querySelectorAll('.afiche-pr');
+    const prData = (_dashPRsData||[]).filter(it=>it.type!=='bench'); // dans l'ordre de rendu (prs avant bench)
+    prCards.forEach((el, idx) => {
+      const item = prData[idx];
+      if(!item || !item.last) return; // au-delà : ce sont des cartes benchmark, pas de PR éditable ici
+      el.style.cursor = 'pointer';
+      el.onclick = (ev) => {
+        ev.stopPropagation();
+        openCoachPrModal(athleteId, {
+          id: item.last.id,
+          movement_id: item.mid,
+          value: item.last.value,
+          recorded_at: item.last.recorded_at,
+          format: item.last.format,
+          note: item.last.note
+        });
+      };
+    });
   };
+
+  // saveCoachPR/deleteCoachPR doivent rafraîchir la bonne vue selon le contexte
+  // (fiche Dashboard prioritaire, fallback fiche Athlètes si jamais utilisée)
+  function _refreshPRView(athleteId){
+    if(typeof _dashLoadPRsAndBench === 'function' && _dashCurrentAthleteId === athleteId){
+      _dashLoadPRsAndBench(athleteId);
+    } else if(typeof _loadAthleteCardPRs === 'function'){
+      _loadAthleteCardPRs(athleteId);
+    }
+  }
+
 
   /* ---------------------------------------------------------
      2) COULEUR DU BLOC SÉANCE ↔ TYPE, PARAMÉTRABLE PAR STUDIO
