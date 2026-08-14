@@ -4446,148 +4446,6 @@ async function claimFreeAccess(programmeId){
 })();
 
 /* ============================================================
-   PATCH — Visibilité manuelle des séances (visible_from)
-   Permet de programmer l'apparition d'une séance à une date/heure
-   précise depuis l'espace admin, sans toucher à admin.js
-   ============================================================ */
-(function(){
-  if(window.__patchVisibleFrom)return;
-  window.__patchVisibleFrom=true;
-
-  // --- 1) Injecte le champ dans le formulaire "+ Séance" ---
-  function injectVisibleFromField(){
-    const anchor=document.getElementById('f-date-group')||document.getElementById('f-date')?.closest('.form-group')||document.getElementById('f-date')?.parentElement;
-    if(!anchor||document.getElementById('f-visible-from-group'))return;
-    const wrap=document.createElement('div');
-    wrap.className='form-group';
-    wrap.id='f-visible-from-group';
-    wrap.style.marginTop='10px';
-    wrap.innerHTML=`
-      <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px">
-        <input type="checkbox" id="f-visible-toggle" onchange="document.getElementById('f-visible-from-row').style.display=this.checked?'flex':'none'">
-        📅 Programmer l'apparition (sinon : visible dès la semaine en cours, auto)
-      </label>
-      <div id="f-visible-from-row" style="display:none;gap:8px;margin-top:6px">
-        <input type="date" id="f-visible-date" style="flex:1">
-        <input type="time" id="f-visible-time" value="09:00" style="flex:1">
-      </div>`;
-    anchor.insertAdjacentElement('afterend',wrap);
-  }
-
-  function resetVisibleFromField(){
-    const toggle=document.getElementById('f-visible-toggle');
-    const row=document.getElementById('f-visible-from-row');
-    const d=document.getElementById('f-visible-date');
-    const t=document.getElementById('f-visible-time');
-    if(toggle)toggle.checked=false;
-    if(row)row.style.display='none';
-    if(d)d.value='';
-    if(t)t.value='09:00';
-  }
-
-  // Injecte à chaque ouverture de l'onglet "+ Séance", reset si nouvelle séance
-  const __origAdminTabVF=window.adminTab;
-  window.adminTab=function(tab,btn){
-    __origAdminTabVF(tab,btn);
-    if(tab==='new-session'){
-      injectVisibleFromField();
-      if(typeof editingSessionId!=='undefined' && !editingSessionId && !personalEditingId){
-        resetVisibleFromField();
-      }
-    }
-  };
-
-  // --- 2) Pré-remplit le champ quand on édite une séance existante (programme) ---
-  const __origEditSessionVF=window.editSession;
-  window.editSession=async function(id){
-    await __origEditSessionVF(id);
-    injectVisibleFromField();
-    const {data}=await sb.from('sessions').select('visible_from').eq('id',id).single();
-    const toggle=document.getElementById('f-visible-toggle');
-    const row=document.getElementById('f-visible-from-row');
-    const dEl=document.getElementById('f-visible-date');
-    const tEl=document.getElementById('f-visible-time');
-    if(data?.visible_from && toggle){
-      const dt=new Date(data.visible_from);
-      toggle.checked=true;
-      row.style.display='flex';
-      dEl.value=dt.toISOString().split('T')[0];
-      tEl.value=dt.toTimeString().slice(0,5);
-    } else if(toggle){
-      toggle.checked=false;
-      row.style.display='none';
-      dEl.value='';tEl.value='09:00';
-    }
-  };
-
-  // --- 2bis) Pré-remplit le champ quand on édite une séance perso ---
-  if(typeof window.persoEditSession==='function'){
-    const __origPersoEditSessionVF=window.persoEditSession;
-    window.persoEditSession=async function(id,athleteId){
-      await __origPersoEditSessionVF(id,athleteId);
-      injectVisibleFromField();
-      const {data}=await sb.from('personal_sessions').select('visible_from').eq('id',id).single();
-      const toggle=document.getElementById('f-visible-toggle');
-      const row=document.getElementById('f-visible-from-row');
-      const dEl=document.getElementById('f-visible-date');
-      const tEl=document.getElementById('f-visible-time');
-      if(data?.visible_from && toggle){
-        const dt=new Date(data.visible_from);
-        toggle.checked=true;row.style.display='flex';
-        dEl.value=dt.toISOString().split('T')[0];
-        tEl.value=dt.toTimeString().slice(0,5);
-      } else if(toggle){
-        toggle.checked=false;row.style.display='none';dEl.value='';tEl.value='09:00';
-      }
-    };
-  }
-
-  // --- 3) Injecte visible_from dans les insert/update sur sessions & personal_sessions ---
-  const __origFromVF=sb.from.bind(sb);
-  sb.from=function(table){
-    const builder=__origFromVF(table);
-    if(table==='sessions'||table==='personal_sessions'){
-      const origInsert=builder.insert.bind(builder);
-      builder.insert=function(payload){
-        if(window.__nextVisibleFrom!==undefined){
-          payload=Array.isArray(payload)
-            ?payload.map(p=>({...p,visible_from:window.__nextVisibleFrom}))
-            :{...payload,visible_from:window.__nextVisibleFrom};
-        }
-        return origInsert(payload);
-      };
-      const origUpdate=builder.update.bind(builder);
-      builder.update=function(payload){
-        if(window.__nextVisibleFrom!==undefined){
-          payload={...payload,visible_from:window.__nextVisibleFrom};
-        }
-        return origUpdate(payload);
-      };
-    }
-    return builder;
-  };
-
-  // --- 4) Capture la valeur du champ juste avant saveSession() ---
-  const __origSaveSessionVF=window.saveSession;
-  window.saveSession=async function(){
-    const toggle=document.getElementById('f-visible-toggle');
-    let visibleFrom=null;
-    if(toggle&&toggle.checked){
-      const d=document.getElementById('f-visible-date')?.value;
-      const t=document.getElementById('f-visible-time')?.value||'00:00';
-      if(d)visibleFrom=new Date(`${d}T${t}:00`).toISOString();
-    }
-    window.__nextVisibleFrom=visibleFrom; // null = reset au mode auto (semaine courante)
-    try{
-      return await __origSaveSessionVF.apply(this,arguments);
-    } finally {
-      window.__nextVisibleFrom=undefined; // évite de polluer duplicateSession, dup semaine, etc.
-    }
-  };
-
-})();
-
-/* ============================================================
    PATCH 2 — Visibilité manuelle pour TOUTE la semaine affichée
    Ajoute un bouton 📅 à côté de ‹ › dans l'onglet Planning (admin)
    ============================================================ */
@@ -4692,4 +4550,102 @@ async function claimFreeAccess(programmeId){
     };
   }
   document.addEventListener('DOMContentLoaded',()=>setTimeout(injectWeekVisibilityButton,800));
+})();
+
+/* ============================================================
+   PATCH 3 — Visibilité manuelle pour TOUTE la semaine (Espace perso)
+   Ajoute un bouton 📅 à côté de ‹ › dans l'espace perso (fiche athlète)
+   ============================================================ */
+(function(){
+  if(window.__patchPersoWeekVisibleFrom)return;
+  window.__patchPersoWeekVisibleFrom=true;
+
+  function injectPersoWeekVisibilityButton(){
+    if(document.getElementById('perso-week-visibility-btn'))return;
+    const dupBtn=document.querySelector('[onclick="openDupPersoWeekModal()"]');
+    if(!dupBtn)return;
+    const btn=document.createElement('button');
+    btn.className='arrow-btn';
+    btn.id='perso-week-visibility-btn';
+    btn.title="Programmer l'apparition de toute la semaine";
+    btn.style.fontSize='14px';
+    btn.textContent='📅';
+    btn.onclick=openPersoWeekVisibilityModal;
+    dupBtn.insertAdjacentElement('afterend',btn);
+  }
+
+  function buildModal(){
+    if(document.getElementById('perso-week-vis-modal'))return;
+    const modal=document.createElement('div');
+    modal.id='perso-week-vis-modal';
+    modal.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center';
+    modal.innerHTML=`
+      <div style="background:var(--card,#1a1a1a);border:1px solid var(--border2,#333);border-radius:14px;padding:20px;width:min(320px,90vw)">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:12px" id="perso-week-vis-title">Programmer la semaine</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <input type="date" id="perso-week-vis-date" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2,#333);background:var(--card2,#111);color:var(--text,#fff)">
+          <input type="time" id="perso-week-vis-time" value="09:00" style="flex:1;padding:8px;border-radius:8px;border:1px solid var(--border2,#333);background:var(--card2,#111);color:var(--text,#fff)">
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button id="perso-week-vis-apply" style="padding:10px;border-radius:10px;border:none;background:var(--accent,#e8ff47);color:#000;font-weight:700;cursor:pointer">Programmer cette date</button>
+          <button id="perso-week-vis-now" style="padding:10px;border-radius:10px;border:1px solid var(--border2,#333);background:transparent;color:var(--text,#fff);cursor:pointer">👁 Rendre visible maintenant</button>
+          <button id="perso-week-vis-reset" style="padding:10px;border-radius:10px;border:1px solid var(--border2,#333);background:transparent;color:var(--muted,#999);cursor:pointer">↩ Repasser en mode auto (semaine en cours)</button>
+          <button id="perso-week-vis-cancel" style="padding:8px;border-radius:10px;border:none;background:transparent;color:var(--muted,#999);cursor:pointer">Annuler</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('perso-week-vis-cancel').onclick=()=>{modal.style.display='none';};
+    document.getElementById('perso-week-vis-apply').onclick=()=>applyPersoWeekVisibility('scheduled');
+    document.getElementById('perso-week-vis-now').onclick=()=>applyPersoWeekVisibility('now');
+    document.getElementById('perso-week-vis-reset').onclick=()=>applyPersoWeekVisibility('reset');
+  }
+
+  function openPersoWeekVisibilityModal(){
+    if(!currentPersoAthlete){showToast('⚠️ Aucun athlète sélectionné');return;}
+    if(persoView!=='week'){showToast("⚠️ Passe en vue semaine d'abord");return;}
+    buildModal();
+    const dates=getWeekDates(persoOffset);
+    const label=`Sem. du ${dates[0].getDate()}/${dates[0].getMonth()+1} au ${dates[6].getDate()}/${dates[6].getMonth()+1} — ${currentPersoAthlete.full_name||currentPersoAthlete.email||''}`;
+    document.getElementById('perso-week-vis-title').textContent=`Programmer : ${label}`;
+    document.getElementById('perso-week-vis-date').value='';
+    document.getElementById('perso-week-vis-time').value='09:00';
+    document.getElementById('perso-week-vis-modal').style.display='flex';
+  }
+
+  async function applyPersoWeekVisibility(mode){
+    if(!currentPersoAthlete)return;
+    let visibleFrom;
+    if(mode==='now')visibleFrom=new Date().toISOString();
+    else if(mode==='reset')visibleFrom=null;
+    else{
+      const d=document.getElementById('perso-week-vis-date').value;
+      const t=document.getElementById('perso-week-vis-time').value||'00:00';
+      if(!d){showToast('⚠️ Choisis une date');return;}
+      visibleFrom=new Date(`${d}T${t}:00`).toISOString();
+    }
+    const isos=getWeekDates(persoOffset).map(d=>d.toISOString().split('T')[0]);
+    const {error,data}=await sb.from('personal_sessions')
+      .update({visible_from:visibleFrom})
+      .eq('athlete_id',currentPersoAthlete.id)
+      .in('date',isos)
+      .select('id');
+    if(error){showToast('❌ '+error.message);return;}
+    document.getElementById('perso-week-vis-modal').style.display='none';
+    const n=data?.length||0;
+    if(mode==='reset')showToast(`↩ ${n} séance${n>1?'s':''} repassée${n>1?'s':''} en mode auto`);
+    else if(mode==='now')showToast(`👁 ${n} séance${n>1?'s':''} rendue${n>1?'s':''} visible${n>1?'s':''}`);
+    else showToast(`📅 ${n} séance${n>1?'s':''} programmée${n>1?'s':''}`);
+    if(typeof renderPersoCalendar==='function')renderPersoCalendar();
+  }
+
+  // Injecte le bouton à chaque affichage du calendrier perso
+  const __origRenderPersoCalendarWV=window.renderPersoCalendar;
+  if(typeof __origRenderPersoCalendarWV==='function'){
+    window.renderPersoCalendar=async function(...args){
+      const r=await __origRenderPersoCalendarWV.apply(this,args);
+      injectPersoWeekVisibilityButton();
+      return r;
+    };
+  }
+  document.addEventListener('DOMContentLoaded',()=>setTimeout(injectPersoWeekVisibilityButton,800));
 })();
