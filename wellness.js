@@ -5514,3 +5514,39 @@ async function claimFreeAccess(programmeId){
   };
 
 })();
+
+// ===== Anti-doublon URL vidéo dans le formulaire Séance + =====
+// addVideoToForm() (admin.js) gère déjà le doublon quand une URL est passée
+// directement (ex: sélection depuis la bibliothèque vidéo). Ce patch couvre
+// le cas où l'utilisateur tape/colle une URL à la main dans le champ #f-video-url
+// d'une ligne vide ajoutée via "+ URL vidéo".
+(function(){
+  if(window.__videoDupePatched) return;
+  window.__videoDupePatched = true;
+
+  function normalizeUrl(u){ return (u||'').trim(); }
+
+  document.addEventListener('change', function(e){
+    const input = e.target;
+    if(!input || !input.classList || !input.classList.contains('f-video-url')) return;
+    const list = document.getElementById('f-videos-list');
+    if(!list || !list.contains(input)) return;
+
+    const val = normalizeUrl(input.value);
+    if(!val) return;
+
+    const rows = [...list.querySelectorAll('.f-video-row')];
+    const currentRow = input.closest('.f-video-row');
+    const dupRow = rows.find(function(r){
+      return r!==currentRow && normalizeUrl(r.querySelector('.f-video-url')?.value)===val;
+    });
+
+    if(dupRow){
+      if(typeof showToast==='function') showToast('⚠️ Cette vidéo est déjà ajoutée');
+      else alert('Cette vidéo est déjà ajoutée');
+      input.value='';
+      if(typeof syncLegacyVideoFields==='function') syncLegacyVideoFields();
+      dupRow.querySelector('.f-video-label')?.focus();
+    }
+  }, true);
+})();
