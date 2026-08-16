@@ -5430,13 +5430,13 @@ async function claimFreeAccess(programmeId){
     return btn;
   }
 
-  window.editVideo = function(id){
+  window.editVideo = async function(id){
     const v = (allVideos||[]).find(x=>x.id===id);
     if(!v) return;
     editingVideoId = id;
-    populateVideoMovementSelect();
+    await ensureVideoMovementCache().then(renderVideoMovementSelect);
     const movSel=document.getElementById('v-movement');
-    if(movSel) movSel.value = v.movement_id || '';
+    if(movSel) movSel.value = v.video_movement_id || '';
     const titleEl=document.getElementById('v-title'); if(titleEl) titleEl.value=v.title||'';
     const ytEl=document.getElementById('v-youtube'); if(ytEl) ytEl.value=v.youtube_url||'';
     const descEl=document.getElementById('v-desc'); if(descEl) descEl.value=v.description||'';
@@ -5459,16 +5459,43 @@ async function claimFreeAccess(programmeId){
     if(cancelBtn) cancelBtn.style.display='none';
   };
 
-  // Mouvement optionnel : on ajoute une option vide en tête de liste
-  window.populateVideoMovementSelect = function(){
+  // ===== Liste de mouvements dédiée aux vidéos =====
+  // Table video_movements, TOTALEMENT SÉPARÉE de la table movements (PR).
+  // Groupée par catégorie via <optgroup>, ordre défini par sort_order en base.
+  let _videoMovementCache = null; // [{id,name,group_label}]
+
+  async function ensureVideoMovementCache(){
+    if(_videoMovementCache) return _videoMovementCache;
+    const {data,error}=await sb.from('video_movements').select('id,name,group_label').order('group_label').order('sort_order');
+    if(error){console.warn('ensureVideoMovementCache',error.message);return[];}
+    _videoMovementCache=data||[];
+    return _videoMovementCache;
+  }
+
+  function renderVideoMovementSelect(list){
     const sel=document.getElementById('v-movement');
-    if(!sel||typeof movements==='undefined'||movements.length===0)return;
-    sel.innerHTML = '<option value="">— Aucun mouvement associé —</option>' + movements.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+    if(!sel)return;
+    const groups={};
+    const order=[];
+    (list||[]).forEach(m=>{
+      if(!groups[m.group_label]){groups[m.group_label]=[];order.push(m.group_label);}
+      groups[m.group_label].push(m);
+    });
+    let html='<option value="">— Aucun mouvement associé —</option>';
+    order.forEach(function(label){
+      const opts=groups[label].map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+      html += `<optgroup label="${label}">${opts}</optgroup>`;
+    });
+    sel.innerHTML = html;
+  }
+
+  window.populateVideoMovementSelect = function(){
+    ensureVideoMovementCache().then(renderVideoMovementSelect);
   };
 
   window.saveVideo = async function(){
     const movSel=document.getElementById('v-movement');
-    const movementId = movSel && movSel.value ? movSel.value : null;
+    const videoMovementId = movSel && movSel.value ? movSel.value : null;
     const title=document.getElementById('v-title').value.trim();
     const youtube=document.getElementById('v-youtube').value.trim();
     const desc=document.getElementById('v-desc').value.trim();
@@ -5477,13 +5504,13 @@ async function claimFreeAccess(programmeId){
 
     if(editingVideoId){
       const {error}=await sb.from('movement_videos').update({
-        movement_id:movementId, title, youtube_url:youtube, description:desc||null, level
+        video_movement_id:videoMovementId, title, youtube_url:youtube, description:desc||null, level
       }).eq('id', editingVideoId);
       if(error){showToast('❌ '+error.message);return;}
       showToast('✅ Vidéo modifiée !');
       cancelEditVideo();
     } else {
-      const {error}=await sb.from('movement_videos').insert({movement_id:movementId,title,youtube_url:youtube,description:desc||null,level,created_by:currentUser.id,studio_id:getStudioId()});
+      const {error}=await sb.from('movement_videos').insert({video_movement_id:videoMovementId,title,youtube_url:youtube,description:desc||null,level,created_by:currentUser.id,studio_id:getStudioId()});
       if(error){showToast('❌ '+error.message);return;}
       showToast('✅ Vidéo ajoutée !');
       ['v-title','v-youtube','v-desc'].forEach(id=>document.getElementById(id).value='');
@@ -5492,13 +5519,22 @@ async function claimFreeAccess(programmeId){
   };
 
   // Affiche TOUTES les vidéos (plus de limite à 10) + bouton modifier
+  window.loadVideos = async function(){
+    const _vidStudioId=getStudioId();
+    let q=sb.from('movement_videos').select('*,video_movements(name,group_label)').order('created_at',{ascending:false});
+    if(_vidStudioId){q=q.eq('studio_id',_vidStudioId);}
+    else{q=q.is('studio_id',null);}
+    const {data}=await q;
+    allVideos=data||[];
+  };
+
   window.loadAdminVideos = async function(){
     await loadVideos();
     const el=document.getElementById('videos-list');
     if(!el) return;
     if(!allVideos.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">Aucune vidéo ajoutée.</div>';return;}
     el.innerHTML=`<div class="pr-hist-title">${allVideos.length} vidéos</div>`+allVideos.map(v=>`<div class="sessions-list-item">
-      <div><div class="sli-title">${v.title}</div><div class="sli-meta">${v.movements?.name||'—'} · ${v.level||'Tous niveaux'}</div></div>
+      <div><div class="sli-title">${v.title}</div><div class="sli-meta">${v.video_movements?.name||'—'} · ${v.level||'Tous niveaux'}</div></div>
       <div style="display:flex;gap:6px">
         <button class="btn-delete" title="Modifier" onclick="editVideo('${v.id}')" style="color:var(--accent)">✏️</button>
         <button class="btn-delete" title="Supprimer" onclick="deleteVideo('${v.id}')">✕</button>
@@ -5549,4 +5585,87 @@ async function claimFreeAccess(programmeId){
       dupRow.querySelector('.f-video-label')?.focus();
     }
   }, true);
+})();
+
+// ===== PATCH: écran Vidéos (athlète) + picker — bascule sur video_movements =====
+// admin.js filtrait/affichait via v.movements (catégories haltero/force/gymnastic/
+// cardio). Depuis que loadVideos() joint video_movements, on adapte les onglets,
+// le filtrage et l'affichage pour utiliser v.video_movements (name/group_label).
+(function(){
+  if(window.__videoAthleteUIPatched) return;
+  window.__videoAthleteUIPatched = true;
+
+  let _groupsCache = null; // liste ordonnée de group_label distincts
+
+  async function ensureGroupsCache(){
+    if(_groupsCache) return _groupsCache;
+    const {data,error}=await sb.from('video_movements').select('group_label').order('group_label');
+    if(error){console.warn('ensureGroupsCache',error.message);return[];}
+    const seen=new Set(); const list=[];
+    (data||[]).forEach(r=>{ if(!seen.has(r.group_label)){seen.add(r.group_label);list.push(r.group_label);} });
+    _groupsCache=list;
+    return list;
+  }
+
+  async function ensureVideoCatTabs(){
+    const wrap=document.getElementById('video-cats');
+    if(!wrap || wrap.dataset.built==='1') return;
+    const groups=await ensureGroupsCache();
+    wrap.innerHTML='<button class="cat-btn active" data-vcat="all" onclick="filterVideoCat(\'all\',this)">Toutes</button>'
+      + groups.map(g=>`<button class="cat-btn" data-vcat="${g.replace(/"/g,'&quot;')}" onclick="filterVideoCat('${g.replace(/'/g,"\\'")}',this)">${g}</button>`).join('');
+    wrap.dataset.built='1';
+  }
+
+  window.filterVideoCat = function(cat,btn){
+    currentVCat=cat;
+    document.querySelectorAll('.cat-btn[data-vcat]').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    renderVideosAthlete();
+  };
+
+  window.renderVideosAthlete = function(){
+    ensureVideoCatTabs();
+    let filtered=allVideos;
+    if(currentVCat!=='all')filtered=filtered.filter(v=>v.video_movements?.group_label===currentVCat);
+    if(videoSearch)filtered=filtered.filter(v=>v.title.toLowerCase().includes(videoSearch)||(v.video_movements?.name||'').toLowerCase().includes(videoSearch));
+    const el=document.getElementById('videos-athlete-list');
+    if(!el) return;
+    if(!filtered.length){el.innerHTML='<div class="empty"><div class="empty-icon">🎬</div><p>Aucune vidéo disponible.</p></div>';return;}
+    el.innerHTML=filtered.map(v=>{
+      const ytId=extractYTId(v.youtube_url||'');
+      const thumbHtml=ytId?`<div class="video-card-thumb"><iframe src="https://www.youtube.com/embed/${ytId}" allowfullscreen loading="lazy"></iframe></div>`:'';
+      return`<div class="video-card">${thumbHtml}<div class="video-card-body">
+        <div class="video-card-title">${v.title}</div>
+        <div class="video-card-meta"><span>${v.video_movements?.name||'—'}</span>${v.level&&v.level!=='all'?`<span class="video-level-badge">${v.level}</span>`:''}</div>
+        ${v.description?`<div class="video-card-desc">${v.description}</div>`:''}
+      </div></div>`;
+    }).join('');
+  };
+
+  window.renderVideoPicker = function(){
+    const q=document.getElementById('videopicker-search').value.toLowerCase();
+    const filtered=allVideos.filter(v=>!q||v.title.toLowerCase().includes(q)||(v.video_movements?.name||'').toLowerCase().includes(q));
+    const el=document.getElementById('videopicker-list');
+    if(!allVideos.length){
+      el.innerHTML='<div style="text-align:center;color:var(--muted);padding:24px 12px;font-size:13px;line-height:1.6"><div style="font-size:32px;margin-bottom:8px">🎬</div>Aucune vidéo dans la bibliothèque.<br><span style="font-size:11px">Ajoute-en via l\'onglet <b style="color:var(--accent)">Vidéos</b> de l\'admin.</span></div>';
+      return;
+    }
+    if(!filtered.length){el.innerHTML='<div style="text-align:center;color:var(--muted);padding:20px;font-size:13px">Aucune vidéo trouvée</div>';return;}
+    el.innerHTML=filtered.map(v=>{
+      const url=(v.youtube_url||'').replace(/"/g,'&quot;');
+      const title=(v.title||'').replace(/"/g,'&quot;');
+      const mv=(v.video_movements?.name||'—').replace(/</g,'&lt;');
+      return `<div class="videopicker-item" data-vp-url="${url}" data-vp-label="${title}" style="display:flex;align-items:center;gap:12px;padding:12px 4px;border-bottom:1px solid var(--border);cursor:pointer">
+        <span style="font-size:22px">▶️</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14px;font-weight:600">${title}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${mv}</div>
+        </div>
+        <span style="color:var(--accent);font-size:20px;font-weight:300">+</span>
+      </div>`;
+    }).join('');
+    el.querySelectorAll('.videopicker-item').forEach(item=>{
+      item.addEventListener('click',()=>selectVideoFromPicker(item.dataset.vpUrl,item.dataset.vpLabel));
+    });
+  };
 })();
