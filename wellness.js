@@ -4338,6 +4338,39 @@ async function claimFreeAccess(programmeId){
 
 // ===================================================
 // TRANSFERT CYCLE → ESPACE PERSO (un seul athlète)
+// PATCH loadMixedAthletes : inclure les admins (Maelle/Alexis)
+// dans la liste des destinataires "espace perso", car ils ont
+// eux aussi un espace perso mais étaient exclus par le filtre
+// role!=='admin' pensé pour l'assignation de programmes.
+// ===================================================
+(function(){
+  if(window.__loadMixedAthletesWithAdminsBound) return;
+  window.__loadMixedAthletesWithAdminsBound = true;
+
+  window.loadMixedAthletesWithAdmins = async function(){
+    const studioId = (typeof getStudioId === 'function') ? getStudioId() : null;
+    let q = sb.from('profiles').select('*');
+    if(studioId){ q = q.eq('studio_id', studioId); } else { q = q.is('studio_id', null); }
+    const { data } = await q.order('full_name');
+    const all = data || [];
+    persoAthletesCache = all;
+    let rows = [];
+    const r1 = await sb.from('athlete_programmes').select('athlete_id');
+    if(!r1.error && r1.data) rows = r1.data;
+    const r2 = await sb.from('programme_access').select('athlete_id');
+    if(!r2.error && r2.data) rows = rows.concat(r2.data);
+    const counts = {};
+    rows.forEach(r => { if(r.athlete_id) counts[r.athlete_id] = (counts[r.athlete_id]||0) + 1; });
+    const list = all.map(a => ({ ...a, _progCount: counts[a.id] || 0 }));
+    list.sort((a,b) => {
+      const am = a._progCount>=2 ? 0 : 1, bm = b._progCount>=2 ? 0 : 1;
+      if(am !== bm) return am - bm;
+      return (a.full_name||'').localeCompare(b.full_name||'');
+    });
+    return list;
+  };
+})();
+
 // Ajoute un bouton "→ Perso" à côté de "→ Séance+"
 // dans la Vue Session du cycle. Permet de créer un
 // cycle et d'envoyer directement une case vers
@@ -4428,7 +4461,7 @@ async function claimFreeAccess(programmeId){
     const sel = document.getElementById('cycle-to-perso-athlete');
     sel.innerHTML = '<option value="">Chargement…</option>';
     document.getElementById('cycle-to-perso-modal').classList.add('open');
-    const mixed = (typeof loadMixedAthletes === 'function') ? await loadMixedAthletes() : [];
+    const mixed = (typeof loadMixedAthletesWithAdmins === 'function') ? await loadMixedAthletesWithAdmins() : [];
     if(!mixed.length){
       sel.innerHTML = '<option value="">— Aucun athlète —</option>';
     } else {
