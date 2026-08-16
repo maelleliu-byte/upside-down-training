@@ -4361,8 +4361,20 @@ async function claimFreeAccess(programmeId){
     if(!r2.error && r2.data) rows = rows.concat(r2.data);
     const counts = {};
     rows.forEach(r => { if(r.athlete_id) counts[r.athlete_id] = (counts[r.athlete_id]||0) + 1; });
-    const list = all.map(a => ({ ...a, _progCount: counts[a.id] || 0 }));
+
+    // Favoris propres au coach connecté (table coach_favorites, déjà utilisée
+    // dans l'espace perso) : on les fait remonter en tête de liste.
+    let favSet = new Set();
+    if(currentUser && currentUser.id){
+      const { data: favRows } = await sb.from('coach_favorites')
+        .select('athlete_id')
+        .eq('coach_id', currentUser.id);
+      favSet = new Set((favRows||[]).map(r => r.athlete_id));
+    }
+
+    const list = all.map(a => ({ ...a, _progCount: counts[a.id] || 0, _isFav: favSet.has(a.id) }));
     list.sort((a,b) => {
+      if(a._isFav !== b._isFav) return a._isFav ? -1 : 1;
       const am = a._progCount>=2 ? 0 : 1, bm = b._progCount>=2 ? 0 : 1;
       if(am !== bm) return am - bm;
       return (a.full_name||'').localeCompare(b.full_name||'');
@@ -4395,7 +4407,8 @@ async function claimFreeAccess(programmeId){
     } else {
       athSel.innerHTML = mixed.map(a=>{
         const tag = a._progCount>=2 ? ` · ${a._progCount} progs 🔀` : (a._progCount===1 ? ` · 1 prog` : '');
-        return `<option value="${a.id}">${escapeHtml(a.full_name||a.email||'Athlète')}${tag}</option>`;
+        const star = a._isFav ? '★ ' : '';
+        return `<option value="${a.id}">${star}${escapeHtml(a.full_name||a.email||'Athlète')}${tag}</option>`;
       }).join('');
     }
   };
@@ -4495,7 +4508,7 @@ async function claimFreeAccess(programmeId){
     if(!mixed.length){
       sel.innerHTML = '<option value="">— Aucun athlète —</option>';
     } else {
-      sel.innerHTML = mixed.map(a => `<option value="${a.id}">${escapeHtml(a.full_name||a.email||'Athlète')}</option>`).join('');
+      sel.innerHTML = mixed.map(a => `<option value="${a.id}">${a._isFav?'★ ':''}${escapeHtml(a.full_name||a.email||'Athlète')}</option>`).join('');
     }
   };
 
