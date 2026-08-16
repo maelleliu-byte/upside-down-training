@@ -92,6 +92,18 @@ exports.handler = async (event) => {
     }
 
     // 6) Résoudre les comptes Stripe Connect concernés (studios externes)
+    // Source la plus fiable : stripe_customers.stripe_account_id, indexé par
+    // stripe_customer_id (un customer Stripe donné vit sur UN SEUL compte,
+    // plateforme ou connecté — contrairement au programme, qui peut mal
+    // orienter si plusieurs programmes/slugs se chevauchent).
+    const { data: custRows } = await supabaseAdmin
+      .from('stripe_customers')
+      .select('stripe_customer_id, stripe_account_id')
+      .eq('user_id', athleteId);
+    const accountByCustomerId = {};
+    (custRows || []).forEach(c => { accountByCustomerId[c.stripe_customer_id] = c.stripe_account_id || null; });
+
+    // Repli : via programmes.stripe_account_id si le customer n'était pas connu
     const slugs = [...new Set(subs.map(s => s.programme_slug).filter(Boolean))];
     let accountBySlug = {};
     if (slugs.length) {
@@ -106,20 +118,63 @@ exports.handler = async (event) => {
     const errors = [];
 
     for (const sub of subs) {
-      const connectAccount = sub.programme_slug ? accountBySlug[sub.programme_slug] : null;
-      try {
-        const options = connectAccount ? { stripeAccount: connectAccount } : undefined;
-        await stripe.subscriptions.cancel(sub.stripe_subscription_id, {}, options);
-        cancelled.push(sub.stripe_subscription_id);
-      } catch (e) {
-        // Déjà annulé/inexistant côté Stripe → on considère que c'est fait, pas une vraie erreur
-        if (e.code === 'resource_missing' || /already been canceled|No such subscription/i.test(e.message || '')) {
-          cancelled.push(sub.stripe_subscription_id);
-        } else {
-          console.error('Cancel error for', sub.stripe_subscription_id, e.message);
-          errors.push({ subscription_id: sub.stripe_subscription_id, error: e.message });
+      // Compte candidat, du plus fiable au moins fiable
+      const candidateAccounts = [];
+      if (sub.stripe_customer_id in accountByCustomerId) candidateAccounts.push(accountByCustomerId[sub.stripe_customer_id]);
+      if (sub.programme_slug && accountBySlug[sub.programme_slug] !== undefined) candidateAccounts.push(accountBySlug[sub.programme_slug]);
+      candidateAccounts.push(null); // compte plateforme en dernier recours
+      // Dédoublonne en gardant l'ordre
+      const tried = new Set();
+      const accounts = candidateAccounts.filter(a => { const k = a || '__platform__'; if (tried.has(k)) return false; tried.add(k); return true; });
+
+      let resolvedAccount = undefined; // undefined = pas encore trouvé où vit l'abonnement
+      let currentStatus = null;
+
+      // 6a) Localiser l'abonnement : on essaie chaque compte candidat jusqu'à
+      // en trouver un où Stripe le connaît réellement (retrieve, pas cancel,
+      // pour ne rien modifier tant qu'on n'est pas sûr du bon compte).
+      for (const acct of accounts) {
+        try {
+          const options = acct ? { stripeAccount: acct } : undefined;
+          const s = await stripe.subscriptions.retrieve(sub.stripe_subscription_id, options);
+          resolvedAccount = acct;
+          currentStatus = s.status;
+          break;
+        } catch (e) {
+          if (e.code !== 'resource_missing') {
+            // Erreur autre qu'"introuvable sur ce compte" → vraie erreur, on arrête là
+            errors.push({ subscription_id: sub.stripe_subscription_id, error: e.message });
+            resolvedAccount = null;
+            break;
+          }
+          // sinon on continue d'essayer les autres comptes candidats
         }
       }
+
+      if (resolvedAccount === null && currentStatus === null) {
+        // Soit une vraie erreur déjà loguée ci-dessus, soit introuvable sur AUCUN
+        // compte candidat (cas limite) → on le signale explicitement, on ne
+        // suppose PAS que c'est déjà annulé.
+        if (!errors.some(e => e.subscription_id === sub.stripe_subscription_id)) {
+          errors.push({ subscription_id: sub.stripe_subscription_id, error: 'Introuvable sur les comptes Stripe testés (plateforme + Connect)' });
+        }
+        continue;
+      }
+
+      if (currentStatus === 'canceled') {
+        cancelled.push(sub.stripe_subscription_id);
+      } else {
+        try {
+          const options = resolvedAccount ? { stripeAccount: resolvedAccount } : undefined;
+          await stripe.subscriptions.cancel(sub.stripe_subscription_id, {}, options);
+          cancelled.push(sub.stripe_subscription_id);
+        } catch (e) {
+          console.error('Cancel error for', sub.stripe_subscription_id, e.message);
+          errors.push({ subscription_id: sub.stripe_subscription_id, error: e.message });
+          continue;
+        }
+      }
+
       // Reflète le nouveau statut localement (le profil sera de toute façon
       // supprimé juste après par le front, ce qui purge la table via CASCADE)
       await supabaseAdmin
