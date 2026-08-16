@@ -4371,6 +4371,36 @@ async function claimFreeAccess(programmeId){
   };
 })();
 
+// PATCH openDuplicateModal (modal "Dupliquer" depuis planning/admin) :
+// utiliser loadMixedAthletesWithAdmins pour que Maelle/Alexis (admins)
+// apparaissent dans la liste des athlètes quand on duplique vers l'espace perso.
+// ===================================================
+(function(){
+  if(window.__openDuplicateModalWithAdminsBound) return;
+  window.__openDuplicateModalWithAdminsBound = true;
+
+  window.openDuplicateModal = async function(session){
+    sessionToDuplicate = session;
+    document.getElementById('dup-session-name').textContent = session.title;
+    document.getElementById('dup-date').value = new Date().toISOString().split('T')[0];
+    document.getElementById('dup-prog').innerHTML = programmes.map(p=>`<option value="${p.id}" ${p.id===session.programme_id?'selected':''}>${p.icon||'💪'} ${p.name}</option>`).join('');
+    const athSel = document.getElementById('dup-athlete');
+    athSel.innerHTML = '<option value="">Chargement…</option>';
+    setDupDest('prog');
+    document.getElementById('dup-modal').classList.add('open');
+    const mixed = await loadMixedAthletesWithAdmins();
+    dupMixedAthletesCache = mixed;
+    if(!mixed.length){
+      athSel.innerHTML = '<option value="">— Aucun athlète —</option>';
+    } else {
+      athSel.innerHTML = mixed.map(a=>{
+        const tag = a._progCount>=2 ? ` · ${a._progCount} progs 🔀` : (a._progCount===1 ? ` · 1 prog` : '');
+        return `<option value="${a.id}">${escapeHtml(a.full_name||a.email||'Athlète')}${tag}</option>`;
+      }).join('');
+    }
+  };
+})();
+
 // Ajoute un bouton "→ Perso" à côté de "→ Séance+"
 // dans la Vue Session du cycle. Permet de créer un
 // cycle et d'envoyer directement une case vers
