@@ -4361,20 +4361,8 @@ async function claimFreeAccess(programmeId){
     if(!r2.error && r2.data) rows = rows.concat(r2.data);
     const counts = {};
     rows.forEach(r => { if(r.athlete_id) counts[r.athlete_id] = (counts[r.athlete_id]||0) + 1; });
-
-    // Favoris propres au coach connecté (table coach_favorites, déjà utilisée
-    // dans l'espace perso) : on les fait remonter en tête de liste.
-    let favSet = new Set();
-    if(currentUser && currentUser.id){
-      const { data: favRows } = await sb.from('coach_favorites')
-        .select('athlete_id')
-        .eq('coach_id', currentUser.id);
-      favSet = new Set((favRows||[]).map(r => r.athlete_id));
-    }
-
-    const list = all.map(a => ({ ...a, _progCount: counts[a.id] || 0, _isFav: favSet.has(a.id) }));
+    const list = all.map(a => ({ ...a, _progCount: counts[a.id] || 0 }));
     list.sort((a,b) => {
-      if(a._isFav !== b._isFav) return a._isFav ? -1 : 1;
       const am = a._progCount>=2 ? 0 : 1, bm = b._progCount>=2 ? 0 : 1;
       if(am !== bm) return am - bm;
       return (a.full_name||'').localeCompare(b.full_name||'');
@@ -4407,8 +4395,7 @@ async function claimFreeAccess(programmeId){
     } else {
       athSel.innerHTML = mixed.map(a=>{
         const tag = a._progCount>=2 ? ` · ${a._progCount} progs 🔀` : (a._progCount===1 ? ` · 1 prog` : '');
-        const star = a._isFav ? '★ ' : '';
-        return `<option value="${a.id}">${star}${escapeHtml(a.full_name||a.email||'Athlète')}${tag}</option>`;
+        return `<option value="${a.id}">${escapeHtml(a.full_name||a.email||'Athlète')}${tag}</option>`;
       }).join('');
     }
   };
@@ -4508,7 +4495,7 @@ async function claimFreeAccess(programmeId){
     if(!mixed.length){
       sel.innerHTML = '<option value="">— Aucun athlète —</option>';
     } else {
-      sel.innerHTML = mixed.map(a => `<option value="${a.id}">${a._isFav?'★ ':''}${escapeHtml(a.full_name||a.email||'Athlète')}</option>`).join('');
+      sel.innerHTML = mixed.map(a => `<option value="${a.id}">${escapeHtml(a.full_name||a.email||'Athlète')}</option>`).join('');
     }
   };
 
@@ -5412,5 +5399,118 @@ async function claimFreeAccess(programmeId){
 
   // Remplace l'appel d'origine par la version qui renomme le bouton
   ensureColorsTabButton = ensureSettingsTabButton;
+
+})();
+
+// ===== PATCH: Vidéothèque admin — voir toutes les vidéos + modifier + mouvement optionnel =====
+(function(){
+  if(window.__videoAdminPatched) return;
+  window.__videoAdminPatched = true;
+
+  let editingVideoId = null;
+
+  function getSubmitBtn(){
+    return document.querySelector('#admin-videos button[onclick="saveVideo()"]');
+  }
+
+  function ensureCancelEditBtn(){
+    let btn = document.getElementById('v-edit-cancel');
+    if(!btn){
+      const submitBtn = getSubmitBtn();
+      if(!submitBtn) return null;
+      btn = document.createElement('button');
+      btn.id = 'v-edit-cancel';
+      btn.type = 'button';
+      btn.className = 'btn-secondary';
+      btn.style.cssText = 'margin-left:8px;display:none';
+      btn.textContent = 'Annuler la modification';
+      btn.onclick = cancelEditVideo;
+      submitBtn.insertAdjacentElement('afterend', btn);
+    }
+    return btn;
+  }
+
+  window.editVideo = function(id){
+    const v = (allVideos||[]).find(x=>x.id===id);
+    if(!v) return;
+    editingVideoId = id;
+    populateVideoMovementSelect();
+    const movSel=document.getElementById('v-movement');
+    if(movSel) movSel.value = v.movement_id || '';
+    const titleEl=document.getElementById('v-title'); if(titleEl) titleEl.value=v.title||'';
+    const ytEl=document.getElementById('v-youtube'); if(ytEl) ytEl.value=v.youtube_url||'';
+    const descEl=document.getElementById('v-desc'); if(descEl) descEl.value=v.description||'';
+    const lvlEl=document.getElementById('v-level'); if(lvlEl) lvlEl.value=v.level||'all';
+    const submitBtn=getSubmitBtn();
+    if(submitBtn) submitBtn.textContent='Enregistrer les modifications';
+    const cancelBtn=ensureCancelEditBtn();
+    if(cancelBtn) cancelBtn.style.display='inline-block';
+    submitBtn?.scrollIntoView({behavior:'smooth',block:'center'});
+  };
+
+  window.cancelEditVideo = function(){
+    editingVideoId = null;
+    ['v-title','v-youtube','v-desc'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';});
+    const movSel=document.getElementById('v-movement'); if(movSel) movSel.value='';
+    const lvlEl=document.getElementById('v-level'); if(lvlEl) lvlEl.value='all';
+    const submitBtn=getSubmitBtn();
+    if(submitBtn) submitBtn.textContent='Ajouter la vidéo';
+    const cancelBtn=document.getElementById('v-edit-cancel');
+    if(cancelBtn) cancelBtn.style.display='none';
+  };
+
+  // Mouvement optionnel : on ajoute une option vide en tête de liste
+  window.populateVideoMovementSelect = function(){
+    const sel=document.getElementById('v-movement');
+    if(!sel||typeof movements==='undefined'||movements.length===0)return;
+    sel.innerHTML = '<option value="">— Aucun mouvement associé —</option>' + movements.map(m=>`<option value="${m.id}">${m.name}</option>`).join('');
+  };
+
+  window.saveVideo = async function(){
+    const movSel=document.getElementById('v-movement');
+    const movementId = movSel && movSel.value ? movSel.value : null;
+    const title=document.getElementById('v-title').value.trim();
+    const youtube=document.getElementById('v-youtube').value.trim();
+    const desc=document.getElementById('v-desc').value.trim();
+    const level=document.getElementById('v-level').value;
+    if(!title||!youtube){showToast('⚠️ Titre et lien YouTube requis');return;}
+
+    if(editingVideoId){
+      const {error}=await sb.from('movement_videos').update({
+        movement_id:movementId, title, youtube_url:youtube, description:desc||null, level
+      }).eq('id', editingVideoId);
+      if(error){showToast('❌ '+error.message);return;}
+      showToast('✅ Vidéo modifiée !');
+      cancelEditVideo();
+    } else {
+      const {error}=await sb.from('movement_videos').insert({movement_id:movementId,title,youtube_url:youtube,description:desc||null,level,created_by:currentUser.id,studio_id:getStudioId()});
+      if(error){showToast('❌ '+error.message);return;}
+      showToast('✅ Vidéo ajoutée !');
+      ['v-title','v-youtube','v-desc'].forEach(id=>document.getElementById(id).value='');
+    }
+    await loadAdminVideos();
+  };
+
+  // Affiche TOUTES les vidéos (plus de limite à 10) + bouton modifier
+  window.loadAdminVideos = async function(){
+    await loadVideos();
+    const el=document.getElementById('videos-list');
+    if(!el) return;
+    if(!allVideos.length){el.innerHTML='<div style="font-size:13px;color:var(--muted)">Aucune vidéo ajoutée.</div>';return;}
+    el.innerHTML=`<div class="pr-hist-title">${allVideos.length} vidéos</div>`+allVideos.map(v=>`<div class="sessions-list-item">
+      <div><div class="sli-title">${v.title}</div><div class="sli-meta">${v.movements?.name||'—'} · ${v.level||'Tous niveaux'}</div></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn-delete" title="Modifier" onclick="editVideo('${v.id}')" style="color:var(--accent)">✏️</button>
+        <button class="btn-delete" title="Supprimer" onclick="deleteVideo('${v.id}')">✕</button>
+      </div>
+    </div>`).join('');
+  };
+
+  window.deleteVideo = async function(id){
+    await sb.from('movement_videos').delete().eq('id',id);
+    showToast('🗑 Vidéo supprimée');
+    if(editingVideoId===id) cancelEditVideo();
+    loadAdminVideos();
+  };
 
 })();
