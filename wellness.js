@@ -356,6 +356,7 @@ async function openPersoFiche(athleteId,targetDate){
   document.getElementById('perso-fiche-sub').textContent=currentPersoAthlete.email||'';
   persoView='week';
   if(targetDate){const now=new Date(),day=now.getDay();const monNow=new Date(now);monNow.setDate(now.getDate()-(day===0?6:day-1));monNow.setHours(0,0,0,0);const tgt=new Date(targetDate+'T12:00:00'),tgtDay=tgt.getDay();const monTgt=new Date(tgt);monTgt.setDate(tgt.getDate()-(tgtDay===0?6:tgtDay-1));monTgt.setHours(0,0,0,0);persoOffset=Math.round((monTgt-monNow)/(7*24*60*60*1000));}else{persoOffset=0;}
+  document.getElementById('perso-view-day').classList.remove('active');
   document.getElementById('perso-view-week').classList.add('active');
   document.getElementById('perso-view-month').classList.remove('active');
   await renderPersoCalendar();
@@ -379,6 +380,7 @@ function persoBackToFiche(){
 function persoSetView(v){
   persoView=v;
   persoOffset=0;
+  document.getElementById('perso-view-day').classList.toggle('active',v==='day');
   document.getElementById('perso-view-week').classList.toggle('active',v==='week');
   document.getElementById('perso-view-month').classList.toggle('active',v==='month');
   renderPersoCalendar();
@@ -389,7 +391,66 @@ async function renderPersoCalendar(){
   if(!currentPersoAthlete)return;
   const area=document.getElementById('perso-calendar-area');
   area.innerHTML='<div class="spinner"></div>';
-  if(persoView==='week'){
+  if(persoView==='day'){
+    const d=new Date();d.setDate(d.getDate()+persoOffset);
+    const iso=d.toISOString().split('T')[0];
+    const today=new Date().toISOString().split('T')[0];
+    document.getElementById('perso-period-label').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}${iso===today?' · aujourd\'hui':''}`;
+    const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).eq('date',iso).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+    persoSessionsCache=data||[];
+    const sessions=persoSessionsCache;
+    const _sidsD=sessions.filter(s=>s.type!=='separator').map(s=>s.id);
+    await loadPersoRetours(_sidsD,currentPersoAthlete.id,[iso]);
+    const w=_persoRetoursCache.wellnessByDate[iso];
+    const wellnessBanner=(()=>{
+      if(!w)return '';
+      const mean=_persoWellMean(w);
+      const tone=_persoWellTone(w);
+      const meta=[['sleep_quality','😴','Sommeil'],['energy','🔥','Énergie'],['fatigue','💤','Fatigue'],['soreness','🤕','Courbatures'],['motivation','🎯','Motiv.'],['stress','😰','Stress']];
+      const chips=meta.filter(m=>typeof w[m[0]]==='number').map(([k,ic,lbl])=>`<span class="c">${ic} ${lbl} ${w[k]}</span>`).join('');
+      const wnotes=w.notes?`<div class="wnotes">« ${escapeHtml(w.notes)} »</div>`:'';
+      return `<div class="perso-day-wellness ${tone||''}">
+        <div class="perso-day-wellness-head">💪 Wellness du jour${mean!=null?` — <b>${mean.toFixed(1)}</b>/10`:''}</div>
+        <div class="perso-well-chips">${chips}</div>
+        ${wnotes}
+      </div>`;
+    })();
+    const blocks=sessions.length>0?sessions.map(s=>{
+      if(s.type==='separator'){
+        return`<div class="cal-rich separator" data-sid="${s.id}" onclick="openReadSession('${s.id}','personal')" style="position:relative">
+          <div class="cal-rich-actions" style="display:flex;position:absolute;top:2px;right:2px">
+            <button class="cal-action-btn" onclick="event.stopPropagation();persoEditSession('${s.id}','${currentPersoAthlete.id}')">✏</button>
+            <button class="cal-action-btn" onclick="event.stopPropagation();persoDeleteSession('${s.id}')">✕</button>
+          </div>
+          <div class="cal-rich-title">— ${escapeHtml(s.title||'Séparateur')} —</div>
+        </div>`;
+      }
+      const color=s.color||'#e8ff47';
+      const typeLabel=TYPE_LABELS[s.type]||s.type;
+      const full=stripHtml(renderContentWithCharges(s.content||''));
+      const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
+      const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
+      const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
+      return`<div class="cal-rich perso-day-card" data-sid="${s.id}" onclick="openReadSession('${s.id}','personal')" style="cursor:pointer">
+        <div class="cal-accent" style="background:${color}"></div>
+        <div class="cal-rich-head">
+          <span class="cal-rich-type" style="background:${color}22;color:${color}">${typeLabel}</span>
+          <div class="cal-rich-actions">
+            <button class="cal-action-btn" onclick="event.stopPropagation();persoEditSession('${s.id}','${currentPersoAthlete.id}')" title="Modifier">✏</button>
+            <button class="cal-action-btn" onclick="event.stopPropagation();persoDuplicateSession('${s.id}')" title="Dupliquer">📋</button>
+            <button class="cal-action-btn" onclick="event.stopPropagation();persoDeleteSession('${s.id}')" title="Supprimer">✕</button>
+          </div>
+        </div>
+        <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
+        ${full?`<div class="cal-rich-content" style="-webkit-line-clamp:unset">${escapeHtml(full)}</div>`:''}
+        <div class="cal-rich-meta">${intensity}${sets}${yt}</div>
+        ${persoRetourBlock(s.id, iso, true)}
+      </div>`;
+    }).join(''):`<div class="cal-empty-day" onclick="persoNewSessionOn('${iso}')">+ Ajouter une séance</div>`;
+    area.innerHTML=`<div class="perso-day-view">${wellnessBanner}<div class="perso-day-list">${blocks}</div>
+      <button class="cal-add-more" onclick="persoNewSessionOn('${iso}')" title="Ajouter une séance perso"><span class="plus">+</span>Séance</button>
+    </div>`;
+  } else if(persoView==='week'){
     const dates=getWeekDates(persoOffset);
     const wk=getWeekNum(dates[0]);
     document.getElementById('perso-period-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
@@ -551,7 +612,7 @@ function _persoWellTone(e){
   return ora?'ora':'';
 }
 
-function persoRetourBlock(sid,iso){
+function persoRetourBlock(sid,iso,autoOpen){
   const sc=_persoRetoursCache.scoresBySid[sid];
   const nt=_persoRetoursCache.notesBySid[sid];
   const w =_persoRetoursCache.wellnessByDate[iso];
@@ -571,11 +632,11 @@ function persoRetourBlock(sid,iso){
     if(mean!=null)pills.push(`<span class="perso-r-pill well ${tone}" title="Wellness du jour">💪 <span class="v">${mean.toFixed(1)}</span></span>`);
   }
   return `
-    <div class="perso-retour-strip" onclick="event.stopPropagation();togglePersoRetour('${sid}')">
+    <div class="perso-retour-strip ${autoOpen?'open':''}" onclick="event.stopPropagation();togglePersoRetour('${sid}')">
       ${pills.join('')}
       <span class="perso-r-tog">›</span>
     </div>
-    <div class="perso-r-drawer" id="perso-r-d-${sid}" onclick="event.stopPropagation()">
+    <div class="perso-r-drawer ${autoOpen?'open':''}" id="perso-r-d-${sid}" onclick="event.stopPropagation()">
       ${_persoDrawerInner(sc,nt,w)}
     </div>`;
 }
