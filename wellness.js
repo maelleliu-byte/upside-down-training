@@ -5730,3 +5730,80 @@ async function claimFreeAccess(programmeId){
     });
   };
 })();
+
+/* ============================================================
+   PATCH — Sélecteur de date (calendrier) dans l'espace perso
+   Remplace/complète la navigation par flèches ‹ › par un
+   input type=date natif, calé sur la vue en cours (jour/semaine/mois)
+   ============================================================ */
+(function(){
+  if(window.__patchPersoDatePicker)return;
+  window.__patchPersoDatePicker=true;
+
+  function refDateForCurrentPeriod(){
+    // Renvoie la date (iso) actuellement affichée, servant à pré-remplir l'input
+    const now=new Date();
+    if(persoView==='day'){
+      const d=new Date();d.setDate(d.getDate()+persoOffset);
+      return d.toISOString().split('T')[0];
+    }
+    if(persoView==='week'){
+      const dates=getWeekDates(persoOffset);
+      return dates[0].toISOString().split('T')[0];
+    }
+    // month
+    const ref=new Date(now.getFullYear(),now.getMonth()+persoOffset,1);
+    return ref.toISOString().split('T')[0];
+  }
+
+  function computeOffsetForDate(iso){
+    const tgt=new Date(iso+'T12:00:00');
+    if(persoView==='day'){
+      const now=new Date();now.setHours(0,0,0,0);
+      const t=new Date(tgt);t.setHours(0,0,0,0);
+      return Math.round((t-now)/(24*60*60*1000));
+    }
+    if(persoView==='week'){
+      const now=new Date(),day=now.getDay();
+      const monNow=new Date(now);monNow.setDate(now.getDate()-(day===0?6:day-1));monNow.setHours(0,0,0,0);
+      const tgtDay=tgt.getDay();
+      const monTgt=new Date(tgt);monTgt.setDate(tgt.getDate()-(tgtDay===0?6:tgtDay-1));monTgt.setHours(0,0,0,0);
+      return Math.round((monTgt-monNow)/(7*24*60*60*1000));
+    }
+    // month
+    const now=new Date();
+    return (tgt.getFullYear()-now.getFullYear())*12+(tgt.getMonth()-now.getMonth());
+  }
+
+  function buildModal(){
+    if(document.getElementById('perso-date-picker-modal'))return;
+    const modal=document.createElement('div');
+    modal.id='perso-date-picker-modal';
+    modal.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center';
+    modal.innerHTML=`
+      <div style="background:var(--card,#1a1a1a);border:1px solid var(--border2,#333);border-radius:14px;padding:20px;width:min(320px,90vw)">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:12px">Aller à une date</div>
+        <input type="date" id="perso-date-picker-input" style="width:100%;padding:10px;border-radius:8px;border:1px solid var(--border2,#333);background:var(--card2,#111);color:var(--text,#fff);margin-bottom:14px">
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <button id="perso-date-picker-go" style="padding:10px;border-radius:10px;border:none;background:var(--accent,#e8ff47);color:#000;font-weight:700;cursor:pointer">Aller à cette date</button>
+          <button id="perso-date-picker-cancel" style="padding:8px;border-radius:10px;border:none;background:transparent;color:var(--muted,#999);cursor:pointer">Annuler</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    document.getElementById('perso-date-picker-cancel').onclick=()=>{modal.style.display='none';};
+    document.getElementById('perso-date-picker-go').onclick=()=>{
+      const iso=document.getElementById('perso-date-picker-input').value;
+      if(!iso){showToast('⚠️ Choisis une date');return;}
+      persoOffset=computeOffsetForDate(iso);
+      modal.style.display='none';
+      renderPersoCalendar();
+    };
+  }
+
+  window.openPersoDatePicker=function(){
+    if(!currentPersoAthlete){showToast('⚠️ Aucun athlète sélectionné');return;}
+    buildModal();
+    document.getElementById('perso-date-picker-input').value=refDateForCurrentPeriod();
+    document.getElementById('perso-date-picker-modal').style.display='flex';
+  };
+})();
