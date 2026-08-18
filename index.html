@@ -21,6 +21,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Upside Down Training</title>
+<link rel="icon" id="dynamic-favicon" href="/icon-192.png">
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://js.stripe.com/v3/"></script>
 <script>
@@ -58,6 +59,10 @@
   }
 
   function applySplashLogo(studio) {
+    // Favicon (onglet navigateur) — appliqué même sans logo_url custom, fallback sur icône par défaut
+    const favicon = document.getElementById('dynamic-favicon');
+    if (favicon) favicon.href = (studio && studio.logo_url) ? studio.logo_url : '/icon-192.png';
+
     const logoUrl = studio && studio.logo_url ? studio.logo_url : null;
     if (!logoUrl) return;
     // Splash
