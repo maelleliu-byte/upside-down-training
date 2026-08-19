@@ -873,8 +873,11 @@ async function populatePersoDupAthletes(selectedId){
     const src=persoAthletesCache.find(a=>a.id===selectedId);
     if(src)list=[src,...list];
   }
-  list.sort((a,b)=>(a.full_name||'').localeCompare(b.full_name||''));
-  sel.innerHTML=list.map(a=>`<option value="${a.id}"${a.id===selectedId?' selected':''}>${escapeHtml(a.full_name||'Athlète')}</option>`).join('');
+  list=[...list].sort((a,b)=>{
+    if(!!b.coach_favorite - !!a.coach_favorite) return !!b.coach_favorite - !!a.coach_favorite;
+    return (a.full_name||'').localeCompare(b.full_name||'');
+  });
+  sel.innerHTML=list.map(a=>`<option value="${a.id}"${a.id===selectedId?' selected':''}>${a.coach_favorite?'★ ':''}${escapeHtml(a.full_name||'Athlète')}</option>`).join('');
 }
 
 function closeDupPersoModal(){
@@ -952,10 +955,13 @@ function openDupPersoWeekModal(){
   const nextMonStr=nextMon.toISOString().split('T')[0];
   document.getElementById('dup-perso-week-target-date').value=nextMonStr;
   document.getElementById('dup-perso-athlete-target-date').value=nextMonStr;
-  // Remplir athlètes (tous sauf l'athlète courant)
-  const athletes=persoAthletesCache.filter(a=>a.id!==currentPersoAthlete?.id);
+  // Remplir athlètes (tous sauf l'athlète courant), favoris en tête
+  const athletes=persoAthletesCache.filter(a=>a.id!==currentPersoAthlete?.id).sort((a,b)=>{
+    if(!!b.coach_favorite - !!a.coach_favorite) return !!b.coach_favorite - !!a.coach_favorite;
+    return (a.full_name||'').localeCompare(b.full_name||'');
+  });
   document.getElementById('dup-perso-target-athlete').innerHTML=athletes.length
-    ? athletes.map(a=>`<option value="${a.id}">${a.full_name||a.email||a.id}</option>`).join('')
+    ? athletes.map(a=>`<option value="${a.id}">${a.coach_favorite?'★ ':''}${a.full_name||a.email||a.id}</option>`).join('')
     : '<option value="">— Aucun autre athlète —</option>';
   // Remplir programmes
   const progs=programmes||[];
@@ -1043,6 +1049,7 @@ async function confirmDupPersoWeekV2(){
         return{title:s.title||null,content:s.content||null,type:s.type||null,
                color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
                youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
+               source_block_id:s.source_block_id||s.id||null,
                athlete_id:tgtAthId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
       });
       const {error:e2}=await sb.from('personal_sessions').insert(rows);
@@ -1062,6 +1069,7 @@ async function confirmDupPersoWeekV2(){
         title:s.title||null,content:s.content||null,type:s.type||null,
         color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
         youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
+        source_block_id:s.source_block_id||s.id||null,
         created_by:currentUser.id,...extra
       });
       if(tgtOneshot){
@@ -4092,9 +4100,12 @@ async function openDupWeekModalV2(){
   if(!persoAthletesCache.length){
     try{ await loadPersoAthletes(); } catch(e){ console.warn('perso athletes load',e); }
   }
-  const athletes=persoAthletesCache;
+  const athletes=[...persoAthletesCache].sort((a,b)=>{
+    if(!!b.coach_favorite - !!a.coach_favorite) return !!b.coach_favorite - !!a.coach_favorite;
+    return (a.full_name||'').localeCompare(b.full_name||'');
+  });
   document.getElementById('dup-week-target-athlete').innerHTML=athletes.length
-    ? athletes.map(a=>`<option value="${a.id}">${a.full_name||a.email||a.id}</option>`).join('')
+    ? athletes.map(a=>`<option value="${a.id}">${a.coach_favorite?'★ ':''}${a.full_name||a.email||a.id}</option>`).join('')
     : '<option value="">— Aucun athlète —</option>';
 
   modal.classList.add('open');
@@ -4193,6 +4204,7 @@ async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
     title:s.title||null,content:s.content||null,type:s.type||null,
     color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
     youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
+    source_block_id:s.source_block_id||s.id||null,
     created_by:currentUser.id,...extra
   });
   let rows;
@@ -4266,6 +4278,7 @@ async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
     title:s.title||null,content:s.content||null,type:s.type||null,
     color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
     youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
+    source_block_id:s.source_block_id||s.id||null,
     athlete_id:athleteId,date,created_by:currentUser.id
   });
   let rows;
@@ -4414,6 +4427,15 @@ async function claimFreeAccess(programmeId){
     if(studioId){ q = q.eq('studio_id', studioId); } else { q = q.is('studio_id', null); }
     const { data } = await q.order('full_name');
     const all = data || [];
+
+    // Recharger les favoris (coach_favorites) — sinon ce cache écrase
+    // persoAthletesCache sans le flag coach_favorite et on perd le tri favori.
+    const { data: favRows } = await sb.from('coach_favorites')
+      .select('athlete_id')
+      .eq('coach_id', currentUser.id);
+    const favSet = new Set((favRows||[]).map(r=>r.athlete_id));
+    all.forEach(a => { a.coach_favorite = favSet.has(a.id); });
+
     persoAthletesCache = all;
     let rows = [];
     const r1 = await sb.from('athlete_programmes').select('athlete_id');
@@ -4424,6 +4446,8 @@ async function claimFreeAccess(programmeId){
     rows.forEach(r => { if(r.athlete_id) counts[r.athlete_id] = (counts[r.athlete_id]||0) + 1; });
     const list = all.map(a => ({ ...a, _progCount: counts[a.id] || 0 }));
     list.sort((a,b) => {
+      // Favoris toujours en premier, puis le tri activité/alpha habituel
+      if(!!b.coach_favorite - !!a.coach_favorite) return !!b.coach_favorite - !!a.coach_favorite;
       const am = a._progCount>=2 ? 0 : 1, bm = b._progCount>=2 ? 0 : 1;
       if(am !== bm) return am - bm;
       return (a.full_name||'').localeCompare(b.full_name||'');
@@ -4456,7 +4480,8 @@ async function claimFreeAccess(programmeId){
     } else {
       athSel.innerHTML = mixed.map(a=>{
         const tag = a._progCount>=2 ? ` · ${a._progCount} progs 🔀` : (a._progCount===1 ? ` · 1 prog` : '');
-        return `<option value="${a.id}">${escapeHtml(a.full_name||a.email||'Athlète')}${tag}</option>`;
+        const star = a.coach_favorite ? '★ ' : '';
+        return `<option value="${a.id}">${star}${escapeHtml(a.full_name||a.email||'Athlète')}${tag}</option>`;
       }).join('');
     }
   };
@@ -5805,5 +5830,89 @@ async function claimFreeAccess(programmeId){
     buildModal();
     document.getElementById('perso-date-picker-input').value=refDateForCurrentPeriod();
     document.getElementById('perso-date-picker-modal').style.display='flex';
+  };
+})();
+
+/* ===========================================================
+   LEADERBOARD CROSS-BLOCK (override de renderScoresModal)
+   Quand un bloc a été dupliqué vers un autre programme/studio/
+   espace perso (même source_block_id), le leaderboard existant
+   agrège désormais AUSSI les scores de toutes ces copies.
+   Aucun nouveau bouton/modal : on réutilise le modal "Classement"
+   déjà en place (planning.js).
+   =========================================================== */
+(function(){
+  if(window.__patchBound_crossBlockScores)return;
+  window.__patchBound_crossBlockScores=true;
+
+  const _origRenderScoresModal=window.renderScoresModal;
+  if(typeof _origRenderScoresModal!=='function')return;
+
+  // Résout tous les session_id (sessions + personal_sessions) qui partagent
+  // le même source_block_id que la séance affichée. Retourne au minimum [sessionId].
+  async function _resolveCrossBlockSessionIds(sessionId){
+    try{
+      let srcBlockId=null;
+      const rSess=await sb.from('sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
+      if(rSess.data){
+        srcBlockId=rSess.data.source_block_id||null;
+      } else {
+        const rPerso=await sb.from('personal_sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
+        srcBlockId=rPerso.data?.source_block_id||null;
+      }
+      if(!srcBlockId)return [sessionId];
+
+      const [sRes,pRes]=await Promise.all([
+        sb.from('sessions').select('id').eq('source_block_id',srcBlockId),
+        sb.from('personal_sessions').select('id').eq('source_block_id',srcBlockId)
+      ]);
+      const ids=[...(sRes.data||[]).map(s=>s.id),...(pRes.data||[]).map(s=>s.id)];
+      return ids.length?ids:[sessionId];
+    }catch(e){
+      console.warn('resolveCrossBlockSessionIds',e);
+      return [sessionId];
+    }
+  }
+
+  window.renderScoresModal=async function(sessionId, scoreType, sets){
+    const el=document.getElementById('smodal-leaderboard');
+    if(el)el.innerHTML='<div class="spinner"></div>';
+
+    const allIds=await _resolveCrossBlockSessionIds(sessionId);
+
+    if(allIds.length<=1){
+      // Pas de copie connue : comportement identique à avant
+      return _origRenderScoresModal(sessionId, scoreType, sets);
+    }
+
+    // Sous-titre : signaler que le classement inclut les copies du bloc
+    const sub=document.getElementById('smodal-sub');
+    if(sub)sub.textContent=`Résultats de la séance · inclut ${allIds.length} copies de ce bloc`;
+
+    // On réutilise EXACTEMENT le rendu d'origine, mais en interrogeant
+    // wod_scores sur l'ensemble des session_id de la lignée plutôt qu'un seul.
+    // Pour ça, on wrappe temporairement la query 'session_id' d'un seul id
+    // vers 'in' sur tous les ids, via un monkey-patch localisé de sb.from.
+    const _origFrom=sb.from.bind(sb);
+    let patchedOnce=false;
+    sb.from=function(table){
+      const q=_origFrom(table);
+      if(table==='wod_scores' && !patchedOnce){
+        const _origEq=q.eq.bind(q);
+        q.eq=function(col,val){
+          if(col==='session_id' && val===sessionId){
+            patchedOnce=true;
+            return q.in('session_id',allIds);
+          }
+          return _origEq(col,val);
+        };
+      }
+      return q;
+    };
+    try{
+      await _origRenderScoresModal(sessionId, scoreType, sets);
+    } finally {
+      sb.from=_origFrom;
+    }
   };
 })();
