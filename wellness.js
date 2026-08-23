@@ -5916,3 +5916,67 @@ async function claimFreeAccess(programmeId){
     }
   };
 })();
+
+// ===== FIX ÉDITEUR RICHE (blocs perso) — sélection perdue au clic toolbar =====
+// Bug: dans admin.js, _refocusActive() teste `window._richActiveTarget` mais
+// cette variable n'est jamais assignée nulle part -> _refocusActive() ne fait
+// rien -> richCmd('bold'/'italic'), richColor() et richFont() s'exécutent sur
+// la sélection courante du navigateur au moment du clic, qui a pu être perdue
+// ou déplacée en cliquant sur un bouton hors du contenteditable. D'où le
+// comportement aléatoire (rien, tout le bloc, ou correct selon le navigateur).
+// Fix: on trace en continu la sélection tant qu'elle est dans #f-content-editor,
+// et on restaure cette sélection sauvegardée avant que la commande s'exécute.
+(function(){
+  if(window.__patchBound_richEditorSelection) return;
+  window.__patchBound_richEditorSelection = true;
+
+  const EDITOR_ID='f-content-editor';
+
+  function trackSelection(){
+    const editor=document.getElementById(EDITOR_ID);
+    if(!editor) return;
+    const sel=window.getSelection();
+    if(!sel || sel.rangeCount===0) return;
+    const range=sel.getRangeAt(0);
+    if(editor.contains(range.commonAncestorContainer)){
+      window._richActiveTarget=editor;
+      window._richSavedRange=range.cloneRange();
+    }
+  }
+  document.addEventListener('selectionchange', trackSelection);
+
+  // Remplace _refocusActive: admin.js déclare cette fonction en top-level,
+  // donc window._refocusActive = ... écrase la même liaison globale que
+  // richCmd/richColor/richFont utilisent en interne (lookup dynamique à
+  // l'appel, pas de closure figée).
+  window._refocusActive=function(){
+    const editor=window._richActiveTarget;
+    if(!editor) return;
+    editor.focus();
+    const range=window._richSavedRange;
+    if(range && document.contains(range.startContainer) && editor.contains(range.commonAncestorContainer)){
+      try{
+        const sel=window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }catch(e){/* range obsolète -> on garde juste le focus */}
+    }
+  };
+
+  // Une sélection sauvegardée d'un ancien bloc n'a plus de sens une fois
+  // l'éditeur rechargé/vidé pour un nouveau bloc.
+  const _origSetEditorContent=window.setEditorContent;
+  if(typeof _origSetEditorContent==='function'){
+    window.setEditorContent=function(html){
+      window._richSavedRange=null;
+      return _origSetEditorContent(html);
+    };
+  }
+  const _origClearEditor=window.clearEditor;
+  if(typeof _origClearEditor==='function'){
+    window.clearEditor=function(){
+      window._richSavedRange=null;
+      return _origClearEditor();
+    };
+  }
+})();
