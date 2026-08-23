@@ -395,7 +395,9 @@ async function renderPersoCalendar(){
     const d=new Date();d.setDate(d.getDate()+persoOffset);
     const iso=d.toISOString().split('T')[0];
     const today=new Date().toISOString().split('T')[0];
-    document.getElementById('perso-period-label').textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}${iso===today?' · aujourd\'hui':''}`;
+    const persoLblElDay=document.getElementById('perso-period-label');
+    persoLblElDay.textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}${iso===today?' · aujourd\'hui':''}`;
+    persoLblElDay.title='';persoLblElDay.style.cursor='';persoLblElDay.style.textDecoration='';persoLblElDay.onclick=null;
     const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).eq('date',iso).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
     persoSessionsCache=data||[];
     const sessions=persoSessionsCache;
@@ -453,7 +455,16 @@ async function renderPersoCalendar(){
   } else if(persoView==='week'){
     const dates=getWeekDates(persoOffset);
     const wk=getWeekNum(dates[0]);
-    document.getElementById('perso-period-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
+    const weekStartIso=dates[0].toISOString().split('T')[0];
+    const baseWeekLabel=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
+    const {data:wlRow}=await sb.from('personal_week_labels').select('label').eq('athlete_id',currentPersoAthlete.id).eq('week_start',weekStartIso).maybeSingle();
+    const customWeekLabel=wlRow?.label||'';
+    const persoLblEl=document.getElementById('perso-period-label');
+    persoLblEl.textContent=customWeekLabel||baseWeekLabel;
+    persoLblEl.title=customWeekLabel?`${baseWeekLabel} · Cliquer pour modifier le nom`:'Cliquer pour nommer cette semaine';
+    persoLblEl.style.cursor='pointer';
+    persoLblEl.style.textDecoration='underline dotted';
+    persoLblEl.onclick=()=>openPersoWeekLabelEditor(currentPersoAthlete.id,weekStartIso,customWeekLabel,baseWeekLabel,()=>renderPersoCalendar());
     const isos=dates.map(d=>d.toISOString().split('T')[0]);
     const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
     persoSessionsCache=data||[];
@@ -520,7 +531,9 @@ async function renderPersoCalendar(){
     const now=new Date();
     const ref=new Date(now.getFullYear(),now.getMonth()+persoOffset,1);
     const year=ref.getFullYear(),month=ref.getMonth();
-    document.getElementById('perso-period-label').textContent=`${['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][month]} ${year}`;
+    const persoLblElMonth=document.getElementById('perso-period-label');
+    persoLblElMonth.textContent=`${['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'][month]} ${year}`;
+    persoLblElMonth.title='';persoLblElMonth.style.cursor='';persoLblElMonth.style.textDecoration='';persoLblElMonth.onclick=null;
     const first=new Date(year,month,1);
     const startDay=(first.getDay()===0?6:first.getDay()-1); // lundi=0
     const startDate=new Date(Date.UTC(year,month,1-startDay));
@@ -1230,7 +1243,24 @@ function activatePersoTab(){
 async function renderPersoDayStrip(){
   const dates=getWeekDates(currentWeekOffset);
   const wk=getWeekNum(dates[0]);
-  document.getElementById('week-label').textContent=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
+  const weekStartIso=dates[0].toISOString().split('T')[0];
+  const baseWeekLabel=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
+  const {data:wlRow}=await sb.from('personal_week_labels').select('label').eq('athlete_id',currentUser.id).eq('week_start',weekStartIso).maybeSingle();
+  const customWeekLabel=wlRow?.label||'';
+  const weekLblEl=document.getElementById('week-label');
+  weekLblEl.textContent=customWeekLabel||baseWeekLabel;
+  const isAdminSelf=currentProfile?.role==='admin';
+  if(isAdminSelf){
+    weekLblEl.title=customWeekLabel?`${baseWeekLabel} · Cliquer pour modifier le nom`:'Cliquer pour nommer cette semaine';
+    weekLblEl.style.cursor='pointer';
+    weekLblEl.style.textDecoration='underline dotted';
+    weekLblEl.onclick=()=>openPersoWeekLabelEditor(currentUser.id,weekStartIso,customWeekLabel,baseWeekLabel,()=>renderPersoDayStrip());
+  } else {
+    weekLblEl.title=customWeekLabel?baseWeekLabel:'';
+    weekLblEl.style.cursor='';
+    weekLblEl.style.textDecoration='';
+    weekLblEl.onclick=null;
+  }
   const isos=dates.map(d=>d.toISOString().split('T')[0]);
   const {data}=await sb.from('personal_sessions').select('date').eq('athlete_id',currentUser.id).in('date',isos);
   const withContent=new Set((data||[]).map(s=>s.date));
@@ -1268,6 +1298,8 @@ async function renderPersoSessions(){
 const __origRenderDayStrip=renderDayStrip;
 renderDayStrip=async function(){
   if(currentProg?.id==='__perso__'){return renderPersoDayStrip();}
+  const __wkLblEl=document.getElementById('week-label');
+  if(__wkLblEl){__wkLblEl.onclick=null;__wkLblEl.style.cursor='';__wkLblEl.style.textDecoration='';__wkLblEl.title='';}
   return __origRenderDayStrip();
 };
 const __origRenderSessions=renderSessions;
@@ -4760,6 +4792,82 @@ async function claimFreeAccess(programmeId){
     };
   }
   document.addEventListener('DOMContentLoaded',()=>setTimeout(injectWeekVisibilityButton,800));
+})();
+
+/* ============================================================
+   PATCH 2bis — Nom de semaine personnalisé (Espace perso)
+   Permet de donner un nom à la semaine affichée en plus de son
+   numéro (ex: "Prépa comp 1/5"), visible admin + athlète,
+   éditable par clic sur le label (admin uniquement).
+   ============================================================ */
+(function(){
+  if(window.__patchPersoWeekLabel)return;
+  window.__patchPersoWeekLabel=true;
+
+  function buildLabelModal(){
+    if(document.getElementById('perso-week-label-modal'))return;
+    const modal=document.createElement('div');
+    modal.id='perso-week-label-modal';
+    modal.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;align-items:center;justify-content:center';
+    modal.innerHTML=`
+      <div style="background:var(--card,#1a1a1a);border:1px solid var(--border2,#333);border-radius:14px;padding:20px;width:min(320px,90vw)">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-bottom:4px">Nommer la semaine</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:14px" id="perso-week-label-sub">—</div>
+        <input type="text" id="perso-week-label-input" placeholder="Ex: Prépa comp 1/5" maxlength="60" style="width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--border2,#333);background:var(--card2,#111);color:var(--text,#fff);font-size:14px;box-sizing:border-box;margin-bottom:14px">
+        <div style="display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap">
+          <button id="perso-week-label-clear" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border2,#333);background:transparent;color:var(--muted);cursor:pointer;font-size:13px">Effacer</button>
+          <button id="perso-week-label-cancel" style="padding:8px 12px;border-radius:8px;border:1px solid var(--border2,#333);background:transparent;color:var(--text,#fff);cursor:pointer;font-size:13px">Annuler</button>
+          <button id="perso-week-label-save" style="padding:8px 14px;border-radius:8px;border:none;background:var(--accent,#e8ff47);color:#111;cursor:pointer;font-weight:600;font-size:13px">OK</button>
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('click',e=>{if(e.target===modal)closeLabelModal();});
+    document.getElementById('perso-week-label-cancel').onclick=closeLabelModal;
+  }
+
+  function closeLabelModal(){
+    const m=document.getElementById('perso-week-label-modal');
+    if(m)m.style.display='none';
+  }
+  window.closePersoWeekLabelModal=closeLabelModal;
+
+  let _pwlCtx=null; // {athleteId, weekStart, onSaved}
+
+  async function savePersoWeekLabel(value){
+    if(!_pwlCtx)return;
+    const {athleteId,weekStart,onSaved}=_pwlCtx;
+    if(!value){
+      const {error}=await sb.from('personal_week_labels').delete().eq('athlete_id',athleteId).eq('week_start',weekStart);
+      if(error){showToast('❌ '+error.message);return;}
+    } else {
+      const {error}=await sb.from('personal_week_labels').upsert({athlete_id:athleteId,week_start:weekStart,label:value,created_by:currentUser?.id,updated_at:new Date().toISOString()},{onConflict:'athlete_id,week_start'});
+      if(error){showToast('❌ '+error.message);return;}
+    }
+    closeLabelModal();
+    showToast(value?'✅ Semaine nommée':'🗑️ Nom supprimé');
+    if(typeof onSaved==='function')onSaved(value);
+  }
+
+  // athleteId, weekStart (YYYY-MM-DD du lundi), currentLabel, subText (ex: "Sem. 34 — Août"), onSaved(newValue)
+  window.openPersoWeekLabelEditor=function(athleteId,weekStart,currentLabel,subText,onSaved){
+    buildLabelModal();
+    _pwlCtx={athleteId,weekStart,onSaved};
+    document.getElementById('perso-week-label-sub').textContent=subText||'';
+    const input=document.getElementById('perso-week-label-input');
+    input.value=currentLabel||'';
+    const modal=document.getElementById('perso-week-label-modal');
+    modal.style.display='flex';
+    setTimeout(()=>{input.focus();input.select();},30);
+    const clearBtn=document.getElementById('perso-week-label-clear');
+    clearBtn.style.display=currentLabel?'':'none';
+    clearBtn.onclick=()=>savePersoWeekLabel('');
+    const saveBtn=document.getElementById('perso-week-label-save');
+    saveBtn.onclick=()=>savePersoWeekLabel(input.value.trim());
+    input.onkeydown=(e)=>{
+      if(e.key==='Enter'){e.preventDefault();saveBtn.click();}
+      else if(e.key==='Escape'){closeLabelModal();}
+    };
+  };
 })();
 
 /* ============================================================
