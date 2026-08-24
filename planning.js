@@ -765,7 +765,13 @@ async function renderScoresModal(sessionId, scoreType, sets){
     }).join('')}
   </div>`;
 
-  for(const sc of sorted){loadReactions(sc.id);loadComments(sc.id);}
+  // Un seul ensureAuth() pour tout le lot (au lieu d'un par score) :
+  // évite N refreshSession() simultanés qui saturaient/freezaient le classement
+  // quand le token approchait l'expiration.
+  await ensureAuth();
+  // Les commentaires sont chargés à la demande (toggleComments), pas ici :
+  // seuls les compteurs de réactions sont préchargés pour l'affichage initial.
+  for(const sc of sorted){loadReactions(sc.id,true);}
 }
 
 async function toggleReactionModal(scoreId){
@@ -807,8 +813,8 @@ if(!window.__scoreAuthListenerBound){
 }
 
 // REACTIONS
-async function loadReactions(scoreId){
-  if(!(await ensureAuth()))return;
+async function loadReactions(scoreId,skipAuth){
+  if(!skipAuth && !(await ensureAuth()))return;
   const {data,count}=await sb.from('score_reactions').select('athlete_id,profiles(full_name)',{count:'exact'}).eq('score_id',scoreId);
   const countEl=document.getElementById(`react-count-${scoreId}`);
   const btn=document.getElementById(`react-${scoreId}`);
