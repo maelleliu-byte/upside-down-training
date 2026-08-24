@@ -736,11 +736,35 @@ async function renderScoresModal(sessionId, scoreType, sets){
     return;
   }
 
+  // Déduplication cross-block : un même athlète peut avoir un score dans
+  // plusieurs copies du bloc (même source_block_id, session_id différents).
+  // On ne garde que son MEILLEUR score parmi les copies, sinon il apparaît
+  // plusieurs fois dans le classement (une ligne par session_id).
+  const isTimeDedup = scoreType==='time';
+  function _isBetter(a,b){ // true si a est meilleur que b
+    const aDnf=(a.score_value||0)<0, bDnf=(b.score_value||0)<0;
+    if(isTimeDedup){
+      if(aDnf!==bDnf)return !aDnf; // un temps valide bat toujours un DNF
+      if(aDnf&&bDnf)return (a.score_value||0)>(b.score_value||0); // plus de reps = mieux
+      return (a.score_value||Infinity)<(b.score_value||Infinity); // moins de temps = mieux
+    }
+    return (a.score_value||0)>(b.score_value||0);
+  }
+  let dedupedData=data;
+  if(allIds.length>1){
+    const bestByAth={};
+    for(const sc of data){
+      const prev=bestByAth[sc.athlete_id];
+      if(!prev||_isBetter(sc,prev))bestByAth[sc.athlete_id]=sc;
+    }
+    dedupedData=Object.values(bestByAth);
+  }
+
   // Filtre genre (Homme / Femme / Tous)
   const g=window._leaderboardGender||'all';
-  let filtered=data;
+  let filtered=dedupedData;
   if(g!=='all'){
-    filtered=data.filter(d=>{
+    filtered=dedupedData.filter(d=>{
       const gv=(d.profiles?.gender||'').toLowerCase();
       if(g==='male')return gv==='male'||gv==='m'||gv==='homme';
       if(g==='female')return gv==='female'||gv==='f'||gv==='femme';
