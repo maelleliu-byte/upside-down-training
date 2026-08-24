@@ -5942,107 +5942,19 @@ async function claimFreeAccess(programmeId){
 })();
 
 /* ===========================================================
-   LEADERBOARD CROSS-BLOCK (override de renderScoresModal)
-   Quand un bloc a été dupliqué vers un autre programme/studio/
-   espace perso (même source_block_id), le leaderboard existant
-   agrège désormais AUSSI les scores de toutes ces copies.
-   Aucun nouveau bouton/modal : on réutilise le modal "Classement"
-   déjà en place (planning.js).
+   LEADERBOARD CROSS-BLOCK — DÉSACTIVÉ (24/08/2026)
+   Cette version monkey-patchait sb.from(...).eq(...) pour rediriger vers
+   .in(...), mais .select() renvoie un NOUVEL objet de requête à chaque
+   appel côté Supabase JS : le .eq patché ne s'appliquait donc jamais au
+   bon objet, et le classement restait bloqué indéfiniment sur le spinner
+   (pas juste lent — cassé). La logique cross-block (avec cache par
+   sessionId) est désormais directement intégrée à renderScoresModal()
+   dans planning.js. Bloc conservé ici pour historique, ne s'exécute plus.
    =========================================================== */
 (function(){
+  if(true)return; // patch retiré — voir planning.js::renderScoresModal
   if(window.__patchBound_crossBlockScores)return;
   window.__patchBound_crossBlockScores=true;
-
-  const _origRenderScoresModal=window.renderScoresModal;
-  if(typeof _origRenderScoresModal!=='function')return;
-
-  // Cache mémoire (par sessionId) du résultat de résolution cross-block.
-  // Sans ça, CHAQUE réaffichage du modal (changement d'onglet Tous/Hommes/
-  // Femmes, suppression d'un score, refresh de token...) relançait 3
-  // requêtes réseau séquentielles pour une info qui ne change jamais
-  // pendant la durée de vie du modal → c'était la cause du lag perçu.
-  const _crossBlockCache={};
-
-  // Résout tous les session_id (sessions + personal_sessions) qui partagent
-  // le même source_block_id que la séance affichée. Retourne au minimum [sessionId].
-  async function _resolveCrossBlockSessionIds(sessionId){
-    if(_crossBlockCache[sessionId])return _crossBlockCache[sessionId];
-    try{
-      let srcBlockId=null;
-      const rSess=await sb.from('sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
-      if(rSess.data){
-        srcBlockId=rSess.data.source_block_id||null;
-      } else {
-        const rPerso=await sb.from('personal_sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
-        srcBlockId=rPerso.data?.source_block_id||null;
-      }
-      if(!srcBlockId)return [sessionId];
-
-      const [sRes,pRes]=await Promise.all([
-        sb.from('sessions').select('id').eq('source_block_id',srcBlockId),
-        sb.from('personal_sessions').select('id').eq('source_block_id',srcBlockId)
-      ]);
-      const ids=[...(sRes.data||[]).map(s=>s.id),...(pRes.data||[]).map(s=>s.id)];
-      const result=ids.length?ids:[sessionId];
-      _crossBlockCache[sessionId]=result;
-      return result;
-    }catch(e){
-      console.warn('resolveCrossBlockSessionIds',e);
-      return [sessionId];
-    }
-  }
-
-  // Invalide le cache à la fermeture du modal : évite de garder des données
-  // périmées si un coach modifie les copies du bloc entre deux ouvertures.
-  const _origCloseScoresModal=window.closeScoresModal;
-  if(typeof _origCloseScoresModal==='function'){
-    window.closeScoresModal=function(){
-      for(const k in _crossBlockCache)delete _crossBlockCache[k];
-      return _origCloseScoresModal.apply(this,arguments);
-    };
-  }
-
-  window.renderScoresModal=async function(sessionId, scoreType, sets){
-    const el=document.getElementById('smodal-leaderboard');
-    if(el)el.innerHTML='<div class="spinner"></div>';
-
-    const allIds=await _resolveCrossBlockSessionIds(sessionId);
-
-    if(allIds.length<=1){
-      // Pas de copie connue : comportement identique à avant
-      return _origRenderScoresModal(sessionId, scoreType, sets);
-    }
-
-    // Sous-titre : signaler que le classement inclut les copies du bloc
-    const sub=document.getElementById('smodal-sub');
-    if(sub)sub.textContent=`Résultats de la séance · inclut ${allIds.length} copies de ce bloc`;
-
-    // On réutilise EXACTEMENT le rendu d'origine, mais en interrogeant
-    // wod_scores sur l'ensemble des session_id de la lignée plutôt qu'un seul.
-    // Pour ça, on wrappe temporairement la query 'session_id' d'un seul id
-    // vers 'in' sur tous les ids, via un monkey-patch localisé de sb.from.
-    const _origFrom=sb.from.bind(sb);
-    let patchedOnce=false;
-    sb.from=function(table){
-      const q=_origFrom(table);
-      if(table==='wod_scores' && !patchedOnce){
-        const _origEq=q.eq.bind(q);
-        q.eq=function(col,val){
-          if(col==='session_id' && val===sessionId){
-            patchedOnce=true;
-            return q.in('session_id',allIds);
-          }
-          return _origEq(col,val);
-        };
-      }
-      return q;
-    };
-    try{
-      await _origRenderScoresModal(sessionId, scoreType, sets);
-    } finally {
-      sb.from=_origFrom;
-    }
-  };
 })();
 
 // ===== FIX ÉDITEUR RICHE (blocs perso) — sélection perdue au clic toolbar =====

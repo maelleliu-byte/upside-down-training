@@ -664,17 +664,72 @@ async function openScoresModal(sessionId, scoreType, sets){
 function closeScoresModal(){
   document.getElementById('scores-modal').classList.remove('open');
   currentScoresSession=null;
+  // Cache cross-block propre à la durée de vie du modal : on le vide à la
+  // fermeture pour ne pas garder des données périmées entre deux séances.
+  window._crossBlockCache={};
+}
+
+// Cache mémoire (par sessionId) de la résolution cross-block : évite de
+// refaire 3 requêtes réseau séquentielles à chaque réaffichage du modal
+// (changement d'onglet Tous/Hommes/Femmes, suppression d'un score, refresh
+// de token...). Vidé à la fermeture du modal (closeScoresModal).
+window._crossBlockCache=window._crossBlockCache||{};
+
+// Résout tous les session_id (sessions + personal_sessions) qui partagent
+// le même source_block_id que la séance affichée. Retourne au minimum [sessionId].
+async function _resolveCrossBlockSessionIds(sessionId){
+  if(window._crossBlockCache[sessionId])return window._crossBlockCache[sessionId];
+  try{
+    let srcBlockId=null;
+    const rSess=await sb.from('sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
+    if(rSess.data){
+      srcBlockId=rSess.data.source_block_id||null;
+    } else {
+      const rPerso=await sb.from('personal_sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
+      srcBlockId=rPerso.data?.source_block_id||null;
+    }
+    if(!srcBlockId){window._crossBlockCache[sessionId]=[sessionId];return [sessionId];}
+
+    const [sRes,pRes]=await Promise.all([
+      sb.from('sessions').select('id').eq('source_block_id',srcBlockId),
+      sb.from('personal_sessions').select('id').eq('source_block_id',srcBlockId)
+    ]);
+    const ids=[...(sRes.data||[]).map(s=>s.id),...(pRes.data||[]).map(s=>s.id)];
+    const result=ids.length?ids:[sessionId];
+    window._crossBlockCache[sessionId]=result;
+    return result;
+  }catch(e){
+    console.warn('resolveCrossBlockSessionIds',e);
+    return [sessionId];
+  }
 }
 
 async function renderScoresModal(sessionId, scoreType, sets){
   const el=document.getElementById('smodal-leaderboard');
   el.innerHTML='<div class="spinner"></div>';
-  const [scoresRes, notesRes] = await Promise.all([
-    sb.from('wod_scores').select('*,profiles(full_name,gender,avatar_url)').eq('session_id',sessionId),
-    sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false})
-  ]);
-  const data=scoresRes.data;
-  const allNotes=notesRes.data||[];
+
+  let allIds=[sessionId];
+  try{
+    allIds=await _resolveCrossBlockSessionIds(sessionId);
+  }catch(e){
+    console.warn('cross-block resolve failed, fallback single session',e);
+  }
+  const sub=document.getElementById('smodal-sub');
+  if(sub)sub.textContent=allIds.length>1?`Résultats de la séance · inclut ${allIds.length} copies de ce bloc`:'Résultats de la séance';
+
+  let scoresRes,notesRes;
+  try{
+    [scoresRes, notesRes] = await Promise.all([
+      sb.from('wod_scores').select('*,profiles(full_name,gender,avatar_url)').in('session_id',allIds),
+      sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false})
+    ]);
+  }catch(e){
+    console.warn('renderScoresModal fetch failed',e);
+    el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>Erreur de chargement, réessaie.</p></div>';
+    return;
+  }
+  const data=scoresRes?.data;
+  const allNotes=notesRes?.data||[];
 
   if(!data||data.length===0){
     el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>Pas encore de scores.</p></div>';
@@ -766,11 +821,9 @@ async function renderScoresModal(sessionId, scoreType, sets){
   </div>`;
 
   // Un seul ensureAuth() pour tout le lot (au lieu d'un par score) :
-  // évite N refreshSession() simultanés qui saturaient/freezaient le classement
-  // quand le token approchait l'expiration.
+  // évite N refreshSession() simultanés qui saturaient le rendu quand le
+  // token approchait l'expiration. Les commentaires restent lazy (au clic).
   await ensureAuth();
-  // Les commentaires sont chargés à la demande (toggleComments), pas ici :
-  // seuls les compteurs de réactions sont préchargés pour l'affichage initial.
   for(const sc of sorted){loadReactions(sc.id,true);}
 }
 
