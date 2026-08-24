@@ -5956,9 +5956,17 @@ async function claimFreeAccess(programmeId){
   const _origRenderScoresModal=window.renderScoresModal;
   if(typeof _origRenderScoresModal!=='function')return;
 
+  // Cache mémoire (par sessionId) du résultat de résolution cross-block.
+  // Sans ça, CHAQUE réaffichage du modal (changement d'onglet Tous/Hommes/
+  // Femmes, suppression d'un score, refresh de token...) relançait 3
+  // requêtes réseau séquentielles pour une info qui ne change jamais
+  // pendant la durée de vie du modal → c'était la cause du lag perçu.
+  const _crossBlockCache={};
+
   // Résout tous les session_id (sessions + personal_sessions) qui partagent
   // le même source_block_id que la séance affichée. Retourne au minimum [sessionId].
   async function _resolveCrossBlockSessionIds(sessionId){
+    if(_crossBlockCache[sessionId])return _crossBlockCache[sessionId];
     try{
       let srcBlockId=null;
       const rSess=await sb.from('sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
@@ -5975,11 +5983,23 @@ async function claimFreeAccess(programmeId){
         sb.from('personal_sessions').select('id').eq('source_block_id',srcBlockId)
       ]);
       const ids=[...(sRes.data||[]).map(s=>s.id),...(pRes.data||[]).map(s=>s.id)];
-      return ids.length?ids:[sessionId];
+      const result=ids.length?ids:[sessionId];
+      _crossBlockCache[sessionId]=result;
+      return result;
     }catch(e){
       console.warn('resolveCrossBlockSessionIds',e);
       return [sessionId];
     }
+  }
+
+  // Invalide le cache à la fermeture du modal : évite de garder des données
+  // périmées si un coach modifie les copies du bloc entre deux ouvertures.
+  const _origCloseScoresModal=window.closeScoresModal;
+  if(typeof _origCloseScoresModal==='function'){
+    window.closeScoresModal=function(){
+      for(const k in _crossBlockCache)delete _crossBlockCache[k];
+      return _origCloseScoresModal.apply(this,arguments);
+    };
   }
 
   window.renderScoresModal=async function(sessionId, scoreType, sets){
