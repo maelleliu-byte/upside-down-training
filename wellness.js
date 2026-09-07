@@ -4271,7 +4271,10 @@ async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
       // abo → abo
       const srcMon=getWeekDates(adminWeekOffset)[0];
       const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
-      if(diffDays===0){showToast('⚠️ Choisis une semaine différente');return;}
+      // Le blocage "même semaine" n'a de sens que si on duplique DANS le même programme.
+      // Ici la cible est forcément un autre programme (_dupWeekToOtherProg), donc garder
+      // la même semaine calendaire (même lundi) est valide et voulu.
+      if(diffDays===0&&tgtProgId===srcProgId){showToast('⚠️ Choisis une semaine différente');return;}
       rows=data.map(s=>{
         const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
         return _toSess(s,{programme_id:tgtProgId,date:d.toISOString().split('T')[0]});
@@ -5942,19 +5945,87 @@ async function claimFreeAccess(programmeId){
 })();
 
 /* ===========================================================
-   LEADERBOARD CROSS-BLOCK — DÉSACTIVÉ (24/08/2026)
-   Cette version monkey-patchait sb.from(...).eq(...) pour rediriger vers
-   .in(...), mais .select() renvoie un NOUVEL objet de requête à chaque
-   appel côté Supabase JS : le .eq patché ne s'appliquait donc jamais au
-   bon objet, et le classement restait bloqué indéfiniment sur le spinner
-   (pas juste lent — cassé). La logique cross-block (avec cache par
-   sessionId) est désormais directement intégrée à renderScoresModal()
-   dans planning.js. Bloc conservé ici pour historique, ne s'exécute plus.
+   LEADERBOARD CROSS-BLOCK (override de renderScoresModal)
+   Quand un bloc a été dupliqué vers un autre programme/studio/
+   espace perso (même source_block_id), le leaderboard existant
+   agrège désormais AUSSI les scores de toutes ces copies.
+   Aucun nouveau bouton/modal : on réutilise le modal "Classement"
+   déjà en place (planning.js).
    =========================================================== */
 (function(){
-  if(true)return; // patch retiré — voir planning.js::renderScoresModal
   if(window.__patchBound_crossBlockScores)return;
   window.__patchBound_crossBlockScores=true;
+
+  const _origRenderScoresModal=window.renderScoresModal;
+  if(typeof _origRenderScoresModal!=='function')return;
+
+  // Résout tous les session_id (sessions + personal_sessions) qui partagent
+  // le même source_block_id que la séance affichée. Retourne au minimum [sessionId].
+  async function _resolveCrossBlockSessionIds(sessionId){
+    try{
+      let srcBlockId=null;
+      const rSess=await sb.from('sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
+      if(rSess.data){
+        srcBlockId=rSess.data.source_block_id||null;
+      } else {
+        const rPerso=await sb.from('personal_sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
+        srcBlockId=rPerso.data?.source_block_id||null;
+      }
+      if(!srcBlockId)return [sessionId];
+
+      const [sRes,pRes]=await Promise.all([
+        sb.from('sessions').select('id').eq('source_block_id',srcBlockId),
+        sb.from('personal_sessions').select('id').eq('source_block_id',srcBlockId)
+      ]);
+      const ids=[...(sRes.data||[]).map(s=>s.id),...(pRes.data||[]).map(s=>s.id)];
+      return ids.length?ids:[sessionId];
+    }catch(e){
+      console.warn('resolveCrossBlockSessionIds',e);
+      return [sessionId];
+    }
+  }
+
+  window.renderScoresModal=async function(sessionId, scoreType, sets){
+    const el=document.getElementById('smodal-leaderboard');
+    if(el)el.innerHTML='<div class="spinner"></div>';
+
+    const allIds=await _resolveCrossBlockSessionIds(sessionId);
+
+    if(allIds.length<=1){
+      // Pas de copie connue : comportement identique à avant
+      return _origRenderScoresModal(sessionId, scoreType, sets);
+    }
+
+    // Sous-titre : signaler que le classement inclut les copies du bloc
+    const sub=document.getElementById('smodal-sub');
+    if(sub)sub.textContent=`Résultats de la séance · inclut ${allIds.length} copies de ce bloc`;
+
+    // On réutilise EXACTEMENT le rendu d'origine, mais en interrogeant
+    // wod_scores sur l'ensemble des session_id de la lignée plutôt qu'un seul.
+    // Pour ça, on wrappe temporairement la query 'session_id' d'un seul id
+    // vers 'in' sur tous les ids, via un monkey-patch localisé de sb.from.
+    const _origFrom=sb.from.bind(sb);
+    let patchedOnce=false;
+    sb.from=function(table){
+      const q=_origFrom(table);
+      if(table==='wod_scores' && !patchedOnce){
+        const _origEq=q.eq.bind(q);
+        q.eq=function(col,val){
+          if(col==='session_id' && val===sessionId){
+            patchedOnce=true;
+            return q.in('session_id',allIds);
+          }
+          return _origEq(col,val);
+        };
+      }
+      return q;
+    };
+    try{
+      await _origRenderScoresModal(sessionId, scoreType, sets);
+    } finally {
+      sb.from=_origFrom;
+    }
+  };
 })();
 
 // ===== FIX ÉDITEUR RICHE (blocs perso) — sélection perdue au clic toolbar =====
