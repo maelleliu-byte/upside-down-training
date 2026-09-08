@@ -5945,88 +5945,16 @@ async function claimFreeAccess(programmeId){
 })();
 
 /* ===========================================================
-   LEADERBOARD CROSS-BLOCK (override de renderScoresModal)
-   Quand un bloc a été dupliqué vers un autre programme/studio/
-   espace perso (même source_block_id), le leaderboard existant
-   agrège désormais AUSSI les scores de toutes ces copies.
-   Aucun nouveau bouton/modal : on réutilise le modal "Classement"
-   déjà en place (planning.js).
+   LEADERBOARD CROSS-BLOCK — RETIRÉ (08/09/2026)
+   Ce patch faisait doublon avec la logique cross-block désormais
+   intégrée nativement dans renderScoresModal (planning.js), et
+   plantait systématiquement : sb.from('wod_scores') renvoie un
+   PostgrestQueryBuilder sans .eq tant que .select() n'a pas été
+   chaîné, donc "q.eq.bind(q)" levait une TypeError synchrone dès
+   qu'un bloc avait ≥2 copies (source_block_id partagé). Résultat :
+   la requête wod_scores ne partait jamais → "Erreur de chargement,
+   réessaie." dans le modal Classement, pour tout le monde.
    =========================================================== */
-(function(){
-  if(window.__patchBound_crossBlockScores)return;
-  window.__patchBound_crossBlockScores=true;
-
-  const _origRenderScoresModal=window.renderScoresModal;
-  if(typeof _origRenderScoresModal!=='function')return;
-
-  // Résout tous les session_id (sessions + personal_sessions) qui partagent
-  // le même source_block_id que la séance affichée. Retourne au minimum [sessionId].
-  async function _resolveCrossBlockSessionIds(sessionId){
-    try{
-      let srcBlockId=null;
-      const rSess=await sb.from('sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
-      if(rSess.data){
-        srcBlockId=rSess.data.source_block_id||null;
-      } else {
-        const rPerso=await sb.from('personal_sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
-        srcBlockId=rPerso.data?.source_block_id||null;
-      }
-      if(!srcBlockId)return [sessionId];
-
-      const [sRes,pRes]=await Promise.all([
-        sb.from('sessions').select('id').eq('source_block_id',srcBlockId),
-        sb.from('personal_sessions').select('id').eq('source_block_id',srcBlockId)
-      ]);
-      const ids=[...(sRes.data||[]).map(s=>s.id),...(pRes.data||[]).map(s=>s.id)];
-      return ids.length?ids:[sessionId];
-    }catch(e){
-      console.warn('resolveCrossBlockSessionIds',e);
-      return [sessionId];
-    }
-  }
-
-  window.renderScoresModal=async function(sessionId, scoreType, sets){
-    const el=document.getElementById('smodal-leaderboard');
-    if(el)el.innerHTML='<div class="spinner"></div>';
-
-    const allIds=await _resolveCrossBlockSessionIds(sessionId);
-
-    if(allIds.length<=1){
-      // Pas de copie connue : comportement identique à avant
-      return _origRenderScoresModal(sessionId, scoreType, sets);
-    }
-
-    // Sous-titre : signaler que le classement inclut les copies du bloc
-    const sub=document.getElementById('smodal-sub');
-    if(sub)sub.textContent=`Résultats de la séance · inclut ${allIds.length} copies de ce bloc`;
-
-    // On réutilise EXACTEMENT le rendu d'origine, mais en interrogeant
-    // wod_scores sur l'ensemble des session_id de la lignée plutôt qu'un seul.
-    // Pour ça, on wrappe temporairement la query 'session_id' d'un seul id
-    // vers 'in' sur tous les ids, via un monkey-patch localisé de sb.from.
-    const _origFrom=sb.from.bind(sb);
-    let patchedOnce=false;
-    sb.from=function(table){
-      const q=_origFrom(table);
-      if(table==='wod_scores' && !patchedOnce){
-        const _origEq=q.eq.bind(q);
-        q.eq=function(col,val){
-          if(col==='session_id' && val===sessionId){
-            patchedOnce=true;
-            return q.in('session_id',allIds);
-          }
-          return _origEq(col,val);
-        };
-      }
-      return q;
-    };
-    try{
-      await _origRenderScoresModal(sessionId, scoreType, sets);
-    } finally {
-      sb.from=_origFrom;
-    }
-  };
-})();
 
 // ===== FIX ÉDITEUR RICHE (blocs perso) — sélection perdue au clic toolbar =====
 // Bug: dans admin.js, _refocusActive() teste `window._richActiveTarget` mais
