@@ -1120,6 +1120,12 @@
       <input type="date" class="modal-date" id="dup-perso-date">
       <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.4">La séance sera copiée à la date choisie, dans l'espace perso de l'athlète sélectionné.</div>
     </div>
+    <div class="form-group" id="dup-perso-retour-group" style="display:none;margin-bottom:16px">
+      <label style="display:flex;align-items:center;gap:8px;cursor:pointer">
+        <input type="checkbox" id="dup-perso-retour" style="width:16px;height:16px">
+        <span class="form-label" style="margin:0">Dupliquer aussi le retour athlète (score + commentaire)</span>
+      </label>
+    </div>
     <button class="btn-modal-save" onclick="confirmPersoDuplicate()">📋 Dupliquer</button>
     <button class="btn-modal-cancel" onclick="closeDupPersoModal()">Annuler</button>
   </div>

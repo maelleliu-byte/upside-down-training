@@ -865,6 +865,20 @@ async function persoDuplicateSession(id){
   // Pré-remplir avec la date de la séance source (= comportement "même jour" par défaut)
   document.getElementById('dup-perso-date').value=data.date;
   await populatePersoDupAthletes(data.athlete_id);
+  // Vérifie s'il existe un retour (score et/ou commentaire) de l'athlète source sur cette séance
+  const retourGroup=document.getElementById('dup-perso-retour-group');
+  const retourChk=document.getElementById('dup-perso-retour');
+  if(retourGroup&&retourChk){
+    retourChk.checked=false;
+    retourGroup.style.display='none';
+    try{
+      const [{data:sc},{data:nt}]=await Promise.all([
+        sb.from('wod_scores').select('id').eq('session_id',id).eq('athlete_id',data.athlete_id).maybeSingle(),
+        sb.from('session_notes').select('id').eq('session_id',id).eq('athlete_id',data.athlete_id).maybeSingle()
+      ]);
+      if(sc||nt)retourGroup.style.display='';
+    }catch(e){console.warn('check retour perso dup',e);}
+  }
   document.getElementById('dup-perso-modal').classList.add('open');
 }
 
@@ -939,14 +953,35 @@ async function confirmPersoDuplicate(){
     newOrder=maxOrder+1;
   }
   const payload={...rest,athlete_id:targetAthleteId,date:newDate,sort_order:newOrder,created_by:currentUser.id};
-  const {error}=await sb.from('personal_sessions').insert(payload);
+  const {data:inserted,error}=await sb.from('personal_sessions').insert(payload).select('id').single();
   if(error){showToast('❌ '+error.message);return;}
+  // Duplication du retour athlète (score + commentaire), si demandé
+  const dupRetourChk=document.getElementById('dup-perso-retour');
+  let retourCopied=false;
+  if(dupRetourChk&&dupRetourChk.checked&&inserted?.id){
+    try{
+      const [{data:srcScore},{data:srcNote}]=await Promise.all([
+        sb.from('wod_scores').select('*').eq('session_id',data.id).eq('athlete_id',data.athlete_id).maybeSingle(),
+        sb.from('session_notes').select('*').eq('session_id',data.id).eq('athlete_id',data.athlete_id).maybeSingle()
+      ]);
+      if(srcScore){
+        const {id:_sid,created_at:_sca,session_id:_ssid,athlete_id:_said,...scoreRest}=srcScore;
+        const {error:scErr}=await sb.from('wod_scores').insert({...scoreRest,session_id:inserted.id,athlete_id:targetAthleteId});
+        if(!scErr)retourCopied=true;else console.warn('dup wod_scores',scErr.message);
+      }
+      if(srcNote){
+        const {id:_nid,created_at:_nca,session_id:_nsid,athlete_id:_naid,...noteRest}=srcNote;
+        const {error:ntErr}=await sb.from('session_notes').insert({...noteRest,session_id:inserted.id,athlete_id:targetAthleteId});
+        if(!ntErr)retourCopied=true;else console.warn('dup session_notes',ntErr.message);
+      }
+    }catch(e){console.warn('dup retour perso',e);}
+  }
   let who='';
   if(!sameAthlete){
     const ath=persoAthletesCache.find(a=>a.id===targetAthleteId);
     who=' → '+((ath&&ath.full_name)||'athlète');
   }
-  showToast((newDate===data.date?'📋 Séance dupliquée':'📋 Séance dupliquée au '+formatDateShort(newDate))+who);
+  showToast((newDate===data.date?'📋 Séance dupliquée':'📋 Séance dupliquée au '+formatDateShort(newDate))+who+(retourCopied?' (+ retour)':''));
   closeDupPersoModal();
   renderPersoCalendar();
 }
