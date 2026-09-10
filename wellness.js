@@ -872,11 +872,11 @@ async function persoDuplicateSession(id){
     retourChk.checked=false;
     retourGroup.style.display='none';
     try{
-      const [{data:sc},{data:nt}]=await Promise.all([
+      const [{data:sc},{data:ntArr}]=await Promise.all([
         sb.from('wod_scores').select('id').eq('session_id',id).eq('athlete_id',data.athlete_id).maybeSingle(),
-        sb.from('session_notes').select('id').eq('session_id',id).eq('athlete_id',data.athlete_id).maybeSingle()
+        sb.from('session_notes').select('id').eq('session_id',id).eq('athlete_id',data.athlete_id).order('created_at',{ascending:false}).limit(1)
       ]);
-      if(sc||nt)retourGroup.style.display='';
+      if(sc||(ntArr&&ntArr.length))retourGroup.style.display='';
     }catch(e){console.warn('check retour perso dup',e);}
   }
   document.getElementById('dup-perso-modal').classList.add('open');
@@ -960,10 +960,11 @@ async function confirmPersoDuplicate(){
   let retourCopied=false;
   if(dupRetourChk&&dupRetourChk.checked&&inserted?.id){
     try{
-      const [{data:srcScore},{data:srcNote}]=await Promise.all([
+      const [{data:srcScore},{data:srcNoteArr}]=await Promise.all([
         sb.from('wod_scores').select('*').eq('session_id',data.id).eq('athlete_id',data.athlete_id).maybeSingle(),
-        sb.from('session_notes').select('*').eq('session_id',data.id).eq('athlete_id',data.athlete_id).maybeSingle()
+        sb.from('session_notes').select('*').eq('session_id',data.id).eq('athlete_id',data.athlete_id).order('created_at',{ascending:false}).limit(1)
       ]);
+      const srcNote=(srcNoteArr&&srcNoteArr[0])||null;
       if(srcScore){
         const {id:_sid,created_at:_sca,session_id:_ssid,athlete_id:_said,...scoreRest}=srcScore;
         const {error:scErr}=await sb.from('wod_scores').insert({...scoreRest,session_id:inserted.id,athlete_id:targetAthleteId});
