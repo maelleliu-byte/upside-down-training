@@ -528,9 +528,10 @@ async function loadScores(sessionId,scoreType,sets){
       </div>
     </div>
     <div class="score-actions">
-      <button class="react-btn" id="react-${sc.id}" onclick="toggleReaction('${sc.id}')" oncontextmenu="showLikers('${sc.id}',event);return false"><span class="heart">🤍</span> <span id="react-count-${sc.id}" onclick="showLikers('${sc.id}',event)" style="cursor:pointer">0</span></button>
+      <button class="react-btn" id="react-${sc.id}" onclick="toggleReaction('${sc.id}')"><span class="heart">🤍</span> <span id="react-count-${sc.id}">0</span></button>
       <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
     </div>
+    <div class="likers-line" id="likers-${sc.id}" style="display:none;font-size:11px;color:var(--muted);padding:2px 4px 4px"></div>
     <div class="comments-area" id="comments-${sc.id}">
       <div id="comments-list-${sc.id}"></div>
       <div class="comment-input-row">
@@ -750,10 +751,11 @@ async function renderScoresModal(sessionId, scoreType, sets){
         </div>
         ${noteHtml}
         <div class="score-actions">
-          <button class="react-btn" id="react-${sc.id}" onclick="toggleReactionModal('${sc.id}')" oncontextmenu="showLikers('${sc.id}',event);return false"><span class="heart">🤍</span> <span id="react-count-${sc.id}" onclick="showLikers('${sc.id}',event)" style="cursor:pointer">0</span></button>
+          <button class="react-btn" id="react-${sc.id}" onclick="toggleReactionModal('${sc.id}')"><span class="heart">🤍</span> <span id="react-count-${sc.id}">0</span></button>
           <button class="react-btn comment-btn" id="comment-btn-${sc.id}" onclick="toggleComments('${sc.id}')">💬 <span id="comment-label-${sc.id}">Commenter</span></button>
           ${isMe?`<button class="react-btn" onclick="deleteOwnScore('${sc.id}')" title="Supprimer" style="margin-left:auto;color:var(--red)">🗑️</button>`:''}
         </div>
+        <div class="likers-line" id="likers-${sc.id}" style="display:none;font-size:11px;color:var(--muted);padding:2px 4px 4px"></div>
         <div class="comments-area" id="comments-${sc.id}">
           <div id="comments-list-${sc.id}"></div>
           <div class="comment-input-row">
@@ -812,11 +814,27 @@ async function loadReactions(scoreId){
   const {data,count}=await sb.from('score_reactions').select('athlete_id,profiles(full_name)',{count:'exact'}).eq('score_id',scoreId);
   const countEl=document.getElementById(`react-count-${scoreId}`);
   const btn=document.getElementById(`react-${scoreId}`);
+  const likersEl=document.getElementById(`likers-${scoreId}`);
   if(countEl)countEl.textContent=count||0;
+  const names=(data||[]).map(r=>r.profiles?.full_name||'Athlète');
+  if(likersEl){
+    if(names.length){
+      likersEl.style.display='block';
+      const MAX=3;
+      if(names.length<=MAX){
+        likersEl.innerHTML='❤️ '+names.join(', ');
+      } else {
+        const shown=names.slice(0,MAX).join(', ');
+        const rest=names.length-MAX;
+        likersEl.innerHTML=`❤️ ${shown} <span onclick="showLikers('${scoreId}',event)" style="text-decoration:underline;cursor:pointer">+${rest} autre${rest>1?'s':''}</span>`;
+      }
+    } else {
+      likersEl.style.display='none';
+      likersEl.textContent='';
+    }
+  }
   if(btn){
-    const names=(data||[]).map(r=>r.profiles?.full_name||'Athlète');
     btn.dataset.likers=JSON.stringify(names);
-    btn.title=names.length?'❤️ '+names.join(', '):'';
     if(currentUser){
       const liked=(data||[]).some(r=>r.athlete_id===currentUser.id);
       btn.classList.toggle('liked',liked);
