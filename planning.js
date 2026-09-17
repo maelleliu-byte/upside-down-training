@@ -528,7 +528,7 @@ async function loadScores(sessionId,scoreType,sets){
       </div>
     </div>
     <div class="score-actions">
-      <button class="react-btn" id="react-${sc.id}" onclick="toggleReaction('${sc.id}')" oncontextmenu="showLikers('${sc.id}',event);return false"><span class="heart">🤍</span> <span id="react-count-${sc.id}">0</span></button>
+      <button class="react-btn" id="react-${sc.id}" onclick="toggleReaction('${sc.id}')" oncontextmenu="showLikers('${sc.id}',event);return false"><span class="heart">🤍</span> <span id="react-count-${sc.id}" onclick="showLikers('${sc.id}',event)" style="cursor:pointer">0</span></button>
       <button class="react-btn comment-btn" onclick="toggleComments('${sc.id}')">💬 Commenter</button>
     </div>
     <div class="comments-area" id="comments-${sc.id}">
@@ -664,107 +664,28 @@ async function openScoresModal(sessionId, scoreType, sets){
 function closeScoresModal(){
   document.getElementById('scores-modal').classList.remove('open');
   currentScoresSession=null;
-  // Cache cross-block propre à la durée de vie du modal : on le vide à la
-  // fermeture pour ne pas garder des données périmées entre deux séances.
-  window._crossBlockCache={};
-}
-
-// Cache mémoire (par sessionId) de la résolution cross-block : évite de
-// refaire 3 requêtes réseau séquentielles à chaque réaffichage du modal
-// (changement d'onglet Tous/Hommes/Femmes, suppression d'un score, refresh
-// de token...). Vidé à la fermeture du modal (closeScoresModal).
-window._crossBlockCache=window._crossBlockCache||{};
-
-// Résout tous les session_id (sessions + personal_sessions) qui partagent
-// le même source_block_id que la séance affichée. Retourne au minimum [sessionId].
-async function _resolveCrossBlockSessionIds(sessionId){
-  if(window._crossBlockCache[sessionId])return window._crossBlockCache[sessionId];
-  try{
-    let srcBlockId=null;
-    const rSess=await sb.from('sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
-    if(rSess.data){
-      srcBlockId=rSess.data.source_block_id||null;
-    } else {
-      const rPerso=await sb.from('personal_sessions').select('source_block_id').eq('id',sessionId).maybeSingle();
-      srcBlockId=rPerso.data?.source_block_id||null;
-    }
-    if(!srcBlockId){window._crossBlockCache[sessionId]=[sessionId];return [sessionId];}
-
-    const [sRes,pRes]=await Promise.all([
-      sb.from('sessions').select('id').eq('source_block_id',srcBlockId),
-      sb.from('personal_sessions').select('id').eq('source_block_id',srcBlockId)
-    ]);
-    const ids=[...(sRes.data||[]).map(s=>s.id),...(pRes.data||[]).map(s=>s.id)];
-    const result=ids.length?ids:[sessionId];
-    window._crossBlockCache[sessionId]=result;
-    return result;
-  }catch(e){
-    console.warn('resolveCrossBlockSessionIds',e);
-    return [sessionId];
-  }
 }
 
 async function renderScoresModal(sessionId, scoreType, sets){
   const el=document.getElementById('smodal-leaderboard');
   el.innerHTML='<div class="spinner"></div>';
-
-  let allIds=[sessionId];
-  try{
-    allIds=await _resolveCrossBlockSessionIds(sessionId);
-  }catch(e){
-    console.warn('cross-block resolve failed, fallback single session',e);
-  }
-  const sub=document.getElementById('smodal-sub');
-  if(sub)sub.textContent=allIds.length>1?`Résultats de la séance · inclut ${allIds.length} copies de ce bloc`:'Résultats de la séance';
-
-  let scoresRes,notesRes;
-  try{
-    [scoresRes, notesRes] = await Promise.all([
-      sb.from('wod_scores').select('*,profiles(full_name,gender,avatar_url)').in('session_id',allIds),
-      sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false})
-    ]);
-  }catch(e){
-    console.warn('renderScoresModal fetch failed',e);
-    el.innerHTML='<div class="empty"><div class="empty-icon">⚠️</div><p>Erreur de chargement, réessaie.</p></div>';
-    return;
-  }
-  const data=scoresRes?.data;
-  const allNotes=notesRes?.data||[];
+  const [scoresRes, notesRes] = await Promise.all([
+    sb.from('wod_scores').select('*,profiles(full_name,gender,avatar_url)').eq('session_id',sessionId),
+    sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false})
+  ]);
+  const data=scoresRes.data;
+  const allNotes=notesRes.data||[];
 
   if(!data||data.length===0){
     el.innerHTML='<div class="empty"><div class="empty-icon">📋</div><p>Pas encore de scores.</p></div>';
     return;
   }
 
-  // Déduplication cross-block : un même athlète peut avoir un score dans
-  // plusieurs copies du bloc (même source_block_id, session_id différents).
-  // On ne garde que son MEILLEUR score parmi les copies, sinon il apparaît
-  // plusieurs fois dans le classement (une ligne par session_id).
-  const isTimeDedup = scoreType==='time';
-  function _isBetter(a,b){ // true si a est meilleur que b
-    const aDnf=(a.score_value||0)<0, bDnf=(b.score_value||0)<0;
-    if(isTimeDedup){
-      if(aDnf!==bDnf)return !aDnf; // un temps valide bat toujours un DNF
-      if(aDnf&&bDnf)return (a.score_value||0)>(b.score_value||0); // plus de reps = mieux
-      return (a.score_value||Infinity)<(b.score_value||Infinity); // moins de temps = mieux
-    }
-    return (a.score_value||0)>(b.score_value||0);
-  }
-  let dedupedData=data;
-  if(allIds.length>1){
-    const bestByAth={};
-    for(const sc of data){
-      const prev=bestByAth[sc.athlete_id];
-      if(!prev||_isBetter(sc,prev))bestByAth[sc.athlete_id]=sc;
-    }
-    dedupedData=Object.values(bestByAth);
-  }
-
   // Filtre genre (Homme / Femme / Tous)
   const g=window._leaderboardGender||'all';
-  let filtered=dedupedData;
+  let filtered=data;
   if(g!=='all'){
-    filtered=dedupedData.filter(d=>{
+    filtered=data.filter(d=>{
       const gv=(d.profiles?.gender||'').toLowerCase();
       if(g==='male')return gv==='male'||gv==='m'||gv==='homme';
       if(g==='female')return gv==='female'||gv==='f'||gv==='femme';
@@ -844,11 +765,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
     }).join('')}
   </div>`;
 
-  // Un seul ensureAuth() pour tout le lot (au lieu d'un par score) :
-  // évite N refreshSession() simultanés qui saturaient le rendu quand le
-  // token approchait l'expiration. Les commentaires restent lazy (au clic).
-  await ensureAuth();
-  for(const sc of sorted){loadReactions(sc.id,true);}
+  for(const sc of sorted){loadReactions(sc.id);loadComments(sc.id);}
 }
 
 async function toggleReactionModal(scoreId){
@@ -890,8 +807,8 @@ if(!window.__scoreAuthListenerBound){
 }
 
 // REACTIONS
-async function loadReactions(scoreId,skipAuth){
-  if(!skipAuth && !(await ensureAuth()))return;
+async function loadReactions(scoreId){
+  if(!(await ensureAuth()))return;
   const {data,count}=await sb.from('score_reactions').select('athlete_id,profiles(full_name)',{count:'exact'}).eq('score_id',scoreId);
   const countEl=document.getElementById(`react-count-${scoreId}`);
   const btn=document.getElementById(`react-${scoreId}`);
