@@ -54,6 +54,7 @@ function loadAdminStudios(){
       var btnColor=s.is_active?'#f0f0f0':'#0a0a0a';
       var btnLabel=s.is_active?'Désactiver':'Activer';
       html+='<button onclick="toggleStudio(\''+s.id+'\','+s.is_active+')" style="background:'+btnBg+';color:'+btnColor+';border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">'+btnLabel+'</button>';
+      html+='<button onclick="deleteStudio(\''+s.id+'\',\''+s.name.replace(/\x27/g,"\\\x27")+'\','+(s.athlete_count||0)+',\''+(s.stripe_subscription_id||'')+'\')" title="Supprimer définitivement" style="background:transparent;color:#ff4747;border:1px solid #ff474740;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700;cursor:pointer">🗑️</button>';
       html+='</div>';
       html+='</div>';
       // Palette de couleurs (cachée par défaut)
@@ -100,6 +101,29 @@ function setStudioColor(studioId,color){
 function toggleStudio(studioId,currentActive){
   sb.from('studios').update({is_active:!currentActive}).eq('id',studioId).then(function(res){
     if(res.error){alert('Erreur: '+res.error.message);return;}
+    loadAdminStudios();
+  });
+}
+
+function deleteStudio(studioId,studioName,athleteCount,stripeSubId){
+  if(athleteCount>0){
+    alert('Impossible de supprimer "'+studioName+'" : il a encore '+athleteCount+' athlète(s) rattaché(s). Il faut d\'abord les retirer ou les transférer.');
+    return;
+  }
+  if(stripeSubId){
+    alert('Impossible de supprimer "'+studioName+'" : il a un abonnement Stripe actif. Résilie l\'abonnement (portail de facturation) avant de supprimer le studio.');
+    return;
+  }
+  if(!confirm('Supprimer définitivement le studio "'+studioName+'" ?\n\nCette action est irréversible.'))return;
+  sb.from('studios').delete().eq('id',studioId).then(function(res){
+    if(res.error){
+      if(res.error.code==='23503'){
+        alert('Impossible de supprimer "'+studioName+'" : il reste des données liées (programmes, benchmarks, mouvements, badges, vidéos...). Supprime-les d\'abord, ou laisse simplement le studio désactivé.');
+      } else {
+        alert('Erreur: '+res.error.message);
+      }
+      return;
+    }
     loadAdminStudios();
   });
 }
