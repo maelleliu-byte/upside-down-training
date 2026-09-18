@@ -55,6 +55,9 @@ function loadAdminStudios(){
       var btnLabel=s.is_active?'Désactiver':'Activer';
       html+='<button onclick="toggleStudio(\''+s.id+'\','+s.is_active+')" style="background:'+btnBg+';color:'+btnColor+';border:none;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer">'+btnLabel+'</button>';
       html+='<button onclick="deleteStudio(\''+s.id+'\',\''+s.name.replace(/\x27/g,"\\\x27")+'\','+(s.athlete_count||0)+',\''+(s.stripe_subscription_id||'')+'\')" title="Supprimer définitivement" style="background:transparent;color:#ff4747;border:1px solid #ff474740;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700;cursor:pointer">🗑️</button>';
+      if((s.athlete_count||0)>0){
+        html+='<button onclick="emptyStudio(\''+s.id+'\',\''+s.name.replace(/\x27/g,"\\\x27")+'\')" title="Vider le studio (supprime athlètes, coachs et contenu)" style="background:transparent;color:#ff8c47;border:1px solid #ff8c4740;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700;cursor:pointer">🧹 Vider</button>';
+      }
       html+='</div>';
       html+='</div>';
       // Palette de couleurs (cachée par défaut)
@@ -125,5 +128,27 @@ function deleteStudio(studioId,studioName,athleteCount,stripeSubId){
       return;
     }
     loadAdminStudios();
+  });
+}
+
+function emptyStudio(studioId,studioName){
+  var typed=prompt('Ceci va supprimer DÉFINITIVEMENT tous les athlètes, coachs, programmes, benchmarks, mouvements, badges et vidéos du studio "'+studioName+'" (comptes Auth inclus).\n\nCette action est irréversible.\n\nTape le nom exact du studio pour confirmer :');
+  if(typed===null)return;
+  if(typed.trim()!==studioName){alert('Nom incorrect, annulé.');return;}
+
+  sb.auth.getSession().then(function(sessionRes){
+    var token=sessionRes.data && sessionRes.data.session && sessionRes.data.session.access_token;
+    if(!token){alert('Session expirée');return;}
+    fetch('/.netlify/functions/empty-studio',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},
+      body:JSON.stringify({studio_id:studioId})
+    }).then(function(r){return r.json();}).then(function(data){
+      if(data.error){alert('Erreur: '+data.error);return;}
+      var msg='Studio vidé : '+(data.profiles_deleted||[]).length+' compte(s) supprimé(s).';
+      if(data.errors && data.errors.length){msg+='\n\n⚠️ Certaines suppressions ont échoué, vérifie les logs.';}
+      alert(msg);
+      loadAdminStudios();
+    }).catch(function(e){alert('Erreur: '+e.message);});
   });
 }
