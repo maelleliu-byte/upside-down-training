@@ -6055,3 +6055,161 @@ async function claimFreeAccess(programmeId){
     };
   }
 })();
+
+// ============================================================
+// EXPORT CYCLE PDF — Vue Cycle + Vue Session dans un seul doc
+// (patch wellness.js — admin.js non modifié)
+// ============================================================
+(function(){
+  if(window.__patchBound_exportCyclePDF) return;
+  window.__patchBound_exportCyclePDF = true;
+
+  const DAYS = ['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+
+  function esc(s){
+    return String(s==null?'':s)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;');
+  }
+  function light(hex){
+    try{ if(typeof isLightColor==='function') return isLightColor(hex); }catch(e){}
+    const h=String(hex||'').replace('#','');
+    if(h.length<6) return false;
+    const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
+    return (0.299*r+0.587*g+0.114*b)>160;
+  }
+  function toast(msg){
+    try{ if(typeof showToast==='function'){ showToast(msg); return; } }catch(e){}
+    alert(msg);
+  }
+  function getCycle(){
+    try{ if(typeof cycleData!=='undefined' && cycleData) return cycleData; }catch(e){}
+    return window.cycleData||null;
+  }
+  function getMode(){
+    try{ if(typeof cycleMode!=='undefined' && cycleMode) return cycleMode; }catch(e){}
+    return window.cycleMode||'cycle';
+  }
+
+  function chipHtml(chip){
+    const color=chip.color||'#e8ff47';
+    const fg=light(color)?'#111':'#fff';
+    const done=chip.done?'opacity:.5;text-decoration:line-through;':'';
+    return '<span class="chip" style="background:'+color+';color:'+fg+';'+done+'">'
+      +(chip.done?'&#10003; ':'')+esc(chip.text)+'</span>';
+  }
+
+  function buildCycleSection(cd, weeks, startDate){
+    const cols=cd.columns||[];
+    const cells=cd.cells||{};
+    let h='<div class="sec"><div class="sec-t">VUE CYCLE</div>';
+    h+='<table><thead><tr><th class="wk">Semaine</th>'
+      +cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>';
+    for(let w=0;w<weeks;w++){
+      const s=new Date(startDate); s.setDate(startDate.getDate()+w*7);
+      const e=new Date(s); e.setDate(s.getDate()+6);
+      const lbl=s.getDate()+'/'+(s.getMonth()+1)+' &rarr; '+e.getDate()+'/'+(e.getMonth()+1);
+      h+='<tr><td class="wk"><b>Sem. '+(w+1)+'</b><br><span class="dt">'+lbl+'</span></td>';
+      h+=cols.map((c,ci)=>{
+        const arr=cells[w+'-'+ci]||[];
+        return '<td>'+(arr.length?arr.map(chipHtml).join(''):'<span class="empty">&mdash;</span>')+'</td>';
+      }).join('');
+      h+='</tr>';
+    }
+    return h+'</tbody></table></div>';
+  }
+
+  function buildSessionSection(cd, weeks, startDate){
+    const rows=cd.rows||[];
+    const sc=cd.sessionCells||{};
+    let h='<div class="sec pb"><div class="sec-t">VUE SESSION</div>';
+    for(let wk=0;wk<weeks;wk++){
+      const s=new Date(startDate); s.setDate(startDate.getDate()+wk*7);
+      const e=new Date(s); e.setDate(s.getDate()+6);
+      // on saute les semaines totalement vides pour ne pas gonfler le PDF
+      let any=false;
+      for(let ri=0;ri<rows.length && !any;ri++)
+        for(let di=0;di<DAYS.length && !any;di++)
+          if((sc['w'+wk+'-'+ri+'-'+di]||[]).length) any=true;
+      if(!any) continue;
+      h+='<div class="wkblock"><div class="wk-t">SEMAINE '+(wk+1)+' <span class="dt">'
+        +s.getDate()+'/'+(s.getMonth()+1)+' &rarr; '+e.getDate()+'/'+(e.getMonth()+1)+'</span></div>';
+      h+='<table><thead><tr><th class="cat">Cat&eacute;gorie</th>'
+        +DAYS.map(d=>'<th>'+d+'</th>').join('')+'</tr></thead><tbody>';
+      rows.forEach((row,ri)=>{
+        h+='<tr><td class="cat">'+esc(row)+'</td>';
+        h+=DAYS.map((_,di)=>{
+          const arr=sc['w'+wk+'-'+ri+'-'+di]||[];
+          return '<td>'+(arr.length?arr.map(chipHtml).join(''):'<span class="empty">&mdash;</span>')+'</td>';
+        }).join('');
+        h+='</tr>';
+      });
+      h+='</tbody></table></div>';
+    }
+    return h+'</div>';
+  }
+
+  window.exportCyclePDF=function(){
+    const cd=getCycle();
+    if(!cd){ toast('⚠️ Aucun cycle chargé'); return; }
+    const name=(document.getElementById('cycle-name')?.value||cd.name||'Cycle').trim()||'Cycle';
+    const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cd.weeks||8;
+
+    const startInput=document.getElementById('cycle-start-date')?.value;
+    const startDate=startInput?new Date(startInput+'T12:00:00'):new Date();
+    if(!startInput){
+      const d=startDate.getDay();
+      startDate.setDate(startDate.getDate()-(d===0?6:d-1));
+    }
+
+    const mode=getMode();
+    const doc='<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">'
+      +'<title>'+esc(name)+'</title><style>'
+      +'@page{size:A4 landscape;margin:8mm}'
+      +'*{box-sizing:border-box}'
+      +'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;'
+      +'margin:0;padding:10px;background:#fff;color:#111;font-size:9px}'
+      +'.hd{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid #111;'
+      +'padding-bottom:6px;margin-bottom:10px}'
+      +'.hd h1{margin:0;font-size:17px;letter-spacing:1px;text-transform:uppercase}'
+      +'.hd .meta{font-size:10px;color:#555}'
+      +'.badge{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:1px;'
+      +'border:1px solid #111;border-radius:4px;padding:2px 7px;text-transform:uppercase}'
+      +'.sec-t{font-size:12px;font-weight:800;letter-spacing:2px;margin:12px 0 6px;'
+      +'padding:3px 0;border-bottom:1px solid #999}'
+      +'.pb{page-break-before:always}'
+      +'table{width:100%;border-collapse:collapse;margin-bottom:10px;table-layout:fixed}'
+      +'th,td{border:1px solid #bbb;padding:3px 4px;vertical-align:top;text-align:left;'
+      +'word-wrap:break-word;overflow-wrap:break-word}'
+      +'th{background:#eee;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}'
+      +'td.wk,th.wk{width:62px;background:#f6f6f6;font-size:8px}'
+      +'td.cat,th.cat{width:78px;background:#f6f6f6;font-size:8px;font-weight:700}'
+      +'.dt{font-weight:400;color:#666;font-size:7.5px}'
+      +'.chip{display:inline-block;padding:1.5px 5px;margin:1px 1px;border-radius:4px;'
+      +'font-size:8px;font-weight:600;line-height:1.35}'
+      +'.empty{color:#ccc}'
+      +'.wkblock{page-break-inside:avoid;margin-bottom:12px}'
+      +'.wk-t{font-size:11px;font-weight:800;letter-spacing:1.5px;margin:8px 0 4px;'
+      +'padding-bottom:2px;border-bottom:1px solid #ccc}'
+      +'.noprint{position:fixed;top:8px;right:8px;z-index:99}'
+      +'.noprint button{padding:8px 16px;background:#111;color:#fff;border:0;'
+      +'border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}'
+      +'@media print{.noprint{display:none}}'
+      +'</style></head><body>'
+      +'<div class="noprint"><button onclick="window.print()">Enregistrer en PDF</button></div>'
+      +'<div class="hd"><h1>'+esc(name)+'</h1>'
+      +'<span class="meta">'+weeks+' semaine'+(weeks>1?'s':'')+' &middot; d&eacute;but '
+      +startDate.toLocaleDateString('fr-FR')+'</span>'
+      +'<span class="badge">Vue active : '+(mode==='session'?'Session':'Cycle')+'</span></div>'
+      +buildCycleSection(cd,weeks,startDate)
+      +buildSessionSection(cd,weeks,startDate)
+      +'</body></html>';
+
+    const w=window.open('','_blank');
+    if(!w){ toast('⚠️ Autorise les pop-ups pour exporter'); return; }
+    w.document.open();
+    w.document.write(doc);
+    w.document.close();
+    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 700);
+  };
+})();
