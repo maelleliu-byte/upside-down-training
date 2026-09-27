@@ -6057,7 +6057,7 @@ async function claimFreeAccess(programmeId){
 })();
 
 // ============================================================
-// EXPORT CYCLE PDF — Vue Cycle + Vue Session dans un seul doc
+// EXPORT CYCLE PDF — Récap + Vue Cycle + Vue Session
 // (patch wellness.js — admin.js non modifié)
 // ============================================================
 (function(){
@@ -6071,78 +6071,208 @@ async function claimFreeAccess(programmeId){
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
       .replace(/"/g,'&quot;');
   }
-  function light(hex){
-    try{ if(typeof isLightColor==='function') return isLightColor(hex); }catch(e){}
-    const h=String(hex||'').replace('#','');
-    if(h.length<6) return false;
-    const r=parseInt(h.substr(0,2),16),g=parseInt(h.substr(2,2),16),b=parseInt(h.substr(4,2),16);
-    return (0.299*r+0.587*g+0.114*b)>160;
+  function rgb(hex){
+    let h=String(hex||'#e8ff47').trim().replace('#','');
+    if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    if(h.length!==6||/[^0-9a-f]/i.test(h)) h='e8ff47';
+    return [parseInt(h.substr(0,2),16),parseInt(h.substr(2,2),16),parseInt(h.substr(4,2),16)];
   }
-  function toast(msg){
-    try{ if(typeof showToast==='function'){ showToast(msg); return; } }catch(e){}
-    alert(msg);
+  function hx(a){
+    return '#'+a.map(function(v){
+      v=Math.max(0,Math.min(255,Math.round(v)));
+      return (v<16?'0':'')+v.toString(16);
+    }).join('');
   }
-  function getCycle(){
-    try{ if(typeof cycleData!=='undefined' && cycleData) return cycleData; }catch(e){}
-    return window.cycleData||null;
-  }
-  function getMode(){
-    try{ if(typeof cycleMode!=='undefined' && cycleMode) return cycleMode; }catch(e){}
-    return window.cycleMode||'cycle';
-  }
+  // Fond = couleur éclaircie -> reste clair, texte foncé lisible même si le
+  // navigateur supprime les fonds à l'impression.
+  function tint(c){ const x=rgb(c);
+    return hx([x[0]+(255-x[0])*0.78, x[1]+(255-x[1])*0.78, x[2]+(255-x[2])*0.78]); }
+  function ink(c){ const x=rgb(c);
+    const lum=0.299*x[0]+0.587*x[1]+0.114*x[2];
+    const f=lum>200?0.34:(lum>150?0.42:(lum>90?0.60:0.78));
+    return hx([x[0]*f,x[1]*f,x[2]*f]); }
+  // Bordure : le blanc pur est invisible sur papier -> on le grise.
+  function edge(c){ const x=rgb(c);
+    return (x[0]>235&&x[1]>235&&x[2]>235)?'#9aa0a6':c; }
 
+  function toast(m){ try{ if(typeof showToast==='function'){showToast(m);return;} }catch(e){} alert(m); }
+  function getCycle(){ try{ if(typeof cycleData!=='undefined'&&cycleData) return cycleData; }catch(e){} return window.cycleData||null; }
+  function getMode(){ try{ if(typeof cycleMode!=='undefined'&&cycleMode) return cycleMode; }catch(e){} return window.cycleMode||'cycle'; }
+  function rowOpts(n){ try{ if(typeof getRowOptions==='function') return getRowOptions(n); }catch(e){} return null; }
+
+  function arrAt(sc,wk,ri,di){ return sc['w'+wk+'-'+ri+'-'+di]||[]; }
+
+  // Un chip = pastille colorée. white-space:pre-wrap => les sauts de ligne
+  // des WOD sont conservés tels quels.
   function chipHtml(chip){
-    const color=chip.color||'#e8ff47';
-    const fg=light(color)?'#111':'#fff';
-    const done=chip.done?'opacity:.5;text-decoration:line-through;':'';
-    return '<span class="chip" style="background:'+color+';color:'+fg+';'+done+'">'
-      +(chip.done?'&#10003; ':'')+esc(chip.text)+'</span>';
+    const c=chip.color||'#e8ff47';
+    const txt=String(chip.text==null?'':chip.text);
+    // Un bloc long (WOD complet) barré est illisible à l'impression :
+    // on garde juste la coche. Le barré reste sur les étiquettes courtes.
+    const long=txt.length>60||txt.indexOf('\n')>=0;
+    const done=chip.done?(long?'':'opacity:.6;text-decoration:line-through;'):'';
+    return '<span class="chip" style="background:'+tint(c)+';border:1px solid '+edge(c)
+      +';border-left:4px solid '+edge(c)+';color:'+ink(c)+';'+done+'">'
+      +(chip.done?'✓ ':'')+esc(txt)+'</span>';
+  }
+  function cellHtml(arr){
+    return arr.length ? arr.map(chipHtml).join('') : '<span class="empty">&mdash;</span>';
   }
 
-  function buildCycleSection(cd, weeks, startDate){
-    const cols=cd.columns||[];
-    const cells=cd.cells||{};
-    let h='<div class="sec"><div class="sec-t">VUE CYCLE</div>';
-    h+='<table><thead><tr><th class="wk">Semaine</th>'
+  // ---------- RÉCAP (dérivé de la vue session, comme dans l'app) ----------
+  function buildRecap(cd,weeks){
+    const rows=cd.rows||[], sc=cd.sessionCells||{};
+    const counts=rows.map(()=>({})), colorOf=rows.map(()=>({}));
+    let total=0;
+    for(let wk=0;wk<weeks;wk++) rows.forEach((rn,ri)=>{
+      if(!rowOpts(rn)) return;
+      for(let di=0;di<DAYS.length;di++) arrAt(sc,wk,ri,di).forEach(c=>{
+        const k=(c.text||'').trim(); if(!k) return;
+        counts[ri][k]=(counts[ri][k]||0)+1;
+        if(!colorOf[ri][k]) colorOf[ri][k]=c.color||'#e8ff47';
+        total++;
+      });
+    });
+    const ne=rows.map((r,ri)=>({r,ri,e:Object.entries(counts[ri])})).filter(x=>x.e.length);
+    if(!ne.length) return '';
+    let h='<div class="sec"><div class="sec-t">R&Eacute;CAP DU CYCLE <span class="tot">'
+      +total+' item'+(total>1?'s':'')+'</span></div><table class="recap"><tbody>';
+    ne.forEach(({r,ri,e})=>{
+      e.sort((a,b)=>b[1]-a[1]);
+      const sub=e.reduce((s,[,n])=>s+n,0);
+      h+='<tr><td class="cat">'+esc(r)+' <span class="dt">&middot; '+sub+'</span></td><td>'
+        +e.map(([t,n])=>{
+          const c=colorOf[ri][t]||'#e8ff47';
+          return '<span class="chip" style="background:'+tint(c)+';border:1px solid '+edge(c)
+            +';border-left:4px solid '+edge(c)+';color:'+ink(c)+'">'+esc(t)
+            +' <b>&times;'+n+'</b></span>';
+        }).join('')+'</td></tr>';
+    });
+    return h+'</tbody></table></div>';
+  }
+
+  // ---------- VUE CYCLE (thèmes en lignes, jours en colonnes) ----------
+  // Structure réelle : cycleData.themes + cycleData.themeCells["t{wk}-{ti}-{di}"]
+  // + cycleData.summaryRow["sum-{di}"]  (cf. renderCycleGridNew)
+  function buildCycleSection(cd,weeks,start){
+    const themes=cd.themes||[], tc=cd.themeCells||{}, sum=cd.summaryRow||{};
+    const at=(wk,ti,di)=>tc['t'+wk+'-'+ti+'-'+di]||[];
+    const atSum=di=>sum['sum-'+di]||[];
+
+    // Jours réellement utilisés (résumé compris) -> on élague les colonnes vides
+    const useDay=DAYS.map((_,di)=>{
+      if(atSum(di).length) return true;
+      for(let wk=0;wk<weeks;wk++) for(let ti=0;ti<themes.length;ti++)
+        if(at(wk,ti,di).length) return true;
+      return false;
+    });
+    const useTheme=themes.map((_,ti)=>{
+      for(let wk=0;wk<weeks;wk++) for(let di=0;di<DAYS.length;di++)
+        if(at(wk,ti,di).length) return true;
+      return false;
+    });
+    const dIdx=DAYS.map((_,i)=>i).filter(i=>useDay[i]);
+    const tIdx=themes.map((_,i)=>i).filter(i=>useTheme[i]);
+    const hasSum=dIdx.some(di=>atSum(di).length);
+
+    let h='<div class="sec pb"><div class="sec-t">VUE CYCLE</div>';
+    if(!dIdx.length||(!tIdx.length&&!hasSum)){
+      return h+'<div class="none">Aucun contenu saisi en Vue Cycle pour ce cycle.</div></div>';
+    }
+    const wDay=Math.floor((100-14)/dIdx.length);
+    const head='<thead><tr><th class="cat" style="width:14%">Th&egrave;me</th>'
+      +dIdx.map(i=>'<th style="width:'+wDay+'%">'+DAYS[i]+'</th>').join('')+'</tr></thead>';
+
+    if(hasSum){
+      h+='<table class="sess"><thead><tr><th class="cat" style="width:14%">R&eacute;sum&eacute;</th>'
+        +dIdx.map(i=>'<th style="width:'+wDay+'%">'+DAYS[i]+'</th>').join('')+'</tr></thead><tbody>'
+        +'<tr><td class="cat">Cycle</td>'
+        +dIdx.map(di=>'<td>'+cellHtml(atSum(di))+'</td>').join('')
+        +'</tr></tbody></table>';
+    }
+
+    let first=true;
+    for(let wk=0;wk<weeks;wk++){
+      let any=false;
+      for(let a=0;a<tIdx.length&&!any;a++) for(let b=0;b<dIdx.length&&!any;b++)
+        if(at(wk,tIdx[a],dIdx[b]).length) any=true;
+      if(!any) continue;
+      const s=new Date(start); s.setDate(start.getDate()+wk*7);
+      const e=new Date(s); e.setDate(s.getDate()+6);
+      h+='<div class="wkblock'+(first?'':' pb')+'"><div class="wk-t">SEMAINE '+(wk+1)
+        +' <span class="dt">'+s.getDate()+'/'+(s.getMonth()+1)+' &rarr; '
+        +e.getDate()+'/'+(e.getMonth()+1)+'</span></div>';
+      first=false;
+      h+='<table class="sess">'+head+'<tbody>';
+      tIdx.forEach(ti=>{
+        h+='<tr><td class="cat">'+esc(themes[ti])+'</td>'
+          +dIdx.map(di=>'<td>'+cellHtml(at(wk,ti,di))+'</td>').join('')+'</tr>';
+      });
+      h+='</tbody></table></div>';
+    }
+    return h+'</div>';
+  }
+
+  // ---------- ANCIENNE VUE CYCLE (colonnes) — seulement si des données y restent ----------
+  function buildLegacySection(cd,weeks,start){
+    const cols=cd.columns||[], cells=cd.cells||{};
+    let nb=0;
+    for(let w=0;w<weeks;w++) for(let ci=0;ci<cols.length;ci++) nb+=(cells[w+'-'+ci]||[]).length;
+    if(!nb) return '';
+    let h='<div class="sec pb"><div class="sec-t">VUE CYCLE &mdash; ANCIEN FORMAT</div>'
+      +'<table><thead><tr><th class="wk">Semaine</th>'
       +cols.map(c=>'<th>'+esc(c)+'</th>').join('')+'</tr></thead><tbody>';
     for(let w=0;w<weeks;w++){
-      const s=new Date(startDate); s.setDate(startDate.getDate()+w*7);
+      const s=new Date(start); s.setDate(start.getDate()+w*7);
       const e=new Date(s); e.setDate(s.getDate()+6);
-      const lbl=s.getDate()+'/'+(s.getMonth()+1)+' &rarr; '+e.getDate()+'/'+(e.getMonth()+1);
-      h+='<tr><td class="wk"><b>Sem. '+(w+1)+'</b><br><span class="dt">'+lbl+'</span></td>';
-      h+=cols.map((c,ci)=>{
-        const arr=cells[w+'-'+ci]||[];
-        return '<td>'+(arr.length?arr.map(chipHtml).join(''):'<span class="empty">&mdash;</span>')+'</td>';
-      }).join('');
-      h+='</tr>';
+      h+='<tr><td class="wk"><b>Sem. '+(w+1)+'</b><br><span class="dt">'
+        +s.getDate()+'/'+(s.getMonth()+1)+' &rarr; '+e.getDate()+'/'+(e.getMonth()+1)+'</span></td>'
+        +cols.map((c,ci)=>'<td>'+cellHtml(cells[w+'-'+ci]||[])+'</td>').join('')+'</tr>';
     }
     return h+'</tbody></table></div>';
   }
 
-  function buildSessionSection(cd, weeks, startDate){
-    const rows=cd.rows||[];
-    const sc=cd.sessionCells||{};
+  // ---------- VUE SESSION ----------
+  function buildSessionSection(cd,weeks,start){
+    const rows=cd.rows||[], sc=cd.sessionCells||{};
+    // On ne garde que les jours et les lignes réellement utilisés :
+    // ça libère une largeur énorme pour le texte des WOD.
+    const useDay=DAYS.map((_,di)=>{
+      for(let wk=0;wk<weeks;wk++) for(let ri=0;ri<rows.length;ri++)
+        if(arrAt(sc,wk,ri,di).length) return true;
+      return false;
+    });
+    const useRow=rows.map((_,ri)=>{
+      for(let wk=0;wk<weeks;wk++) for(let di=0;di<DAYS.length;di++)
+        if(arrAt(sc,wk,ri,di).length) return true;
+      return false;
+    });
+    const dIdx=DAYS.map((_,i)=>i).filter(i=>useDay[i]);
+    const rIdx=rows.map((_,i)=>i).filter(i=>useRow[i]);
+
     let h='<div class="sec pb"><div class="sec-t">VUE SESSION</div>';
+    if(!dIdx.length||!rIdx.length){
+      return h+'<div class="none">Aucun contenu saisi en Vue Session pour ce cycle.</div></div>';
+    }
+    const wDay=Math.floor((100-14)/dIdx.length);
+    let first=true;
     for(let wk=0;wk<weeks;wk++){
-      const s=new Date(startDate); s.setDate(startDate.getDate()+wk*7);
-      const e=new Date(s); e.setDate(s.getDate()+6);
-      // on saute les semaines totalement vides pour ne pas gonfler le PDF
       let any=false;
-      for(let ri=0;ri<rows.length && !any;ri++)
-        for(let di=0;di<DAYS.length && !any;di++)
-          if((sc['w'+wk+'-'+ri+'-'+di]||[]).length) any=true;
+      for(let a=0;a<rIdx.length&&!any;a++) for(let b=0;b<dIdx.length&&!any;b++)
+        if(arrAt(sc,wk,rIdx[a],dIdx[b]).length) any=true;
       if(!any) continue;
-      h+='<div class="wkblock"><div class="wk-t">SEMAINE '+(wk+1)+' <span class="dt">'
-        +s.getDate()+'/'+(s.getMonth()+1)+' &rarr; '+e.getDate()+'/'+(e.getMonth()+1)+'</span></div>';
-      h+='<table><thead><tr><th class="cat">Cat&eacute;gorie</th>'
-        +DAYS.map(d=>'<th>'+d+'</th>').join('')+'</tr></thead><tbody>';
-      rows.forEach((row,ri)=>{
-        h+='<tr><td class="cat">'+esc(row)+'</td>';
-        h+=DAYS.map((_,di)=>{
-          const arr=sc['w'+wk+'-'+ri+'-'+di]||[];
-          return '<td>'+(arr.length?arr.map(chipHtml).join(''):'<span class="empty">&mdash;</span>')+'</td>';
-        }).join('');
-        h+='</tr>';
+      const s=new Date(start); s.setDate(start.getDate()+wk*7);
+      const e=new Date(s); e.setDate(s.getDate()+6);
+      h+='<div class="wkblock'+(first?'':' pb')+'"><div class="wk-t">SEMAINE '+(wk+1)
+        +' <span class="dt">'+s.getDate()+'/'+(s.getMonth()+1)+' &rarr; '
+        +e.getDate()+'/'+(e.getMonth()+1)+'</span></div>';
+      first=false;
+      h+='<table class="sess"><thead><tr><th class="cat" style="width:14%">Cat&eacute;gorie</th>'
+        +dIdx.map(i=>'<th style="width:'+wDay+'%">'+DAYS[i]+'</th>').join('')
+        +'</tr></thead><tbody>';
+      rIdx.forEach(ri=>{
+        h+='<tr><td class="cat">'+esc(rows[ri])+'</td>'
+          +dIdx.map(di=>'<td>'+cellHtml(arrAt(sc,wk,ri,di))+'</td>').join('')+'</tr>';
       });
       h+='</tbody></table></div>';
     }
@@ -6152,64 +6282,80 @@ async function claimFreeAccess(programmeId){
   window.exportCyclePDF=function(){
     const cd=getCycle();
     if(!cd){ toast('⚠️ Aucun cycle chargé'); return; }
+    try{ if(typeof _ensureCycleThemes==='function') _ensureCycleThemes(); }catch(e){}
     const name=(document.getElementById('cycle-name')?.value||cd.name||'Cycle').trim()||'Cycle';
     const weeks=parseInt(document.getElementById('cycle-weeks')?.value)||cd.weeks||8;
 
-    const startInput=document.getElementById('cycle-start-date')?.value;
-    const startDate=startInput?new Date(startInput+'T12:00:00'):new Date();
-    if(!startInput){
-      const d=startDate.getDay();
-      startDate.setDate(startDate.getDate()-(d===0?6:d-1));
-    }
+    const si=document.getElementById('cycle-start-date')?.value;
+    const start=si?new Date(si+'T12:00:00'):new Date();
+    if(!si){ const d=start.getDay(); start.setDate(start.getDate()-(d===0?6:d-1)); }
 
     const mode=getMode();
     const doc='<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">'
+      +'<meta name="viewport" content="width=device-width,initial-scale=1">'
       +'<title>'+esc(name)+'</title><style>'
-      +'@page{size:A4 landscape;margin:8mm}'
+      +'html,body,*{-webkit-print-color-adjust:exact !important;'
+      +'print-color-adjust:exact !important;color-adjust:exact !important}'
+      +'@page{size:A4 landscape;margin:7mm}'
       +'*{box-sizing:border-box}'
       +'body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;'
       +'margin:0;padding:10px;background:#fff;color:#111;font-size:9px}'
-      +'.hd{display:flex;align-items:baseline;gap:12px;border-bottom:2px solid #111;'
-      +'padding-bottom:6px;margin-bottom:10px}'
+      +'.hd{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;'
+      +'border-bottom:2px solid #111;padding-bottom:6px;margin-bottom:8px}'
       +'.hd h1{margin:0;font-size:17px;letter-spacing:1px;text-transform:uppercase}'
       +'.hd .meta{font-size:10px;color:#555}'
       +'.badge{margin-left:auto;font-size:9px;font-weight:700;letter-spacing:1px;'
       +'border:1px solid #111;border-radius:4px;padding:2px 7px;text-transform:uppercase}'
-      +'.sec-t{font-size:12px;font-weight:800;letter-spacing:2px;margin:12px 0 6px;'
+      +'.sec-t{font-size:12px;font-weight:800;letter-spacing:2px;margin:10px 0 6px;'
       +'padding:3px 0;border-bottom:1px solid #999}'
+      +'.sec-t .tot{float:right;font-size:9px;letter-spacing:0;color:#666;font-weight:600}'
       +'.pb{page-break-before:always}'
-      +'table{width:100%;border-collapse:collapse;margin-bottom:10px;table-layout:fixed}'
-      +'th,td{border:1px solid #bbb;padding:3px 4px;vertical-align:top;text-align:left;'
+      +'.none{padding:10px 12px;background:#f4f4f4;border:1px dashed #bbb;'
+      +'border-radius:6px;color:#666;font-size:10px}'
+      +'table{width:100%;border-collapse:collapse;margin-bottom:8px;table-layout:fixed}'
+      +'th,td{border:1px solid #bbb;padding:3px;vertical-align:top;text-align:left;'
       +'word-wrap:break-word;overflow-wrap:break-word}'
-      +'th{background:#eee;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}'
-      +'td.wk,th.wk{width:62px;background:#f6f6f6;font-size:8px}'
-      +'td.cat,th.cat{width:78px;background:#f6f6f6;font-size:8px;font-weight:700}'
+      +'th{background:#e9e9e9;font-size:8px;font-weight:800;text-transform:uppercase;letter-spacing:.5px}'
+      +'td.wk,th.wk{width:62px;background:#f4f4f4;font-size:8px}'
+      +'td.cat,th.cat{background:#f4f4f4;font-size:8px;font-weight:700}'
+      +'table.recap td.cat{width:130px;text-transform:uppercase;letter-spacing:.5px}'
       +'.dt{font-weight:400;color:#666;font-size:7.5px}'
-      +'.chip{display:inline-block;padding:1.5px 5px;margin:1px 1px;border-radius:4px;'
-      +'font-size:8px;font-weight:600;line-height:1.35}'
+      // pre-wrap : conserve les retours à la ligne des WOD
+      +'.chip{display:block;white-space:pre-wrap;padding:2px 4px;margin:2px 0;'
+      +'border-radius:4px;font-size:7.5px;font-weight:600;line-height:1.35}'
+      +'table.recap .chip{display:inline-block;margin:1px 2px 1px 0;font-size:8px;'
+      +'white-space:nowrap}'
       +'.empty{color:#ccc}'
-      +'.wkblock{page-break-inside:avoid;margin-bottom:12px}'
-      +'.wk-t{font-size:11px;font-weight:800;letter-spacing:1.5px;margin:8px 0 4px;'
+      +'.wkblock{margin-bottom:10px}'
+      +'.wk-t{font-size:11px;font-weight:800;letter-spacing:1.5px;margin:6px 0 4px;'
       +'padding-bottom:2px;border-bottom:1px solid #ccc}'
-      +'.noprint{position:fixed;top:8px;right:8px;z-index:99}'
-      +'.noprint button{padding:8px 16px;background:#111;color:#fff;border:0;'
+      +'table.sess tr{page-break-inside:avoid}'
+      +'thead{display:table-header-group}'
+      +'.tip{font-size:10px;background:#fff8d6;border:1px solid #e3d27a;border-radius:6px;'
+      +'padding:8px 10px;margin-bottom:10px;line-height:1.45}'
+      +'.noprint{position:sticky;top:0;display:flex;gap:8px;align-items:center;'
+      +'padding:8px 0;background:#fff;z-index:99}'
+      +'.noprint button{padding:9px 18px;background:#111;color:#fff;border:0;'
       +'border-radius:6px;font-size:12px;font-weight:700;cursor:pointer}'
-      +'@media print{.noprint{display:none}}'
+      +'@media print{.noprint,.tip{display:none !important}}'
       +'</style></head><body>'
       +'<div class="noprint"><button onclick="window.print()">Enregistrer en PDF</button></div>'
+      +'<div class="tip"><b>Si le PDF sort en noir et blanc :</b> dans la fen&ecirc;tre '
+      +'d\'impression, ouvre <b>Plus de param&egrave;tres</b> et coche '
+      +'<b>Graphismes d\'arri&egrave;re-plan</b>.</div>'
       +'<div class="hd"><h1>'+esc(name)+'</h1>'
       +'<span class="meta">'+weeks+' semaine'+(weeks>1?'s':'')+' &middot; d&eacute;but '
-      +startDate.toLocaleDateString('fr-FR')+'</span>'
+      +start.toLocaleDateString('fr-FR')+'</span>'
       +'<span class="badge">Vue active : '+(mode==='session'?'Session':'Cycle')+'</span></div>'
-      +buildCycleSection(cd,weeks,startDate)
-      +buildSessionSection(cd,weeks,startDate)
+      +buildRecap(cd,weeks)
+      +buildCycleSection(cd,weeks,start)
+      +buildSessionSection(cd,weeks,start)
+      +buildLegacySection(cd,weeks,start)
       +'</body></html>';
 
     const w=window.open('','_blank');
     if(!w){ toast('⚠️ Autorise les pop-ups pour exporter'); return; }
-    w.document.open();
-    w.document.write(doc);
-    w.document.close();
-    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 700);
+    w.document.open(); w.document.write(doc); w.document.close();
+    setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 900);
   };
 })();
