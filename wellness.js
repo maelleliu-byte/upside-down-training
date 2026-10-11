@@ -1050,6 +1050,29 @@ function onDupPersoProgChange(){
     document.getElementById('dup-perso-prog-target-date').value=nextMon.toISOString().split('T')[0];
   }
 }
+// ===== HELPER COMMUN DUPLICATION : champs pédagogiques =====
+// Colonnes présentes À LA FOIS dans `sessions` et `personal_sessions`.
+// Sans ça, scaling + coaching tips + intensité + cible + réglages de score
+// étaient perdus à chaque duplication inter-programme / inter-espace.
+function _dupCommonFields(s){
+  return {
+    intensity:(s.intensity??null),
+    target:s.target||null,
+    tips:s.tips||null,
+    score_type:s.score_type||null,
+    sets:(s.sets??null),
+    scaling_inter:s.scaling_inter||null,
+    scaling_scaled:s.scaling_scaled||null,
+    scaling_foundation:s.scaling_foundation||null,
+    multi_score:(s.multi_score??null),
+    score_count:(s.score_count??null),
+    score_labels:s.score_labels||null,
+    score_label1:s.score_label1||null,
+    score_label2:s.score_label2||null,
+    score_note_label:s.score_note_label||null
+  };
+}
+
 async function confirmDupPersoWeekV2(){
   if(!currentPersoAthlete)return;
   const dest=document.getElementById('dup-perso-dest-type').value;
@@ -1099,6 +1122,7 @@ async function confirmDupPersoWeekV2(){
                color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
                youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
                source_block_id:s.source_block_id||s.id||null,
+               ..._dupCommonFields(s),
                athlete_id:tgtAthId,date:d.toISOString().split('T')[0],created_by:currentUser.id};
       });
       const {error:e2}=await sb.from('personal_sessions').insert(rows);
@@ -1119,6 +1143,7 @@ async function confirmDupPersoWeekV2(){
         color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
         youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
         source_block_id:s.source_block_id||s.id||null,
+        ..._dupCommonFields(s),
         created_by:currentUser.id,...extra
       });
       if(tgtOneshot){
@@ -4273,6 +4298,8 @@ async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
     color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
     youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
     source_block_id:s.source_block_id||s.id||null,
+    ..._dupCommonFields(s),
+    is_benchmark:(s.is_benchmark??null),
     created_by:currentUser.id,...extra
   });
   let rows;
@@ -4350,6 +4377,7 @@ async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
     color:s.color||null,sort_order:(s.sort_order??null),studio_id:s.studio_id||null,
     youtube_url:s.youtube_url||null,youtube_label:s.youtube_label||null,videos:s.videos||null,
     source_block_id:s.source_block_id||s.id||null,
+    ..._dupCommonFields(s),
     athlete_id:athleteId,date,created_by:currentUser.id
   });
   let rows;
