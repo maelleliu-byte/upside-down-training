@@ -504,7 +504,7 @@
         <div style="display:flex;gap:6px">
           <button class="arrow-btn" onclick="changeAdminWeek(-1)">‹</button>
           <button class="arrow-btn" onclick="changeAdminWeek(1)">›</button>
-          <button class="arrow-btn" onclick="openDupWeekModalV2()" title="Dupliquer la semaine entière" style="font-size:14px">📋</button>
+          <button class="arrow-btn" onclick="openDupWeekModalV2()" title="Dupliquer la semaine ou certains jours" style="font-size:14px">📋</button>
         </div>
       </div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px;color:var(--muted)" id="admin-cal-week-label">—</div>
@@ -515,8 +515,18 @@
     <div class="modal-overlay" id="dup-week-modal">
       <div class="modal-box" style="position:relative">
         <button onclick="closeDupWeekModal()" style="position:absolute;top:10px;right:14px;background:none;border:none;color:var(--muted);font-size:24px;line-height:1;cursor:pointer;padding:4px 6px">×</button>
-        <div class="modal-title">📋 Dupliquer la semaine</div>
+        <div class="modal-title" id="dup-week-modal-title">📋 Dupliquer la semaine</div>
         <div style="font-size:13px;color:var(--muted);margin-bottom:14px">Source : <strong id="dup-week-source-label">—</strong></div>
+        <!-- Jours à dupliquer -->
+        <div class="form-group">
+          <label class="form-label">Jours à dupliquer</label>
+          <div id="dup-week-days" style="display:flex;gap:5px;flex-wrap:wrap"></div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap">
+            <button type="button" onclick="dupWeekSelectAllDays(true)" style="padding:5px 10px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">Tout</button>
+            <button type="button" onclick="dupWeekSelectAllDays(false)" style="padding:5px 10px;background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:7px;font-size:11px;font-weight:600;cursor:pointer">Aucun</button>
+            <span id="dup-week-days-hint" style="font-size:11px;color:var(--muted)">—</span>
+          </div>
+        </div>
         <!-- Sélecteur destination -->
         <div class="form-group">
           <label class="form-label">Destination</label>
@@ -530,6 +540,13 @@
         <div id="dup-week-oneshot-group" class="form-group" style="display:none">
           <label class="form-label">Semaine de destination</label>
           <select class="form-select" id="dup-week-target-week"></select>
+          <div id="dup-week-target-dow-group" style="display:none;margin-top:10px">
+            <label class="form-label">Jour de destination</label>
+            <select class="form-select" id="dup-week-target-dow">
+              <option value="0">Lundi</option><option value="1">Mardi</option><option value="2">Mercredi</option>
+              <option value="3">Jeudi</option><option value="4">Vendredi</option><option value="5">Samedi</option><option value="6">Dimanche</option>
+            </select>
+          </div>
         </div>
         <!-- Date (même prog abo / perso) -->
         <div id="dup-week-date-group" class="form-group">
@@ -543,6 +560,13 @@
           <div id="dup-week-other-prog-oneshot" style="display:none;margin-top:10px">
             <label class="form-label">Semaine cible dans ce programme</label>
             <select class="form-select" id="dup-week-other-prog-week"></select>
+            <div id="dup-week-other-prog-dow-group" style="display:none;margin-top:10px">
+              <label class="form-label">Jour de destination</label>
+              <select class="form-select" id="dup-week-other-prog-dow">
+                <option value="0">Lundi</option><option value="1">Mardi</option><option value="2">Mercredi</option>
+                <option value="3">Jeudi</option><option value="4">Vendredi</option><option value="5">Samedi</option><option value="6">Dimanche</option>
+              </select>
+            </div>
           </div>
           <div id="dup-week-other-prog-date" style="display:none;margin-top:10px">
             <label class="form-label">Lundi de la semaine cible</label>

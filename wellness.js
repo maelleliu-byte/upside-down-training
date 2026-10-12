@@ -4140,8 +4140,115 @@ function moveThemeChip(wk, ti, di, chi, dti, ddi){
   setTimeout(_tryAll, 2000);
 })();
 
-// ===== DUP WEEK PLANNING V2 (remplace openDupWeekModal d'admin.js) =====
-async function openDupWeekModalV2(){
+// ===== DUP WEEK / DUP JOURS — PLANNING V2 (remplace openDupWeekModal d'admin.js) =====
+// Convention : day_of_week en base = 0-indexé (0 = Lundi … 6 = Dimanche), comme le select #f-dow
+// et comme le rendu du calendrier one-shot dans admin.js.
+
+const DUP_DAY_LABELS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+const DUP_DAY_FULL=['lundi','mardi','mercredi','jeudi','vendredi','samedi','dimanche'];
+let _dupWeekDays=new Set([0,1,2,3,4,5,6]);
+let _dupWeekCounts=null;
+
+function _dupSelDays(){return [..._dupWeekDays].sort((a,b)=>a-b);}
+function _dupDaysBetween(isoFrom,isoTo){
+  const a=new Date(isoFrom+'T12:00:00Z'),b=new Date(isoTo+'T12:00:00Z');
+  return Math.round((b-a)/86400000);
+}
+function _dupAddDaysIso(iso,n){
+  const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);
+  return d.toISOString().split('T')[0];
+}
+function _dupMondayIso(dateStr){
+  const d=new Date(dateStr+'T12:00:00');
+  const dow=d.getDay();
+  d.setDate(d.getDate()-(dow===0?6:dow-1));
+  return d.toISOString().split('T')[0];
+}
+function _dupSrcWeekIsos(){return getWeekDates(adminWeekOffset).map(d=>d.toISOString().split('T')[0]);}
+function _dupDowOf(s){return (s.day_of_week==null?0:s.day_of_week);}
+// Date synthétique des programmes one-shot (même formule que saveSession d'admin.js)
+function _dupOneshotStoredDate(weekNumber,dayOfWeek){
+  return `2000-01-${String(((weekNumber-1)*7+dayOfWeek+1)%28+1).padStart(2,'0')}`;
+}
+
+// ---- Sélecteur de jours ----
+function renderDupWeekDays(){
+  const wrap=document.getElementById('dup-week-days');
+  if(!wrap)return;
+  wrap.innerHTML=DUP_DAY_LABELS.map((lbl,i)=>{
+    const on=_dupWeekDays.has(i);
+    const n=_dupWeekCounts?_dupWeekCounts[i]:null;
+    const empty=(n===0);
+    return `<button type="button" onclick="toggleDupWeekDay(${i})" style="flex:1;min-width:40px;padding:7px 4px;border-radius:8px;cursor:pointer;font-size:11px;font-weight:700;letter-spacing:.5px;background:${on?'var(--accent)':'var(--card2)'};color:${on?'#000':(empty?'var(--muted)':'var(--text2)')};border:1.5px solid ${on?'var(--accent)':'var(--border2)'};opacity:${(!on&&empty)?'.45':'1'}">${lbl}${n!=null?`<div style="font-size:9px;font-weight:600;opacity:.75;margin-top:2px">${n}</div>`:''}</button>`;
+  }).join('');
+  _dupWeekSyncLabels();
+}
+function toggleDupWeekDay(i){
+  if(_dupWeekDays.has(i))_dupWeekDays.delete(i);else _dupWeekDays.add(i);
+  renderDupWeekDays();
+}
+function dupWeekSelectAllDays(on){
+  _dupWeekDays=on?new Set([0,1,2,3,4,5,6]):new Set();
+  renderDupWeekDays();
+}
+function _dupWeekSyncLabels(){
+  const days=_dupSelDays();
+  const n=days.length;
+  const single=(n===1);
+  const what=n===0?'…':(n===7?'la semaine':(single?`le ${DUP_DAY_FULL[days[0]]}`:`${n} jours`));
+  const title=document.getElementById('dup-week-modal-title');
+  const btn=document.getElementById('dup-week-confirm-btn');
+  const hint=document.getElementById('dup-week-days-hint');
+  if(title)title.textContent=`📋 Dupliquer ${what}`;
+  if(btn)btn.textContent=`📋 Dupliquer ${what}`;
+  if(hint){
+    const total=_dupWeekCounts?days.reduce((s,i)=>s+(_dupWeekCounts[i]||0),0):null;
+    hint.textContent=n===0?'Sélectionne au moins un jour'
+      :(total!=null?`${total} séance${total>1?'s':''} à copier`:`${n} jour${n>1?'s':''} sélectionné${n>1?'s':''}`);
+  }
+  const dest=document.getElementById('dup-week-dest-type')?.value||'same_prog';
+  const prog=getProgById(document.getElementById('admin-filter-prog')?.value);
+  const oneshot=isOneshotProg(prog);
+  // Libellé de la date cible : date exacte si 1 seul jour, sinon lundi de la semaine cible
+  const dl=document.getElementById('dup-week-date-label');
+  if(dl){
+    if(dest==='perso'&&oneshot&&!single)dl.textContent='Lundi de référence (semaine cible)';
+    else dl.textContent=single?'Date de destination':'Lundi de la semaine cible';
+  }
+  const odl=document.querySelector('#dup-week-other-prog-date .form-label');
+  if(odl)odl.textContent=single?'Date de destination':'Lundi de la semaine cible';
+  // Jour de destination (cibles one-shot) : uniquement quand 1 seul jour source
+  const g1=document.getElementById('dup-week-target-dow-group');
+  if(g1){
+    g1.style.display=single?'':'none';
+    const s=document.getElementById('dup-week-target-dow');
+    if(single&&s)s.value=String(days[0]);
+  }
+  const g2=document.getElementById('dup-week-other-prog-dow-group');
+  if(g2){
+    g2.style.display=single?'':'none';
+    const s=document.getElementById('dup-week-other-prog-dow');
+    if(single&&s)s.value=String(days[0]);
+  }
+}
+async function _dupWeekLoadCounts(progId,oneshot){
+  try{
+    const counts=[0,0,0,0,0,0,0];
+    if(oneshot){
+      const {data}=await sb.from('sessions').select('day_of_week').eq('programme_id',progId).eq('week_number',adminWeekOffset+1);
+      (data||[]).forEach(s=>{const i=_dupDowOf(s);if(i>=0&&i<7)counts[i]++;});
+    } else {
+      const isos=_dupSrcWeekIsos();
+      const {data}=await sb.from('sessions').select('date').eq('programme_id',progId).in('date',isos);
+      (data||[]).forEach(s=>{const i=isos.indexOf(s.date);if(i>=0)counts[i]++;});
+    }
+    return counts;
+  }catch(e){console.warn('dup week counts',e);return null;}
+}
+
+// ---- Ouverture de la modale ----
+// preselectDay (0..6) : ouvre directement en mode « 1 seule journée »
+async function openDupWeekModalV2(preselectDay){
   const progId=document.getElementById('admin-filter-prog')?.value;
   if(!progId){showToast('⚠️ Aucun programme sélectionné');return;}
   const prog=getProgById(progId);
@@ -4163,7 +4270,7 @@ async function openDupWeekModalV2(){
     const sel=document.getElementById('dup-week-target-week');
     sel.innerHTML=Array.from({length:total},(_,i)=>{
       const w=i+1;
-      return`<option value="${w}" ${w===weekNum?'disabled':''}>Semaine ${w}${w===weekNum?' (actuelle)':''}</option>`;
+      return`<option value="${w}">Semaine ${w}${w===weekNum?' (actuelle)':''}</option>`;
     }).join('');
     sel.value=String(Math.min(weekNum+1,total));
   } else {
@@ -4175,8 +4282,6 @@ async function openDupWeekModalV2(){
     const nextMon=new Date(dates[0]);nextMon.setDate(dates[0].getDate()+7);
     document.getElementById('dup-week-target-date').value=nextMon.toISOString().split('T')[0];
   }
-  const dl=document.getElementById('dup-week-date-label');
-  if(dl) dl.textContent='Lundi de la semaine cible';
 
   // Masquer groupes spéciaux
   document.getElementById('dup-week-other-prog-group').style.display='none';
@@ -4189,6 +4294,25 @@ async function openDupWeekModalV2(){
     : '<option value="">— Aucun autre programme —</option>';
   if(otherProgs.length) onDupWeekTargetProgChange();
 
+  // Jours : sélection par défaut = tous les jours qui contiennent au moins une séance
+  _dupWeekCounts=null;
+  if(preselectDay!=null&&preselectDay>=0&&preselectDay<=6){
+    _dupWeekDays=new Set([preselectDay]);
+  } else {
+    _dupWeekDays=new Set([0,1,2,3,4,5,6]);
+  }
+  renderDupWeekDays();
+  modal.classList.add('open');
+
+  _dupWeekLoadCounts(progId,oneshot).then(counts=>{
+    _dupWeekCounts=counts;
+    if(counts&&(preselectDay==null||preselectDay<0||preselectDay>6)){
+      const nonEmpty=counts.map((n,i)=>n>0?i:-1).filter(i=>i>=0);
+      if(nonEmpty.length)_dupWeekDays=new Set(nonEmpty);
+    }
+    renderDupWeekDays();
+  });
+
   // Remplir athlètes perso (fetch si cache vide car espace perso pas encore visité)
   if(!persoAthletesCache.length){
     try{ await loadPersoAthletes(); } catch(e){ console.warn('perso athletes load',e); }
@@ -4200,8 +4324,6 @@ async function openDupWeekModalV2(){
   document.getElementById('dup-week-target-athlete').innerHTML=athletes.length
     ? athletes.map(a=>`<option value="${a.id}">${a.coach_favorite?'★ ':''}${a.full_name||a.email||a.id}</option>`).join('')
     : '<option value="">— Aucun athlète —</option>';
-
-  modal.classList.add('open');
 }
 
 function onDupWeekDestChange(){
@@ -4209,26 +4331,25 @@ function onDupWeekDestChange(){
   const progId=document.getElementById('admin-filter-prog')?.value;
   const prog=getProgById(progId);
   const oneshot=isOneshotProg(prog);
+  const single=_dupSelDays().length===1;
 
   document.getElementById('dup-week-oneshot-group').style.display=(dest==='same_prog'&&oneshot)?'':'none';
   document.getElementById('dup-week-date-group').style.display=
-    (dest==='same_prog'&&!oneshot)||(dest==='perso')||(dest==='perso'&&oneshot)?'':'none';
+    (dest==='same_prog'&&!oneshot)||(dest==='perso')?'':'none';
   document.getElementById('dup-week-other-prog-group').style.display=dest==='other_prog'?'':'none';
   document.getElementById('dup-week-perso-group').style.display=dest==='perso'?'':'none';
 
-  const dl=document.getElementById('dup-week-date-label');
   if(dest==='perso'&&oneshot){
-    // one-shot→perso : on a besoin d'un lundi de référence
+    // one-shot → perso : il faut une date de référence (lundi) ou la date exacte si 1 seul jour
     document.getElementById('dup-week-date-group').style.display='';
-    if(dl) dl.textContent='Lundi de référence (semaine cible)';
     const now=new Date();const dd=now.getDay();
     const mon=new Date(now);mon.setDate(now.getDate()-(dd===0?6:dd-1)+7);
-    document.getElementById('dup-week-target-date').value=mon.toISOString().split('T')[0];
-  } else if(dl){
-    dl.textContent='Lundi de la semaine cible';
+    const el=document.getElementById('dup-week-target-date');
+    if(el&&!el.value)el.value=mon.toISOString().split('T')[0];
   }
 
   if(dest==='other_prog') onDupWeekTargetProgChange();
+  _dupWeekSyncLabels();
 }
 
 function onDupWeekTargetProgChange(){
@@ -4251,46 +4372,94 @@ function onDupWeekTargetProgChange(){
     const nextMon=new Date(dates[0]);nextMon.setDate(dates[0].getDate()+7);
     document.getElementById('dup-week-other-prog-target-date').value=nextMon.toISOString().split('T')[0];
   }
+  _dupWeekSyncLabels();
+}
+
+// ---- Chargement des séances source (filtrées sur les jours cochés) ----
+async function _dupWeekFetchSource(progId,oneshot){
+  const days=_dupSelDays();
+  if(!days.length){showToast('⚠️ Sélectionne au moins un jour');return null;}
+  let data,error;
+  if(oneshot){
+    ({data,error}=await sb.from('sessions').select('*').eq('programme_id',progId).eq('week_number',adminWeekOffset+1));
+    if(!error)data=(data||[]).filter(s=>days.includes(_dupDowOf(s)));
+  } else {
+    const isos=_dupSrcWeekIsos();
+    ({data,error}=await sb.from('sessions').select('*').in('date',days.map(i=>isos[i])).eq('programme_id',progId));
+  }
+  if(error){showToast('❌ '+error.message);return null;}
+  if(!data||!data.length){showToast('⚠️ Aucune séance à copier sur ces jours');return null;}
+  return data;
 }
 
 async function confirmDupWeekV2(){
   const dest=document.getElementById('dup-week-dest-type').value;
   const progId=document.getElementById('admin-filter-prog')?.value;
   if(!progId){showToast('⚠️ Aucun programme sélectionné');return;}
+  if(!_dupSelDays().length){showToast('⚠️ Sélectionne au moins un jour');return;}
   const prog=getProgById(progId);
   const oneshot=isOneshotProg(prog);
   const btn=document.getElementById('dup-week-confirm-btn');
   if(btn){btn.disabled=true;btn.textContent='Copie...';}
   try{
-    if(dest==='same_prog'){
-      // Délègue à la fonction existante d'admin.js (elle gère le close+reload)
-      await confirmDupWeek();
-      return;
-    }
+    if(dest==='same_prog')  await _dupWeekSameProg(progId,prog,oneshot);
     if(dest==='other_prog') await _dupWeekToOtherProg(progId,prog,oneshot);
     if(dest==='perso')      await _dupWeekToPerso(progId,prog,oneshot);
   } finally {
-    if(btn){btn.disabled=false;btn.textContent='📋 Dupliquer la semaine';}
+    if(btn){btn.disabled=false;}
+    _dupWeekSyncLabels();
   }
 }
 
+// ---- Destination : même programme ----
+async function _dupWeekSameProg(progId,prog,oneshot){
+  const days=_dupSelDays();
+  const single=days.length===1;
+  const data=await _dupWeekFetchSource(progId,oneshot);
+  if(!data)return;
+  let rows;
+  if(oneshot){
+    const srcWeek=adminWeekOffset+1;
+    const tgtWeek=parseInt(document.getElementById('dup-week-target-week').value);
+    if(!tgtWeek){showToast('⚠️ Choisis une semaine de destination');return;}
+    const tgtDow=single?(parseInt(document.getElementById('dup-week-target-dow').value)||0):null;
+    if(tgtWeek===srcWeek&&(!single||tgtDow===days[0])){
+      showToast(single?'⚠️ Choisis une semaine ou un jour différent':'⚠️ Choisis une semaine différente');return;
+    }
+    rows=data.map(({id,created_at,...rest})=>{
+      const dow=single?tgtDow:_dupDowOf(rest);
+      return{...rest,week_number:tgtWeek,day_of_week:dow,date:_dupOneshotStoredDate(tgtWeek,dow),created_by:currentUser.id};
+    });
+  } else {
+    const tgtDateStr=document.getElementById('dup-week-target-date').value;
+    if(!tgtDateStr){showToast('⚠️ Choisis une date');return;}
+    const isos=_dupSrcWeekIsos();
+    const diffDays=single
+      ? _dupDaysBetween(isos[days[0]],tgtDateStr)
+      : _dupDaysBetween(isos[0],_dupMondayIso(tgtDateStr));
+    if(diffDays===0){showToast(single?'⚠️ Choisis une autre date':'⚠️ Choisis une semaine différente');return;}
+    rows=data.map(({id,created_at,...rest})=>({
+      ...rest,date:_dupAddDaysIso(rest.date,diffDays),created_by:currentUser.id
+    }));
+  }
+  const {error}=await sb.from('sessions').insert(rows);
+  if(error){showToast('❌ '+error.message);return;}
+  showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} copiée${rows.length>1?'s':''}`);
+  closeDupWeekModal();
+  loadAdminCalendar();
+}
+
+// ---- Destination : autre programme ----
 async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
   const tgtProgId=document.getElementById('dup-week-target-prog').value;
   if(!tgtProgId){showToast('⚠️ Aucun programme cible');return;}
   const tgtProg=getProgById(tgtProgId);
   const tgtOneshot=isOneshotProg(tgtProg);
+  const days=_dupSelDays();
+  const single=days.length===1;
 
-  // Charger sessions source
-  let data,error;
-  if(srcOneshot){
-    const srcWeek=adminWeekOffset+1;
-    ({data,error}=await sb.from('sessions').select('*').eq('programme_id',srcProgId).eq('week_number',srcWeek));
-  } else {
-    const srcDates=getWeekDates(adminWeekOffset).map(d=>d.toISOString().split('T')[0]);
-    ({data,error}=await sb.from('sessions').select('*').in('date',srcDates).eq('programme_id',srcProgId));
-  }
-  if(error){showToast('❌ '+error.message);return;}
-  if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
+  const data=await _dupWeekFetchSource(srcProgId,srcOneshot);
+  if(!data)return;
 
   // Helper whitelist sessions (colonnes communes + champs cibles)
   const _toSess=(s,extra)=>({
@@ -4306,42 +4475,32 @@ async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
   if(tgtOneshot){
     const tgtWeek=parseInt(document.getElementById('dup-week-other-prog-week').value);
     if(!tgtWeek){showToast('⚠️ Choisis une semaine cible');return;}
-    if(srcOneshot){
-      // one-shot → one-shot
-      rows=data.map(s=>_toSess(s,{programme_id:tgtProgId,week_number:tgtWeek,day_of_week:s.day_of_week||null}));
-    } else {
-      // abo → one-shot : date → day_of_week
-      rows=data.map(s=>{
-        const d=new Date(s.date+'T12:00:00');
-        const dow=d.getDay()===0?7:d.getDay();
-        return _toSess(s,{programme_id:tgtProgId,week_number:tgtWeek,day_of_week:dow});
-      });
-    }
+    const tgtDow=single?(parseInt(document.getElementById('dup-week-other-prog-dow').value)||0):null;
+    rows=data.map(s=>{
+      let dow;
+      if(single)dow=tgtDow;
+      else if(srcOneshot)dow=_dupDowOf(s);
+      else {const d=new Date(s.date+'T12:00:00');dow=(d.getDay()===0?6:d.getDay()-1);}
+      return _toSess(s,{programme_id:tgtProgId,week_number:tgtWeek,day_of_week:dow,date:_dupOneshotStoredDate(tgtWeek,dow)});
+    });
   } else {
     const tgtDateStr=document.getElementById('dup-week-other-prog-target-date').value;
     if(!tgtDateStr){showToast('⚠️ Choisis une date cible');return;}
-    const tgtPicked=new Date(tgtDateStr+'T12:00:00');
-    const tgtDay=tgtPicked.getDay();
-    const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
     if(srcOneshot){
-      // one-shot → abo : week_number+day_of_week → date
-      rows=data.map(s=>{
-        const dow=(s.day_of_week||1)-1;
-        const d=new Date(tgtMon);d.setDate(tgtMon.getDate()+dow);
-        return _toSess(s,{programme_id:tgtProgId,date:d.toISOString().split('T')[0]});
-      });
+      // one-shot → abo : week_number + day_of_week → date
+      const tgtMonIso=_dupMondayIso(tgtDateStr);
+      rows=data.map(s=>_toSess(s,{
+        programme_id:tgtProgId,
+        date:single?tgtDateStr:_dupAddDaysIso(tgtMonIso,_dupDowOf(s))
+      }));
     } else {
-      // abo → abo
-      const srcMon=getWeekDates(adminWeekOffset)[0];
-      const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
-      // Le blocage "même semaine" n'a de sens que si on duplique DANS le même programme.
-      // Ici la cible est forcément un autre programme (_dupWeekToOtherProg), donc garder
-      // la même semaine calendaire (même lundi) est valide et voulu.
+      const isos=_dupSrcWeekIsos();
+      const diffDays=single
+        ? _dupDaysBetween(isos[days[0]],tgtDateStr)
+        : _dupDaysBetween(isos[0],_dupMondayIso(tgtDateStr));
+      // Le blocage "même semaine" n'a de sens que dans le même programme.
       if(diffDays===0&&tgtProgId===srcProgId){showToast('⚠️ Choisis une semaine différente');return;}
-      rows=data.map(s=>{
-        const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
-        return _toSess(s,{programme_id:tgtProgId,date:d.toISOString().split('T')[0]});
-      });
+      rows=data.map(s=>_toSess(s,{programme_id:tgtProgId,date:_dupAddDaysIso(s.date,diffDays)}));
     }
   }
   const {error:e2}=await sb.from('sessions').insert(rows);
@@ -4351,25 +4510,17 @@ async function _dupWeekToOtherProg(srcProgId,srcProg,srcOneshot){
   loadAdminCalendar();
 }
 
+// ---- Destination : espace perso d'un athlète ----
 async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
   const athleteId=document.getElementById('dup-week-target-athlete').value;
   if(!athleteId){showToast('⚠️ Aucun athlète sélectionné');return;}
   const tgtDateStr=document.getElementById('dup-week-target-date').value;
-  if(!tgtDateStr){showToast('⚠️ Choisis un lundi cible');return;}
-  const tgtPicked=new Date(tgtDateStr+'T12:00:00');
-  const tgtDay=tgtPicked.getDay();
-  const tgtMon=new Date(tgtPicked);tgtMon.setDate(tgtPicked.getDate()-(tgtDay===0?6:tgtDay-1));
+  if(!tgtDateStr){showToast('⚠️ Choisis une date cible');return;}
+  const days=_dupSelDays();
+  const single=days.length===1;
 
-  let data,error;
-  if(srcOneshot){
-    const srcWeek=adminWeekOffset+1;
-    ({data,error}=await sb.from('sessions').select('*').eq('programme_id',srcProgId).eq('week_number',srcWeek));
-  } else {
-    const srcDates=getWeekDates(adminWeekOffset).map(d=>d.toISOString().split('T')[0]);
-    ({data,error}=await sb.from('sessions').select('*').in('date',srcDates).eq('programme_id',srcProgId));
-  }
-  if(error){showToast('❌ '+error.message);return;}
-  if(!data||!data.length){showToast('⚠️ Aucune séance à copier');return;}
+  const data=await _dupWeekFetchSource(srcProgId,srcOneshot);
+  if(!data)return;
 
   // Whitelist : uniquement les colonnes existantes dans personal_sessions
   const _toPerso=(s,date)=>({
@@ -4382,19 +4533,14 @@ async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
   });
   let rows;
   if(srcOneshot){
-    // week_number+day_of_week → date calculée depuis tgtMon
-    rows=data.map(s=>{
-      const dow=(s.day_of_week||1)-1;
-      const d=new Date(tgtMon);d.setDate(tgtMon.getDate()+dow);
-      return _toPerso(s,d.toISOString().split('T')[0]);
-    });
+    const tgtMonIso=_dupMondayIso(tgtDateStr);
+    rows=data.map(s=>_toPerso(s,single?tgtDateStr:_dupAddDaysIso(tgtMonIso,_dupDowOf(s))));
   } else {
-    const srcMon=getWeekDates(adminWeekOffset)[0];
-    const diffDays=Math.round((tgtMon-srcMon)/(24*60*60*1000));
-    rows=data.map(s=>{
-      const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+diffDays);
-      return _toPerso(s,d.toISOString().split('T')[0]);
-    });
+    const isos=_dupSrcWeekIsos();
+    const diffDays=single
+      ? _dupDaysBetween(isos[days[0]],tgtDateStr)
+      : _dupDaysBetween(isos[0],_dupMondayIso(tgtDateStr));
+    rows=data.map(s=>_toPerso(s,_dupAddDaysIso(s.date,diffDays)));
   }
   const {error:e2}=await sb.from('personal_sessions').insert(rows);
   if(e2){showToast('❌ '+e2.message);return;}
@@ -4402,6 +4548,42 @@ async function _dupWeekToPerso(srcProgId,srcProg,srcOneshot){
   showToast(`✅ ${rows.length} séance${rows.length>1?'s':''} → ${ath?.full_name||'athlète'}`);
   closeDupWeekModal();
 }
+
+// ---- Bouton 📋 sur chaque jour du calendrier admin (duplication d'une seule journée) ----
+(function(){
+  if(window.__dupDayBtnPatchBound)return;
+  window.__dupDayBtnPatchBound=true;
+  function inject(){
+    const cal=document.getElementById('admin-calendar');
+    if(!cal)return;
+    const grids=cal.querySelectorAll('.cal-grid');
+    if(grids.length<2)return;
+    const row=grids[1]; // ligne des dates / J1..J7
+    Array.from(row.children).forEach((cell,i)=>{
+      if(i>6||cell.querySelector('.dup-day-btn'))return;
+      const b=document.createElement('button');
+      b.type='button';
+      b.className='dup-day-btn';
+      b.textContent='📋';
+      b.title='Dupliquer cette journée';
+      b.style.cssText='margin-left:5px;background:none;border:none;padding:0 2px;font-size:10px;line-height:1;cursor:pointer;opacity:.5';
+      b.addEventListener('click',function(ev){ev.stopPropagation();openDupWeekModalV2(i);});
+      cell.appendChild(b);
+    });
+  }
+  function start(){
+    const cal=document.getElementById('admin-calendar');
+    if(!cal)return false;
+    try{new MutationObserver(()=>inject()).observe(cal,{childList:true});}catch(e){console.warn('dup day observer',e);}
+    inject();
+    return true;
+  }
+  if(!start()){
+    document.addEventListener('DOMContentLoaded',start);
+    setTimeout(start,1500);
+    setTimeout(start,3000);
+  }
+})();
 
 // ===================================================
 // PROGRAMMES GRATUITS — is_free support
