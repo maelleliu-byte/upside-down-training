@@ -6387,3 +6387,203 @@ async function claimFreeAccess(programmeId){
     setTimeout(function(){ try{ w.focus(); w.print(); }catch(e){} }, 900);
   };
 })();
+
+/* ===========================================================
+   SCALING RICHE — Intermédiaire / Scaled / Fondation
+   -----------------------------------------------------------
+   Avant : 3 <textarea> plates (min-height 70px), texte blanc
+   uniquement, aucune mise en forme possible.
+   Après : chaque champ devient un éditeur riche identique à
+   « Contenu RX » (gras, italique, polices, 7 couleurs + pipette,
+   effacer formatage), plus haut et redimensionnable.
+
+   Compat : admin.js (read-only par convention) lit et écrit ces
+   champs uniquement via `document.getElementById('f-scaling-*').value`.
+   On garde donc le <textarea> en place (masqué) et on redéfinit sa
+   propriété `value` pour qu'elle pointe vers l'éditeur :
+     - get  -> editor.innerHTML (ou '' si visuellement vide)
+     - set  -> editor.innerHTML = html(valeur)
+   Résultat : saveSession, editSession, les templates de séance,
+   persoEditSession et les resets de formulaire fonctionnent sans
+   AUCUNE modification de admin.js.
+
+   Rendu côté athlète : planning.js / wellness.js injectent déjà
+   s.scaling_* en innerHTML dans .scaling-text -> le HTML s'affiche.
+   =========================================================== */
+(function(){
+  if(window.__patchBound_scalingRichEditors) return;
+  window.__patchBound_scalingRichEditors = true;
+
+  var FIELDS=[
+    {id:'f-scaling-inter',      ph:'Modifications pour le niveau intermédiaire...'},
+    {id:'f-scaling-scaled',     ph:'Modifications pour le niveau scaled...'},
+    {id:'f-scaling-foundation', ph:'Modifications pour le niveau fondation...'}
+  ];
+
+  var COLORS=[
+    {c:'#f0f0f0', t:'Blanc',     extra:';border-color:#555'},
+    {c:'#ff4444', t:'Rouge',     extra:''},
+    {c:'#47ff8c', t:'Vert',      extra:''},
+    {c:'#47c8ff', t:'Bleu',      extra:''},
+    {c:'#111111', t:'Noir',      extra:';background:#f0f0f0'},
+    {c:'#e8ff47', t:'Jaune',     extra:''},
+    {c:'#2dd4bf', t:'Turquoise', extra:''}
+  ];
+
+  /* ---------- 1. CSS ---------- */
+  function injectStyle(){
+    if(document.getElementById('scaling-rich-style')) return;
+    var s=document.createElement('style');
+    s.id='scaling-rich-style';
+    s.textContent=[
+      /* toolbar compacte : une seule ligne scrollable (tablette / mobile) */
+      '.scaling-rich .rich-toolbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;',
+      '-webkit-overflow-scrolling:touch;padding:6px 8px;gap:3px}',
+      '.scaling-rich .rich-toolbar::-webkit-scrollbar{display:none}',
+      '.scaling-rich .rich-toolbar>*{flex:0 0 auto}',
+      /* zone de saisie plus grande + redimensionnable */
+      '.scaling-rich .rich-content{min-height:120px;resize:vertical;overflow:auto;font-size:14px}',
+      '.scaling-rich{margin-top:2px}',
+      /* les polices appliquees n etaient visibles que dans l editeur :
+         on les rend visibles partout (vue athlete, modal lecture, calendrier) */
+      '.font-serif-applied{font-family:Georgia,serif;font-weight:700}',
+      '.font-sans-bold-applied{font-family:\'DM Sans\',sans-serif;font-weight:700}',
+      '.font-sans-italic-applied{font-family:\'DM Sans\',sans-serif;font-style:italic}',
+      /* le HTML des scalings peut contenir des <div>/<br> : pas de double saut */
+      '.scaling-text div{min-height:1px}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  /* ---------- 2. helpers texte <-> html ---------- */
+  function esc(v){
+    return String(v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+  // Valeur stockée -> HTML éditeur. Les anciennes séances contiennent du
+  // texte brut avec des \n : on les convertit en <br> sans rien casser.
+  function toHtml(v){
+    if(v==null) return '';
+    v=String(v);
+    if(!v) return '';
+    if(/<[a-z!\/][^>]*>/i.test(v)) return v;          // déjà du HTML
+    return esc(v).replace(/\r?\n/g,'<br>');
+  }
+  // Éditeur visuellement vide -> '' (pour que .trim() côté admin.js donne null)
+  function isBlank(ed){
+    if(ed.querySelector('img')) return false;
+    return !(ed.textContent||'').replace(/[​ ]/g,' ').trim();
+  }
+
+  /* ---------- 3. toolbar (identique à Contenu RX) ---------- */
+  function toolbarHtml(uid){
+    var h='<div class="rich-toolbar">'
+      +'<button type="button" class="rich-btn" onclick="richCmd(\'bold\')" title="Gras"><b>G</b></button>'
+      +'<button type="button" class="rich-btn" onclick="richCmd(\'italic\')" title="Italique"><i>I</i></button>'
+      +'<div class="rich-sep"></div>'
+      +'<button type="button" class="rich-btn font-serif" onclick="richFont(\'serif\')" title="Serif Bold">Aa</button>'
+      +'<button type="button" class="rich-btn font-sans-bold" onclick="richFont(\'sans-bold\')" title="Sans-serif Bold"><b>Aa</b></button>'
+      +'<button type="button" class="rich-btn font-sans-italic" onclick="richFont(\'sans-italic\')" title="Sans-serif Italique"><i>Aa</i></button>'
+      +'<div class="rich-sep"></div>';
+    COLORS.forEach(function(c){
+      h+='<button type="button" class="rich-color-btn" style="color:'+c.c+c.extra+'" '
+        +'onclick="richColor(\''+c.c+'\')" title="'+c.t+'">A</button>';
+    });
+    h+='<input type="color" id="rich-color-picker-'+uid+'" class="rich-color-picker" value="#e8ff47" '
+      +'oninput="richColor(this.value)" title="Couleur personnalisée">'
+      +'<div class="rich-sep"></div>'
+      +'<button type="button" class="rich-btn" onclick="richCmd(\'removeFormat\')" '
+      +'title="Effacer formatage" style="font-size:11px;color:var(--muted)">✕ fmt</button>'
+      +'</div>';
+    return h;
+  }
+
+  /* ---------- 4. transformation d'un champ ---------- */
+  var protoValue=Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value');
+
+  function upgrade(f){
+    var ta=document.getElementById(f.id);
+    if(!ta || ta.dataset.richUpgraded==='1') return false;
+
+    var initial=protoValue.get.call(ta);   // lecture AVANT redéfinition
+    ta.dataset.richUpgraded='1';
+
+    var uid=f.id.replace(/^f-scaling-/,'');
+    var wrap=document.createElement('div');
+    wrap.className='rich-editor-wrap scaling-rich';
+    wrap.innerHTML=toolbarHtml(uid);
+
+    var ed=document.createElement('div');
+    ed.className='rich-content';
+    ed.id=f.id+'-editor';
+    ed.setAttribute('contenteditable','true');
+    ed.setAttribute('data-placeholder',f.ph);
+    ed.innerHTML=toHtml(initial);
+    wrap.appendChild(ed);
+
+    ta.parentNode.insertBefore(wrap,ta);
+    ta.style.display='none';
+
+    // Les clics de la toolbar ne doivent pas voler le focus à l'éditeur
+    // (sinon la sélection est perdue avant l'exécution de la commande).
+    wrap.querySelector('.rich-toolbar').addEventListener('mousedown',function(e){
+      if(e.target.closest('button')) e.preventDefault();
+    });
+
+    // Miroir .value <-> éditeur : admin.js continue de fonctionner tel quel
+    Object.defineProperty(ta,'value',{
+      configurable:true,
+      enumerable:true,
+      get:function(){ return isBlank(ed) ? '' : ed.innerHTML; },
+      set:function(v){
+        ed.innerHTML=toHtml(v);
+        try{ protoValue.set.call(ta, v==null?'':String(v)); }catch(e){}
+      }
+    });
+
+    return true;
+  }
+
+  /* ---------- 5. sélection : généralisée à tous les .rich-content ---------- */
+  // Le patch richEditorSelection plus haut ne suit que #f-content-editor.
+  // On étend le suivi à n'importe quel éditeur riche (scaling inclus) ;
+  // window._refocusActive (déjà remplacé plus haut) restaure la sélection.
+  document.addEventListener('selectionchange',function(){
+    var sel=window.getSelection();
+    if(!sel || sel.rangeCount===0) return;
+    var range=sel.getRangeAt(0);
+    var node=range.commonAncestorContainer;
+    if(node && node.nodeType===3) node=node.parentNode;
+    if(!node || !node.closest) return;
+    var ed=node.closest('.rich-content');
+    if(ed){
+      window._richActiveTarget=ed;
+      window._richSavedRange=range.cloneRange();
+    }
+  });
+
+  /* ---------- 6. init ---------- */
+  function init(){
+    injectStyle();
+    var done=0;
+    FIELDS.forEach(function(f){ if(upgrade(f)) done++; });
+    return done;
+  }
+
+  function boot(){
+    init();
+    // Filets de sécurité : le panneau admin peut être rendu plus tard
+    var tries=0;
+    var iv=setInterval(function(){
+      tries++;
+      var missing=FIELDS.some(function(f){
+        var el=document.getElementById(f.id);
+        return el && el.dataset.richUpgraded!=='1';
+      });
+      if(missing) init();
+      if(tries>20) clearInterval(iv);
+    },500);
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
