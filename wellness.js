@@ -7700,3 +7700,377 @@ async function claimFreeAccess(programmeId){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 })();
+
+// ===== PATCH: Onglet ⚙️ Paramètres — bloc « Suivi athlète » =====
+// Champs de suivi configurables par studio (échelle 1 à 5) + numéro
+// WhatsApp du coach. S'ajoute sous « Créer un athlète », dans le même
+// panneau admin-colors.
+(function(){
+  if(window.__patchBound_wellnessSettings) return;
+  window.__patchBound_wellnessSettings = true;
+
+  const WS_MAX = 5;      // champs actifs maximum
+  const WS_WARN = 3;     // au-delà, on prévient
+  const UPSIDE_SLUG = 'upside';
+
+  let _wsStudios = [];   // studios éditables
+  let _wsStudioId = null;
+  let _wsCfg = null;
+  let _wsLoaded = false;
+
+  function _wsEsc(s){
+    return (s==null?'':String(s))
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function _wsSlugify(label){
+    return (label||'').toLowerCase()
+      .normalize('NFD').replace(/[̀-ͯ]/g,'')
+      .replace(/[^a-z0-9]+/g,'_').replace(/^_+|_+$/g,'').slice(0,32)
+      || ('champ_'+Date.now().toString(36).slice(-4));
+  }
+
+  function _wsDefaultCfg(){
+    return {scale_max:5,fields:[
+      {key:'sommeil',    label:'Sommeil',    icon:'😴', inverted:false, active:true},
+      {key:'energie',    label:'Énergie',    icon:'🔥', inverted:false, active:true},
+      {key:'courbatures',label:'Courbatures',icon:'🦵', inverted:true,  active:true}
+    ]};
+  }
+
+  function _wsIsUpsideAdmin(){
+    try{ return currentProfile && currentProfile.role==='admin' && !currentProfile.studio_id; }
+    catch(e){ return false; }
+  }
+
+  // Les données d'Upside ont studio_id = NULL, mais la ligne 'upside'
+  // existe bien dans studios : c'est elle qui porte la config.
+  async function _wsOwnStudioId(){
+    let sid = null;
+    try{ sid = (typeof getStudioId==='function') ? getStudioId() : null; }catch(e){}
+    if(!sid && currentProfile && currentProfile.studio_id) sid = currentProfile.studio_id;
+    if(sid) return sid;
+    if(currentProfile && currentProfile.own_studio_id) return currentProfile.own_studio_id;
+    const r = await sb.from('studios').select('id').eq('slug',UPSIDE_SLUG).maybeSingle();
+    return r.data ? r.data.id : null;
+  }
+
+  function _wsInjectStyles(){
+    if(document.getElementById('ws-styles')) return;
+    const st = document.createElement('style');
+    st.id = 'ws-styles';
+    st.textContent =
+      '.ws-row{border:1px solid var(--border);border-radius:12px;padding:10px;margin-bottom:8px;background:var(--dark)}'+
+      '.ws-row.off{opacity:.45}'+
+      '.ws-top{display:flex;gap:6px;align-items:center}'+
+      '.ws-icon{width:46px;text-align:center;background:var(--card);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-size:16px;padding:8px 4px;flex:0 0 auto;font-family:inherit}'+
+      '.ws-label{flex:1;min-width:0;background:var(--card);border:1.5px solid var(--border2);border-radius:8px;color:var(--text);font-family:inherit;font-size:14px;padding:8px 10px}'+
+      '.ws-mini{flex:0 0 auto;width:30px;height:34px;background:transparent;border:1px solid var(--border2);border-radius:8px;color:var(--muted);font-size:13px;cursor:pointer}'+
+      '.ws-mini:disabled{opacity:.3;cursor:default}'+
+      '.ws-mini.danger{color:var(--red)}'+
+      '.ws-opts{display:flex;flex-wrap:wrap;gap:14px;margin-top:9px}'+
+      '.ws-chk{font-size:11px;color:var(--muted);display:flex;align-items:center;gap:6px;cursor:pointer}'+
+      '.ws-chk b{color:var(--text);font-weight:700}'+
+      '.ws-add{width:100%;margin-top:6px;background:transparent;border:1px dashed var(--border2);color:var(--muted);border-radius:10px;padding:10px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit}'+
+      '.ws-add:disabled{opacity:.4;cursor:default}'+
+      '.ws-warn{background:rgba(255,140,71,.08);border:1px solid rgba(255,140,71,.3);color:#ff8c47;border-radius:10px;padding:9px 11px;font-size:12px;line-height:1.5;margin-bottom:12px}'+
+      '.ws-prev{background:var(--dark);border:1px solid var(--border);border-radius:12px;padding:12px;margin:14px 0}'+
+      '.ws-prev-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--border)}'+
+      '.ws-prev-row:last-child{border-bottom:0}'+
+      '.ws-prev-lab{font-size:13px;font-weight:600}'+
+      '.ws-dots{display:flex;gap:6px}'+
+      '.ws-dot{width:30px;height:30px;border-radius:50%;border:1.5px solid var(--border2);color:var(--muted);font-size:12px;display:flex;align-items:center;justify-content:center}';
+    document.head.appendChild(st);
+  }
+
+  function ensureWellnessBlock(){
+    const panel = document.getElementById('admin-colors');
+    if(!panel || document.getElementById('admin-wellness-settings-block')) return;
+    _wsInjectStyles();
+    const block = document.createElement('div');
+    block.id = 'admin-wellness-settings-block';
+    block.style.cssText = 'margin-top:28px;padding-top:20px;border-top:1px solid var(--border)';
+    block.innerHTML =
+      '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:6px">🩺 SUIVI ATHLÈTE</div>'+
+      '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">'+
+        'Les champs que tes athlètes notent de 1 à 5 dans leur espace perso. '+
+        'Moins il y en a, plus ils remplissent.</div>'+
+      '<div id="ws-studio-slot"></div>'+
+      '<div id="ws-warn-slot"></div>'+
+      '<div id="ws-rows"><div class="spinner"></div></div>'+
+      '<button type="button" class="ws-add" id="ws-add-btn">+ Ajouter un champ</button>'+
+      '<div class="ws-prev" id="ws-preview"></div>'+
+      '<button type="button" class="btn-primary" id="ws-save-btn">Enregistrer les champs</button>'+
+      '<div style="margin-top:28px;padding-top:20px;border-top:1px solid var(--border)">'+
+        '<div style="font-family:\'Bebas Neue\',sans-serif;font-size:18px;letter-spacing:2px;margin-bottom:6px">📲 MON NUMÉRO WHATSAPP</div>'+
+        '<div style="font-size:12px;color:var(--muted);margin-bottom:16px">'+
+          'Utilisé par le bouton « Envoyer à mon coach ». Visible uniquement par '+
+          'les membres de ton studio. Laisse vide pour le retirer.</div>'+
+        '<div class="form-group">'+
+          '<input type="tel" inputmode="tel" class="form-input" id="ws-phone" placeholder="06 12 34 56 78">'+
+        '</div>'+
+        '<button type="button" class="btn-secondary" id="ws-phone-save">Enregistrer mon numéro</button>'+
+      '</div>';
+    panel.appendChild(block);
+    _wsWireStatic();
+    _wsLoad();
+  }
+
+  function _wsWireStatic(){
+    const add = document.getElementById('ws-add-btn');
+    if(add) add.onclick = function(){
+      if(!_wsCfg || _wsCfg.fields.length >= WS_MAX) return;
+      _wsCfg.fields.push({key:'',label:'',icon:'📋',inverted:false,active:true});
+      _wsRender();
+    };
+    const save = document.getElementById('ws-save-btn');
+    if(save) save.onclick = _wsSave;
+    const pSave = document.getElementById('ws-phone-save');
+    if(pSave) pSave.onclick = _wsSavePhone;
+  }
+
+  async function _wsLoad(){
+    try{
+      const own = await _wsOwnStudioId();
+      if(_wsIsUpsideAdmin()){
+        const r = await sb.from('studios').select('id,name,slug,wellness_config').order('name');
+        _wsStudios = r.data || [];
+      }else{
+        const r = await sb.from('studios').select('id,name,slug,wellness_config').eq('id',own).maybeSingle();
+        _wsStudios = r.data ? [r.data] : [];
+      }
+      if(!_wsStudios.length){
+        document.getElementById('ws-rows').innerHTML =
+          '<div style="color:var(--muted);font-size:12px">Aucun studio accessible.</div>';
+        return;
+      }
+      if(!_wsStudioId || !_wsStudios.some(s=>s.id===_wsStudioId)){
+        _wsStudioId = (own && _wsStudios.some(s=>s.id===own)) ? own : _wsStudios[0].id;
+      }
+      _wsLoadDraft();
+      _wsLoaded = true;
+      _wsRender();
+      _wsLoadPhone();
+    }catch(e){
+      console.warn('wellness settings load',e);
+      const el = document.getElementById('ws-rows');
+      if(el) el.innerHTML = '<div style="color:var(--red);font-size:12px">Erreur : '+_wsEsc(e.message||e)+'</div>';
+    }
+  }
+
+  function _wsLoadDraft(){
+    const st = _wsStudios.find(s=>s.id===_wsStudioId);
+    let cfg = st && st.wellness_config;
+    if(!cfg || !Array.isArray(cfg.fields) || !cfg.fields.length) cfg = _wsDefaultCfg();
+    _wsCfg = JSON.parse(JSON.stringify(cfg));
+    if(!_wsCfg.scale_max) _wsCfg.scale_max = 5;
+  }
+
+  function _wsRender(){
+    if(!_wsCfg) return;
+    const rowsEl = document.getElementById('ws-rows');
+    const warnEl = document.getElementById('ws-warn-slot');
+    const stSlot = document.getElementById('ws-studio-slot');
+    if(!rowsEl) return;
+
+    // sélecteur de studio (admins Upside seulement)
+    if(stSlot){
+      if(_wsIsUpsideAdmin() && _wsStudios.length>1){
+        stSlot.innerHTML =
+          '<div class="form-group"><label class="form-label">Studio à configurer</label>'+
+          '<select class="form-select" id="ws-studio-select">'+
+          _wsStudios.map(s=>'<option value="'+_wsEsc(s.id)+'"'+(s.id===_wsStudioId?' selected':'')+'>'+
+            _wsEsc(s.name||s.slug)+'</option>').join('')+
+          '</select></div>';
+        const sel = document.getElementById('ws-studio-select');
+        if(sel) sel.onchange = function(){
+          _wsStudioId = sel.value;
+          _wsLoadDraft();
+          _wsRender();
+        };
+      }else{
+        stSlot.innerHTML = '';
+      }
+    }
+
+    const active = _wsCfg.fields.filter(f=>f.active).length;
+    warnEl.innerHTML = active > WS_WARN
+      ? '<div class="ws-warn">⚠️ '+active+' champs actifs. Au-delà de '+WS_WARN+
+        ', les athlètes remplissent nettement moins. '+WS_MAX+' maximum.</div>'
+      : '';
+
+    rowsEl.innerHTML = _wsCfg.fields.map((f,i)=>
+      '<div class="ws-row'+(f.active?'':' off')+'">'+
+        '<div class="ws-top">'+
+          '<input class="ws-icon" type="text" maxlength="2" value="'+_wsEsc(f.icon||'')+'" data-i="'+i+'" data-k="icon">'+
+          '<input class="ws-label" type="text" value="'+_wsEsc(f.label||'')+'" data-i="'+i+'" data-k="label" placeholder="Nom du champ">'+
+          '<button type="button" class="ws-mini" data-act="up" data-i="'+i+'"'+(i===0?' disabled':'')+'>↑</button>'+
+          '<button type="button" class="ws-mini" data-act="down" data-i="'+i+'"'+(i===_wsCfg.fields.length-1?' disabled':'')+'>↓</button>'+
+          '<button type="button" class="ws-mini danger" data-act="del" data-i="'+i+'">✕</button>'+
+        '</div>'+
+        '<div class="ws-opts">'+
+          '<label class="ws-chk"><input type="checkbox" data-i="'+i+'" data-k="active"'+(f.active?' checked':'')+'> Actif</label>'+
+          '<label class="ws-chk"><input type="checkbox" data-i="'+i+'" data-k="inverted"'+(f.inverted?' checked':'')+'> Une note haute est <b>mauvaise</b></label>'+
+        '</div>'+
+      '</div>'
+    ).join('');
+
+    const add = document.getElementById('ws-add-btn');
+    if(add) add.disabled = _wsCfg.fields.length >= WS_MAX;
+
+    _wsPreview();
+    _wsWireRows();
+  }
+
+  function _wsPreview(){
+    const box = document.getElementById('ws-preview');
+    if(!box) return;
+    const fields = _wsCfg.fields.filter(f=>f.active);
+    if(!fields.length){
+      box.innerHTML = '<div style="color:var(--muted);font-size:12px">Aucun champ actif — rien ne s\'affichera chez l\'athlète.</div>';
+      return;
+    }
+    const max = _wsCfg.scale_max || 5;
+    box.innerHTML =
+      '<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px">Aperçu côté athlète</div>'+
+      fields.map(f=>{
+        let dots='';
+        for(let v=1; v<=max; v++) dots += '<span class="ws-dot">'+v+'</span>';
+        return '<div class="ws-prev-row">'+
+                 '<div class="ws-prev-lab">'+_wsEsc(f.icon||'')+' '+_wsEsc(f.label||'—')+'</div>'+
+                 '<div class="ws-dots">'+dots+'</div>'+
+               '</div>';
+      }).join('');
+  }
+
+  function _wsWireRows(){
+    document.querySelectorAll('#ws-rows .ws-icon, #ws-rows .ws-label').forEach(inp=>{
+      inp.oninput = function(){
+        const i = parseInt(inp.dataset.i,10);
+        if(isNaN(i) || !_wsCfg.fields[i]) return;
+        _wsCfg.fields[i][inp.dataset.k] = inp.value;
+        _wsPreview();
+      };
+    });
+    document.querySelectorAll('#ws-rows .ws-chk input').forEach(chk=>{
+      chk.onchange = function(){
+        const i = parseInt(chk.dataset.i,10), k = chk.dataset.k;
+        if(isNaN(i) || !_wsCfg.fields[i]) return;
+        if(k==='active' && chk.checked){
+          if(_wsCfg.fields.filter(f=>f.active).length >= WS_MAX){
+            chk.checked = false;
+            showToast('⚠️ '+WS_MAX+' champs actifs maximum');
+            return;
+          }
+        }
+        _wsCfg.fields[i][k] = chk.checked;
+        _wsRender();
+      };
+    });
+    document.querySelectorAll('#ws-rows .ws-mini').forEach(btn=>{
+      btn.onclick = function(){
+        const i = parseInt(btn.dataset.i,10), act = btn.dataset.act;
+        if(isNaN(i) || !_wsCfg.fields[i]) return;
+        if(act==='up' && i>0){
+          const t=_wsCfg.fields[i-1]; _wsCfg.fields[i-1]=_wsCfg.fields[i]; _wsCfg.fields[i]=t;
+        }else if(act==='down' && i<_wsCfg.fields.length-1){
+          const t=_wsCfg.fields[i+1]; _wsCfg.fields[i+1]=_wsCfg.fields[i]; _wsCfg.fields[i]=t;
+        }else if(act==='del'){
+          if(!confirm('Supprimer « '+(_wsCfg.fields[i].label||'ce champ')+' » ?\nLes saisies déjà enregistrées sont conservées.')) return;
+          _wsCfg.fields.splice(i,1);
+        }
+        _wsRender();
+      };
+    });
+  }
+
+  async function _wsSave(){
+    if(!_wsCfg || !_wsStudioId) return;
+    const seen = {};
+    for(const f of _wsCfg.fields){
+      const label = (f.label||'').trim();
+      if(!label){ showToast('⚠️ Un champ est sans nom'); return; }
+      if(!f.key) f.key = _wsSlugify(label);   // clé figée à la création
+      if(seen[f.key]){ showToast('⚠️ Deux champs portent le même nom : '+label); return; }
+      seen[f.key] = 1;
+      f.label = label;
+      f.icon = (f.icon||'').trim();
+      f.inverted = !!f.inverted;
+      f.active = !!f.active;
+    }
+    const active = _wsCfg.fields.filter(f=>f.active).length;
+    if(!active){ showToast('⚠️ Au moins un champ actif est nécessaire'); return; }
+    if(active > WS_MAX){ showToast('⚠️ '+WS_MAX+' champs actifs maximum'); return; }
+    _wsCfg.scale_max = 5;
+
+    const btn = document.getElementById('ws-save-btn');
+    if(btn){ btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+
+    const {data,error} = await sb.from('studios')
+      .update({wellness_config:_wsCfg})
+      .eq('id',_wsStudioId)
+      .select('id,wellness_config');
+
+    if(btn){ btn.disabled = false; btn.textContent = 'Enregistrer les champs'; }
+
+    if(error){ showToast('❌ '+error.message); return; }
+    if(!data || !data.length){ showToast('❌ Rien enregistré — droits insuffisants sur ce studio'); return; }
+
+    const st = _wsStudios.find(s=>s.id===_wsStudioId);
+    if(st) st.wellness_config = data[0].wellness_config;
+    showToast('✅ Suivi mis à jour');
+    _wsRender();
+  }
+
+  function _wsNormalizePhone(raw){
+    if(!raw) return '';
+    let s = String(raw).replace(/[\s.\-()]/g,'');
+    if(/^00/.test(s)) s = '+'+s.slice(2);
+    if(/^0\d{9}$/.test(s)) s = '+33'+s.slice(1);
+    if(/^\d{9,15}$/.test(s) && s[0]!=='0') s = '+'+s;
+    return s;
+  }
+
+  async function _wsLoadPhone(){
+    const inp = document.getElementById('ws-phone');
+    if(!inp || !window.currentUser) return;
+    try{
+      const {data} = await sb.from('coach_contacts')
+        .select('whatsapp_phone').eq('user_id',currentUser.id).maybeSingle();
+      if(data && data.whatsapp_phone) inp.value = data.whatsapp_phone;
+    }catch(e){ console.warn('coach phone load',e); }
+  }
+
+  async function _wsSavePhone(){
+    const inp = document.getElementById('ws-phone');
+    if(!inp || !window.currentUser) return;
+    const raw = inp.value.trim();
+
+    if(!raw){
+      const {error} = await sb.from('coach_contacts').delete().eq('user_id',currentUser.id);
+      if(error){ showToast('❌ '+error.message); return; }
+      showToast('🗑 Numéro retiré');
+      return;
+    }
+    const phone = _wsNormalizePhone(raw);
+    if(!/^\+\d{8,15}$/.test(phone)){
+      showToast('⚠️ Numéro invalide — attendu 06 12 34 56 78 ou +33612345678');
+      return;
+    }
+    const {error} = await sb.from('coach_contacts')
+      .upsert({user_id:currentUser.id,whatsapp_phone:phone,updated_at:new Date().toISOString()},
+              {onConflict:'user_id'});
+    if(error){ showToast('❌ '+error.message); return; }
+    inp.value = phone;
+    showToast('✅ Numéro enregistré');
+  }
+
+  // Greffe sur l'onglet ⚙️ Paramètres, après le bloc « Créer un athlète »
+  const _origAdminTabColorsWs = window.adminTabColors;
+  window.adminTabColors = async function(btn){
+    await _origAdminTabColorsWs(btn);
+    ensureWellnessBlock();
+  };
+
+})();
