@@ -855,8 +855,8 @@ function ensureLikersModal(){
   ov=document.createElement('div');
   ov.id='likers-modal';
   ov.className='modal-overlay';
-  // au-dessus du modal classement (.modal-overlay = z-index 300)
-  ov.style.zIndex='400';
+  // au-dessus du modal classement (#scores-modal = z-index 10000 dans styles.css)
+  ov.style.zIndex='10050';
   ov.onclick=(e)=>{if(e.target===ov)closeLikersModal();};
   ov.innerHTML=`<div class="modal" style="display:flex;flex-direction:column;max-height:80vh">
     <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px">
