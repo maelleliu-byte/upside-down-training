@@ -8419,3 +8419,109 @@ async function claimFreeAccess(programmeId){
   };
 
 })();
+
+// ===== PATCH: Coach référent dans la fiche athlète (Espace perso admin) =====
+// Sélecteur sous l'en-tête de la fiche : définit profiles.coach_id, qui
+// détermine vers quel coach part le bouton « Envoyer à mon coach ».
+(function(){
+  if(window.__patchBound_persoCoach) return;
+  window.__patchBound_persoCoach = true;
+
+  let _pcCoaches = null;   // cache de la liste des coachs du studio
+
+  function _pcEsc(s){
+    return (s==null?'':String(s))
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function _pcInjectStyles(){
+    if(document.getElementById('pc-styles')) return;
+    const st = document.createElement('style');
+    st.id = 'pc-styles';
+    st.textContent =
+      '.pc-row{display:flex;align-items:center;gap:10px;background:var(--card);border:1px solid var(--border);'+
+        'border-radius:12px;padding:10px 12px;margin-bottom:12px}'+
+      '.pc-lab{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;'+
+        'font-weight:700;flex:0 0 auto}'+
+      '.pc-sel{flex:1;min-width:0;background:var(--dark);border:1.5px solid var(--border2);border-radius:9px;'+
+        'color:var(--text);font-family:inherit;font-size:13px;padding:8px 10px}';
+    document.head.appendChild(st);
+  }
+
+  async function _pcLoadCoaches(){
+    if(_pcCoaches) return _pcCoaches;
+    // Coachs = admins et profils marqués coach, dans le studio courant.
+    // Upside : studio_id IS NULL.
+    let sid = null;
+    try{ sid = (typeof getStudioId==='function') ? getStudioId() : null; }catch(e){}
+    let q = sb.from('profiles').select('id,full_name,email,role,is_coach');
+    q = sid ? q.eq('studio_id',sid) : q.is('studio_id',null);
+    const {data} = await q.order('full_name');
+    _pcCoaches = (data||[]).filter(p => p.role==='admin' || p.is_coach);
+    return _pcCoaches;
+  }
+
+  async function _pcRender(){
+    const head = document.querySelector('#perso-fiche-view .perso-fiche-head');
+    if(!head || !currentPersoAthlete) return;
+    _pcInjectStyles();
+
+    let row = document.getElementById('pc-row');
+    if(!row){
+      row = document.createElement('div');
+      row.id = 'pc-row';
+      row.className = 'pc-row';
+      row.innerHTML = '<div class="pc-lab">Coach référent</div>'+
+                      '<select class="pc-sel" id="pc-select"><option>…</option></select>';
+      head.insertAdjacentElement('afterend', row);
+    }
+
+    const coaches = await _pcLoadCoaches();
+    const sel = document.getElementById('pc-select');
+    if(!sel) return;
+
+    const cur = currentPersoAthlete.coach_id || '';
+    sel.innerHTML = '<option value="">— aucun —</option>' +
+      coaches.map(c=>'<option value="'+_pcEsc(c.id)+'"'+(c.id===cur?' selected':'')+'>'+
+        _pcEsc(c.full_name||c.email||'Coach')+'</option>').join('');
+
+    // si le coach actuel n'est pas dans la liste (autre studio), on l'ajoute
+    if(cur && !coaches.some(c=>c.id===cur)){
+      const opt = document.createElement('option');
+      opt.value = cur;
+      opt.textContent = 'Coach hors studio';
+      opt.selected = true;
+      sel.appendChild(opt);
+    }
+
+    sel.onchange = async function(){
+      const val = sel.value || null;
+      sel.disabled = true;
+      const {data,error} = await sb.from('profiles')
+        .update({coach_id: val})
+        .eq('id', currentPersoAthlete.id)
+        .select('id,coach_id');
+      sel.disabled = false;
+
+      if(error){ showToast('❌ '+error.message); return; }
+      if(!data || !data.length){ showToast('❌ Rien enregistré — droits insuffisants'); return; }
+
+      currentPersoAthlete.coach_id = data[0].coach_id;
+      const cached = persoAthletesCache.find(a=>a.id===currentPersoAthlete.id);
+      if(cached) cached.coach_id = data[0].coach_id;
+
+      const name = val
+        ? (sel.options[sel.selectedIndex] ? sel.options[sel.selectedIndex].textContent : 'ce coach')
+        : null;
+      showToast(name ? '✅ Coach référent : '+name : '✅ Coach référent retiré');
+    };
+  }
+
+  const _origOpenPersoFichePc = openPersoFiche;
+  openPersoFiche = async function(){
+    await _origOpenPersoFichePc.apply(this, arguments);
+    try{ await _pcRender(); }catch(e){ console.warn('coach référent',e); }
+  };
+
+})();
