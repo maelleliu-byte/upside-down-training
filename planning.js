@@ -811,30 +811,35 @@ if(!window.__scoreAuthListenerBound){
 // REACTIONS
 async function loadReactions(scoreId){
   if(!(await ensureAuth()))return;
-  const {data,count}=await sb.from('score_reactions').select('athlete_id,profiles(full_name)',{count:'exact'}).eq('score_id',scoreId);
+  const {data,count}=await sb.from('score_reactions').select('athlete_id,profiles(full_name,avatar_url)',{count:'exact'}).eq('score_id',scoreId);
   const countEl=document.getElementById(`react-count-${scoreId}`);
   const btn=document.getElementById(`react-${scoreId}`);
   const likersEl=document.getElementById(`likers-${scoreId}`);
   if(countEl)countEl.textContent=count||0;
-  const names=(data||[]).map(r=>r.profiles?.full_name||'Athlète');
+  // On garde nom + avatar pour pouvoir afficher la liste complète au clic
+  const likers=(data||[]).map(r=>({name:r.profiles?.full_name||'Athlète',avatar_url:r.profiles?.avatar_url||null}));
+  const names=likers.map(l=>l.name);
   if(likersEl){
     if(names.length){
       likersEl.style.display='block';
+      likersEl.style.cursor='pointer';
+      likersEl.onclick=(e)=>showLikers(scoreId,e);
       const MAX=3;
       if(names.length<=MAX){
-        likersEl.innerHTML='❤️ '+names.join(', ');
+        likersEl.innerHTML='❤️ '+escapeHtml(names.join(', '));
       } else {
-        const shown=names.slice(0,MAX).join(', ');
+        const shown=escapeHtml(names.slice(0,MAX).join(', '));
         const rest=names.length-MAX;
-        likersEl.innerHTML=`❤️ ${shown} <span onclick="showLikers('${scoreId}',event)" style="text-decoration:underline;cursor:pointer">+${rest} autre${rest>1?'s':''}</span>`;
+        likersEl.innerHTML=`❤️ ${shown} <span style="text-decoration:underline">+${rest} autre${rest>1?'s':''}</span>`;
       }
     } else {
       likersEl.style.display='none';
+      likersEl.onclick=null;
       likersEl.textContent='';
     }
   }
   if(btn){
-    btn.dataset.likers=JSON.stringify(names);
+    btn.dataset.likers=JSON.stringify(likers);
     if(currentUser){
       const liked=(data||[]).some(r=>r.athlete_id===currentUser.id);
       btn.classList.toggle('liked',liked);
@@ -843,14 +848,60 @@ async function loadReactions(scoreId){
     }
   }
 }
+// ---- Liste complète des likers (modal dédiée, scrollable) ----------
+function ensureLikersModal(){
+  let ov=document.getElementById('likers-modal');
+  if(ov)return ov;
+  ov=document.createElement('div');
+  ov.id='likers-modal';
+  ov.className='modal-overlay';
+  // au-dessus du modal classement (.modal-overlay = z-index 300)
+  ov.style.zIndex='400';
+  ov.onclick=(e)=>{if(e.target===ov)closeLikersModal();};
+  ov.innerHTML=`<div class="modal" style="display:flex;flex-direction:column;max-height:80vh">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px">
+      <div>
+        <div class="modal-title" style="margin-bottom:0">❤️ J'aime</div>
+        <div class="modal-sub" id="likers-modal-sub" style="margin-bottom:0">—</div>
+      </div>
+      <button onclick="closeLikersModal()" aria-label="Fermer" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px">✕</button>
+    </div>
+    <div id="likers-modal-list" style="flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;margin-bottom:12px"></div>
+    <button class="btn-modal-cancel" onclick="closeLikersModal()">Fermer</button>
+  </div>`;
+  document.body.appendChild(ov);
+  return ov;
+}
+function closeLikersModal(){
+  document.getElementById('likers-modal')?.classList.remove('open');
+}
 function showLikers(scoreId,ev){
   if(ev){ev.stopPropagation();ev.preventDefault();}
   const btn=document.getElementById(`react-${scoreId}`);
   if(!btn)return;
-  let names=[];
-  try{names=JSON.parse(btn.dataset.likers||'[]');}catch(e){}
-  if(!names.length){showToast('Personne n\'a encore liké');return;}
-  showToast('❤️ '+names.join(', '));
+  let likers=[];
+  try{likers=JSON.parse(btn.dataset.likers||'[]');}catch(e){}
+  // Rétro-compat : ancien format = tableau de chaînes
+  likers=likers.map(l=>typeof l==='string'?{name:l,avatar_url:null}:l);
+  if(!likers.length){showToast('Personne n\'a encore liké');return;}
+  const ov=ensureLikersModal();
+  const sub=document.getElementById('likers-modal-sub');
+  if(sub)sub.textContent=`${likers.length} personne${likers.length>1?'s':''} ${likers.length>1?'ont':'a'} aimé ce score`;
+  const list=document.getElementById('likers-modal-list');
+  if(list){
+    list.innerHTML=likers.map(l=>{
+      const av=(typeof avatarHtml==='function')
+        ? avatarHtml({full_name:l.name,avatar_url:l.avatar_url})
+        : '';
+      const isMe=currentProfile&&currentProfile.full_name===l.name;
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 2px;border-bottom:1px solid rgba(255,255,255,.05)">
+        ${av}
+        <span style="font-size:14px;font-weight:600;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(l.name)}${isMe?' \ud83d\udc48':''}</span>
+        <span style="font-size:14px">❤️</span>
+      </div>`;
+    }).join('');
+  }
+  ov.classList.add('open');
 }
 async function toggleReaction(scoreId){
   const btn=document.getElementById(`react-${scoreId}`);
