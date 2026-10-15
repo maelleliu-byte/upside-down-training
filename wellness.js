@@ -1618,7 +1618,7 @@ async function _dashLoadBadges(id){
 async function _dashLoadPRsAndBench(id){
   // PRs
   const {data:prs}=await sb.from('athlete_prs')
-    .select('id,movement_id,value,recorded_at,format,note,created_at')
+    .select('id,movement_id,value,recorded_at,format,note,created_at,is_coach_estimate')
     .eq('athlete_id',id).order('recorded_at',{ascending:true,nullsFirst:false});
   const prRows=prs||[];
   const byMov={};
@@ -5351,8 +5351,10 @@ async function claimFreeAccess(programmeId){
           <input type="hidden" id="coach-pr-movement">
         </div>
         <div class="form-group">
-          <label class="form-label">Format (optionnel — ex: 1RM, 3RM, Max reps…)</label>
-          <input type="text" class="form-input" id="coach-pr-format" placeholder="1RM">
+          <label class="form-label">Format</label>
+          <div id="coach-pr-format-chips" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+          <input type="hidden" id="coach-pr-format">
+          <div id="coach-pr-existing" style="margin-top:10px"></div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -5368,6 +5370,13 @@ async function claimFreeAccess(programmeId){
           <label class="form-label">Note (optionnel)</label>
           <input type="text" class="form-input" id="coach-pr-note" placeholder="Contexte, ressenti...">
         </div>
+        <label for="coach-pr-estimate" style="display:flex;align-items:flex-start;gap:10px;background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;margin-bottom:14px;cursor:pointer">
+          <input type="checkbox" id="coach-pr-estimate" style="margin-top:2px;width:17px;height:17px;accent-color:var(--accent);flex-shrink:0">
+          <span style="font-size:12px;line-height:1.5;color:var(--text)">
+            <b>Charge de travail</b> — valeur posée par le coach, pas un record réalisé.
+            <span style="color:var(--muted)">Les % des séances se calculent dessus, et l'athlète la voit badgée dans son historique.</span>
+          </span>
+        </label>
         <button class="btn-modal-save" onclick="saveCoachPR()">Enregistrer le PR</button>
         <button class="btn-modal-cancel" onclick="closeCoachPrModal()">Annuler</button>
       </div>`;
@@ -5403,13 +5412,76 @@ async function claimFreeAccess(programmeId){
     });
   }
 
-  function _selectCoachPrMovement(id){
+  function _selectCoachPrMovement(id, keepFormat){
     const mv = _coachPrAllMovements.find(m=>m.id===id);
     if(!mv) return;
     document.getElementById('coach-pr-movement').value = id;
     document.getElementById('coach-pr-movement-selected').textContent = '✓ ' + mv.name;
     document.getElementById('coach-pr-movement-search').value = '';
     _renderCoachPrMovementList('');
+    _renderCoachPrFormats(mv, keepFormat);
+    _loadCoachPrExisting(id);
+  }
+
+  // Formats = ceux du mouvement, en chips. Le texte libre faisait échouer en silence
+  // la résolution des formules de % dans les séances (match strict sur le libellé).
+  function _coachPrFormatsOf(mv){
+    return String((mv&&mv.available_formats)||'').split(',')
+      .map(f=>f.trim()).filter(Boolean);
+  }
+  function _renderCoachPrFormats(mv, keepFormat){
+    const box = document.getElementById('coach-pr-format-chips');
+    const hidden = document.getElementById('coach-pr-format');
+    if(!box||!hidden) return;
+    const formats = _coachPrFormatsOf(mv);
+    if(!formats.length){
+      hidden.value = '';
+      box.innerHTML = '<div style="font-size:12px;color:var(--muted)">Ce mouvement n\'a pas de format défini — le PR sera enregistré sans format.</div>';
+      return;
+    }
+    const norm = s => String(s||'').trim().toLowerCase().replace(/\s+/g,'');
+    let sel = formats.find(f => norm(f)===norm(keepFormat));
+    if(!sel) sel = formats.find(f => /^1\s*RM$/i.test(f)) || formats[0];
+    hidden.value = sel;
+    box.innerHTML = formats.map(f =>
+      `<button type="button" class="coach-pr-fmt" data-fmt="${escapeHtml(f)}" style="padding:6px 13px;border-radius:20px;cursor:pointer;font-family:inherit;font-size:12px;font-weight:700;
+        border:1.5px solid ${f===sel?'var(--accent)':'var(--border2)'};
+        background:${f===sel?'rgba(232,255,71,.10)':'transparent'};
+        color:${f===sel?'var(--accent)':'var(--muted)'}">${escapeHtml(f)}</button>`
+    ).join('');
+    box.querySelectorAll('.coach-pr-fmt').forEach(b=>{
+      b.onclick = () => {
+        hidden.value = b.dataset.fmt;
+        _renderCoachPrFormats(mv, b.dataset.fmt);
+        _loadCoachPrExisting(document.getElementById('coach-pr-movement').value);
+      };
+    });
+  }
+
+  // Rappel des PR déjà enregistrés par l'athlète sur ce mouvement + ce format
+  async function _loadCoachPrExisting(movementId){
+    const box = document.getElementById('coach-pr-existing');
+    if(!box) return;
+    if(!movementId || !_coachPrAthleteId){ box.innerHTML=''; return; }
+    const fmt = document.getElementById('coach-pr-format')?.value || '';
+    const {data, error} = await sb.from('athlete_prs')
+      .select('value,recorded_at,format,is_coach_estimate')
+      .eq('athlete_id', _coachPrAthleteId)
+      .eq('movement_id', movementId)
+      .order('recorded_at', {ascending:false})
+      .limit(30);
+    if(error){ box.innerHTML=''; return; }
+    const norm = s => String(s||'').trim().toLowerCase().replace(/\s+/g,'');
+    const rows = (data||[]).filter(p => !fmt || norm(p.format)===norm(fmt) || !norm(p.format)).slice(0,3);
+    if(!rows.length){
+      box.innerHTML = `<div style="font-size:12px;color:var(--muted)">Aucun PR${fmt?' en '+escapeHtml(fmt):''} pour cet athlète.</div>`;
+      return;
+    }
+    box.innerHTML = `<div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:5px">Déjà enregistré</div>`
+      + rows.map(p=>`<div style="display:flex;justify-content:space-between;gap:8px;font-size:12px;padding:3px 0;color:var(--text)">
+          <span><b>${p.value}</b>${p.format?' <span style="color:var(--muted)">'+escapeHtml(p.format)+'</span>':''}${p.is_coach_estimate?' <span style="color:var(--muted);font-size:10px">· charge de travail</span>':''}</span>
+          <span style="color:var(--muted)">${formatDate(p.recorded_at)}</span>
+        </div>`).join('');
   }
 
   window.openCoachPrModal = async function(athleteId, prToEdit){
@@ -5419,23 +5491,25 @@ async function claimFreeAccess(programmeId){
 
     // Recharge toujours une liste fraîche (évite les cas où `movements` n'est
     // pas encore prêt côté core.js selon le moment où le coach ouvre le modal)
-    const {data: movs, error: movsErr} = await sb.from('movements').select('id,name').eq('is_active', true).order('name');
+    const {data: movs, error: movsErr} = await sb.from('movements')
+      .select('id,name,unit,category,subcategory,available_formats')
+      .eq('is_active', true).order('name');
     if(movsErr) console.warn('openCoachPrModal movements', movsErr);
     _coachPrAllMovements = movs || [];
 
-    document.getElementById('coach-pr-movement').value = prToEdit?.movement_id || '';
+    document.getElementById('coach-pr-movement').value = '';
     document.getElementById('coach-pr-movement-search').value = '';
     document.getElementById('coach-pr-movement-selected').textContent = '';
-    if(prToEdit?.movement_id){
-      const mv = _coachPrAllMovements.find(m=>m.id===prToEdit.movement_id);
-      if(mv) document.getElementById('coach-pr-movement-selected').textContent = '✓ ' + mv.name;
-    }
+    document.getElementById('coach-pr-format').value = '';
+    document.getElementById('coach-pr-format-chips').innerHTML = '';
+    document.getElementById('coach-pr-existing').innerHTML = '';
     _renderCoachPrMovementList('');
+    if(prToEdit?.movement_id) _selectCoachPrMovement(prToEdit.movement_id, prToEdit.format);
 
-    document.getElementById('coach-pr-format').value = prToEdit?.format || '';
     document.getElementById('coach-pr-value').value = prToEdit?.value ?? '';
     document.getElementById('coach-pr-date').value = prToEdit?.recorded_at || new Date().toISOString().split('T')[0];
     document.getElementById('coach-pr-note').value = prToEdit?.note || '';
+    document.getElementById('coach-pr-estimate').checked = !!prToEdit?.is_coach_estimate;
 
     document.getElementById('coach-pr-modal').classList.add('open');
   };
@@ -5454,17 +5528,19 @@ async function claimFreeAccess(programmeId){
     const value = parseFloat(document.getElementById('coach-pr-value').value);
     const date = document.getElementById('coach-pr-date').value || new Date().toISOString().split('T')[0];
     const note = document.getElementById('coach-pr-note').value.trim() || null;
+    const isEstimate = !!document.getElementById('coach-pr-estimate')?.checked;
     if(!movementId){showToast('⚠️ Choisis un mouvement dans la liste');return;}
     if(isNaN(value)){showToast('⚠️ Valeur requise');return;}
 
+    const payload = {movement_id:movementId, value, recorded_at:date, format, note, is_coach_estimate:isEstimate};
     let error;
     if(_coachPrEditingId){
       ({error} = await sb.from('athlete_prs')
-        .update({movement_id:movementId, value, recorded_at:date, format, note})
+        .update(payload)
         .eq('id', _coachPrEditingId));
     } else {
       ({error} = await sb.from('athlete_prs')
-        .insert({athlete_id:_coachPrAthleteId, movement_id:movementId, value, recorded_at:date, format, note}));
+        .insert({athlete_id:_coachPrAthleteId, ...payload}));
     }
     if(error){showToast('❌ '+error.message);console.error('saveCoachPR', error);return;}
     showToast(_coachPrEditingId ? '✅ PR modifié' : '🏆 PR ajouté');
@@ -5519,7 +5595,8 @@ async function claimFreeAccess(programmeId){
           value: item.last.value,
           recorded_at: item.last.recorded_at,
           format: item.last.format,
-          note: item.last.note
+          note: item.last.note,
+          is_coach_estimate: item.last.is_coach_estimate
         });
       };
     });

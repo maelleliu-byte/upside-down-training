@@ -1253,7 +1253,7 @@ function renderPRAnalysis(){
 
   let html=`<div class="pr-best">
       <div class="pr-best-val">${disp(best.value)}</div>
-      <div class="pr-best-meta">${fmt?fmt+' · ':''}${formatDate(best.recorded_at)}</div>
+      <div class="pr-best-meta">${fmt?fmt+' · ':''}${formatDate(best.recorded_at)}${best.is_coach_estimate?' · <span class="pr-est-badge">charge de travail</span>':''}</div>
     </div>`;
   html+=buildPRChart(list,mode);
 
@@ -1274,14 +1274,20 @@ let _prChartPts=[];
 function buildPRChart(list,mode){
   if(list.length<2)return '<div class="pr-note-empty">La courbe apparaît dès le 2ᵉ PR enregistré.</div>';
   const pts=list.slice(-12);
-  _prChartPts=pts.map(p=>({v:p.value,d:p.recorded_at,mode}));
+  _prChartPts=pts.map(p=>({v:p.value,d:p.recorded_at,mode,est:!!p.is_coach_estimate}));
   const vals=pts.map(p=>p.value);
   const min=Math.min(...vals),max=Math.max(...vals),range=(max-min)||1;
   const w=300,h=108,padX=12,padTop=12,padBot=20;
   const X=i=>padX+(i/(pts.length-1))*(w-padX*2);
   const Y=v=>padTop+(1-(v-min)/range)*(h-padTop-padBot);
   const line=pts.map((p,i)=>`${X(i).toFixed(1)},${Y(p.value).toFixed(1)}`).join(' ');
-  const dots=pts.map((p,i)=>`<circle class="pr-chart-dot" cx="${X(i).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="9" fill="transparent" onclick="prPickPoint(${i})"/><circle cx="${X(i).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="3.5" fill="var(--accent)" pointer-events="none"/>`).join('');
+  const dots=pts.map((p,i)=>{
+    const cx=X(i).toFixed(1),cy=Y(p.value).toFixed(1);
+    const inner=p.is_coach_estimate
+      ? `<circle cx="${cx}" cy="${cy}" r="3.5" fill="var(--dark)" stroke="var(--accent)" stroke-width="1.5" pointer-events="none"/>`
+      : `<circle cx="${cx}" cy="${cy}" r="3.5" fill="var(--accent)" pointer-events="none"/>`;
+    return `<circle class="pr-chart-dot" cx="${cx}" cy="${cy}" r="9" fill="transparent" onclick="prPickPoint(${i})"/>`+inner;
+  }).join('');
   const first=formatDateShortSafe(pts[0].recorded_at);
   const last=formatDateShortSafe(pts[pts.length-1].recorded_at);
   return `<div class="pr-chart"><svg viewBox="0 0 ${w} ${h}">
@@ -1311,7 +1317,7 @@ function prPickPoint(i){
     const d=Math.round((p.v-prev.v)*10)/10;
     if(d!==0)delta=` · ${d>0?'+':''}${d}${unit}`;
   }
-  el.innerHTML=`<b>${val}</b> — ${formatDate(p.d)}${delta}`;
+  el.innerHTML=`<b>${val}</b> — ${formatDate(p.d)}${delta}${p.est?' · <span class="pr-est-badge">charge de travail</span>':''}`;
 }
 
 function getPRModeFor(movement,format){
@@ -1582,6 +1588,7 @@ function renderPRHistory(movementId){
           <div style="display:flex;align-items:center;gap:8px">
             <span class="pr-hist-val">${mode==='number'?p.value:formatPRValue(p.value,mode)}${unitLabel}</span>
             ${p.value===best?'<span class="pr-hist-new">PR</span>':''}
+            ${p.is_coach_estimate?'<span class="pr-est-badge">charge de travail</span>':''}
           </div>
           <div style="display:flex;align-items:center;gap:6px">
             <span class="pr-hist-date">${formatDate(p.recorded_at)}</span>
