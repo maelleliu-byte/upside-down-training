@@ -8074,3 +8074,348 @@ async function claimFreeAccess(programmeId){
   };
 
 })();
+
+// ===== PATCH: Suivi athlète dans l'Espace perso (échelle 1 à 5) =====
+// Remplace l'usage de la page Suivi : carte compacte en haut de l'onglet
+// Espace perso, champs pilotés par studios.wellness_config, enregistrement
+// au tap, puis envoi facultatif au coach par WhatsApp.
+(function(){
+  if(window.__patchBound_wellnessDaily) return;
+  window.__patchBound_wellnessDaily = true;
+
+  const UPSIDE_SLUG = 'upside';
+
+  // Correspondance avec les anciennes colonnes : on continue de les
+  // remplir (valeur ×2, car elles sont sur 1-10) pour que les vues
+  // coach et l'historique des 145 saisies restent cohérents.
+  const LEGACY = {
+    sommeil:'sleep_quality', sleep:'sleep_quality', sleep_quality:'sleep_quality',
+    energie:'energy', energy:'energy',
+    courbatures:'soreness', soreness:'soreness',
+    fatigue:'fatigue',
+    stress:'stress',
+    motivation:'motivation',
+    humeur:'mood', mood:'mood'
+  };
+
+  let _wdCfg = null;         // config du studio (cache)
+  let _wdEntry = null;       // saisie du jour affiché
+  let _wdDate = null;        // date de la saisie chargée
+  let _wdOpen = false;       // carte dépliée ?
+  let _wdSaveTimer = null;
+  let _wdCoach = null;       // {name, phone} résolu une fois
+
+  function _wdEsc(s){
+    return (s==null?'':String(s))
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
+  function _wdToday(){
+    const d = new Date();
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+
+  function _wdPrettyDate(iso){
+    try{
+      const d = new Date(iso+'T12:00:00');
+      if(iso===_wdToday()) return "aujourd'hui";
+      return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long'});
+    }catch(e){ return iso; }
+  }
+
+  async function _wdGetConfig(){
+    if(_wdCfg) return _wdCfg;
+    let sid = null;
+    try{ sid = (typeof getStudioId==='function') ? getStudioId() : null; }catch(e){}
+    if(!sid && currentProfile && currentProfile.studio_id) sid = currentProfile.studio_id;
+    try{
+      let q;
+      if(sid) q = sb.from('studios').select('wellness_config').eq('id',sid).maybeSingle();
+      else    q = sb.from('studios').select('wellness_config').eq('slug',UPSIDE_SLUG).maybeSingle();
+      const {data} = await q;
+      const cfg = data && data.wellness_config;
+      if(cfg && Array.isArray(cfg.fields)){
+        _wdCfg = {
+          scale_max: cfg.scale_max || 5,
+          fields: cfg.fields.filter(f=>f && f.active && f.key)
+        };
+      }else{
+        _wdCfg = {scale_max:5, fields:[]};
+      }
+    }catch(e){
+      console.warn('wellness config',e);
+      _wdCfg = {scale_max:5, fields:[]};
+    }
+    return _wdCfg;
+  }
+
+  async function _wdLoadEntry(iso){
+    _wdDate = iso;
+    _wdEntry = null;
+    try{
+      const {data} = await sb.from('wellness_entries')
+        .select('*').eq('athlete_id',currentUser.id).eq('date',iso).maybeSingle();
+      _wdEntry = data || null;
+    }catch(e){ console.warn('wellness entry',e); }
+  }
+
+  // Valeur courante d'un champ, sur l'échelle 1-5
+  function _wdVal(key){
+    if(!_wdEntry) return null;
+    const m = _wdEntry.metrics || {};
+    if(typeof m[key] === 'number') return m[key];
+    // repli : ancienne saisie sur 1-10 dans les colonnes historiques
+    const col = LEGACY[key];
+    if(col && typeof _wdEntry[col] === 'number'){
+      return Math.max(1, Math.min(5, Math.round(_wdEntry[col]/2)));
+    }
+    return null;
+  }
+
+  function _wdFilled(){
+    if(!_wdCfg || !_wdCfg.fields.length) return false;
+    return _wdCfg.fields.some(f => _wdVal(f.key) != null);
+  }
+
+  function _wdDotColor(v, inverted){
+    if(v == null) return null;
+    const score = inverted ? (6 - v) : v;   // 1..5, 5 = au mieux
+    if(score >= 4) return '#47ff8c';
+    if(score === 3) return '#e8ff47';
+    if(score === 2) return '#ff8c47';
+    return '#ff4747';
+  }
+
+  async function _wdRenderCard(){
+    const area = document.getElementById('sessions-area');
+    if(!area) return;
+    if(document.getElementById('wd-card')) return;
+
+    const cfg = await _wdGetConfig();
+    if(!cfg.fields.length) return;              // studio sans champ actif
+
+    const iso = (typeof selectedDate !== 'undefined' && selectedDate) ? selectedDate : _wdToday();
+    if(iso > _wdToday()) return;                // pas de saisie pour un jour à venir
+
+    if(_wdDate !== iso) await _wdLoadEntry(iso);
+
+    const wrap = document.createElement('div');
+    wrap.id = 'wd-card';
+    area.insertAdjacentElement('afterbegin', wrap);
+    _wdPaint();
+  }
+
+  function _wdPaint(){
+    const wrap = document.getElementById('wd-card');
+    if(!wrap || !_wdCfg) return;
+
+    const filled = _wdFilled();
+    const open = _wdOpen || !filled;
+
+    if(!open){
+      // Replié : une ligne de résumé
+      const chips = _wdCfg.fields.map(f=>{
+        const v = _wdVal(f.key);
+        if(v==null) return '';
+        const c = _wdDotColor(v,f.inverted);
+        return '<span style="color:'+c+';font-weight:700">'+_wdEsc(f.icon||'')+' '+v+'</span>';
+      }).filter(Boolean).join('<span style="opacity:.3"> · </span>');
+
+      wrap.innerHTML =
+        '<div class="wd-box wd-done">'+
+          '<div class="wd-done-l">'+
+            '<div class="wd-done-t">✅ Suivi enregistré</div>'+
+            '<div class="wd-done-c">'+chips+'</div>'+
+          '</div>'+
+          '<button type="button" class="wd-edit" id="wd-edit-btn">Modifier</button>'+
+        '</div>';
+      const b = document.getElementById('wd-edit-btn');
+      if(b) b.onclick = function(){ _wdOpen = true; _wdPaint(); };
+      return;
+    }
+
+    const max = _wdCfg.scale_max || 5;
+    const rows = _wdCfg.fields.map(f=>{
+      const cur = _wdVal(f.key);
+      let dots = '';
+      for(let v=1; v<=max; v++){
+        const on = (cur != null && v <= cur);
+        const c = on ? _wdDotColor(cur, f.inverted) : null;
+        dots += '<button type="button" class="wd-dot'+(on?' on':'')+'" data-key="'+_wdEsc(f.key)+'" data-v="'+v+'"'+
+                (c ? ' style="border-color:'+c+';background:'+c+'22;color:'+c+'"' : '')+'>'+v+'</button>';
+      }
+      return '<div class="wd-row">'+
+               '<div class="wd-lab">'+_wdEsc(f.icon||'')+' '+_wdEsc(f.label||f.key)+'</div>'+
+               '<div class="wd-dots">'+dots+'</div>'+
+             '</div>';
+    }).join('');
+
+    const note = (_wdEntry && _wdEntry.notes) ? _wdEntry.notes : '';
+
+    wrap.innerHTML =
+      '<div class="wd-box">'+
+        '<div class="wd-head">'+
+          '<div class="wd-title">Comment tu te sens ?</div>'+
+          '<div class="wd-date">'+_wdEsc(_wdPrettyDate(_wdDate))+'</div>'+
+        '</div>'+
+        rows+
+        '<textarea class="wd-note" id="wd-note" rows="2" placeholder="Un mot pour ton coach… (optionnel)">'+_wdEsc(note)+'</textarea>'+
+        '<button type="button" class="wd-send" id="wd-send-btn">📲 Envoyer à mon coach</button>'+
+      '</div>';
+
+    wrap.querySelectorAll('.wd-dot').forEach(btn=>{
+      btn.onclick = function(){
+        const key = btn.dataset.key;
+        const v = parseInt(btn.dataset.v,10);
+        const cur = _wdVal(key);
+        _wdSet(key, cur === v ? null : v);   // retaper la même valeur l'efface
+      };
+    });
+
+    const ta = document.getElementById('wd-note');
+    if(ta){
+      ta.onblur = function(){ _wdSet('__notes__', ta.value); };
+    }
+
+    const send = document.getElementById('wd-send-btn');
+    if(send) send.onclick = _wdSendToCoach;
+  }
+
+  function _wdSet(key, value){
+    if(!_wdEntry) _wdEntry = {athlete_id:currentUser.id, date:_wdDate, metrics:{}, scale_max:5};
+    if(!_wdEntry.metrics) _wdEntry.metrics = {};
+
+    if(key === '__notes__'){
+      _wdEntry.notes = value || null;
+    }else{
+      if(value == null) delete _wdEntry.metrics[key];
+      else _wdEntry.metrics[key] = value;
+      const col = LEGACY[key];
+      if(col) _wdEntry[col] = (value == null) ? null : Math.max(1, Math.min(10, value*2));
+      _wdPaint();
+    }
+
+    clearTimeout(_wdSaveTimer);
+    _wdSaveTimer = setTimeout(_wdSave, 450);
+  }
+
+  async function _wdSave(){
+    if(!_wdEntry || !_wdDate) return;
+    const payload = {
+      athlete_id: currentUser.id,
+      date: _wdDate,
+      metrics: _wdEntry.metrics || {},
+      scale_max: 5,
+      notes: _wdEntry.notes || null,
+      updated_at: new Date().toISOString()
+    };
+    // colonnes historiques
+    Object.keys(LEGACY).forEach(k=>{
+      const col = LEGACY[k];
+      if(typeof _wdEntry[col] === 'number' || _wdEntry[col] === null) payload[col] = _wdEntry[col];
+    });
+
+    const {error} = await sb.from('wellness_entries')
+      .upsert(payload, {onConflict:'athlete_id,date'});
+    if(error){
+      console.warn('wellness save',error);
+      showToast('❌ '+error.message);
+    }
+  }
+
+  async function _wdResolveCoach(){
+    if(_wdCoach !== null) return _wdCoach;
+    _wdCoach = false;
+    try{
+      let coachId = currentProfile && currentProfile.coach_id;
+      if(!coachId){
+        // repli : propriétaire du studio
+        let sid = null;
+        try{ sid = (typeof getStudioId==='function') ? getStudioId() : null; }catch(e){}
+        let q = sid
+          ? sb.from('studios').select('owner_id').eq('id',sid).maybeSingle()
+          : sb.from('studios').select('owner_id').eq('slug',UPSIDE_SLUG).maybeSingle();
+        const {data:st} = await q;
+        coachId = st && st.owner_id;
+      }
+      if(!coachId) return _wdCoach;
+
+      const [{data:cc},{data:prof}] = await Promise.all([
+        sb.from('coach_contacts').select('whatsapp_phone').eq('user_id',coachId).maybeSingle(),
+        sb.from('profiles').select('full_name').eq('id',coachId).maybeSingle()
+      ]);
+      if(cc && cc.whatsapp_phone){
+        _wdCoach = {phone: cc.whatsapp_phone, name: (prof && prof.full_name) || 'ton coach'};
+      }
+    }catch(e){ console.warn('resolve coach',e); }
+    return _wdCoach;
+  }
+
+  async function _wdSendToCoach(){
+    clearTimeout(_wdSaveTimer);
+    await _wdSave();
+
+    if(!_wdFilled()){
+      showToast('⚠️ Remplis au moins un champ avant d\'envoyer');
+      return;
+    }
+
+    const coach = await _wdResolveCoach();
+    if(!coach || !coach.phone){
+      showToast('⚠️ Ton coach n\'a pas renseigné son numéro WhatsApp');
+      return;
+    }
+
+    const who = (currentProfile && currentProfile.full_name) || 'Un athlète';
+    const parts = _wdCfg.fields.map(f=>{
+      const v = _wdVal(f.key);
+      return (v==null) ? '' : (f.label||f.key)+' '+v+'/5';
+    }).filter(Boolean).join(' · ');
+    const note = (_wdEntry && _wdEntry.notes) ? '\n« '+_wdEntry.notes+' »' : '';
+    const msg = who+' — suivi du '+_wdPrettyDate(_wdDate)+'\n'+parts+note;
+
+    const url = 'https://wa.me/'+coach.phone.replace(/\D/g,'')+'?text='+encodeURIComponent(msg);
+    window.open(url,'_blank');
+
+    _wdOpen = false;
+    _wdPaint();
+  }
+
+  function _wdInjectStyles(){
+    if(document.getElementById('wd-styles')) return;
+    const st = document.createElement('style');
+    st.id = 'wd-styles';
+    st.textContent =
+      '.wd-box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;margin-bottom:14px}'+
+      '.wd-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:12px}'+
+      '.wd-title{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:1.5px}'+
+      '.wd-date{font-size:11px;color:var(--muted)}'+
+      '.wd-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0}'+
+      '.wd-lab{font-size:13px;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}'+
+      '.wd-dots{display:flex;gap:5px;flex:0 0 auto}'+
+      '.wd-dot{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--border2);background:transparent;'+
+        'color:var(--muted);font-size:12px;font-family:inherit;cursor:pointer;padding:0;'+
+        'display:flex;align-items:center;justify-content:center;transition:transform .08s}'+
+      '.wd-dot:active{transform:scale(.9)}'+
+      '.wd-note{width:100%;margin-top:10px;background:var(--dark);border:1.5px solid var(--border2);border-radius:10px;'+
+        'color:var(--text);font-family:inherit;font-size:13px;padding:9px;resize:none}'+
+      '.wd-send{width:100%;margin-top:10px;background:transparent;border:1px solid var(--border2);'+
+        'color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}'+
+      '.wd-done{display:flex;align-items:center;justify-content:space-between;gap:12px}'+
+      '.wd-done-t{font-size:12px;font-weight:700;margin-bottom:3px}'+
+      '.wd-done-c{font-size:12px}'+
+      '.wd-edit{flex:0 0 auto;background:transparent;border:1px solid var(--border2);color:var(--muted);'+
+        'border-radius:8px;padding:7px 11px;font-size:11px;cursor:pointer;font-family:inherit}';
+    document.head.appendChild(st);
+  }
+
+  // Greffe : la carte est ajoutée en tête de l'espace perso après chaque rendu
+  const _origRenderPersoSessionsWd = renderPersoSessions;
+  renderPersoSessions = async function(){
+    await _origRenderPersoSessionsWd.apply(this, arguments);
+    _wdInjectStyles();
+    try{ await _wdRenderCard(); }catch(e){ console.warn('wellness card',e); }
+  };
+
+})();
