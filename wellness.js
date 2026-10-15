@@ -7811,24 +7811,43 @@ async function claimFreeAccess(programmeId){
           '<input type="tel" inputmode="tel" class="form-input" id="ws-phone" placeholder="06 12 34 56 78">'+
         '</div>'+
         '<button type="button" class="btn-secondary" id="ws-phone-save">Enregistrer mon numéro</button>'+
+        '<div id="ws-status" style="font-size:11px;color:var(--muted);margin-top:10px;line-height:1.5;word-break:break-word"></div>'+
       '</div>';
     panel.appendChild(block);
-    _wsWireStatic();
     _wsLoad();
   }
 
-  function _wsWireStatic(){
-    const add = document.getElementById('ws-add-btn');
-    if(add) add.onclick = function(){
-      if(!_wsCfg || _wsCfg.fields.length >= WS_MAX) return;
+  // Message d'état visible à l'écran : pas de console sur tablette.
+  function _wsStatus(msg, bad){
+    const el = document.getElementById('ws-status');
+    if(el){
+      el.style.color = bad ? 'var(--red)' : 'var(--muted)';
+      el.textContent = msg;
+    }
+    if(typeof showToast === 'function') showToast(msg);
+  }
+
+  // Délégation : insensible au moment où le bloc est (re)construit.
+  document.addEventListener('click', function(ev){
+    const t = ev.target && ev.target.closest ? ev.target.closest('button') : null;
+    if(!t || !t.id) return;
+
+    if(t.id === 'ws-add-btn'){
+      ev.preventDefault();
+      if(!_wsCfg){ _wsStatus('Configuration pas encore chargée, patiente une seconde.', true); return; }
+      if(_wsCfg.fields.length >= WS_MAX) return;
       _wsCfg.fields.push({key:'',label:'',icon:'📋',inverted:false,active:true});
       _wsRender();
-    };
-    const save = document.getElementById('ws-save-btn');
-    if(save) save.onclick = _wsSave;
-    const pSave = document.getElementById('ws-phone-save');
-    if(pSave) pSave.onclick = _wsSavePhone;
-  }
+    }
+    else if(t.id === 'ws-save-btn'){
+      ev.preventDefault();
+      _wsSave().catch(e=>_wsStatus('Erreur champs : '+(e.message||e), true));
+    }
+    else if(t.id === 'ws-phone-save'){
+      ev.preventDefault();
+      _wsSavePhone().catch(e=>_wsStatus('Erreur numéro : '+(e.message||e), true));
+    }
+  }, true);
 
   async function _wsLoad(){
     try{
@@ -8044,26 +8063,43 @@ async function claimFreeAccess(programmeId){
 
   async function _wsSavePhone(){
     const inp = document.getElementById('ws-phone');
-    if(!inp || !window.currentUser) return;
+    if(!inp){ _wsStatus('Champ numéro introuvable à l\'écran.', true); return; }
+    if(!window.currentUser || !currentUser.id){
+      _wsStatus('Session expirée — recharge la page et reconnecte-toi.', true);
+      return;
+    }
     const raw = inp.value.trim();
 
     if(!raw){
       const {error} = await sb.from('coach_contacts').delete().eq('user_id',currentUser.id);
-      if(error){ showToast('❌ '+error.message); return; }
-      showToast('🗑 Numéro retiré');
+      if(error){ _wsStatus('Suppression refusée : '+error.message+(error.code?' ['+error.code+']':''), true); return; }
+      _wsStatus('🗑 Numéro retiré');
       return;
     }
     const phone = _wsNormalizePhone(raw);
     if(!/^\+\d{8,15}$/.test(phone)){
-      showToast('⚠️ Numéro invalide — attendu 06 12 34 56 78 ou +33612345678');
+      _wsStatus('Numéro non reconnu : « '+raw+' » devient « '+phone+' ». Attendu 06 12 34 56 78 ou +33612345678.', true);
       return;
     }
-    const {error} = await sb.from('coach_contacts')
+
+    _wsStatus('Enregistrement en cours…');
+    const {data,error} = await sb.from('coach_contacts')
       .upsert({user_id:currentUser.id,whatsapp_phone:phone,updated_at:new Date().toISOString()},
-              {onConflict:'user_id'});
-    if(error){ showToast('❌ '+error.message); return; }
-    inp.value = phone;
-    showToast('✅ Numéro enregistré');
+              {onConflict:'user_id'})
+      .select('user_id,whatsapp_phone');
+
+    if(error){
+      _wsStatus('Refus de la base : '+error.message+
+        (error.code?' [code '+error.code+']':'')+
+        (error.hint?' — '+error.hint:''), true);
+      return;
+    }
+    if(!data || !data.length){
+      _wsStatus('Aucune ligne écrite — la règle d\'accès a bloqué l\'enregistrement.', true);
+      return;
+    }
+    inp.value = data[0].whatsapp_phone;
+    _wsStatus('✅ Numéro enregistré : '+data[0].whatsapp_phone);
   }
 
   // Greffe sur l'onglet ⚙️ Paramètres, après le bloc « Créer un athlète »
