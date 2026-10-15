@@ -33,6 +33,30 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
 #loading-msg{color:#555;font-size:13px;}
 #debug-log{background:#111;border:1px solid #333;border-radius:10px;padding:12px;width:100%;max-width:400px;font-family:monospace;font-size:12px;color:#888;line-height:1.8;}
 #main-content{display:none;}
+/* --- Suivi athlète --- */
+.wc-hint{font-size:13px;color:#666;line-height:1.6;margin-bottom:16px;}
+.wc-warn{background:#ff8c4710;border:1px solid #ff8c4730;color:#ff8c47;border-radius:10px;padding:10px 13px;font-size:13px;line-height:1.5;margin-bottom:14px;}
+.wc-row{border:1px solid #222;border-radius:12px;padding:12px;margin-bottom:10px;background:#0d0d0d;}
+.wc-row.off{opacity:.45;}
+.wc-row-top{display:flex;gap:8px;align-items:center;}
+.wc-icon{width:48px;text-align:center;background:#161616;border:1px solid #2a2a2a;border-radius:9px;color:#f0f0f0;font-size:17px;padding:9px 4px;flex:0 0 auto;font-family:inherit;}
+.wc-label{flex:1;min-width:0;background:#161616;border:1px solid #2a2a2a;border-radius:9px;color:#f0f0f0;font-family:inherit;font-size:14px;padding:9px 11px;}
+.wc-mini{flex:0 0 auto;width:32px;height:36px;background:transparent;border:1px solid #2a2a2a;border-radius:9px;color:#777;font-size:14px;cursor:pointer;}
+.wc-mini:disabled{opacity:.25;cursor:default;}
+.wc-mini.danger{color:#ff7070;}
+.wc-row-opts{display:flex;flex-wrap:wrap;gap:16px;margin-top:11px;}
+.wc-chk{font-size:12px;color:#777;display:flex;align-items:center;gap:7px;cursor:pointer;}
+.wc-chk b{color:#f0f0f0;font-weight:700;}
+.wc-add{width:100%;margin-top:6px;background:transparent;border:1px dashed #2a2a2a;color:#777;border-radius:11px;padding:12px;font-size:14px;font-weight:600;cursor:pointer;font-family:inherit;}
+.wc-add:disabled{opacity:.35;cursor:default;}
+.wc-prev{background:#0d0d0d;border:1px solid #222;border-radius:12px;padding:14px;margin:16px 0;}
+.wc-prev-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #1c1c1c;}
+.wc-prev-row:last-child{border-bottom:0;}
+.wc-prev-lab{font-size:14px;font-weight:600;}
+.wc-dots{display:flex;gap:7px;}
+.wc-dot{width:30px;height:30px;border-radius:50%;border:1px solid #2a2a2a;color:#666;font-size:12px;display:flex;align-items:center;justify-content:center;}
+.wc-phone{width:100%;background:#161616;border:1px solid #2a2a2a;border-radius:11px;color:#f0f0f0;font-family:inherit;font-size:15px;padding:13px;margin-bottom:12px;}
+.wc-sep{border:0;border-top:1px solid #222;margin:26px 0 20px;}
 </style>
 </head>
 <body>
@@ -112,6 +136,29 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
       </div>
     </div>
 
+    <!-- Section Suivi athlète -->
+    <div class="section" id="wellness-section">
+      <div class="section-title">🩺 Suivi athlète</div>
+      <p class="wc-hint">Les champs que tes athlètes notent de 1 à 5 dans leur espace perso.
+        Moins il y en a, plus ils remplissent.</p>
+
+      <div id="wc-warn-slot"></div>
+      <div id="wc-rows"></div>
+      <button class="wc-add" id="wc-add-btn">+ Ajouter un champ</button>
+
+      <div class="wc-prev" id="wc-preview"></div>
+
+      <button class="btn" id="wc-save-btn">Enregistrer les champs</button>
+
+      <hr class="wc-sep">
+
+      <div class="section-title">📲 Mon numéro WhatsApp</div>
+      <p class="wc-hint">Utilisé par le bouton « Envoyer à mon coach » côté athlète.
+        Visible uniquement par les membres de ce studio. Laisse vide pour le retirer.</p>
+      <input class="wc-phone" id="wc-phone" type="tel" inputmode="tel" placeholder="06 12 34 56 78">
+      <button class="btn btn-secondary" id="wc-phone-save">Enregistrer mon numéro</button>
+    </div>
+
     <div class="section" style="opacity:.45;pointer-events:none">
       <div class="section-title">⚙️ Informations du studio</div>
       <p style="font-size:13px;color:#555">Bientôt disponible</p>
@@ -133,6 +180,24 @@ function log(msg) {
   const el = document.getElementById('debug-log');
   if (el) el.innerHTML = debugLines.map(l => '→ ' + l).join('<br>');
   document.getElementById('loading-msg').textContent = msg;
+}
+
+// Toast — était appelé par le code Stripe/abonnement sans jamais être défini.
+function showToast(msg) {
+  let el = document.getElementById('wc-toast');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'wc-toast';
+    el.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);' +
+      'background:#1a1a1a;border:1px solid #333;color:#f0f0f0;padding:12px 18px;border-radius:12px;' +
+      'font-size:14px;z-index:9999;max-width:90vw;text-align:center;opacity:0;transition:opacity .2s;' +
+      'box-shadow:0 8px 24px rgba(0,0,0,.5)';
+    document.body.appendChild(el);
+  }
+  el.textContent = msg;
+  requestAnimationFrame(() => { el.style.opacity = '1'; });
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.opacity = '0'; }, 3200);
 }
 
 function getSlugFromUrl() {
@@ -220,6 +285,8 @@ function renderStudio(studio) {
   }
 
   renderBilling(studio);
+  renderWellnessConfig(studio);
+  loadMyPhone();
 }
 
 async function refreshStudioStatus() {
@@ -323,6 +390,242 @@ async function startBillingSubscription() {
     showToast('❌ ' + e.message);
     if (btn) { btn.disabled = false; btn.textContent = "S'abonner"; }
   }
+}
+
+/* ============================================================
+ * SUIVI ATHLÈTE — champs configurables (1 à 5) + numéro WhatsApp
+ * Écrit dans studios.wellness_config et coach_contacts.whatsapp_phone
+ * ============================================================ */
+const WC_MAX_FIELDS = 5;
+const WC_WARN_FIELDS = 3;
+let wcConfig = null;
+
+function wcEsc(s) {
+  return (s == null ? '' : String(s))
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function wcSlugify(label) {
+  return (label || '').toLowerCase()
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '').slice(0, 32)
+    || ('champ_' + Date.now().toString(36).slice(-4));
+}
+
+function wcDefaultConfig() {
+  return {
+    scale_max: 5,
+    fields: [
+      { key: 'sommeil', label: 'Sommeil', icon: '😴', inverted: false, active: true },
+      { key: 'energie', label: 'Énergie', icon: '🔥', inverted: false, active: true },
+      { key: 'courbatures', label: 'Courbatures', icon: '🦵', inverted: true, active: true }
+    ]
+  };
+}
+
+function renderWellnessConfig(studio) {
+  let cfg = studio && studio.wellness_config;
+  if (!cfg || !Array.isArray(cfg.fields) || !cfg.fields.length) cfg = wcDefaultConfig();
+  wcConfig = JSON.parse(JSON.stringify(cfg));
+  if (!wcConfig.scale_max) wcConfig.scale_max = 5;
+  wcRenderRows();
+}
+
+function wcRenderRows() {
+  const rowsEl = document.getElementById('wc-rows');
+  const warnEl = document.getElementById('wc-warn-slot');
+  if (!rowsEl) return;
+
+  const activeCount = wcConfig.fields.filter(f => f.active).length;
+  warnEl.innerHTML = activeCount > WC_WARN_FIELDS
+    ? '<div class="wc-warn">⚠️ ' + activeCount + ' champs actifs. Au-delà de ' + WC_WARN_FIELDS +
+      ', les athlètes remplissent nettement moins. ' + WC_MAX_FIELDS + ' maximum.</div>'
+    : '';
+
+  rowsEl.innerHTML = wcConfig.fields.map((f, i) =>
+    '<div class="wc-row' + (f.active ? '' : ' off') + '">' +
+      '<div class="wc-row-top">' +
+        '<input class="wc-icon" type="text" maxlength="2" value="' + wcEsc(f.icon || '') + '" data-i="' + i + '" data-k="icon">' +
+        '<input class="wc-label" type="text" value="' + wcEsc(f.label || '') + '" data-i="' + i + '" data-k="label" placeholder="Nom du champ">' +
+        '<button class="wc-mini" data-act="up" data-i="' + i + '"' + (i === 0 ? ' disabled' : '') + '>↑</button>' +
+        '<button class="wc-mini" data-act="down" data-i="' + i + '"' + (i === wcConfig.fields.length - 1 ? ' disabled' : '') + '>↓</button>' +
+        '<button class="wc-mini danger" data-act="del" data-i="' + i + '">✕</button>' +
+      '</div>' +
+      '<div class="wc-row-opts">' +
+        '<label class="wc-chk"><input type="checkbox" data-i="' + i + '" data-k="active"' + (f.active ? ' checked' : '') + '> Actif</label>' +
+        '<label class="wc-chk"><input type="checkbox" data-i="' + i + '" data-k="inverted"' + (f.inverted ? ' checked' : '') + '> Une note haute est <b>mauvaise</b></label>' +
+      '</div>' +
+    '</div>'
+  ).join('');
+
+  const addBtn = document.getElementById('wc-add-btn');
+  if (addBtn) addBtn.disabled = wcConfig.fields.length >= WC_MAX_FIELDS;
+
+  wcRenderPreview();
+  wcWireRows();
+}
+
+function wcRenderPreview() {
+  const box = document.getElementById('wc-preview');
+  if (!box) return;
+  const fields = wcConfig.fields.filter(f => f.active);
+  if (!fields.length) {
+    box.innerHTML = '<div class="wc-hint" style="margin:0">Aucun champ actif — rien ne s\'affichera chez l\'athlète.</div>';
+    return;
+  }
+  const max = wcConfig.scale_max || 5;
+  box.innerHTML =
+    '<div class="section-title" style="margin-bottom:10px">Aperçu côté athlète</div>' +
+    fields.map(f => {
+      let dots = '';
+      for (let v = 1; v <= max; v++) dots += '<span class="wc-dot">' + v + '</span>';
+      return '<div class="wc-prev-row">' +
+               '<div class="wc-prev-lab">' + wcEsc(f.icon || '') + ' ' + wcEsc(f.label || '—') + '</div>' +
+               '<div class="wc-dots">' + dots + '</div>' +
+             '</div>';
+    }).join('');
+}
+
+function wcWireRows() {
+  document.querySelectorAll('#wc-rows .wc-icon, #wc-rows .wc-label').forEach(inp => {
+    inp.addEventListener('input', () => {
+      const i = parseInt(inp.dataset.i, 10);
+      if (isNaN(i) || !wcConfig.fields[i]) return;
+      wcConfig.fields[i][inp.dataset.k] = inp.value;
+      wcRenderPreview();
+    });
+  });
+
+  document.querySelectorAll('#wc-rows .wc-chk input').forEach(chk => {
+    chk.addEventListener('change', () => {
+      const i = parseInt(chk.dataset.i, 10);
+      const k = chk.dataset.k;
+      if (isNaN(i) || !wcConfig.fields[i]) return;
+      if (k === 'active' && chk.checked) {
+        const active = wcConfig.fields.filter(f => f.active).length;
+        if (active >= WC_MAX_FIELDS) {
+          chk.checked = false;
+          showToast('⚠️ ' + WC_MAX_FIELDS + ' champs actifs maximum');
+          return;
+        }
+      }
+      wcConfig.fields[i][k] = chk.checked;
+      wcRenderRows();
+    });
+  });
+
+  document.querySelectorAll('#wc-rows .wc-mini').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.i, 10);
+      const act = btn.dataset.act;
+      if (isNaN(i) || !wcConfig.fields[i]) return;
+      if (act === 'up' && i > 0) {
+        const t = wcConfig.fields[i - 1];
+        wcConfig.fields[i - 1] = wcConfig.fields[i];
+        wcConfig.fields[i] = t;
+      } else if (act === 'down' && i < wcConfig.fields.length - 1) {
+        const t = wcConfig.fields[i + 1];
+        wcConfig.fields[i + 1] = wcConfig.fields[i];
+        wcConfig.fields[i] = t;
+      } else if (act === 'del') {
+        if (!confirm('Supprimer « ' + (wcConfig.fields[i].label || 'ce champ') + ' » ?\nLes saisies déjà enregistrées sont conservées.')) return;
+        wcConfig.fields.splice(i, 1);
+      }
+      wcRenderRows();
+    });
+  });
+}
+
+document.addEventListener('click', function (e) {
+  if (e.target && e.target.id === 'wc-add-btn') {
+    if (!wcConfig || wcConfig.fields.length >= WC_MAX_FIELDS) return;
+    wcConfig.fields.push({ key: '', label: '', icon: '📋', inverted: false, active: true });
+    wcRenderRows();
+  }
+  if (e.target && e.target.id === 'wc-save-btn') saveWellnessConfig();
+  if (e.target && e.target.id === 'wc-phone-save') saveMyPhone();
+});
+
+async function saveWellnessConfig() {
+  if (!wcConfig || !currentStudio) return;
+
+  const seen = {};
+  for (const f of wcConfig.fields) {
+    const label = (f.label || '').trim();
+    if (!label) { showToast('⚠️ Un champ est sans nom'); return; }
+    if (!f.key) f.key = wcSlugify(label);   // clé figée à la création
+    if (seen[f.key]) { showToast('⚠️ Deux champs portent le même nom : ' + label); return; }
+    seen[f.key] = 1;
+    f.label = label;
+    f.icon = (f.icon || '').trim();
+    f.inverted = !!f.inverted;
+    f.active = !!f.active;
+  }
+  const active = wcConfig.fields.filter(f => f.active).length;
+  if (!active) { showToast('⚠️ Au moins un champ actif est nécessaire'); return; }
+  if (active > WC_MAX_FIELDS) { showToast('⚠️ ' + WC_MAX_FIELDS + ' champs actifs maximum'); return; }
+  wcConfig.scale_max = 5;
+
+  const btn = document.getElementById('wc-save-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
+
+  const { data, error } = await sb.from('studios')
+    .update({ wellness_config: wcConfig })
+    .eq('id', currentStudio.id)
+    .select('id,wellness_config');
+
+  if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer les champs'; }
+
+  if (error) { showToast('❌ ' + error.message); return; }
+  if (!data || !data.length) { showToast('❌ Rien enregistré — droits insuffisants sur ce studio'); return; }
+
+  currentStudio.wellness_config = data[0].wellness_config;
+  showToast('✅ Suivi mis à jour');
+  wcRenderRows();
+}
+
+function wcNormalizePhone(raw) {
+  if (!raw) return '';
+  let s = String(raw).replace(/[\s.\-()]/g, '');
+  if (/^00/.test(s)) s = '+' + s.slice(2);
+  if (/^0\d{9}$/.test(s)) s = '+33' + s.slice(1);
+  if (/^\d{9,15}$/.test(s) && s[0] !== '0') s = '+' + s;
+  return s;
+}
+
+async function loadMyPhone() {
+  const inp = document.getElementById('wc-phone');
+  if (!inp || !currentUser) return;
+  const { data } = await sb.from('coach_contacts')
+    .select('whatsapp_phone').eq('user_id', currentUser.id).maybeSingle();
+  if (data && data.whatsapp_phone) inp.value = data.whatsapp_phone;
+}
+
+async function saveMyPhone() {
+  const inp = document.getElementById('wc-phone');
+  if (!inp || !currentUser) return;
+  const raw = inp.value.trim();
+
+  if (!raw) {
+    const { error } = await sb.from('coach_contacts').delete().eq('user_id', currentUser.id);
+    if (error) { showToast('❌ ' + error.message); return; }
+    showToast('🗑 Numéro retiré');
+    return;
+  }
+
+  const phone = wcNormalizePhone(raw);
+  if (!/^\+\d{8,15}$/.test(phone)) {
+    showToast('⚠️ Numéro invalide — attendu 06 12 34 56 78 ou +33612345678');
+    return;
+  }
+
+  const { error } = await sb.from('coach_contacts')
+    .upsert({ user_id: currentUser.id, whatsapp_phone: phone, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id' });
+  if (error) { showToast('❌ ' + error.message); return; }
+  inp.value = phone;
+  showToast('✅ Numéro enregistré');
 }
 
 init();

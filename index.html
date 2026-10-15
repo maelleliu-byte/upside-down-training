@@ -961,6 +961,7 @@
     <div class="menu-item" onclick="goPage('pr')"><span class="menu-item-label">📊 Mes records (PR)</span><span>›</span></div>
     <div class="menu-item" onclick="goPage('abos')"><span class="menu-item-label">💳 Mes abonnements</span><span>›</span></div>
     <div class="menu-item" id="admin-menu-item" style="display:none" onclick="goPage('admin')"><span class="menu-item-label">⚙️ Administration</span><span>›</span></div>
+    <div class="menu-item" id="studio-settings-menu-item" style="display:none" onclick="openStudioSettings()"><span class="menu-item-label">🎛️ Paramètres du studio</span><span>›</span></div>
     <button class="btn-logout" onclick="doLogout()">Se déconnecter</button>
   </div>
 
@@ -1245,7 +1246,6 @@
 <script src="open-read-session.js"></script>
 <script src="abos.js"></script>
 <script src="wellness.js"></script>
-<script src="wellness-config.js"></script>
 <script>
 /* Tous les modules sont chargés en amont - lazy-load désactivé */
 const _pageModules = {prog:true, pr:true, videos:true, admin:true, abos:true, profil:true};
@@ -2888,6 +2888,46 @@ function _injectAdminBadgesTab() {
     }
     if(_orig)_orig(tab,btn);
   };
+})();
+</script>
+<script>
+/* Entrée « Paramètres du studio » dans le menu profil (admins uniquement).
+   La page /<slug>/settings n'était jusqu'ici atteignable que depuis le
+   panneau Studios réservé à Upside — les admins de studio n'y avaient
+   aucun accès. */
+(function(){
+  var tries=0;
+  function slug(){
+    try{
+      if(window.__STUDIO__&&window.__STUDIO__.slug)return window.__STUDIO__.slug;
+    }catch(e){}
+    try{
+      if(window.currentProfile&&!currentProfile.studio_id)return 'upside';
+    }catch(e){}
+    return null;
+  }
+  function show(){
+    var el=document.getElementById('studio-settings-menu-item');
+    if(!el)return true;
+    var isAdmin=false;
+    try{isAdmin=!!(window.currentProfile&&currentProfile.role==='admin');}catch(e){}
+    if(!isAdmin)return false;
+    var s=slug();
+    if(!s)return false;
+    el.dataset.slug=s;
+    el.style.display='flex';
+    return true;
+  }
+  window.openStudioSettings=function(){
+    var el=document.getElementById('studio-settings-menu-item');
+    var s=(el&&el.dataset.slug)||slug();
+    if(s)window.location.href='/'+s+'/settings';
+  };
+  var iv=setInterval(function(){
+    tries++;
+    if(show()||tries>40)clearInterval(iv);
+  },500);
+  window.addEventListener('studio:ready',show);
 })();
 </script>
 </body>
