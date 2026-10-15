@@ -6769,3 +6769,141 @@ async function claimFreeAccess(programmeId){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
+
+// ===================================================
+// VUE SESSION — SEMAINE PRECEDENTE EN TRANSPARENCE
+// Dans chaque cellule de la semaine N, affiche en
+// fantome les chips de la meme case en semaine N-1,
+// avec un bouton "+" pour recopier. Evite de remonter
+// la semaine d'avant pour comparer.
+// Toggle persistant : localStorage __ghostS1 (ON par defaut)
+// ===================================================
+(function(){
+  if(window.__ghostPrevWeekBound) return;
+  window.__ghostPrevWeekBound = true;
+
+  var LS_KEY = '__ghostS1';
+  function isOn(){ try{ return localStorage.getItem(LS_KEY) !== '0'; }catch(e){ return true; } }
+  function setOn(v){ try{ localStorage.setItem(LS_KEY, v ? '1' : '0'); }catch(e){} }
+
+  function _cd(){ try{ if(typeof cycleData !== 'undefined' && cycleData) return cycleData; }catch(e){} return window.cycleData || null; }
+  function _mode(){ try{ if(typeof cycleMode !== 'undefined' && cycleMode) return cycleMode; }catch(e){} return window.cycleMode || 'cycle'; }
+
+  function _injectStyle(){
+    if(document.getElementById('ghost-s1-style')) return;
+    var st = document.createElement('style');
+    st.id = 'ghost-s1-style';
+    st.textContent =
+      '.ghost-wrap{display:flex;flex-direction:column;gap:4px;margin-bottom:6px;padding-bottom:6px;border-bottom:1px dashed var(--border2)}'
+    + '.ghost-lab{font-size:9px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted);opacity:.75}'
+    + '.ghost-chip{display:flex;align-items:flex-start;gap:5px;padding:4px 5px;border-radius:6px;border:1px dashed currentColor;opacity:.45;font-size:11px;line-height:1.45}'
+    + '.ghost-chip .ghost-txt{flex:1;min-width:0;white-space:pre-wrap;word-break:break-word}'
+    + '.ghost-chip .ghost-copy{flex-shrink:0;padding:0 6px;background:rgba(0,0,0,.25);border:none;color:inherit;border-radius:4px;font-size:12px;line-height:1.6;cursor:pointer}';
+    (document.head || document.documentElement).appendChild(st);
+  }
+
+  // Recopie une chip de la semaine N-1 dans la semaine N
+  window.ghostCopyChip = function(wk, ri, di, chi){
+    var cd = _cd(); if(!cd || !cd.sessionCells) return;
+    var src = (cd.sessionCells['w'+(wk-1)+'-'+ri+'-'+di] || [])[chi];
+    if(!src) return;
+    var key = 'w'+wk+'-'+ri+'-'+di;
+    if(!cd.sessionCells[key]) cd.sessionCells[key] = [];
+    cd.sessionCells[key].push({ text: src.text, color: src.color });
+    if(typeof scheduleAutoSaveCycle === 'function') scheduleAutoSaveCycle();
+    if(typeof renderSessionGrid === 'function') renderSessionGrid();
+  };
+
+  function _inject(){
+    var grid = document.getElementById('cycle-grid');
+    if(!grid) return;
+    // purge des fantomes existants (re-render ou toggle)
+    Array.prototype.forEach.call(grid.querySelectorAll('.ghost-wrap'), function(el){ el.parentNode && el.parentNode.removeChild(el); });
+    if(!isOn()) return;
+    if(_mode() !== 'session') return;
+    var cd = _cd(); if(!cd || !cd.sessionCells) return;
+    var sc = cd.sessionCells;
+
+    Array.prototype.forEach.call(grid.querySelectorAll('td.session-cell'), function(td){
+      var m = (td.getAttribute('onclick') || '').match(/openCycleCellModal\((\d+),(\d+),(\d+)/);
+      if(!m) return;
+      var wk = parseInt(m[1],10), ri = parseInt(m[2],10), di = parseInt(m[3],10);
+      if(wk < 1) return;
+
+      var prev = sc['w'+(wk-1)+'-'+ri+'-'+di] || [];
+      if(!prev.length) return;
+
+      var cur = (sc['w'+wk+'-'+ri+'-'+di] || []).map(function(c){ return (c.text||'').trim(); });
+      var html = '<div class="ghost-lab">S-1</div>', n = 0;
+
+      prev.forEach(function(c, chi){
+        var txt = (c.text || '').trim();
+        if(!txt || cur.indexOf(txt) >= 0) return;   // deja recopie cette semaine
+        n++;
+        var col = c.color || '';
+        html += '<div class="ghost-chip" style="' + (col ? 'color:'+col+';background:'+col+'14' : 'color:var(--text2)') + '">'
+             +    '<span class="ghost-txt">' + txt + '</span>'
+             +    '<button class="ghost-copy" title="Recopier en S' + (wk+1) + '" onclick="event.stopPropagation();ghostCopyChip(' + wk + ',' + ri + ',' + di + ',' + chi + ')">+</button>'
+             +  '</div>';
+      });
+      if(!n) return;
+
+      var inner = td.querySelector('.session-cell-inner') || td;
+      var wrap = document.createElement('div');
+      wrap.className = 'ghost-wrap';
+      wrap.innerHTML = html;
+      wrap.addEventListener('click', function(e){ e.stopPropagation(); }); // pas d'ouverture de modal par erreur
+      inner.insertBefore(wrap, inner.firstChild);
+    });
+  }
+
+  function _styleToggle(b){
+    var on = isOn();
+    b.textContent = on ? '👻 S-1 ON' : '👻 S-1 OFF';
+    b.style.cssText = 'margin-left:auto;margin-right:6px;padding:5px 10px;border-radius:7px;font-size:11px;cursor:pointer;'
+      + (on
+        ? 'background:rgba(45,212,191,.12);border:1px solid rgba(45,212,191,.45);color:var(--teal,#2dd4bf)'
+        : 'background:var(--card2);border:1px solid var(--border2);color:var(--muted)');
+  }
+
+  function _injectToggle(){
+    if(document.getElementById('ghost-s1-btn')) return;
+    var panel = document.getElementById('cycle-config-session');
+    if(!panel) return;
+    var hdr = panel.querySelector('div[style*="justify-content:space-between"]');
+    if(!hdr) return;
+    var b = document.createElement('button');
+    b.id = 'ghost-s1-btn';
+    b.type = 'button';
+    b.title = "Afficher la semaine precedente en transparence";
+    _styleToggle(b);
+    b.addEventListener('click', function(e){
+      e.stopPropagation();
+      setOn(!isOn());
+      _styleToggle(b);
+      _inject();
+    });
+    var last = hdr.lastElementChild;
+    if(last) hdr.insertBefore(b, last); else hdr.appendChild(b);
+  }
+
+  function _patch(){
+    var orig = window.renderSessionGrid;
+    if(!orig || orig.__ghostPrevPatched) return;
+    window.renderSessionGrid = function(){
+      var r = orig.apply(this, arguments);
+      // setTimeout 0 : on passe APRES tous les autres patches post-render
+      setTimeout(function(){ _injectStyle(); _inject(); _injectToggle(); }, 0);
+      return r;
+    };
+    window.renderSessionGrid.__ghostPrevPatched = true;
+  }
+
+  function _tryAll(){ _injectStyle(); _patch(); _injectToggle(); }
+
+  _tryAll();
+  document.addEventListener('DOMContentLoaded', _tryAll);
+  setTimeout(_tryAll, 800);
+  setTimeout(_tryAll, 2000);
+  setTimeout(_tryAll, 4000);
+})();
