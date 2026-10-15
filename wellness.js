@@ -7298,3 +7298,328 @@ async function claimFreeAccess(programmeId){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
   else boot();
 })();
+
+
+/* ===========================================================
+   CHARGEMENT DE BARRE — VISUEL DISQUES OLYMPIQUES
+   -----------------------------------------------------------
+   Cote athlete : dans les seances (contenu RX, scaling, target,
+   tips), chaque charge calculee affichee en kg (ex : « 67kg »)
+   devient cliquable. Au clic : un panneau montre la barre avec
+   les disques a mettre DE CHAQUE COTE, aux couleurs officielles.
+
+   - Barre par defaut selon le profil : femme = 15 kg, homme = 20 kg
+     (currentProfile.gender : male/female/m/f/homme/femme)
+   - L'athlete peut changer la barre (20 / 15 / 10 / 5) : son choix
+     est memorise (localStorage) et prioritaire sur le profil.
+   - Jeu de disques par defaut : 25/20/15/10/5/2.5/2/1.5/1/0.5
+     Surchargeable : window.UDT_PLATES = [25,20,15,10,5,2.5,1.25];
+     Stock limite (paires dispo par cote) :
+       window.UDT_PLATE_STOCK = {25:4,20:4,15:2,10:2,5:2,2.5:2};
+
+   Aucune modification de admin.js / planning.js / index.html.
+   =========================================================== */
+(function(){
+  if(window.__patchBound_barLoad) return;
+  window.__patchBound_barLoad = true;
+
+  var LS_BAR = 'udt_bar_kg';
+
+  /* ---------- 1. Referentiel disques (couleurs IWF) ---------- */
+  var PLATE_DEF = {
+    25  : {color:'#d62828', label:'rouge', h:1.00, w:20},
+    20  : {color:'#1565c0', label:'bleu',  h:1.00, w:18},
+    15  : {color:'#f5c518', label:'jaune', h:1.00, w:15},
+    10  : {color:'#2e9e4f', label:'vert',  h:1.00, w:12},
+    5   : {color:'#f1f1f1', label:'blanc', h:0.82, w:10},
+    2.5 : {color:'#d62828', label:'rouge', h:0.62, w:8},
+    2   : {color:'#1565c0', label:'bleu',  h:0.56, w:7},
+    1.5 : {color:'#f5c518', label:'jaune', h:0.50, w:6},
+    1.25: {color:'#f1f1f1', label:'blanc', h:0.46, w:6},
+    1   : {color:'#2e9e4f', label:'vert',  h:0.44, w:5},
+    0.5 : {color:'#f1f1f1', label:'blanc', h:0.38, w:4}
+  };
+  var DEFAULT_PLATES = [25,20,15,10,5,2.5,2,1.5,1,0.5];
+  var BAR_CHOICES = [
+    {kg:20, lbl:'20 kg', sub:'Homme'},
+    {kg:15, lbl:'15 kg', sub:'Femme'},
+    {kg:10, lbl:'10 kg', sub:'Technique'},
+    {kg:5,  lbl:'5 kg',  sub:'Barre kids'}
+  ];
+
+  function plates(){
+    var list = Array.isArray(window.UDT_PLATES) && window.UDT_PLATES.length
+      ? window.UDT_PLATES.slice() : DEFAULT_PLATES.slice();
+    return list.filter(function(p){ return !!PLATE_DEF[p]; })
+               .sort(function(a,b){ return b-a; });
+  }
+  function stockFor(p){
+    var s = window.UDT_PLATE_STOCK;
+    if(!s || typeof s !== 'object') return Infinity;
+    var v = s[p];
+    return (typeof v === 'number' && v >= 0) ? v : Infinity;
+  }
+  function nf(n){
+    // 1.5 -> "1,5"  /  20 -> "20"
+    return (Math.round(n*100)/100).toString().replace('.',',');
+  }
+
+  /* ---------- 2. Barre par defaut ---------- */
+  function genderBar(){
+    var g = '';
+    try{ g = String((window.currentProfile && window.currentProfile.gender) || '').toLowerCase(); }catch(e){}
+    if(g==='female' || g==='f' || g==='femme') return 15;
+    if(g==='male'   || g==='m' || g==='homme') return 20;
+    return null;
+  }
+  function currentBar(){
+    var saved = null;
+    try{ saved = parseFloat(localStorage.getItem(LS_BAR)); }catch(e){}
+    if(saved && saved > 0) return saved;
+    return genderBar() || 20;
+  }
+  function setBar(kg){
+    try{ localStorage.setItem(LS_BAR, String(kg)); }catch(e){}
+  }
+
+  /* ---------- 3. Calcul du chargement ---------- */
+  function computeLoad(target, bar){
+    var res = {target:target, bar:bar, perSide:0, items:[], rest:0, total:bar, empty:false, under:false};
+    if(target <= bar + 0.001){
+      res.empty = true;
+      res.under = target < bar - 0.001;
+      return res;
+    }
+    var perSide = Math.round(((target - bar) / 2) * 100) / 100;
+    res.perSide = perSide;
+    var left = perSide;
+    var list = plates();
+    for(var i=0;i<list.length;i++){
+      var p = list[i];
+      var max = stockFor(p);
+      var n = Math.floor((left + 0.001) / p);
+      if(n > max) n = max;
+      if(n > 0){
+        res.items.push({kg:p, n:n});
+        left = Math.round((left - n*p) * 100) / 100;
+      }
+      if(left <= 0.001) break;
+    }
+    res.rest = Math.max(0, Math.round(left*100)/100);
+    var loaded = res.items.reduce(function(s,it){ return s + it.kg*it.n; }, 0);
+    res.total = Math.round((bar + loaded*2) * 100) / 100;
+    return res;
+  }
+
+  /* ---------- 4. Dessin SVG de la barre ---------- */
+  function buildSvg(res){
+    var seq = [];
+    res.items.forEach(function(it){
+      for(var i=0;i<it.n;i++) seq.push(it.kg);
+    });
+
+    var H = 140, CY = H/2;
+    var BIG = 54;                 // demi-hauteur d'un disque pleine taille
+    var SLEEVE = 0;
+    seq.forEach(function(p){ SLEEVE += PLATE_DEF[p].w + 3; });
+    var COLLAR = 10, GRIP = 70, PAD = 14;
+    var half = GRIP/2 + COLLAR + SLEEVE + 22;
+    var W = Math.max(300, half*2 + PAD*2);
+    var CX = W/2;
+
+    var parts = [];
+    // manchons + barre
+    parts.push('<rect x="'+(CX-half)+'" y="'+(CY-5)+'" width="'+(half*2)+'" height="10" rx="5" fill="#9aa3ab"/>');
+    parts.push('<rect x="'+(CX-GRIP/2)+'" y="'+(CY-6)+'" width="'+GRIP+'" height="12" rx="6" fill="#6f777e"/>');
+
+    function drawSide(dir){ // dir = 1 (droite) ou -1 (gauche)
+      var x = CX + dir*(GRIP/2 + COLLAR);
+      // bague de serrage
+      parts.push('<rect x="'+(dir>0 ? x-6 : x-2)+'" y="'+(CY-11)+'" width="8" height="22" rx="3" fill="#b9c0c6"/>');
+      seq.forEach(function(p){
+        var d = PLATE_DEF[p];
+        var w = d.w, h = BIG * d.h;
+        var px = dir>0 ? x : x - w;
+        parts.push('<rect x="'+px+'" y="'+(CY-h)+'" width="'+w+'" height="'+(h*2)+'" rx="'+Math.min(5,w/2)+'" '
+          + 'fill="'+d.color+'" stroke="rgba(0,0,0,.45)" stroke-width="1"/>');
+        // trou central (effet disque)
+        parts.push('<rect x="'+px+'" y="'+(CY-5)+'" width="'+w+'" height="10" fill="rgba(255,255,255,.22)"/>');
+        x += dir*(w+3);
+      });
+    }
+    drawSide(1); drawSide(-1);
+
+    return '<svg viewBox="0 0 '+W+' '+H+'" width="100%" height="128" preserveAspectRatio="xMidYMid meet" '
+      + 'style="display:block">'+parts.join('')+'</svg>';
+  }
+
+  /* ---------- 5. Panneau ---------- */
+  function ensureStyle(){
+    if(document.getElementById('udt-barload-style')) return;
+    var st = document.createElement('style');
+    st.id = 'udt-barload-style';
+    st.textContent = ''
+      + '.udt-barload{cursor:pointer}'
+      + '.udt-barload::after{content:"\\1F3CB";font-size:9px;margin-left:3px;opacity:.7;vertical-align:middle}'
+      + '#udt-bl-ov{position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:99999;display:flex;'
+      +   'align-items:flex-end;justify-content:center;padding:0;backdrop-filter:blur(2px)}'
+      + '#udt-bl-ov .bl-panel{width:100%;max-width:520px;background:var(--card,#141414);'
+      +   'border:1px solid var(--border2,#2a2a2a);border-bottom:none;border-radius:18px 18px 0 0;'
+      +   'padding:16px 16px 22px;max-height:92vh;overflow-y:auto;animation:blup .18s ease-out}'
+      + '@keyframes blup{from{transform:translateY(26px);opacity:.4}to{transform:none;opacity:1}}'
+      + '#udt-bl-ov .bl-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}'
+      + '#udt-bl-ov .bl-title{font-family:"Bebas Neue",sans-serif;font-size:20px;letter-spacing:2px;'
+      +   'color:var(--text,#fff);flex:1;line-height:1}'
+      + '#udt-bl-ov .bl-x{background:var(--card2,#1d1d1d);border:1px solid var(--border2,#2a2a2a);'
+      +   'color:var(--muted,#888);border-radius:9px;width:32px;height:32px;font-size:15px;cursor:pointer}'
+      + '#udt-bl-ov .bl-target{display:flex;align-items:baseline;gap:8px;margin-bottom:2px}'
+      + '#udt-bl-ov .bl-kg{font-family:"Bebas Neue",sans-serif;font-size:40px;line-height:1;color:#2dd4bf}'
+      + '#udt-bl-ov .bl-sub{font-size:12px;color:var(--muted,#888)}'
+      + '#udt-bl-ov .bl-stage{background:var(--card2,#1d1d1d);border:1px solid var(--border,#232323);'
+      +   'border-radius:12px;padding:10px 6px;margin:12px 0}'
+      + '#udt-bl-ov .bl-side{text-align:center;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;'
+      +   'color:var(--muted,#888);margin-bottom:8px}'
+      + '#udt-bl-ov .bl-side b{color:#2dd4bf;font-size:14px;letter-spacing:0}'
+      + '#udt-bl-ov .bl-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:10px;'
+      +   'background:var(--card2,#1d1d1d);border:1px solid var(--border,#232323);margin-bottom:6px}'
+      + '#udt-bl-ov .bl-chip{width:16px;height:30px;border-radius:4px;border:1px solid rgba(0,0,0,.45);flex:0 0 auto}'
+      + '#udt-bl-ov .bl-rtxt{flex:1;font-size:14px;font-weight:700;color:var(--text,#fff)}'
+      + '#udt-bl-ov .bl-rsub{font-size:11px;color:var(--muted,#888);font-weight:400}'
+      + '#udt-bl-ov .bl-note{font-size:12px;color:var(--muted,#888);line-height:1.5;margin-top:8px}'
+      + '#udt-bl-ov .bl-warn{color:#ffb020}'
+      + '#udt-bl-ov .bl-lbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;'
+      +   'color:var(--muted,#888);margin:14px 0 8px}'
+      + '#udt-bl-ov .bl-bars{display:flex;gap:6px}'
+      + '#udt-bl-ov .bl-bar{flex:1;padding:8px 4px;border-radius:9px;background:var(--card2,#1d1d1d);'
+      +   'border:1px solid var(--border2,#2a2a2a);color:var(--muted,#888);cursor:pointer;text-align:center}'
+      + '#udt-bl-ov .bl-bar.on{background:rgba(45,212,191,.12);border-color:rgba(45,212,191,.55);color:#2dd4bf}'
+      + '#udt-bl-ov .bl-bar b{display:block;font-size:14px}'
+      + '#udt-bl-ov .bl-bar span{font-size:10px;opacity:.8}';
+    document.head.appendChild(st);
+  }
+
+  function renderPanel(target){
+    var bar = currentBar();
+    var res = computeLoad(target, bar);
+    var body = '';
+
+    body += '<div class="bl-target"><div class="bl-kg">'+nf(target)+' kg</div>'
+         +  '<div class="bl-sub">barre '+nf(bar)+' kg</div></div>';
+
+    if(res.empty){
+      body += '<div class="bl-stage">'+buildSvg(res)+'<div class="bl-side">Barre a vide</div></div>';
+      body += '<div class="bl-note'+(res.under?' bl-warn':'')+'">'
+           +  (res.under
+              ? 'La charge demandee ('+nf(target)+' kg) est inferieure au poids de la barre. Prends une barre plus legere.'
+              : 'Rien a charger : la barre seule fait deja '+nf(bar)+' kg.')
+           +  '</div>';
+    } else {
+      body += '<div class="bl-stage">'+buildSvg(res)
+           +  '<div class="bl-side">De chaque cote : <b>'+nf(res.perSide)+' kg</b></div></div>';
+
+      body += res.items.map(function(it){
+        var d = PLATE_DEF[it.kg];
+        return '<div class="bl-row">'
+             +   '<div class="bl-chip" style="background:'+d.color+'"></div>'
+             +   '<div class="bl-rtxt">'+it.n+' × '+nf(it.kg)+' kg'
+             +     '<div class="bl-rsub">'+d.label+' · de chaque cote</div></div>'
+             + '</div>';
+      }).join('');
+
+      body += '<div class="bl-note">Total sur la barre : <b style="color:#2dd4bf">'+nf(res.total)+' kg</b>'
+           +  ' ('+nf(bar)+' + 2 × '+nf(res.perSide - res.rest)+')</div>';
+      if(res.rest > 0.001){
+        body += '<div class="bl-note bl-warn">Il reste '+nf(res.rest)+' kg par cote non chargeables '
+             +  'avec les disques disponibles — arrondis a '+nf(res.total)+' kg.</div>';
+      }
+    }
+
+    body += '<div class="bl-lbl">Barre utilisee</div><div class="bl-bars">'
+         +  BAR_CHOICES.map(function(b){
+              return '<button type="button" class="bl-bar'+(b.kg===bar?' on':'')+'" data-bar="'+b.kg+'">'
+                   +   '<b>'+b.lbl+'</b><span>'+b.sub+'</span></button>';
+            }).join('')
+         +  '</div>';
+
+    return body;
+  }
+
+  function open(target){
+    ensureStyle();
+    close();
+    var ov = document.createElement('div');
+    ov.id = 'udt-bl-ov';
+    ov.innerHTML = '<div class="bl-panel">'
+      + '<div class="bl-head"><div class="bl-title">CHARGEMENT DE BARRE</div>'
+      +   '<button type="button" class="bl-x" id="udt-bl-x">✕</button></div>'
+      + '<div id="udt-bl-body">'+renderPanel(target)+'</div>'
+      + '</div>';
+    document.body.appendChild(ov);
+
+    ov.addEventListener('click', function(e){
+      if(e.target === ov){ close(); return; }
+      if(e.target.closest && e.target.closest('#udt-bl-x')){ close(); return; }
+      var b = e.target.closest && e.target.closest('.bl-bar');
+      if(b){
+        setBar(parseFloat(b.dataset.bar));
+        var host = document.getElementById('udt-bl-body');
+        if(host) host.innerHTML = renderPanel(target);
+      }
+    });
+  }
+  function close(){
+    var ov = document.getElementById('udt-bl-ov');
+    if(ov) ov.remove();
+  }
+  document.addEventListener('keydown', function(e){ if(e.key==='Escape') close(); });
+
+  /* ---------- 6. Reperage des charges calculees ---------- */
+  var SEL = '.session-content, .scaling-text, .info-block-text, .session-card';
+  var RX_KG = /^\s*(\d+(?:[.,]\d+)?)\s*kg\s*$/i;
+
+  function decorate(root){
+    var scope = root && root.querySelectorAll ? root : document;
+    var hosts = scope.querySelectorAll(SEL);
+    for(var i=0;i<hosts.length;i++){
+      var spans = hosts[i].querySelectorAll('span');
+      for(var j=0;j<spans.length;j++){
+        var sp = spans[j];
+        if(sp.dataset.barload) continue;
+        if(sp.children.length) continue;                 // badge = texte simple
+        var m = RX_KG.exec(sp.textContent || '');
+        if(!m) continue;
+        var val = parseFloat(m[1].replace(',','.'));
+        if(!val || val <= 0 || val > 500) continue;
+        var st = (sp.getAttribute('style') || '');
+        if(st.indexOf('border-radius') === -1) continue;  // uniquement les badges de charge
+        sp.dataset.barload = String(val);
+        sp.classList.add('udt-barload');
+        sp.title = 'Voir le chargement de la barre';
+      }
+    }
+  }
+
+  document.addEventListener('click', function(e){
+    var el = e.target && e.target.closest ? e.target.closest('[data-barload]') : null;
+    if(!el) return;
+    e.preventDefault();
+    e.stopPropagation();
+    open(parseFloat(el.dataset.barload));
+  }, true);
+
+  function boot(){
+    ensureStyle();
+    decorate();
+    try{
+      var mo = new MutationObserver(function(){
+        clearTimeout(window.__udtBlT);
+        window.__udtBlT = setTimeout(function(){ decorate(); }, 150);
+      });
+      mo.observe(document.body, {childList:true, subtree:true});
+    }catch(e){
+      setInterval(function(){ decorate(); }, 1200);
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', boot);
+  else boot();
+})();
