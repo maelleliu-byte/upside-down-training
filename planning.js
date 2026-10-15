@@ -995,7 +995,37 @@ async function loadMyPRs(){
   (data||[]).forEach(pr=>{if(!myPRs[pr.movement_id])myPRs[pr.movement_id]=[];myPRs[pr.movement_id].push(pr);});
   if(document.getElementById('page-pr')?.classList.contains('active'))renderAll();
 }
-function filterCat(cat,btn){currentCat=cat;document.querySelectorAll('.cat-btn[data-cat]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');renderAll();}
+function filterCat(cat,btn){
+  currentCat=cat;
+  currentSub='all';
+  document.querySelectorAll('.cat-btn[data-cat]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderSubcats();
+  renderAll();
+}
+function filterSub(sub,btn){
+  currentSub=sub;
+  document.querySelectorAll('#pr-subcats .subcat-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  renderAll();
+}
+// Barre des sous-catégories : visible seulement sur une famille de mouvements,
+// et seulement pour les sous-catégories qui contiennent au moins un mouvement.
+function renderSubcats(){
+  const box=document.getElementById('pr-subcats');
+  if(!box)return;
+  const subs=PR_SUBCATS[currentCat];
+  if(!subs){box.style.display='none';box.innerHTML='';return;}
+  const movs=(movements||[]).filter(m=>m.category===currentCat);
+  const counts={};
+  movs.forEach(m=>{const k=prSubKey(m);counts[k]=(counts[k]||0)+1;});
+  const avail=subs.filter(s=>counts[s.key]>0);
+  if(avail.length<2){box.style.display='none';box.innerHTML='';return;}
+  if(!avail.some(s=>s.key===currentSub))currentSub='all';
+  box.style.display='flex';
+  box.innerHTML=`<button class="subcat-btn ${currentSub==='all'?'active':''}" onclick="filterSub('all',this)">Tout<span class="sc-count">${movs.length}</span></button>`
+    +avail.map(s=>`<button class="subcat-btn ${currentSub===s.key?'active':''}" onclick="filterSub('${s.key}',this)">${s.label}<span class="sc-count">${counts[s.key]}</span></button>`).join('');
+}
 function filterAll(){searchQuery=document.getElementById('pr-search-input').value.toLowerCase();renderAll();}
 function filterMovements(){renderAll();}
 
@@ -1003,6 +1033,7 @@ const BENCH_CATS=['girl','test','hero','custom'];
 
 function renderAll(){
   const list=document.getElementById('movements-list');
+  renderSubcats();
   const isBenchCat=BENCH_CATS.includes(currentCat);
   const isAll=currentCat==='all';
 
@@ -1075,34 +1106,40 @@ function renderAll(){
   if(isAll||!isBenchCat){
     let filtered=movements;
     if(!isAll)filtered=filtered.filter(m=>m.category===currentCat);
+    if(!isAll&&PR_SUBCATS[currentCat]&&currentSub!=='all')filtered=filtered.filter(m=>prSubKey(m)===currentSub);
     if(searchQuery)filtered=filtered.filter(m=>m.name.toLowerCase().includes(searchQuery));
     if(filtered.length>0){
       if(isAll)html+=`<div style="padding:12px 20px 4px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted)">RECORDS PERSONNELS</div>`;
 
-      // Group haltero & force by sub-category
-      const halteroMovs=filtered.filter(m=>m.category==='haltero');
-      const forceMovs=filtered.filter(m=>m.category==='force');
-      const otherMovs=filtered.filter(m=>m.category!=='haltero'&&m.category!=='force');
+      // Une sous-catégorie précise est sélectionnée → liste à plat, pas de sous-titres
+      const flat=(!isAll&&PR_SUBCATS[currentCat]&&currentSub!=='all');
 
-      const renderGrouped=(movs,subcats,getSub,catLabel)=>{
+      // Groupement par famille puis par sous-catégorie (colonne movements.subcategory)
+      const FAM_ORDER=['haltero','force','gymnastic','cardio','autre'];
+      const fams=FAM_ORDER.filter(f=>filtered.some(m=>m.category===f))
+        .concat([...new Set(filtered.map(m=>m.category))].filter(f=>FAM_ORDER.indexOf(f)===-1));
+
+      fams.forEach(fam=>{
+        const movs=filtered.filter(m=>m.category===fam);
         if(!movs.length)return;
-        if(isAll)html+=`<div style="padding:8px 20px 2px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--muted)">${catLabel.toUpperCase()}</div>`;
+        if(isAll)html+=`<div style="padding:8px 20px 2px;font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1.5px;color:var(--muted)">${(CAT_LABELS[fam]||fam).toUpperCase()}</div>`;
+        const subs=PR_SUBCATS[fam];
+        if(!subs||flat){html+=movs.map(renderMovementCard).join('');return;}
         const grouped={};
-        movs.forEach(m=>{const k=getSub(m.name);(grouped[k]=grouped[k]||[]).push(m);});
-        subcats.forEach(sc=>{
+        movs.forEach(m=>{const k=prSubKey(m);(grouped[k]=grouped[k]||[]).push(m);});
+        subs.forEach(sc=>{
           const list=grouped[sc.key];
           if(!list||!list.length)return;
-          html+=subHeader(sc.label);
+          delete grouped[sc.key];
+          html+=subHeader(sc.label.toUpperCase());
           html+=list.map(renderMovementCard).join('');
         });
-      };
-
-      renderGrouped(halteroMovs,HALTERO_SUBCATS,getHalteroSubCat,CAT_LABELS.haltero);
-      renderGrouped(forceMovs,FORCE_SUBCATS,getForceSubCat,CAT_LABELS.force);
-
-      if(otherMovs.length>0){
-        html+=otherMovs.map(renderMovementCard).join('');
-      }
+        // Filet de sécurité : mouvement rangé dans une sous-catégorie inconnue
+        Object.keys(grouped).forEach(k=>{
+          html+=subHeader(prSubLabel(fam,k).toUpperCase());
+          html+=grouped[k].map(renderMovementCard).join('');
+        });
+      });
     }
   }
 
@@ -1133,7 +1170,7 @@ function openPRModal(movementId,preselectFormat){
   // Sélecteur de format
   const formats=(currentModalMovement.available_formats||'').split(',').map(f=>f.trim()).filter(Boolean);
   const formatEl=document.getElementById('modal-pr-format');
-  if(formats.length>1){
+  if(formats.length>=1){
     formatEl.style.display='block';
     formatEl.innerHTML=`<div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Format</div>
       <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">${formats.map((f,i)=>{
@@ -1149,14 +1186,132 @@ function openPRModal(movementId,preselectFormat){
   const noteEl=document.getElementById('modal-pr-note');if(noteEl)noteEl.value='';
   document.querySelector('.btn-modal-save').textContent='Enregistrer';
   editingPRId=null;
+  togglePRForm(false);
+  renderPRAnalysis();
   renderPRHistory(movementId);
   document.getElementById('pr-modal').classList.add('open');
+}
+
+// Formulaire d'ajout : replié par défaut, la fiche s'ouvre sur l'analyse
+function togglePRForm(force){
+  const form=document.getElementById('pr-add-form');
+  const btn=document.getElementById('pr-add-btn');
+  if(!form)return;
+  const open=(force===undefined)?(form.style.display==='none'):!!force;
+  form.style.display=open?'block':'none';
+  if(btn)btn.classList.toggle('open',open);
+  if(open){
+    setTimeout(()=>{try{const first=form.querySelector('input,textarea');if(first)first.focus();}catch(e){}},60);
+  }else{
+    editingPRId=null;
+    const save=document.querySelector('.btn-modal-save');
+    if(save)save.textContent='Enregistrer';
+  }
 }
 
 function selectFormat(btn){
   document.querySelectorAll('#modal-pr-format .format-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
   renderPRInputArea();
+  renderPRAnalysis();
+  if(currentModalMovement)renderPRHistory(currentModalMovement.id);
+}
+
+// PR du mouvement correspondant au format sélectionné.
+// Les PR legacy sans format sont rattachés au format primaire (1RM si présent).
+function prsForFormat(movementId,fmt){
+  const prs=myPRs[movementId]||[];
+  const formats=(currentModalMovement?.available_formats||'').split(',').map(f=>f.trim()).filter(Boolean);
+  if(!formats.length||!fmt)return prs.slice();
+  const norm=s=>(s||'').toString().trim().toLowerCase().replace(/\s+/g,'');
+  const primary=formats.find(f=>/^1\s*RM$/i.test(f))||formats[0];
+  return prs.filter(p=>{
+    const pn=norm(p.format);
+    if(!pn)return norm(fmt)===norm(primary);
+    return pn===norm(fmt);
+  });
+}
+
+const PR_PCT_STEPS=[100,95,90,85,80,75,70,65,60,55,50];
+
+function renderPRAnalysis(){
+  const box=document.getElementById('pr-analysis');
+  if(!box||!currentModalMovement)return;
+  const fmt=getSelectedFormat();
+  const mode=getPRModeFor(currentModalMovement,fmt);
+  const list=prsForFormat(currentModalMovement.id,fmt)
+    .slice().sort((a,b)=>String(a.recorded_at||'').localeCompare(String(b.recorded_at||'')));
+  if(!list.length){
+    box.innerHTML=`<div class="pr-note-empty">Aucun PR${fmt?' en '+fmt:''} pour l'instant — appuie sur + pour en ajouter un.</div>`;
+    return;
+  }
+  const best=mode==='time'
+    ? list.reduce((a,b)=>b.value<a.value?b:a)
+    : list.reduce((a,b)=>b.value>a.value?b:a);
+  const unit=(mode==='number')?' '+(currentModalMovement.unit||''):'';
+  const disp=v=>mode==='number'?(v+unit):formatPRValue(v,mode);
+
+  let html=`<div class="pr-best">
+      <div class="pr-best-val">${disp(best.value)}</div>
+      <div class="pr-best-meta">${fmt?fmt+' · ':''}${formatDate(best.recorded_at)}</div>
+    </div>`;
+  html+=buildPRChart(list,mode);
+
+  // Tableau des % : uniquement sur une charge, calculé sur le PR actuel
+  if(mode==='number'&&/kg|lb/i.test(currentModalMovement.unit||'')){
+    html+=`<div class="pr-pct-title">% du PR (${disp(best.value)})</div><div class="pr-pct-grid">`
+      +PR_PCT_STEPS.map(p=>{
+        const v=Math.round(best.value*p/100*2)/2;
+        return `<div class="pr-pct-cell"><span class="pr-pct-p">${p}%</span><span class="pr-pct-v">${v}</span></div>`;
+      }).join('')
+      +`</div>`;
+  }
+  box.innerHTML=html;
+}
+
+// Courbe de progression — 12 derniers PR du format, points tapables
+let _prChartPts=[];
+function buildPRChart(list,mode){
+  if(list.length<2)return '<div class="pr-note-empty">La courbe apparaît dès le 2ᵉ PR enregistré.</div>';
+  const pts=list.slice(-12);
+  _prChartPts=pts.map(p=>({v:p.value,d:p.recorded_at,mode}));
+  const vals=pts.map(p=>p.value);
+  const min=Math.min(...vals),max=Math.max(...vals),range=(max-min)||1;
+  const w=300,h=108,padX=12,padTop=12,padBot=20;
+  const X=i=>padX+(i/(pts.length-1))*(w-padX*2);
+  const Y=v=>padTop+(1-(v-min)/range)*(h-padTop-padBot);
+  const line=pts.map((p,i)=>`${X(i).toFixed(1)},${Y(p.value).toFixed(1)}`).join(' ');
+  const dots=pts.map((p,i)=>`<circle class="pr-chart-dot" cx="${X(i).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="9" fill="transparent" onclick="prPickPoint(${i})"/><circle cx="${X(i).toFixed(1)}" cy="${Y(p.value).toFixed(1)}" r="3.5" fill="var(--accent)" pointer-events="none"/>`).join('');
+  const first=formatDateShortSafe(pts[0].recorded_at);
+  const last=formatDateShortSafe(pts[pts.length-1].recorded_at);
+  return `<div class="pr-chart"><svg viewBox="0 0 ${w} ${h}">
+      <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      ${dots}
+      <text x="${padX}" y="${h-5}" fill="#777" font-size="9">${first}</text>
+      <text x="${w-padX}" y="${h-5}" fill="#777" font-size="9" text-anchor="end">${last}</text>
+    </svg></div>
+    <div class="pr-point" id="pr-point">Appuie sur un point de la courbe</div>`;
+}
+function formatDateShortSafe(iso){
+  try{
+    if(typeof formatDateShort==='function')return formatDateShort(iso);
+    const d=new Date(iso+'T12:00:00');
+    return `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  }catch(e){return iso||'';}
+}
+function prPickPoint(i){
+  const p=_prChartPts[i];
+  const el=document.getElementById('pr-point');
+  if(!p||!el)return;
+  const unit=(p.mode==='number')?' '+(currentModalMovement?.unit||''):'';
+  const val=p.mode==='number'?(p.v+unit):formatPRValue(p.v,p.mode);
+  const prev=i>0?_prChartPts[i-1]:null;
+  let delta='';
+  if(prev&&p.mode==='number'){
+    const d=Math.round((p.v-prev.v)*10)/10;
+    if(d!==0)delta=` · ${d>0?'+':''}${d}${unit}`;
+  }
+  el.innerHTML=`<b>${val}</b> — ${formatDate(p.d)}${delta}`;
 }
 
 function getPRModeFor(movement,format){
@@ -1404,26 +1559,21 @@ function getSelectedFormat(){
 }
 
 function renderPRHistory(movementId){
-  const prs=myPRs[movementId]||[];
   const histEl=document.getElementById('modal-history');
-  if(prs.length===0){histEl.innerHTML='';return;}
+  if(!histEl)return;
+  // Historique du format sélectionné uniquement — la courbe au-dessus montre le même jeu de PR
+  const selFmt=getSelectedFormat();
+  const entries=prsForFormat(movementId,selFmt)
+    .slice().sort((a,b)=>String(b.recorded_at||'').localeCompare(String(a.recorded_at||'')));
+  if(entries.length===0){histEl.innerHTML='';return;}
 
-  // Grouper par format
-  const byFormat={};
-  prs.forEach(p=>{
-    const key=p.format||'—';
-    if(!byFormat[key])byFormat[key]=[];
-    byFormat[key].push(p);
-  });
-
-  let html='<div class="pr-hist-title">Historique</div>';
-  Object.entries(byFormat).forEach(([fmt,entries])=>{
-    const mode=getPRModeFor(currentModalMovement,fmt==='—'?null:fmt);
+  let html='<div class="pr-hist-title">Historique'+(selFmt?' · '+selFmt:'')+'</div>';
+  {
+    const mode=getPRModeFor(currentModalMovement,selFmt);
     // Pour time, le PR est le MIN; sinon le MAX
     const best=mode==='time'?Math.min(...entries.map(p=>p.value)):Math.max(...entries.map(p=>p.value));
-    const unitLabel=mode==='time'?'':(mode==='rounds'?'':' '+(currentModalMovement.unit||''));
-    if(Object.keys(byFormat).length>1)html+=`<div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin:8px 0 4px;text-transform:uppercase">${fmt}</div>`;
-    html+=entries.slice(0,5).map(p=>{
+    const unitLabel=(mode==='number')?' '+(currentModalMovement.unit||''):'';
+    html+=entries.slice(0,8).map(p=>{
       const noteEsc=p.note?String(p.note).replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\n/g,'\\n'):'';
       const noteHtml=p.note?String(p.note).replace(/</g,'&lt;').replace(/>/g,'&gt;'):'';
       return `
@@ -1441,12 +1591,6 @@ function renderPRHistory(movementId){
         </div>
         ${p.note?`<div style="font-size:12px;line-height:1.5;color:#bbb;background:rgba(255,255,255,.03);border-left:2px solid var(--accent);padding:6px 10px;border-radius:4px;white-space:pre-wrap">${noteHtml}</div>`:''}
       </div>`;}).join('');
-  });
-
-  // Chart sur les entrées du même format (prendre le plus représenté)
-  const mainFormat=Object.entries(byFormat).sort((a,b)=>b[1].length-a[1].length)[0];
-  if(mainFormat&&mainFormat[1].length>=2){
-    html+=buildMiniChart(mainFormat[1].slice(0,8).reverse());
   }
   histEl.innerHTML=html;
 }
@@ -1462,6 +1606,7 @@ function editPR(id,value,date,format,note){
       b.classList.toggle('active',b.dataset.format===format);
     });
   }
+  togglePRForm(true);
   renderPRInputArea();
   setPRValue(value);
   document.getElementById('modal-pr-date').value=date;
@@ -1473,7 +1618,7 @@ async function deletePR(id){
   if(error){showToast('❌ '+error.message);return;}
   showToast('🗑 PR supprimé');
   await loadMyPRs();
-  if(currentModalMovement)renderPRHistory(currentModalMovement.id);
+  if(currentModalMovement){renderPRAnalysis();renderPRHistory(currentModalMovement.id);}
 }
 async function savePR(){
   if(!currentModalMovement)return;
@@ -1510,12 +1655,14 @@ async function savePR(){
     if(typeof checkAutoBadges==='function')setTimeout(checkAutoBadges,1500);
     renderPRInputArea();
     if(noteEl)noteEl.value='';
+    renderPRAnalysis();
     renderPRHistory(currentModalMovement.id);
     return;
   }
   if(noteEl)noteEl.value='';
   renderPRInputArea();
   await loadMyPRs();
+  renderPRAnalysis();
   renderPRHistory(currentModalMovement.id);
 }
 function buildMiniChart(prs){

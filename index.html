@@ -232,6 +232,7 @@
       <button class="cat-btn" data-cat="test" onclick="filterCat('test',this)">Tests</button>
       <button class="cat-btn" data-cat="custom" onclick="filterCat('custom',this)">Custom</button>
     </div>
+    <div class="pr-subcats" id="pr-subcats" style="display:none"></div>
     <div id="movements-list"></div>
   </div>
 
@@ -1183,19 +1184,25 @@
 <!-- PR MODAL -->
 <div class="modal-overlay" id="pr-modal">
   <div class="modal">
-    <div class="modal-title" id="modal-mv-name">—</div>
+    <div class="pr-modal-head">
+      <div class="modal-title" id="modal-mv-name">—</div>
+      <button type="button" class="pr-add-btn" id="pr-add-btn" onclick="togglePRForm()" title="Ajouter un PR">+</button>
+    </div>
     <div id="modal-pr-format"></div>
-    <div id="pr-input-wrap">
-      <div class="modal-sub" id="modal-mv-unit">Valeur</div>
-      <input class="modal-input" id="modal-pr-val" type="number" step="0.5" min="0" placeholder="0">
+    <div id="pr-add-form" style="display:none">
+      <div id="pr-input-wrap">
+        <div class="modal-sub" id="modal-mv-unit">Valeur</div>
+        <input class="modal-input" id="modal-pr-val" type="number" step="0.5" min="0" placeholder="0">
+      </div>
+      <input class="modal-date" id="modal-pr-date" type="date">
+      <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:14px">
+        <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">💬 Mes impressions <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.6">— optionnel</span></div>
+        <textarea id="modal-pr-note" rows="3" placeholder="Sensations, technique, fatigue…" style="width:100%;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;resize:vertical;outline:none;min-height:54px"></textarea>
+      </div>
+      <button class="btn-modal-save" onclick="savePR()">Enregistrer</button>
     </div>
-    <input class="modal-date" id="modal-pr-date" type="date">
-    <div style="background:var(--card);border:1.5px solid var(--border2);border-radius:10px;padding:12px 14px;margin-bottom:14px">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">💬 Mes impressions <span style="font-weight:400;text-transform:none;letter-spacing:0;opacity:.6">— optionnel</span></div>
-      <textarea id="modal-pr-note" rows="3" placeholder="Sensations, technique, fatigue…" style="width:100%;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;resize:vertical;outline:none;min-height:54px"></textarea>
-    </div>
+    <div id="pr-analysis"></div>
     <div id="modal-history"></div>
-    <button class="btn-modal-save" onclick="savePR()">Enregistrer</button>
     <button class="btn-modal-cancel" onclick="closePRModal()">Retour</button>
   </div>
 </div>

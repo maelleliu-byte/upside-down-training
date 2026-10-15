@@ -9,7 +9,7 @@ let currentUser=null,currentProfile=null,programmes=[],movements=[],benchmarks=[
 let currentProg=null,currentWeekOffset=0,selectedDate=new Date().toISOString().split('T')[0];
 let currentModalMovement=null,currentBenchmark=null,currentBLevel='rx';
 let selectedColor='#e8ff47',selectedIcon='';
-let currentCat='all',searchQuery='',currentBcat='all';
+let currentCat='all',currentSub='all',searchQuery='',currentBcat='all';
 
 const DAYS=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
 const MONTHS=['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
@@ -39,6 +39,42 @@ const FORCE_SUBCATS=[
 function getForceSubCat(name){
   for(const s of FORCE_SUBCATS){if(s.match(name||''))return s.key;}
   return 'autre';
+}
+// Sous-catégories PR — liste FIXE, miroir de la table movement_subcategories.
+// Les coachs ajoutent des mouvements DANS ces sous-catégories, pas de nouvelles sous-catégories.
+const PR_SUBCATS={
+  haltero:[
+    {key:'snatch',   label:'Snatch'},
+    {key:'clean',    label:'Clean'},
+    {key:'jerk',     label:'Jerk'},
+    {key:'press',    label:'Press'},
+    {key:'autres',   label:'Autres'}
+  ],
+  force:[
+    {key:'squat',    label:'Squat'},
+    {key:'deadlift', label:'Deadlift'},
+    {key:'press',    label:'Press'},
+    {key:'autres',   label:'Autres'}
+  ],
+  gymnastic:[
+    {key:'traction',  label:'Traction'},
+    {key:'muscle-up', label:'Muscle-up'},
+    {key:'dips-push', label:'Dips & push'},
+    {key:'handstand', label:'Handstand'},
+    {key:'flexion',   label:'Flexion'},
+    {key:'autres',    label:'Autres'}
+  ],
+  cardio:[
+    {key:'machines', label:'Machines'},
+    {key:'course',   label:'Course'},
+    {key:'corde',    label:'Corde'},
+    {key:'autres',   label:'Autres'}
+  ]
+};
+function prSubKey(m){return (m&&m.subcategory)?String(m.subcategory):'autres';}
+function prSubLabel(cat,key){
+  const s=(PR_SUBCATS[cat]||[]).find(x=>x.key===key);
+  return s?s.label:(key||'Autres');
 }
 const LEVEL_LABELS={rx:'RX',intermediate:'Inter',scaled:'Scaled',foundation:'Fond.'};
 const LEVEL_COLORS={rx:'#111',intermediate:'var(--red)',scaled:'var(--blue)',foundation:'var(--purple)'};
