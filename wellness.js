@@ -6833,12 +6833,15 @@ async function claimFreeAccess(programmeId){
       var prev = sc['w'+(wk-1)+'-'+ri+'-'+di] || [];
       if(!prev.length) return;
 
-      var cur = (sc['w'+wk+'-'+ri+'-'+di] || []).map(function(c){ return (c.text||'').trim(); });
+      // Des qu'on a rempli la case cette semaine, le fantome disparait entierement
+      var cur = (sc['w'+wk+'-'+ri+'-'+di] || []).filter(function(c){ return (c.text||'').trim(); });
+      if(cur.length) return;
+
       var html = '<div class="ghost-lab">S-1</div>', n = 0;
 
       prev.forEach(function(c, chi){
         var txt = (c.text || '').trim();
-        if(!txt || cur.indexOf(txt) >= 0) return;   // deja recopie cette semaine
+        if(!txt) return;
         n++;
         var col = c.color || '';
         html += '<div class="ghost-chip" style="' + (col ? 'color:'+col+';background:'+col+'14' : 'color:var(--text2)') + '">'
