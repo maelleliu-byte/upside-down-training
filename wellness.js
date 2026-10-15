@@ -8053,7 +8053,8 @@ async function claimFreeAccess(programmeId){
 
   async function _wsLoadPhone(){
     const inp = document.getElementById('ws-phone');
-    if(!inp || !window.currentUser) return;
+    // NB : currentUser est un `let` de core.js — il n'est PAS sur window.
+    if(!inp || typeof currentUser === 'undefined' || !currentUser) return;
     try{
       const {data} = await sb.from('coach_contacts')
         .select('whatsapp_phone').eq('user_id',currentUser.id).maybeSingle();
@@ -8064,7 +8065,8 @@ async function claimFreeAccess(programmeId){
   async function _wsSavePhone(){
     const inp = document.getElementById('ws-phone');
     if(!inp){ _wsStatus('Champ numéro introuvable à l\'écran.', true); return; }
-    if(!window.currentUser || !currentUser.id){
+    // NB : currentUser est un `let` de core.js — il n'est PAS sur window.
+    if(typeof currentUser === 'undefined' || !currentUser || !currentUser.id){
       _wsStatus('Session expirée — recharge la page et reconnecte-toi.', true);
       return;
     }
