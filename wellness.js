@@ -6910,3 +6910,391 @@ async function claimFreeAccess(programmeId){
   setTimeout(_tryAll, 2000);
   setTimeout(_tryAll, 4000);
 })();
+
+/* ===========================================================
+   BOUTON « % » — ASSISTANT DE FORMULE DE POURCENTAGE
+   -----------------------------------------------------------
+   Ajoute un bouton % dans la barre d'outils de « Contenu RX »
+   et des 3 champs de scaling (Inter / Scaled / Fondation).
+   Au clic : panneau de choix (mouvement + format + %) qui
+   insere la formule a l'endroit du curseur :
+       70%|1RM|BACK SQUAT|
+   On peut toujours ecrire la formule a la main : rien ne change
+   pour les coachs qui la connaissent deja.
+
+   Aucune modification de admin.js / index.html.
+   =========================================================== */
+(function(){
+  if(window.__patchBound_pctFormulaHelper) return;
+  window.__patchBound_pctFormulaHelper = true;
+
+  var CATS=[
+    {key:'all',     label:'Tous'},
+    {key:'force',   label:'Force'},
+    {key:'haltero', label:'Haltéro'},
+    {key:'gymnastic',label:'Gym'},
+    {key:'cardio',  label:'Cardio'}
+  ];
+  var QUICK=[50,60,65,70,75,80,85,90,95];
+
+  var _movs=null;        // cache liste mouvements
+  var _loading=false;
+  var _sel=null;         // mouvement selectionne
+  var _fmt=null;         // format selectionne ('' = sans format)
+  var _pct=70;
+  var _cat='all';
+  var _q='';
+  var _targetEd=null;    // editeur riche cible
+
+  function toast(m){ try{ if(typeof showToast==='function'){ showToast(m); return; } }catch(e){} }
+  function esc(v){ return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+  /* ---------- 1. CSS ---------- */
+  function injectStyle(){
+    if(document.getElementById('pctf-style')) return;
+    var s=document.createElement('style');
+    s.id='pctf-style';
+    s.textContent=[
+      '.pctf-btn{background:rgba(45,212,191,.14);border:1px solid rgba(45,212,191,.45);color:#2dd4bf;',
+      'border-radius:7px;padding:4px 9px;font-size:13px;font-weight:800;cursor:pointer;line-height:1.1}',
+      '.pctf-btn:active{opacity:.6}',
+      '#pctf-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:12000;display:none;',
+      'align-items:flex-end;justify-content:center}',
+      '#pctf-overlay.open{display:flex}',
+      '.pctf-panel{background:var(--card);width:100%;max-width:430px;max-height:88vh;overflow-y:auto;',
+      'border-radius:20px 20px 0 0;border-top:1px solid var(--border2);padding:16px 16px 22px;',
+      'padding-bottom:calc(22px + var(--safe-bottom))}',
+      '.pctf-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}',
+      '.pctf-title{font-size:15px;font-weight:800;color:var(--text);letter-spacing:.5px}',
+      '.pctf-close{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:2px 6px}',
+      '.pctf-lbl{font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;',
+      'color:var(--muted);margin:12px 0 6px}',
+      '.pctf-row{display:flex;flex-wrap:wrap;gap:6px}',
+      '.pctf-chip{background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:20px;',
+      'padding:5px 11px;font-size:12px;font-weight:600;cursor:pointer}',
+      '.pctf-chip.on{background:rgba(45,212,191,.16);border-color:#2dd4bf;color:#2dd4bf}',
+      '.pctf-input{width:100%;background:var(--card2);border:1px solid var(--border2);color:var(--text);',
+      'border-radius:10px;padding:9px 11px;font-size:14px;font-family:inherit}',
+      '.pctf-pct{width:82px;text-align:center;font-weight:800}',
+      '.pctf-list{max-height:34vh;overflow-y:auto;border:1px solid var(--border2);border-radius:12px;margin-top:6px}',
+      '.pctf-item{padding:9px 12px;font-size:13px;color:var(--text);border-bottom:1px solid var(--border);cursor:pointer;',
+      'display:flex;justify-content:space-between;align-items:center;gap:8px}',
+      '.pctf-item:last-child{border-bottom:none}',
+      '.pctf-item.on{background:rgba(45,212,191,.12);color:#2dd4bf;font-weight:700}',
+      '.pctf-item small{color:var(--muted);font-size:10px;font-weight:600;white-space:nowrap}',
+      '.pctf-empty{padding:14px;text-align:center;color:var(--muted);font-size:12px}',
+      '.pctf-prev{margin-top:14px;background:var(--dark);border:1px dashed var(--border2);border-radius:12px;',
+      'padding:11px;text-align:center;font-size:15px;font-weight:800;color:#2dd4bf;word-break:break-all}',
+      '.pctf-hint{font-size:11px;color:var(--muted);margin-top:8px;line-height:1.5;text-align:center}',
+      '.pctf-actions{display:flex;gap:8px;margin-top:12px}',
+      '.pctf-go{flex:1;background:#2dd4bf;border:none;color:#06201c;border-radius:12px;padding:12px;',
+      'font-size:14px;font-weight:800;cursor:pointer;font-family:inherit}',
+      '.pctf-go[disabled]{opacity:.4;cursor:default}',
+      '.pctf-ghost{background:var(--card2);border:1px solid var(--border2);color:var(--text2);border-radius:12px;',
+      'padding:12px 14px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}'
+    ].join('');
+    document.head.appendChild(s);
+  }
+
+  /* ---------- 2. chargement des mouvements ---------- */
+  function fromGlobal(){
+    try{ if(typeof movements!=='undefined' && movements && movements.length) return movements; }catch(e){}
+    return null;
+  }
+  function loadMovs(cb){
+    var g=fromGlobal();
+    if(g){ _movs=g.slice(); cb(); return; }
+    if(_movs){ cb(); return; }
+    if(_loading) return;
+    _loading=true;
+    try{
+      sb.from('movements').select('name,category,unit,available_formats')
+        .eq('is_active',true).order('name')
+        .then(function(r){
+          _loading=false;
+          _movs=(r&&r.data)||[];
+          cb();
+        },function(){ _loading=false; _movs=[]; cb(); });
+    }catch(e){ _loading=false; _movs=[]; cb(); }
+  }
+
+  function formatsOf(m){
+    return String((m&&m.available_formats)||'').split(',')
+      .map(function(f){ return f.trim(); })
+      .filter(function(f){ return !!f; });
+  }
+
+  function formula(){
+    if(!_sel) return '';
+    var name=String(_sel.name||'').toUpperCase();
+    var p=String(_pct);
+    return _fmt ? (p+'%|'+_fmt+'|'+name+'|') : (p+'%|'+name+'|');
+  }
+
+  /* ---------- 3. panneau ---------- */
+  function buildOverlay(){
+    var ov=document.getElementById('pctf-overlay');
+    if(ov) return ov;
+    ov=document.createElement('div');
+    ov.id='pctf-overlay';
+    ov.innerHTML=''
+      +'<div class="pctf-panel">'
+      +  '<div class="pctf-head">'
+      +    '<div class="pctf-title">FORMULE DE %</div>'
+      +    '<button type="button" class="pctf-close" id="pctf-x">✕</button>'
+      +  '</div>'
+      +  '<div class="pctf-lbl">Pourcentage</div>'
+      +  '<div class="pctf-row" style="align-items:center">'
+      +    '<input type="number" inputmode="decimal" class="pctf-input pctf-pct" id="pctf-pct" min="1" max="200" step="2.5">'
+      +    '<div class="pctf-row" id="pctf-quick" style="flex:1"></div>'
+      +  '</div>'
+      +  '<div class="pctf-lbl">Mouvement</div>'
+      +  '<div class="pctf-row" id="pctf-cats"></div>'
+      +  '<input type="text" class="pctf-input" id="pctf-q" placeholder="Chercher un mouvement…" style="margin-top:8px">'
+      +  '<div class="pctf-list" id="pctf-list"></div>'
+      +  '<div id="pctf-fmt-wrap" style="display:none">'
+      +    '<div class="pctf-lbl">Format du PR</div>'
+      +    '<div class="pctf-row" id="pctf-fmts"></div>'
+      +  '</div>'
+      +  '<div class="pctf-prev" id="pctf-prev">—</div>'
+      +  '<div class="pctf-hint">Tu peux aussi l\'écrire à la main dans la séance :<br><b>70%|1RM|BACK SQUAT|</b></div>'
+      +  '<div class="pctf-actions">'
+      +    '<button type="button" class="pctf-go" id="pctf-go" disabled>Insérer</button>'
+      +    '<button type="button" class="pctf-ghost" id="pctf-copy">Copier</button>'
+      +  '</div>'
+      +'</div>';
+    document.body.appendChild(ov);
+
+    ov.addEventListener('click',function(e){ if(e.target===ov) close(); });
+    ov.querySelector('#pctf-x').addEventListener('click',close);
+    ov.querySelector('#pctf-pct').addEventListener('input',function(){
+      var v=parseFloat(this.value);
+      if(!isNaN(v)) _pct=v;
+      renderQuick(); renderPreview();
+    });
+    ov.querySelector('#pctf-q').addEventListener('input',function(){
+      _q=this.value.trim().toLowerCase();
+      renderList();
+    });
+    ov.querySelector('#pctf-go').addEventListener('click',function(){
+      var f=formula();
+      if(!f) return;
+      insertFormula(f);
+      close();
+    });
+    ov.querySelector('#pctf-copy').addEventListener('click',function(){
+      var f=formula();
+      if(!f){ toast('Choisis un mouvement'); return; }
+      try{
+        if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(f);
+        else {
+          var ta=document.createElement('textarea');
+          ta.value=f; document.body.appendChild(ta); ta.select();
+          document.execCommand('copy'); document.body.removeChild(ta);
+        }
+        toast('Formule copiée');
+      }catch(e){ toast('Copie impossible'); }
+    });
+    return ov;
+  }
+
+  function renderQuick(){
+    var box=document.getElementById('pctf-quick');
+    if(!box) return;
+    box.innerHTML=QUICK.map(function(p){
+      return '<button type="button" class="pctf-chip'+(p===_pct?' on':'')+'" data-p="'+p+'">'+p+'%</button>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.pctf-chip'),function(b){
+      b.addEventListener('click',function(){
+        _pct=parseFloat(b.dataset.p);
+        var i=document.getElementById('pctf-pct');
+        if(i) i.value=_pct;
+        renderQuick(); renderPreview();
+      });
+    });
+  }
+
+  function renderCats(){
+    var box=document.getElementById('pctf-cats');
+    if(!box) return;
+    box.innerHTML=CATS.map(function(c){
+      return '<button type="button" class="pctf-chip'+(c.key===_cat?' on':'')+'" data-c="'+c.key+'">'+c.label+'</button>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.pctf-chip'),function(b){
+      b.addEventListener('click',function(){ _cat=b.dataset.c; renderCats(); renderList(); });
+    });
+  }
+
+  function filtered(){
+    var list=(_movs||[]).filter(function(m){
+      if(!m||!m.name) return false;
+      if(_cat!=='all' && String(m.category||'')!==_cat) return false;
+      if(_q && String(m.name).toLowerCase().indexOf(_q)===-1) return false;
+      return true;
+    });
+    list.sort(function(a,b){ return String(a.name).localeCompare(String(b.name)); });
+    return list;
+  }
+
+  function renderList(){
+    var box=document.getElementById('pctf-list');
+    if(!box) return;
+    var list=filtered();
+    if(!list.length){
+      box.innerHTML='<div class="pctf-empty">Aucun mouvement trouvé</div>';
+      return;
+    }
+    box.innerHTML=list.map(function(m,i){
+      var f=formatsOf(m);
+      var on=_sel && _sel.name===m.name;
+      return '<div class="pctf-item'+(on?' on':'')+'" data-i="'+i+'">'
+        +'<span>'+esc(m.name)+'</span>'
+        +'<small>'+esc(f.length?f.join(' · '):'sans format')+'</small></div>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.pctf-item'),function(el){
+      el.addEventListener('click',function(){
+        _sel=list[parseInt(el.dataset.i,10)];
+        var f=formatsOf(_sel);
+        _fmt=f.length?f[0]:'';
+        renderList(); renderFmts(); renderPreview();
+      });
+    });
+  }
+
+  function renderFmts(){
+    var wrap=document.getElementById('pctf-fmt-wrap');
+    var box=document.getElementById('pctf-fmts');
+    if(!wrap||!box) return;
+    var f=_sel?formatsOf(_sel):[];
+    if(!_sel){ wrap.style.display='none'; return; }
+    wrap.style.display='block';
+    var opts=f.slice();
+    opts.push('');  // sans format
+    box.innerHTML=opts.map(function(x,i){
+      var lbl=x?esc(x):'sans format';
+      return '<button type="button" class="pctf-chip'+(x===_fmt?' on':'')+'" data-i="'+i+'">'+lbl+'</button>';
+    }).join('');
+    Array.prototype.forEach.call(box.querySelectorAll('.pctf-chip'),function(b){
+      b.addEventListener('click',function(){
+        _fmt=opts[parseInt(b.dataset.i,10)];
+        renderFmts(); renderPreview();
+      });
+    });
+  }
+
+  function renderPreview(){
+    var p=document.getElementById('pctf-prev');
+    var go=document.getElementById('pctf-go');
+    var f=formula();
+    if(p) p.textContent=f||'—';
+    if(go) go.disabled=!f;
+  }
+
+  function open(ed){
+    injectStyle();
+    _targetEd=ed||null;
+    var ov=buildOverlay();
+    var i=document.getElementById('pctf-pct');
+    if(i) i.value=_pct;
+    ov.classList.add('open');
+    renderQuick(); renderCats(); renderPreview(); renderFmts();
+    var box=document.getElementById('pctf-list');
+    if(box) box.innerHTML='<div class="pctf-empty">Chargement…</div>';
+    loadMovs(function(){ renderList(); });
+  }
+
+  function close(){
+    var ov=document.getElementById('pctf-overlay');
+    if(ov) ov.classList.remove('open');
+  }
+
+  /* ---------- 4. insertion au curseur ---------- */
+  function insertFormula(text){
+    var ed=window._richActiveTarget || _targetEd;
+    if(!ed || !ed.isContentEditable){
+      ed=_targetEd;
+    }
+    if(!ed){ toast('Clique d\'abord dans le champ'); return; }
+    var payload=text+' ';
+    try{ ed.focus(); }catch(e){}
+    var sel=window.getSelection();
+    var range=window._richSavedRange;
+    var placed=false;
+    if(range && document.contains(range.startContainer) && ed.contains(range.commonAncestorContainer)){
+      try{ sel.removeAllRanges(); sel.addRange(range); placed=true; }catch(e){}
+    }
+    if(!placed){
+      try{
+        var r=document.createRange();
+        r.selectNodeContents(ed);
+        r.collapse(false);
+        sel.removeAllRanges(); sel.addRange(r);
+      }catch(e){}
+    }
+    var ok=false;
+    try{ ok=document.execCommand('insertText',false,payload); }catch(e){ ok=false; }
+    if(!ok){
+      try{
+        var r2=sel.getRangeAt(0);
+        r2.deleteContents();
+        var node=document.createTextNode(payload);
+        r2.insertNode(node);
+        r2.setStartAfter(node); r2.collapse(true);
+        sel.removeAllRanges(); sel.addRange(r2);
+        ok=true;
+      }catch(e){}
+    }
+    if(!ok){ ed.innerHTML=(ed.innerHTML||'')+payload; }
+    try{
+      window._richActiveTarget=ed;
+      if(sel.rangeCount) window._richSavedRange=sel.getRangeAt(0).cloneRange();
+    }catch(e){}
+    try{ ed.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
+  }
+
+  /* ---------- 5. ajout du bouton dans les toolbars ---------- */
+  function decorate(){
+    injectStyle();
+    var bars=document.querySelectorAll('.rich-editor-wrap .rich-toolbar');
+    Array.prototype.forEach.call(bars,function(tb){
+      if(tb.dataset.pctfDone==='1') return;
+      tb.dataset.pctfDone='1';
+      var b=document.createElement('button');
+      b.type='button';
+      b.className='pctf-btn';
+      b.title='Insérer une formule de % (PR athlète)';
+      b.textContent='%';
+      b.addEventListener('mousedown',function(e){ e.preventDefault(); });
+      b.addEventListener('click',function(e){
+        e.preventDefault();
+        var wrap=tb.closest('.rich-editor-wrap');
+        var ed=wrap?wrap.querySelector('.rich-content'):null;
+        open(ed);
+      });
+      var sep=document.createElement('div');
+      sep.className='rich-sep';
+      if(tb.firstChild){
+        tb.insertBefore(sep,tb.firstChild);
+        tb.insertBefore(b,sep);
+      }else{
+        tb.appendChild(b); tb.appendChild(sep);
+      }
+    });
+  }
+
+  function boot(){
+    decorate();
+    try{
+      var mo=new MutationObserver(function(){
+        clearTimeout(window.__pctfT);
+        window.__pctfT=setTimeout(decorate,120);
+      });
+      mo.observe(document.body,{childList:true,subtree:true});
+    }catch(e){
+      setInterval(decorate,1000);
+    }
+  }
+
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot);
+  else boot();
+})();
