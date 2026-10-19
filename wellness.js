@@ -8563,3 +8563,357 @@ async function claimFreeAccess(programmeId){
   };
 
 })();
+
+/* ============================================================
+   PATCH — CYCLES PERSO (priorités par jour dans l'espace perso)
+   Table : personal_cycles (athlete_id, name, start_date, end_date, color, days)
+   days = {"1":"Force bas du corps", ..., "7":"Repos"}  1 = lundi
+   ============================================================ */
+(function(){
+  if(window.__patchBound_persoCycles)return;
+  window.__patchBound_persoCycles=true;
+
+  const PC_DAYS=['Lundi','Mardi','Mercredi','Jeudi','Vendredi','Samedi','Dimanche'];
+  const PC_PRESET_COLORS=['#2dd4bf','#e8ff47','#47c8ff','#ff7a45','#c084fc','#f87171','#4ade80'];
+
+  let _pcCache={athleteId:null,rows:null};
+  let _pcEditing=null;   // cycle en cours d'édition dans la modale (objet ou null = nouveau)
+
+  // ---------- helpers ----------
+  function _pcIso(d){
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+  function _pcDow(d){ const n=d.getDay(); return n===0?7:n; }   // 1 = lundi … 7 = dimanche
+  function _pcFmt(iso){
+    if(!iso)return '—';
+    const [y,m,dd]=iso.split('-');
+    return `${dd}/${m}`;
+  }
+  function _pcEsc(s){ return (typeof escapeHtml==='function')?escapeHtml(s):String(s==null?'':s); }
+  function _pcToast(m){ if(typeof showToast==='function')showToast(m); }
+
+  async function _pcLoad(athleteId,force){
+    if(!athleteId)return [];
+    if(!force && _pcCache.athleteId===athleteId && _pcCache.rows)return _pcCache.rows;
+    const {data,error}=await sb.from('personal_cycles')
+      .select('*').eq('athlete_id',athleteId).order('start_date',{ascending:false});
+    if(error){ console.warn('personal_cycles',error.message); return []; }
+    _pcCache={athleteId,rows:data||[]};
+    return _pcCache.rows;
+  }
+
+  // Cycle actif pour une date ISO : celui dont la période couvre la date (start_date le plus récent)
+  function _pcForDate(rows,iso){
+    const hit=(rows||[]).filter(c=>c.start_date<=iso && iso<=c.end_date);
+    if(!hit.length)return null;
+    return hit.sort((a,b)=>b.start_date.localeCompare(a.start_date))[0];
+  }
+
+  function _pcWeekIndex(cycle,iso){
+    if(!cycle)return null;
+    const s=new Date(cycle.start_date+'T12:00:00');
+    const d=new Date(iso+'T12:00:00');
+    const sMon=new Date(s); sMon.setDate(s.getDate()-(_pcDow(s)-1));
+    const dMon=new Date(d); dMon.setDate(d.getDate()-(_pcDow(d)-1));
+    const n=Math.round((dMon-sMon)/604800000)+1;
+    const e=new Date(cycle.end_date+'T12:00:00');
+    const eMon=new Date(e); eMon.setDate(e.getDate()-(_pcDow(e)-1));
+    const total=Math.round((eMon-sMon)/604800000)+1;
+    return {n,total};
+  }
+
+  // ---------- CSS ----------
+  function _pcInjectCss(){
+    if(document.getElementById('pc-styles'))return;
+    const st=document.createElement('style');
+    st.id='pc-styles';
+    st.textContent=`
+    .pc-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 12px;margin-bottom:8px;border-radius:10px;background:var(--card2,#111);border:1px solid var(--border2,#333);border-left-width:4px}
+    .pc-bar-name{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:1.5px;line-height:1}
+    .pc-bar-meta{font-size:11px;color:var(--muted,#999)}
+    .pc-bar-spacer{flex:1}
+    .pc-bar-btn{padding:5px 10px;border-radius:7px;border:1px solid var(--border2,#333);background:transparent;color:var(--muted,#999);font-size:11px;cursor:pointer;letter-spacing:.5px}
+    .pc-bar-btn:hover{color:var(--text,#fff)}
+    .pc-day{min-height:26px;margin:0 2px 6px;padding:4px 6px;border-radius:7px;font-size:10.5px;font-weight:700;line-height:1.25;text-align:center;cursor:pointer;word-break:break-word;border:1px solid transparent;transition:filter .15s}
+    .pc-day:hover{filter:brightness(1.25)}
+    .pc-day.empty{background:transparent;border:1px dashed var(--border2,#333);color:var(--muted,#777);font-weight:500;opacity:.5}
+    .pc-day-banner{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:10px;margin-bottom:10px;border:1px solid transparent;border-left-width:4px}
+    .pc-day-banner .lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;opacity:.75}
+    .pc-day-banner .val{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px}
+    .pc-modal-box{background:var(--card,#1a1a1a);border:1px solid var(--border2,#333);border-radius:14px;padding:20px;width:min(560px,94vw);max-height:88vh;overflow:auto}
+    .pc-in{width:100%;padding:8px 10px;border-radius:8px;border:1px solid var(--border2,#333);background:var(--card2,#111);color:var(--text,#fff);font-size:13px;box-sizing:border-box;font-family:inherit}
+    .pc-lbl{font-size:10px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted,#999);margin-bottom:4px;display:block}
+    .pc-row{display:grid;grid-template-columns:86px 1fr;gap:8px;align-items:center;margin-bottom:6px}
+    .pc-row .d{font-size:11px;color:var(--muted,#999);letter-spacing:.8px}
+    .pc-list-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;border:1px solid var(--border2,#333);border-left-width:4px;margin-bottom:6px;cursor:pointer}
+    .pc-list-item:hover{background:var(--card2,#111)}
+    .pc-list-item .nm{font-family:'Bebas Neue',sans-serif;font-size:15px;letter-spacing:1px}
+    .pc-list-item .dt{font-size:11px;color:var(--muted,#999)}
+    .pc-swatch{width:24px;height:24px;border-radius:6px;border:2px solid transparent;cursor:pointer}
+    .pc-swatch.on{border-color:var(--text,#fff)}
+    .pc-btn{padding:9px 14px;border-radius:9px;border:none;background:var(--accent,#2dd4bf);color:#000;font-weight:700;font-size:13px;cursor:pointer}
+    .pc-btn.ghost{background:transparent;border:1px solid var(--border2,#333);color:var(--text,#fff);font-weight:500}
+    .pc-btn.danger{background:transparent;border:1px solid #f8717155;color:#f87171;font-weight:500}
+    @media(max-width:640px){.pc-day{font-size:9.5px;padding:3px 4px}.pc-row{grid-template-columns:70px 1fr}}
+    `;
+    document.head.appendChild(st);
+  }
+
+  // ---------- rendu dans le calendrier ----------
+  async function _pcRenderBand(){
+    const area=document.getElementById('perso-calendar-area');
+    if(!area||!currentPersoAthlete)return;
+    area.querySelectorAll('.pc-bar,.pc-cycle-row,.pc-day-banner').forEach(n=>n.remove());
+    _pcInjectCss();
+
+    const rows=await _pcLoad(currentPersoAthlete.id);
+
+    if(persoView==='week'){
+      const dates=getWeekDates(persoOffset);
+      const isos=dates.map(_pcIso);
+      const cycles=isos.map(iso=>_pcForDate(rows,iso));
+      const main=cycles.find(Boolean)||null;
+
+      // barre d'entête
+      const bar=document.createElement('div');
+      bar.className='pc-bar';
+      if(main){
+        const wi=_pcWeekIndex(main,isos[0]);
+        bar.style.borderLeftColor=main.color||'#2dd4bf';
+        bar.innerHTML=`<div>
+            <div class="pc-bar-name" style="color:${main.color||'#2dd4bf'}">${_pcEsc(main.name)}</div>
+            <div class="pc-bar-meta">${_pcFmt(main.start_date)} → ${_pcFmt(main.end_date)}${wi?` · semaine ${wi.n}/${wi.total}`:''}</div>
+          </div>
+          <div class="pc-bar-spacer"></div>
+          <button class="pc-bar-btn" onclick="openPersoCycles()">⚙ Gérer les cycles</button>`;
+      }else{
+        bar.style.borderLeftColor='var(--border2,#333)';
+        bar.innerHTML=`<div class="pc-bar-meta">Aucun cycle sur cette semaine</div>
+          <div class="pc-bar-spacer"></div>
+          <button class="pc-bar-btn" onclick="openPersoCycles()">+ Programmer un cycle</button>`;
+      }
+      area.insertBefore(bar,area.firstChild);
+
+      // ligne de priorités, alignée sur les colonnes jours
+      const grids=area.querySelectorAll('.cal-grid');
+      if(grids.length>=3){
+        const row=document.createElement('div');
+        row.className='cal-grid pc-cycle-row';
+        row.innerHTML=dates.map((d,i)=>{
+          const c=cycles[i];
+          const txt=c?((c.days||{})[String(_pcDow(d))]||''):'';
+          const col=c?(c.color||'#2dd4bf'):'#888';
+          if(!c)return `<div class="pc-day empty" onclick="openPersoCycles()">—</div>`;
+          if(!txt)return `<div class="pc-day empty" onclick="openPersoCycles('${c.id}')">+ priorité</div>`;
+          return `<div class="pc-day" style="background:${col}1f;border-color:${col}55;color:${col}" onclick="openPersoCycles('${c.id}')" title="${_pcEsc(c.name)} — cliquer pour modifier">${_pcEsc(txt)}</div>`;
+        }).join('');
+        grids[1].insertAdjacentElement('afterend',row);
+      }
+    }
+
+    else if(persoView==='day'){
+      const d=new Date(); d.setDate(d.getDate()+persoOffset);
+      const iso=_pcIso(d);
+      const c=_pcForDate(rows,iso);
+      if(!c)return;
+      const txt=(c.days||{})[String(_pcDow(d))]||'';
+      const col=c.color||'#2dd4bf';
+      const wi=_pcWeekIndex(c,iso);
+      const el=document.createElement('div');
+      el.className='pc-day-banner';
+      el.style.cssText=`background:${col}14;border-color:${col}44;border-left-color:${col};cursor:pointer`;
+      el.onclick=()=>openPersoCycles(c.id);
+      el.innerHTML=`<div style="flex:1;min-width:0">
+          <div class="lbl" style="color:${col}">${_pcEsc(c.name)}${wi?` · sem. ${wi.n}/${wi.total}`:''}</div>
+          <div class="val">${txt?_pcEsc(txt):'Pas de priorité ce jour'}</div>
+        </div>
+        <div class="pc-bar-meta">${_pcFmt(c.start_date)} → ${_pcFmt(c.end_date)}</div>`;
+      const host=area.querySelector('.perso-day-view')||area;
+      host.insertBefore(el,host.firstChild);
+    }
+  }
+
+  // ---------- modale de gestion ----------
+  function _pcBuildModal(){
+    if(document.getElementById('pc-modal'))return;
+    _pcInjectCss();
+    const m=document.createElement('div');
+    m.id='pc-modal';
+    m.style.cssText='display:none;position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:9999;align-items:center;justify-content:center;padding:12px';
+    m.innerHTML=`<div class="pc-modal-box" id="pc-modal-inner"></div>`;
+    document.body.appendChild(m);
+    m.addEventListener('click',e=>{if(e.target===m)_pcClose();});
+  }
+  function _pcClose(){ const m=document.getElementById('pc-modal'); if(m)m.style.display='none'; _pcEditing=null; }
+  window.closePersoCycles=_pcClose;
+
+  async function _pcRenderModal(focusDow){
+    const box=document.getElementById('pc-modal-inner');
+    if(!box||!currentPersoAthlete)return;
+    const rows=await _pcLoad(currentPersoAthlete.id);
+
+    // --- liste ---
+    if(!_pcEditing){
+      box.innerHTML=`
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;flex:1">🎯 Cycles — ${_pcEsc(currentPersoAthlete.full_name||currentPersoAthlete.email||'')}</div>
+          <button class="pc-btn ghost" onclick="closePersoCycles()" style="padding:5px 10px">✕</button>
+        </div>
+        ${rows.length?rows.map(c=>{
+          const col=c.color||'#2dd4bf';
+          const n=Object.values(c.days||{}).filter(Boolean).length;
+          return `<div class="pc-list-item" style="border-left-color:${col}" onclick="openPersoCycles('${c.id}')">
+            <div style="flex:1;min-width:0">
+              <div class="nm" style="color:${col}">${_pcEsc(c.name)}</div>
+              <div class="dt">${_pcFmt(c.start_date)} → ${_pcFmt(c.end_date)} · ${n} jour${n>1?'s':''} programmé${n>1?'s':''}</div>
+            </div>
+            <div style="color:var(--muted,#999)">›</div>
+          </div>`;
+        }).join(''):`<div style="color:var(--muted,#999);font-size:13px;padding:14px 0;text-align:center">Aucun cycle pour le moment.</div>`}
+        <button class="pc-btn" style="width:100%;margin-top:10px" onclick="persoCycleNew()">+ Nouveau cycle</button>`;
+      return;
+    }
+
+    // --- formulaire ---
+    const c=_pcEditing;
+    const col=c.color||'#2dd4bf';
+    box.innerHTML=`
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">
+        <button class="pc-btn ghost" onclick="persoCycleBack()" style="padding:5px 10px">‹</button>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;flex:1">${c.id?'Modifier le cycle':'Nouveau cycle'}</div>
+        <button class="pc-btn ghost" onclick="closePersoCycles()" style="padding:5px 10px">✕</button>
+      </div>
+
+      <label class="pc-lbl">Nom du cycle</label>
+      <input class="pc-in" id="pc-f-name" maxlength="60" placeholder="Ex : Cycle 1 — Force" value="${_pcEsc(c.name||'')}" style="margin-bottom:12px">
+
+      <div style="display:flex;gap:10px;margin-bottom:12px">
+        <div style="flex:1"><label class="pc-lbl">Début</label><input type="date" class="pc-in" id="pc-f-start" value="${c.start_date||''}"></div>
+        <div style="flex:1"><label class="pc-lbl">Fin</label><input type="date" class="pc-in" id="pc-f-end" value="${c.end_date||''}"></div>
+      </div>
+
+      <label class="pc-lbl">Couleur</label>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap" id="pc-f-colors">
+        ${PC_PRESET_COLORS.map(p=>`<div class="pc-swatch ${p===col?'on':''}" data-color="${p}" style="background:${p}"></div>`).join('')}
+      </div>
+
+      <label class="pc-lbl">Priorité par jour de la semaine</label>
+      <div style="margin-bottom:16px">
+        ${PC_DAYS.map((lbl,i)=>{
+          const k=String(i+1);
+          return `<div class="pc-row">
+            <div class="d">${lbl}</div>
+            <input class="pc-in pc-f-day" data-dow="${k}" maxlength="80" placeholder="—" value="${_pcEsc((c.days||{})[k]||'')}">
+          </div>`;
+        }).join('')}
+      </div>
+
+      <div style="display:flex;gap:8px;justify-content:space-between;flex-wrap:wrap">
+        ${c.id?`<button class="pc-btn danger" onclick="persoCycleDelete()">🗑 Supprimer</button>`:'<span></span>'}
+        <button class="pc-btn" onclick="persoCycleSave()">💾 Enregistrer</button>
+      </div>`;
+
+    box.querySelectorAll('#pc-f-colors .pc-swatch').forEach(sw=>{
+      sw.onclick=()=>{
+        _pcEditing.color=sw.dataset.color;
+        box.querySelectorAll('#pc-f-colors .pc-swatch').forEach(s=>s.classList.toggle('on',s===sw));
+      };
+    });
+    if(focusDow){
+      const inp=box.querySelector(`.pc-f-day[data-dow="${focusDow}"]`);
+      if(inp)setTimeout(()=>{inp.focus();inp.select();},40);
+    }
+  }
+
+  function _pcCollect(){
+    const box=document.getElementById('pc-modal-inner');
+    const days={};
+    box.querySelectorAll('.pc-f-day').forEach(i=>{
+      const v=(i.value||'').trim();
+      if(v)days[i.dataset.dow]=v;
+    });
+    return {
+      name:(document.getElementById('pc-f-name').value||'').trim()||'Cycle',
+      start_date:document.getElementById('pc-f-start').value||null,
+      end_date:document.getElementById('pc-f-end').value||null,
+      color:_pcEditing.color||'#2dd4bf',
+      days
+    };
+  }
+
+  // ---------- API publique ----------
+  window.openPersoCycles=async function(cycleId,focusDow){
+    if(!currentPersoAthlete){_pcToast('⚠️ Aucun athlète sélectionné');return;}
+    _pcBuildModal();
+    const rows=await _pcLoad(currentPersoAthlete.id);
+    _pcEditing=cycleId?JSON.parse(JSON.stringify(rows.find(c=>c.id===cycleId)||null)):null;
+    document.getElementById('pc-modal').style.display='flex';
+    await _pcRenderModal(focusDow);
+  };
+
+  window.persoCycleNew=function(){
+    const mon=getWeekDates(persoOffset||0)[0];
+    const end=new Date(mon); end.setDate(mon.getDate()+55); // 8 semaines par défaut
+    _pcEditing={id:null,name:'',start_date:_pcIso(mon),end_date:_pcIso(end),color:PC_PRESET_COLORS[0],days:{}};
+    _pcRenderModal();
+  };
+
+  window.persoCycleBack=function(){ _pcEditing=null; _pcRenderModal(); };
+
+  window.persoCycleSave=async function(){
+    if(!_pcEditing||!currentPersoAthlete)return;
+    const p=_pcCollect();
+    if(!p.start_date||!p.end_date){_pcToast('⚠️ Renseigne les dates de début et de fin');return;}
+    if(p.end_date<p.start_date){_pcToast('⚠️ La date de fin est avant le début');return;}
+    const payload={
+      ...p,
+      athlete_id:currentPersoAthlete.id,
+      created_by:currentUser?.id||null,
+      studio_id:(typeof getStudioId==='function'?getStudioId():null)
+    };
+    let error;
+    if(_pcEditing.id){
+      delete payload.created_by;
+      ({error}=await sb.from('personal_cycles').update(payload).eq('id',_pcEditing.id));
+    }else{
+      ({error}=await sb.from('personal_cycles').insert(payload));
+    }
+    if(error){_pcToast('❌ '+error.message);return;}
+    await _pcLoad(currentPersoAthlete.id,true);
+    _pcEditing=null;
+    _pcToast('✅ Cycle enregistré');
+    await _pcRenderModal();
+    _pcRenderBand();
+  };
+
+  window.persoCycleDelete=async function(){
+    if(!_pcEditing?.id)return;
+    if(!confirm('Supprimer ce cycle ?'))return;
+    const {error}=await sb.from('personal_cycles').delete().eq('id',_pcEditing.id);
+    if(error){_pcToast('❌ '+error.message);return;}
+    await _pcLoad(currentPersoAthlete.id,true);
+    _pcEditing=null;
+    _pcToast('🗑 Cycle supprimé');
+    await _pcRenderModal();
+    _pcRenderBand();
+  };
+
+  // ---------- accroche sur le rendu du calendrier perso ----------
+  const _pcOrigRender=window.renderPersoCalendar;
+  if(typeof _pcOrigRender==='function'){
+    window.renderPersoCalendar=async function(...args){
+      const r=await _pcOrigRender.apply(this,args);
+      try{ await _pcRenderBand(); }catch(e){ console.warn('cycles perso',e); }
+      return r;
+    };
+  }
+
+  // Vide le cache quand on change d'athlète
+  const _pcOrigFiche=window.openPersoFiche;
+  if(typeof _pcOrigFiche==='function'){
+    window.openPersoFiche=async function(...args){
+      _pcCache={athleteId:null,rows:null};
+      return await _pcOrigFiche.apply(this,args);
+    };
+  }
+})();
