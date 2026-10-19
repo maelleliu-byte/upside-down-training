@@ -8655,6 +8655,25 @@ async function claimFreeAccess(programmeId){
     .pc-btn.ghost{background:transparent;border:1px solid var(--border2,#333);color:var(--text,#fff);font-weight:500}
     .pc-btn.danger{background:transparent;border:1px solid #f8717155;color:#f87171;font-weight:500}
     @media(max-width:640px){.pc-day{font-size:9.5px;padding:3px 4px}.pc-row{grid-template-columns:70px 1fr}}
+
+    /* --- côté athlète --- */
+    .pc-ath{border-radius:14px;padding:14px;margin-bottom:14px;border:1px solid transparent;border-left-width:4px}
+    .pc-ath-head{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+    .pc-ath-name{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:1.5px;line-height:1;flex:1;min-width:0}
+    .pc-ath-wk{font-size:11px;letter-spacing:1px;text-transform:uppercase;color:var(--muted,#999);white-space:nowrap}
+    .pc-ath-wk b{font-size:14px;font-family:'Bebas Neue',sans-serif;letter-spacing:1px}
+    .pc-ath-track{height:5px;border-radius:3px;background:var(--border2,#333);overflow:hidden;margin-bottom:4px}
+    .pc-ath-fill{height:100%;border-radius:3px;transition:width .4s ease}
+    .pc-ath-dates{display:flex;justify-content:space-between;font-size:10px;color:var(--muted,#999);margin-bottom:12px}
+    .pc-ath-week{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+    .pc-ath-cell{border-radius:7px;padding:5px 3px;text-align:center;min-height:46px;background:var(--card2,#111);border:1px solid transparent}
+    .pc-ath-cell .dd{font-size:9px;letter-spacing:1px;text-transform:uppercase;color:var(--muted,#999);margin-bottom:3px}
+    .pc-ath-cell .pp{font-size:9.5px;font-weight:700;line-height:1.2;word-break:break-word}
+    .pc-ath-cell.on{border-color:currentColor}
+    .pc-ath-cell.off .pp{color:var(--muted,#777);font-weight:400;opacity:.5}
+    .pc-ath-today{margin-top:12px;padding-top:10px;border-top:1px solid var(--border2,#333)}
+    .pc-ath-today .lbl{font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted,#999)}
+    .pc-ath-today .val{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;margin-top:2px}
     `;
     document.head.appendChild(st);
   }
@@ -8880,6 +8899,7 @@ async function claimFreeAccess(programmeId){
     }
     if(error){_pcToast('❌ '+error.message);return;}
     await _pcLoad(currentPersoAthlete.id,true);
+    _pcAthRows=null;
     _pcEditing=null;
     _pcToast('✅ Cycle enregistré');
     await _pcRenderModal();
@@ -8892,11 +8912,85 @@ async function claimFreeAccess(programmeId){
     const {error}=await sb.from('personal_cycles').delete().eq('id',_pcEditing.id);
     if(error){_pcToast('❌ '+error.message);return;}
     await _pcLoad(currentPersoAthlete.id,true);
+    _pcAthRows=null;
     _pcEditing=null;
     _pcToast('🗑 Cycle supprimé');
     await _pcRenderModal();
     _pcRenderBand();
   };
+
+  // ---------- CÔTÉ ATHLÈTE : bandeau cycle dans l'onglet Espace perso ----------
+  let _pcAthRows=null;
+
+  async function _pcLoadMine(force){
+    if(!currentUser)return [];
+    if(!force && _pcAthRows)return _pcAthRows;
+    const {data,error}=await sb.from('personal_cycles')
+      .select('*').eq('athlete_id',currentUser.id).order('start_date',{ascending:false});
+    if(error){ console.warn('personal_cycles (athlète)',error.message); return []; }
+    _pcAthRows=data||[];
+    return _pcAthRows;
+  }
+
+  async function _pcRenderAthlete(){
+    const area=document.getElementById('sessions-area');
+    if(!area||!currentUser)return;
+    area.querySelectorAll('.pc-ath').forEach(n=>n.remove());
+    _pcInjectCss();
+
+    const rows=await _pcLoadMine();
+    if(!rows.length)return;
+
+    const todayIso=_pcIso(new Date());
+    const refIso=(typeof selectedDate!=='undefined'&&selectedDate)?selectedDate:todayIso;
+    const c=_pcForDate(rows,refIso);
+    if(!c)return;
+
+    const col=c.color||'#2dd4bf';
+    const wi=_pcWeekIndex(c,refIso);
+    const pct=wi?Math.max(4,Math.min(100,Math.round(wi.n/wi.total*100))):0;
+    const dates=getWeekDates(typeof currentWeekOffset!=='undefined'?currentWeekOffset:0);
+    const short=['L','M','M','J','V','S','D'];
+
+    const week=dates.map((d,i)=>{
+      const iso=_pcIso(d);
+      const cy=_pcForDate(rows,iso);
+      const txt=cy?((cy.days||{})[String(_pcDow(d))]||''):'';
+      const sel=iso===refIso;
+      const cellCol=cy?(cy.color||'#2dd4bf'):col;
+      return `<div class="pc-ath-cell ${txt?'':'off'} ${sel?'on':''}" style="${txt?`background:${cellCol}1a;color:${cellCol}`:''}${sel?`;box-shadow:0 0 0 1px ${cellCol}`:''}">
+        <div class="dd">${short[i]}${d.getDate()}</div>
+        <div class="pp">${txt?_pcEsc(txt):'·'}</div>
+      </div>`;
+    }).join('');
+
+    const refD=new Date(refIso+'T12:00:00');
+    const focus=(c.days||{})[String(_pcDow(refD))]||'';
+    const todayLbl=refIso===todayIso?"Aujourd'hui":`${PC_DAYS[_pcDow(refD)-1]} ${refD.getDate()}`;
+
+    const el=document.createElement('div');
+    el.className='pc-ath';
+    el.style.cssText=`background:${col}0f;border-color:${col}33;border-left-color:${col}`;
+    el.innerHTML=`
+      <div class="pc-ath-head">
+        <div class="pc-ath-name" style="color:${col}">${_pcEsc(c.name)}</div>
+        ${wi?`<div class="pc-ath-wk">Semaine <b>${wi.n}</b> / ${wi.total}</div>`:''}
+      </div>
+      <div class="pc-ath-track"><div class="pc-ath-fill" style="width:${pct}%;background:${col}"></div></div>
+      <div class="pc-ath-dates"><span>${_pcFmt(c.start_date)}</span><span>${_pcFmt(c.end_date)}</span></div>
+      <div class="pc-ath-week">${week}</div>
+      ${focus?`<div class="pc-ath-today"><div class="lbl">${todayLbl} · au programme</div><div class="val" style="color:${col}">${_pcEsc(focus)}</div></div>`:''}`;
+    area.insertBefore(el,area.firstChild);
+  }
+
+  const _pcOrigPersoSessions=window.renderPersoSessions;
+  if(typeof _pcOrigPersoSessions==='function'){
+    window.renderPersoSessions=async function(...args){
+      const r=await _pcOrigPersoSessions.apply(this,args);
+      try{ await _pcRenderAthlete(); }catch(e){ console.warn('cycle athlète',e); }
+      return r;
+    };
+  }
 
   // ---------- accroche sur le rendu du calendrier perso ----------
   const _pcOrigRender=window.renderPersoCalendar;
