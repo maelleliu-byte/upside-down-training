@@ -96,6 +96,13 @@
   .chg-tbl th:first-child,.chg-tbl td:first-child{text-align:left}
   .chg-tbl td{text-align:right;padding:6px 3px;border-bottom:1px solid var(--border);color:var(--text)}
   .chg-hint{font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .chg-rost{display:flex;align-items:center;gap:10px;padding:11px 12px;margin-bottom:7px;
+    background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer}
+  .chg-rost .n{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chg-rost .s{font-size:11px;color:var(--muted);margin-top:2px}
+  .chg-csv,.chg-back{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;
+    color:var(--muted);font-size:12px;cursor:pointer}
+  .chg-csv:disabled{opacity:.5}
   `;
   function injectCSS(){
     if(document.getElementById('chg-css'))return;
@@ -316,38 +323,165 @@
           et ta monotonie apparaîtront ici.</div></div>`;
       return;
     }
-    const last=series[series.length-1];
-    const z=zone(last.ratio==null?null:Number(last.ratio));
-    const load7=series.slice(-7).reduce((a,p)=>a+p.load,0);
-    const h7=series.slice(-7).reduce((a,p)=>a+p.minutes,0)/60;
-    const wk=weeks[0];
-
     host.innerHTML=`<div class="chg-card">
       <div class="chg-head" id="chg-suivi-head"><span style="font-size:15px">📉</span>
-        <span class="t">Ma charge d'entraînement</span><span class="chg-val">${fmt(load7)} UA · 7 j</span>
+        <span class="t">Ma charge d'entraînement</span>
+        <span class="chg-val">${fmt(series.slice(-7).reduce((a,p)=>a+p.load,0))} UA · 7 j</span>
         <span style="color:var(--muted);font-size:14px">›</span></div>
-      <div class="chg-body open" id="chg-suivi-body">
-        <div class="chg-zone" style="background:${z.c}22;color:${z.c}">
-          ${last.ratio==null?"Amorçage — le ratio s'affiche après 28 jours de données":`Ratio A/C ${fmt(last.ratio,2)} · ${z.l}`}</div>
-        <div class="chg-kpis">
-          <div class="chg-kpi"><b>${fmt(last.acute)}</b><span>Aiguë · 7 j</span></div>
-          <div class="chg-kpi"><b>${fmt(last.chronic)}</b><span>Chronique · 28 j</span></div>
-          <div class="chg-kpi"><b>${fmt(h7,1)} h</b><span>Volume · 7 j</span></div>
-          <div class="chg-kpi"><b>${wk&&wk.monotony!=null?fmt(wk.monotony,2):'–'}</b><span>Monotonie semaine</span></div>
-        </div>
-        ${sparkline(series.map(p=>({load:+p.load,acute:+p.acute,chronic:+p.chronic})))}
-        <table class="chg-tbl"><thead><tr><th>Sem.</th><th>Charge</th><th>Moy.</th><th>Mono.</th><th>Contr.</th><th>OFF</th><th>Heures</th></tr></thead><tbody>
-          ${weeks.map(w=>`<tr><td>${w.week_start.slice(5)}</td><td>${fmt(w.total)}</td><td>${fmt(w.avg_day)}</td>
-            <td>${w.monotony==null?'–':fmt(w.monotony,2)}</td><td>${w.strain==null?'–':fmt(w.strain)}</td>
-            <td>${w.off_days}</td><td>${fmt(w.hours,1)}</td></tr>`).join('')}
-        </tbody></table>
-        <div class="chg-hint">Ratio aigu / chronique : &lt; 0,8 sous-charge · 0,8–1,3 optimal · 1,3–1,5 vigilance · &gt; 1,5 risque élevé.
-        Monotonie = charge moyenne ÷ écart-type de la semaine ; au-dessus de 2, la semaine manque de variation.
-        Contrainte = charge × monotonie. Échauffement et mobilité sont exclus de la charge.</div>
-      </div>
+      <div class="chg-body open" id="chg-suivi-body">${suiviHTML(series,weeks)}</div>
     </div>`;
-    const hd=document.getElementById('chg-suivi-head');
-    hd.addEventListener('click',()=>document.getElementById('chg-suivi-body').classList.toggle('open'));
+    document.getElementById('chg-suivi-head')
+      .addEventListener('click',()=>document.getElementById('chg-suivi-body').classList.toggle('open'));
+  }
+
+  /* Corps commun athlète / coach */
+  function suiviHTML(series,weeks){
+    const last=series[series.length-1];
+    const z=zone(last.ratio==null?null:Number(last.ratio));
+    const h7=series.slice(-7).reduce((a,p)=>a+p.minutes,0)/60;
+    const wk=weeks[0];
+    return`<div class="chg-zone" style="background:${z.c}22;color:${z.c}">
+        ${last.ratio==null?"Amorçage — le ratio s'affiche après 28 jours de données":`Ratio A/C ${fmt(last.ratio,2)} · ${z.l}`}</div>
+      <div class="chg-kpis">
+        <div class="chg-kpi"><b>${fmt(last.acute)}</b><span>Aiguë · 7 j</span></div>
+        <div class="chg-kpi"><b>${fmt(last.chronic)}</b><span>Chronique · 28 j</span></div>
+        <div class="chg-kpi"><b>${fmt(h7,1)} h</b><span>Volume · 7 j</span></div>
+        <div class="chg-kpi"><b>${wk&&wk.monotony!=null?fmt(wk.monotony,2):'–'}</b><span>Monotonie semaine</span></div>
+      </div>
+      ${sparkline(series.map(p=>({load:+p.load,acute:+p.acute,chronic:+p.chronic})))}
+      <table class="chg-tbl"><thead><tr><th>Sem.</th><th>Charge</th><th>Moy.</th><th>Mono.</th><th>Contr.</th><th>OFF</th><th>Heures</th></tr></thead><tbody>
+        ${weeks.map(w=>`<tr><td>${w.week_start.slice(5)}</td><td>${fmt(w.total)}</td><td>${fmt(w.avg_day)}</td>
+          <td>${w.monotony==null?'–':fmt(w.monotony,2)}</td><td>${w.strain==null?'–':fmt(w.strain)}</td>
+          <td>${w.off_days}</td><td>${fmt(w.hours,1)}</td></tr>`).join('')}
+      </tbody></table>
+      <div class="chg-hint">Ratio aigu / chronique : &lt; 0,8 sous-charge · 0,8–1,3 optimal · 1,3–1,5 vigilance · &gt; 1,5 risque élevé.
+      Monotonie = charge moyenne ÷ écart-type de la semaine ; au-dessus de 2, la semaine manque de variation.
+      Contrainte = charge × monotonie. Échauffement et mobilité sont exclus de la charge.</div>`;
+  }
+
+  /* ---------- Vue coach : onglet admin ⚡ Charge ---------- */
+  let _roster=[];
+  function riskRank(a){
+    const r=a.ratio==null?null:Number(a.ratio);
+    let s=0;
+    if(r!=null){if(r>1.5)s+=100;else if(r>1.3)s+=60;else if(r<0.8)s+=20;}
+    if(a.hard_wakes>=3)s+=40;else if(a.hard_wakes>=2)s+=20;
+    if(a.monotony!=null&&Number(a.monotony)>2)s+=25;
+    if(!a.last_entry)s-=10;
+    return s;
+  }
+  function rosterHTML(){
+    if(!_roster.length)return`<div style="color:var(--muted);font-size:13px;padding:10px 0">
+      Aucun athlète n'a encore renseigné sa charge.</div>`;
+    return _roster.map(a=>{
+      const r=a.ratio==null?null:Number(a.ratio);
+      const z=zone(r);
+      const stale=a.last_entry?Math.round((Date.now()-new Date(a.last_entry))/86400000):null;
+      return`<div class="chg-rost" data-ath="${a.athlete_id}" style="border-left:3px solid ${z.c}">
+        <div style="flex:1;min-width:0">
+          <div class="n">${a.full_name||a.email||'—'}</div>
+          <div class="s">${fmt(a.load7)} UA · 7 j · ${fmt(a.hours7,1)} h${
+            a.monotony!=null?` · mono. ${fmt(a.monotony,2)}`:''}${
+            a.hard_wakes>0?` · ${a.hard_wakes} réveil${a.hard_wakes>1?'s':''} difficile${a.hard_wakes>1?'s':''}`:''}</div>
+          ${stale===null?'<div class="s" style="color:var(--muted)">aucune saisie</div>'
+            :stale>7?`<div class="s" style="color:#e0a32a">dernière saisie il y a ${stale} j</div>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:17px;font-weight:700;color:${z.c}">${r==null?'–':fmt(r,2)}</div>
+          <div style="font-size:9px;color:var(--muted)">${z.l}</div>
+        </div></div>`;
+    }).join('');
+  }
+  async function loadRoster(){
+    const panel=document.getElementById('admin-charge');if(!panel)return;
+    panel.innerHTML='<div class="spinner"></div>';
+    try{
+      const{data,error}=await sb.rpc('training_load_roster');
+      if(error)throw error;
+      _roster=(data||[]).sort((a,b)=>riskRank(b)-riskRank(a)||(b.load7-a.load7));
+    }catch(e){
+      console.error('[charge] roster',e);
+      panel.innerHTML='<div style="color:var(--muted);font-size:13px">Impossible de charger le roster.</div>';return;
+    }
+    panel.innerHTML=`<div id="chg-rost-view">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px">
+          <div style="flex:1"><div style="font-size:14px;font-weight:700">Charge de mes athlètes</div>
+          <div style="font-size:11px;color:var(--muted)">Les athlètes en zone de risque remontent en premier</div></div>
+          <button class="chg-csv" id="chg-csv">⬇ CSV</button>
+        </div>
+        ${rosterHTML()}
+      </div>
+      <div id="chg-fiche-view" style="display:none"></div>`;
+    panel.querySelectorAll('[data-ath]').forEach(el=>
+      el.addEventListener('click',()=>openFiche(el.dataset.ath)));
+    const csv=document.getElementById('chg-csv');
+    if(csv)csv.addEventListener('click',exportCSV);
+  }
+  async function openFiche(athleteId){
+    const a=_roster.find(x=>x.athlete_id===athleteId)||{};
+    const list=document.getElementById('chg-rost-view'),fiche=document.getElementById('chg-fiche-view');
+    if(!fiche)return;
+    list.style.display='none';fiche.style.display='';
+    fiche.innerHTML='<div class="spinner"></div>';
+    let series=[],weeks=[];
+    try{
+      const[s,w]=await Promise.all([
+        sb.rpc('training_load_series',{p_athlete:athleteId,p_days:120}),
+        sb.rpc('training_load_weeks',{p_athlete:athleteId,p_weeks:8})
+      ]);
+      series=s.data||[];weeks=w.data||[];
+    }catch(e){console.error('[charge] fiche',e);}
+    fiche.innerHTML=`<button class="chg-back" id="chg-back">‹ Retour</button>
+      <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${a.full_name||a.email||'Athlète'}</div>
+      ${series.length?suiviHTML(series,weeks)
+        :'<div style="color:var(--muted);font-size:13px;margin-top:8px">Aucune saisie de charge pour cet athlète.</div>'}`;
+    document.getElementById('chg-back').addEventListener('click',()=>{
+      fiche.style.display='none';list.style.display='';
+    });
+  }
+  async function exportCSV(){
+    const btn=document.getElementById('chg-csv');
+    if(btn){btn.disabled=true;btn.textContent='…';}
+    const q=v=>{v=String(v==null?'':v);return /[;"\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+    const rows=[['Athlète','Date','Charge jour (UA)','Minutes','Aiguë 7 j','Chronique 28 j','Ratio A/C','Réveil','OFF']];
+    for(const a of _roster){
+      if(!a.last_entry)continue; // on n'exporte que les athlètes qui ont saisi
+      try{
+        const{data}=await sb.rpc('training_load_series',{p_athlete:a.athlete_id,p_days:120});
+        (data||[]).forEach(p=>rows.push([a.full_name||a.email,p.d,p.load,p.minutes,p.acute,p.chronic,p.ratio,p.wake,p.is_off?'oui':'']));
+      }catch(e){console.error('[charge] csv',a.athlete_id,e);}
+    }
+    const blob=new Blob(['﻿'+rows.map(r=>r.map(q).join(';')).join('\n')],{type:'text/csv;charset=utf-8'});
+    const url=URL.createObjectURL(blob),link=document.createElement('a');
+    link.href=url;link.download=`charge-${today()}.csv`;document.body.appendChild(link);link.click();
+    link.remove();setTimeout(()=>URL.revokeObjectURL(url),2000);
+    if(btn){btn.disabled=false;btn.textContent='⬇ CSV';}
+  }
+  function injectCoachTab(){
+    if(document.getElementById('chg-admin-tab-btn'))return;
+    const bar=document.querySelector('.admin-tabs');const page=document.getElementById('page-admin');
+    if(!bar||!page)return;
+    const btn=document.createElement('button');
+    btn.className='admin-tab-btn';btn.id='chg-admin-tab-btn';btn.textContent='⚡ Charge';
+    btn.onclick=function(){adminTab('tlcharge',this);};
+    bar.appendChild(btn);
+    const panel=document.createElement('div');
+    panel.className='admin-panel';panel.id='admin-charge';
+    const panels=page.querySelectorAll('.admin-panel');
+    const lastPanel=panels[panels.length-1];
+    if(lastPanel)lastPanel.insertAdjacentElement('afterend',panel);else page.appendChild(panel);
+    const prev=window.adminTab;
+    window.adminTab=function(tab,b){
+      if(tab==='tlcharge'){
+        document.querySelectorAll('.admin-tab-btn').forEach(x=>x.classList.remove('active'));
+        if(b)b.classList.add('active');
+        document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+        panel.classList.add('active');
+        loadRoster();
+        return;
+      }
+      if(prev)prev(tab,b);
+    };
   }
 
   /* ---------- Branchements ---------- */
@@ -366,6 +500,7 @@
       window.goPage=function(p){
         const r=prevGo.apply(this,arguments);
         if(p==='profil')setTimeout(()=>{renderSuivi().catch(e=>console.error('[charge] suivi',e));},0);
+        if(p==='admin')setTimeout(injectCoachTab,0);
         return r;
       };
     }
