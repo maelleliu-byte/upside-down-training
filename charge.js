@@ -107,6 +107,10 @@
   .chg-csv,.chg-back{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;
     color:var(--muted);font-size:12px;cursor:pointer}
   .chg-csv:disabled{opacity:.5}
+  .chg-seg{display:flex;gap:6px;margin-bottom:10px}
+  .chg-seg button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;
+    color:var(--muted);font-size:12px;cursor:pointer}
+  .chg-seg button[aria-pressed="true"]{border-color:${TEAL};color:${TEAL};font-weight:700}
   .chg-wrap.chg-free{margin:0 0 8px;padding:12px 14px;background:var(--card);
     border:1px solid var(--border);border-radius:12px}
   .chg-addfree{width:100%;margin-bottom:16px;padding:11px;border-radius:10px;border:1px dashed var(--border);
@@ -419,7 +423,7 @@
       const stale=a.last_entry?Math.round((Date.now()-new Date(a.last_entry))/86400000):null;
       return`<div class="chg-rost" data-ath="${a.athlete_id}" style="border-left:3px solid ${z.c}">
         <div style="flex:1;min-width:0">
-          <div class="n">${a.full_name||a.email||'—'}</div>
+          <div class="n">${a.is_favorite?'⭐ ':''}${a.full_name||a.email||'—'}</div>
           <div class="s">${fmt(a.load7)} UA · 7 j · ${fmt(a.hours7,1)} h${
             a.monotony!=null?` · mono. ${fmt(a.monotony,2)}`:''}${
             a.hard_wakes>0?` · ${a.hard_wakes} réveil${a.hard_wakes>1?'s':''} difficile${a.hard_wakes>1?'s':''}`:''}</div>
@@ -432,11 +436,12 @@
         </div></div>`;
     }).join('');
   }
+  let _favOnly=true;
   async function loadRoster(){
     const panel=document.getElementById('admin-charge');if(!panel)return;
     panel.innerHTML='<div class="spinner"></div>';
     try{
-      const{data,error}=await sb.rpc('training_load_roster');
+      const{data,error}=await sb.rpc('training_load_roster',{p_favorites:_favOnly});
       if(error)throw error;
       _roster=(data||[]).sort((a,b)=>riskRank(b)-riskRank(a)||(b.load7-a.load7));
     }catch(e){
@@ -449,11 +454,23 @@
           <div style="font-size:11px;color:var(--muted)">Les athlètes en zone de risque remontent en premier</div></div>
           <button class="chg-csv" id="chg-csv">⬇ CSV</button>
         </div>
-        ${rosterHTML()}
+        <div class="chg-seg">
+          <button data-fav="1" aria-pressed="${_favOnly}">⭐ Favoris</button>
+          <button data-fav="0" aria-pressed="${!_favOnly}">Tous</button>
+        </div>
+        ${_favOnly&&!_roster.length
+          ?`<div style="color:var(--muted);font-size:12px;padding:10px 0;line-height:1.5">
+             Aucun athlète en favori. Ajoute-les en favori depuis la fiche athlète, ou bascule sur « Tous ».</div>`
+          :rosterHTML()}
       </div>
       <div id="chg-fiche-view" style="display:none"></div>`;
     panel.querySelectorAll('[data-ath]').forEach(el=>
       el.addEventListener('click',()=>openFiche(el.dataset.ath)));
+    panel.querySelectorAll('[data-fav]').forEach(b=>b.addEventListener('click',()=>{
+      const v=b.dataset.fav==='1';
+      if(v===_favOnly)return;
+      _favOnly=v;loadRoster();
+    }));
     const csv=document.getElementById('chg-csv');
     if(csv)csv.addEventListener('click',exportCSV);
   }
