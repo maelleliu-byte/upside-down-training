@@ -34,14 +34,18 @@
     return{l:'Risque élevé',c:'#e0533f'};
   }
   const fmt=(n,d=0)=>n==null?'–':Number(n).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
-  const uid=()=>window.currentUser&&currentUser.id;
+  /* ATTENTION : currentUser / currentProg / selectedDate sont déclarés avec `let`
+     dans core.js → ce sont des bindings lexicaux globaux, PAS des propriétés de window.
+     On les lit donc en identifiants nus (accessibles entre scripts classiques),
+     jamais via window.X qui renverrait undefined. */
+  const uid=()=>(typeof currentUser!=='undefined'&&currentUser)?currentUser.id:null;
   const today=()=>new Date().toISOString().slice(0,10);
   function dayKey(){
     // selectedDate peut valoir "__wNdM" sur les programmes one-shot : on retombe sur aujourd'hui
-    const d=window.selectedDate;
+    const d=(typeof selectedDate!=='undefined')?selectedDate:null;
     return(typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d))?d:today();
   }
-  const isPerso=()=>window.currentProg&&currentProg.id==='__perso__';
+  const isPerso=()=>(typeof currentProg!=='undefined'&&currentProg&&currentProg.id==='__perso__');
 
   /* ---------- Styles ---------- */
   const CSS=`
@@ -537,6 +541,8 @@
         return r;
       };
     }
+    // si les séances du jour sont déjà rendues au moment du branchement
+    setTimeout(()=>{decorateSessions().catch(e=>console.error('[charge] decorate',e));},300);
   }
 
   if(window.__STUDIO__)bind();
