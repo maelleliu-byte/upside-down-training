@@ -412,6 +412,7 @@
     if(a.hard_wakes>=3)s+=40;else if(a.hard_wakes>=2)s+=20;
     if(a.monotony!=null&&Number(a.monotony)>2)s+=25;
     if(!a.last_entry)s-=10;
+    if(a.is_me)s+=5; // sa propre ligne remonte à profil de risque égal
     return s;
   }
   function rosterHTML(){
@@ -423,7 +424,8 @@
       const stale=a.last_entry?Math.round((Date.now()-new Date(a.last_entry))/86400000):null;
       return`<div class="chg-rost" data-ath="${a.athlete_id}" style="border-left:3px solid ${z.c}">
         <div style="flex:1;min-width:0">
-          <div class="n">${a.is_favorite?'⭐ ':''}${a.full_name||a.email||'—'}</div>
+          <div class="n">${a.is_favorite?'⭐ ':''}${a.full_name||a.email||'—'}${
+            a.is_me?' <span style="font-size:10px;color:var(--muted);font-weight:500">· moi</span>':''}</div>
           <div class="s">${fmt(a.load7)} UA · 7 j · ${fmt(a.hours7,1)} h${
             a.monotony!=null?` · mono. ${fmt(a.monotony,2)}`:''}${
             a.hard_wakes>0?` · ${a.hard_wakes} réveil${a.hard_wakes>1?'s':''} difficile${a.hard_wakes>1?'s':''}`:''}</div>
