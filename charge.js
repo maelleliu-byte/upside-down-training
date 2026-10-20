@@ -103,6 +103,10 @@
   .chg-csv,.chg-back{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;
     color:var(--muted);font-size:12px;cursor:pointer}
   .chg-csv:disabled{opacity:.5}
+  .chg-wrap.chg-free{margin:0 0 8px;padding:12px 14px;background:var(--card);
+    border:1px solid var(--border);border-radius:12px}
+  .chg-addfree{width:100%;margin-bottom:16px;padding:11px;border-radius:10px;border:1px dashed var(--border);
+    background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
   `;
   function injectCSS(){
     if(document.getElementById('chg-css'))return;
@@ -149,7 +153,7 @@
   }
 
   /* ---------- Saisie : bloc ---------- */
-  function blockHTML(s,saved){
+  function blockHTML(s,saved,free){
     const[defMod,defCounts]=TYPEMAP[s.type]||['CF',true];
     const mod=saved?saved.modality:defMod;
     const counts=saved?saved.counts:defCounts;
@@ -159,9 +163,15 @@
     const head=saved
       ?(counts?`<span class="chg-val">${fmt(ua)} UA</span>`:`<span class="chg-val off">hors charge</span>`)
       :`<span class="chg-val off">à renseigner</span>`;
-    return`<div class="chg-wrap" data-chg="${s.id}" data-type="${s.type||''}">
-      <div class="chg-head"><span style="font-size:15px">⚡</span><span class="t">Charge de ce bloc</span>${head}<span style="color:var(--muted);font-size:14px">›</span></div>
-      <div class="chg-body${saved?'':''}">
+    return`<div class="chg-wrap${free?' chg-free':''}" data-chg="${s.id}" data-type="${s.type||''}">
+      <div class="chg-head"><span style="font-size:15px">⚡</span>
+        <span class="t">${free?(saved&&saved.label?saved.label:'Séance libre'):'Charge de ce bloc'}</span>
+        ${head}<span style="color:var(--muted);font-size:14px">›</span></div>
+      <div class="chg-body${free&&!saved?' open':''}">
+        ${free?`<div class="chg-lbl" style="margin-top:0">Nom de la séance</div>
+          <input type="text" data-label value="${saved&&saved.label?String(saved.label).replace(/"/g,'&quot;'):''}"
+            placeholder="Footing, muscu à la maison, compét…"
+            style="width:100%;background:var(--card2,transparent);border:1px solid var(--border);color:var(--text);padding:10px;border-radius:8px;font-size:14px">`:''}
         <div class="chg-lbl">Modalité</div>
         <div class="chg-mods">${MODS.map(([k,l])=>`<button class="chg-mod" data-mod="${k}" aria-pressed="${mod===k}">${l}</button>`).join('')}</div>
         <div class="chg-lbl">RPE de séance</div>
@@ -180,7 +190,7 @@
     </div>`;
   }
 
-  function wire(wrap,s,saved){
+  function wire(wrap,s,saved,free){
     const st={id:saved?saved.id:null,
       mod:saved?saved.modality:(TYPEMAP[s.type]||['CF',true])[0],
       rpe:saved?saved.rpe:0,
@@ -212,12 +222,15 @@
       btn.disabled=true;btn.textContent='Enregistrement…';
       try{
         const date=dayKey();
-        const row={athlete_id:uid(),date,modality:st.mod,rpe:st.rpe,minutes:st.min,counts:st.counts,label:s.title||null};
-        if(isPerso())row.personal_session_id=s.id;else row.session_id=s.id;
+        const lblEl=wrap.querySelector('[data-label]');
+        const label=free?((lblEl&&lblEl.value.trim())||'Séance libre'):(s.title||null);
+        const row={athlete_id:uid(),date,modality:st.mod,rpe:st.rpe,minutes:st.min,counts:st.counts,label};
+        if(!free){if(isPerso())row.personal_session_id=s.id;else row.session_id=s.id;}
         st.id=await saveBlock(row,st.id);
         const ua=st.counts?st.rpe*st.min:0;
         headVal.className='chg-val'+(st.counts?'':' off');
         headVal.textContent=st.counts?`${fmt(ua)} UA`:'hors charge';
+        if(free){const t=wrap.querySelector('.chg-head .t');if(t)t.textContent=label;}
         btn.textContent='✓ Enregistré';btn.disabled=false;
         setTimeout(()=>btn.textContent='Mettre à jour',1600);
         body.classList.remove('open');
@@ -243,7 +256,6 @@
     const area=document.getElementById('sessions-area');
     if(!area||!uid())return;
     const cards=[...area.querySelectorAll('.session-card')];
-    if(!cards.length)return;
     const date=dayKey();
     const{blocks,day}=await loadDay(date);
     const key=isPerso()?'personal_session_id':'session_id';
@@ -264,6 +276,27 @@
         const on=offBtn.getAttribute('aria-pressed')==='true';
         offBtn.setAttribute('aria-pressed',String(!on));
         try{await saveDay(date,{is_off:!on});}catch(e){console.error('[charge] off',e);}
+      });
+    }
+
+    // séances libres (hors blocs programmés) + bouton d'ajout
+    if(!document.getElementById('chg-free')){
+      const bar=document.getElementById('chg-daybar');
+      bar.insertAdjacentHTML('afterend',`<div id="chg-free"></div>
+        <button class="chg-addfree" id="chg-addfree">+ Ajouter une séance libre</button>`);
+      const host=document.getElementById('chg-free');
+      const frees=blocks.filter(b=>!b.session_id&&!b.personal_session_id);
+      frees.forEach(b=>{
+        const s={id:'free-'+b.id,type:'wod',title:b.label};
+        host.insertAdjacentHTML('beforeend',blockHTML(s,b,true));
+        wire(host.querySelector(`[data-chg="free-${b.id}"]`),s,b,true);
+      });
+      document.getElementById('chg-addfree').addEventListener('click',()=>{
+        const tmp='new-'+Date.now();
+        const s={id:tmp,type:'wod',title:null};
+        host.insertAdjacentHTML('beforeend',blockHTML(s,null,true));
+        wire(host.querySelector(`[data-chg="${tmp}"]`),s,null,true);
+        host.lastElementChild.scrollIntoView({behavior:'smooth',block:'center'});
       });
     }
 
