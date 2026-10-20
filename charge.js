@@ -257,6 +257,9 @@
 
   /* ---------- Injection dans les cartes de séance ---------- */
   async function decorateSessions(){
+    // La saisie de charge n'existe QUE dans l'espace perso de l'athlète.
+    // Sur les programmes, on ne touche à rien.
+    if(!isPerso())return;
     const area=document.getElementById('sessions-area');
     if(!area||!uid())return;
     const cards=[...area.querySelectorAll('.session-card')];
