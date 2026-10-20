@@ -535,6 +535,16 @@
         return r;
       };
     }
+    // selectProg('__perso__') appelle renderPersoSessions() EN DIRECT, sans passer
+    // par renderSessions : c'est ce chemin-là qu'il faut aussi intercepter.
+    if(typeof window.renderPersoSessions==='function'){
+      const prevPerso=window.renderPersoSessions;
+      window.renderPersoSessions=async function(){
+        const r=await prevPerso.apply(this,arguments);
+        try{await decorateSessions();}catch(e){console.error('[charge] decorate perso',e);}
+        return r;
+      };
+    }
     if(typeof window.goPage==='function'){
       const prevGo=window.goPage;
       window.goPage=function(p){
