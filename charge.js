@@ -23,7 +23,6 @@
     run:['CAP',true], warmup:['BODY',false], mobility:['BODY',false]
   };
   const RPEC=['#2E8B57','#3F9A55','#6AA84F','#9DB443','#C9A93A','#D98A2B','#D7712C','#CF5A30','#C24A3D','#A8322B'];
-  const WAKE=[['Forme','💪','En forme'],['RAS','😊','RAS'],['Fatigue','😮‍💨','Fatigué'],['PLS','🥵','PLS']];
   const TEAL='#2dd4bf';
 
   function zone(r){
@@ -77,11 +76,6 @@
     font-size:14px;font-weight:700;cursor:pointer}
   .chg-save:disabled{opacity:.5}
   .chg-daybar{margin:0 0 16px;padding:14px;background:var(--card);border:1px solid var(--border);border-radius:12px}
-  .chg-wake{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:10px}
-  .chg-wake button{padding:10px 2px;border-radius:10px;border:1px solid var(--border);background:transparent;
-    color:var(--muted);font-size:11px;cursor:pointer}
-  .chg-wake button i{display:block;font-style:normal;font-size:18px;margin-bottom:3px}
-  .chg-wake button[aria-pressed="true"]{border-color:${TEAL};color:${TEAL};font-weight:700}
   .chg-off{width:100%;margin-top:8px;padding:9px;border-radius:8px;border:1px dashed var(--border);
     background:transparent;color:var(--muted);font-size:12px;cursor:pointer}
   .chg-off[aria-pressed="true"]{border-style:solid;border-color:${TEAL};color:${TEAL}}
@@ -107,20 +101,6 @@
   .chg-csv,.chg-back{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;
     color:var(--muted);font-size:12px;cursor:pointer}
   .chg-csv:disabled{opacity:.5}
-  .chg-wtoggle{width:100%;margin-top:8px;padding:10px;border-radius:8px;border:1px solid var(--border);
-    background:transparent;color:var(--text);font-size:12px;text-align:left;cursor:pointer}
-  .chg-wform{display:none;margin-top:10px}
-  .chg-wform.open{display:block}
-  .chg-wrow{margin-bottom:12px}
-  .chg-wlab{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;
-    color:var(--text);margin-bottom:5px}
-  .chg-wlab b{font-size:12px}
-  .chg-wsl{width:100%;height:6px;border-radius:3px;appearance:none;outline:none}
-  .chg-wsl::-webkit-slider-thumb{appearance:none;width:18px;height:18px;border-radius:50%;
-    background:var(--text);border:2px solid var(--card);cursor:pointer}
-  .chg-wsl::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:var(--text);
-    border:2px solid var(--card);cursor:pointer}
-  .chg-wsaved{font-size:11px;color:var(--muted);min-height:14px;text-align:right}
   .chg-seg{display:flex;gap:6px;margin-bottom:10px}
   .chg-seg button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;
     color:var(--muted);font-size:12px;cursor:pointer}
@@ -137,35 +117,26 @@
 
   /* ---------- Accès données ---------- */
   async function loadDay(date){
-    const id=uid();if(!id)return{blocks:[],day:null,well:null};
-    const[{data:blocks},{data:day},{data:well}]=await Promise.all([
+    const id=uid();if(!id)return{blocks:[],day:null};
+    const[{data:blocks},{data:day}]=await Promise.all([
       sb.from('training_load_blocks').select('*').eq('athlete_id',id).eq('date',date),
-      sb.from('training_load_days').select('*').eq('athlete_id',id).eq('date',date).maybeSingle(),
-      sb.from('wellness_entries').select('*').eq('athlete_id',id).eq('date',date).maybeSingle()
+      sb.from('training_load_days').select('*').eq('athlete_id',id).eq('date',date).maybeSingle()
     ]);
-    return{blocks:blocks||[],day:day||null,well:well||null};
+    return{blocks:blocks||[],day:day||null};
   }
-  /* Wellness : on écrit dans la MÊME ligne (athlete_id, date) que la page Wellness
-     existante, donc aucune donnée dupliquée — seulement la saisie qui ne l'est plus. */
-  const WFIELDS=(typeof WELLNESS_FIELDS!=='undefined'&&Array.isArray(WELLNESS_FIELDS))?WELLNESS_FIELDS:[
-    {key:'sleep_quality',name:'Qualité du sommeil',icon:'😴',inv:false},
-    {key:'energy',name:'Énergie',icon:'🔥',inv:false},
-    {key:'fatigue',name:'Fatigue générale',icon:'💪',inv:true},
-    {key:'soreness',name:'Courbatures',icon:'🦵',inv:true},
-    {key:'motivation',name:'Motivation',icon:'🚀',inv:false},
-    {key:'mood',name:'Humeur',icon:'😊',inv:false},
-    {key:'stress',name:'Stress',icon:'😰',inv:true}
-  ];
-  function wColor(v,inv){
-    if(typeof v!=='number')return'#7a7a7a';
-    const x=inv?(11-v):v;
-    if(x>=8)return'#47ff8c';if(x>=5)return'#e8ff47';if(x>=3)return'#ff8c47';return'#ff4747';
-  }
-  async function saveWell(date,payload){
-    const id=uid();if(!id)return;
-    const{error}=await sb.from('wellness_entries')
-      .upsert({athlete_id:id,date,...payload},{onConflict:'athlete_id,date'});
-    if(error)throw error;
+
+  /* La carte wellness (#wd-card) est produite par le patch existant de wellness.js :
+     champs pilotés par studios.wellness_config, enregistrement au tap, envoi WhatsApp
+     au coach. On ne la recrée surtout pas — on déplace simplement son nœud DANS le
+     bloc charge pour n'avoir qu'un seul bloc à remplir. */
+  async function mountWellnessCard(){
+    const slot=document.getElementById('chg-wd-slot');
+    if(!slot)return;
+    for(let i=0;i<12;i++){
+      const wd=document.getElementById('wd-card');
+      if(wd){if(wd.parentElement!==slot)slot.appendChild(wd);return;}
+      await new Promise(r=>setTimeout(r,120));
+    }
   }
   async function saveBlock(row,existingId){
     if(existingId){
@@ -183,38 +154,12 @@
   }
 
   /* ---------- Saisie : barre du jour ---------- */
-  function wellFormHTML(well){
-    const v=well||{};
-    return WFIELDS.map(f=>{
-      const val=typeof v[f.key]==='number'?v[f.key]:5;
-      const c=wColor(val,f.inv);
-      const pct=(val-1)/9*100;
-      return`<div class="chg-wrow">
-        <div class="chg-wlab"><span>${f.icon} ${f.name}</span>
-          <b id="cwv-${f.key}" style="color:${c}">${val}/10</b></div>
-        <input type="range" min="1" max="10" step="1" value="${val}" class="chg-wsl"
-          data-wkey="${f.key}" data-winv="${f.inv?1:0}"
-          style="background:linear-gradient(to right,${c} 0%,${c} ${pct}%,var(--border) ${pct}%,var(--border) 100%)">
-      </div>`;
-    }).join('')+
-    `<div class="chg-wrow"><div class="chg-wlab"><span>📝 Mot pour le coach</span></div>
-      <textarea id="cwv-notes" rows="2" placeholder="Optionnel — ce que le coach doit savoir aujourd'hui"
-        style="width:100%;background:var(--card2,transparent);border:1px solid var(--border);color:var(--text);
-        padding:10px;border-radius:8px;font-size:13px;resize:vertical">${(v.notes||'').replace(/</g,'&lt;')}</textarea></div>
-     <div class="chg-wsaved" id="chg-wsaved"></div>`;
-  }
-
-  function dayBarHTML(date,day,blocks,well){
+  function dayBarHTML(date,day,blocks){
     const tot=blocks.reduce((a,b)=>a+(b.counts?b.rpe*b.minutes:0),0);
     const min=blocks.reduce((a,b)=>a+(b.counts?b.minutes:0),0);
     return`<div class="chg-daybar" id="chg-daybar">
-      <div style="font-size:13px;font-weight:700;color:var(--text)">Comment tu t'es réveillé ?</div>
-      <div class="chg-wake">${WAKE.map(([k,e,l])=>
-        `<button data-wake="${k}" aria-pressed="${day&&day.wake===k}"><i>${e}</i>${l}</button>`).join('')}</div>
+      <div id="chg-wd-slot"></div>
       <button class="chg-off" data-off aria-pressed="${!!(day&&day.is_off)}">Jour de repos (OFF)</button>
-      <button class="chg-wtoggle" id="chg-wtoggle">😴 Sommeil, courbatures, énergie…
-        <span style="float:right;color:var(--muted)">${well?'✓ rempli':'›'}</span></button>
-      <div class="chg-wform" id="chg-wform">${wellFormHTML(well)}</div>
       <div class="chg-tot"><span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em">Charge du jour</span>
         <div style="text-align:right"><b id="chg-day-tot">${fmt(tot)}</b>
         <span style="font-size:10px;color:var(--muted)"> UA · ${fmt(min)} min</span></div></div>
@@ -329,65 +274,23 @@
     if(!area||!uid())return;
     const cards=[...area.querySelectorAll('.session-card')];
     const date=dayKey();
-    const{blocks,day,well}=await loadDay(date);
+    const{blocks,day}=await loadDay(date);
     const key=isPerso()?'personal_session_id':'session_id';
     const byId={};blocks.forEach(b=>{if(b[key])byId[b[key]]=b;});
 
     // barre du jour en tête
     if(!document.getElementById('chg-daybar')){
-      area.insertAdjacentHTML('afterbegin',dayBarHTML(date,day,blocks,well));
+      area.insertAdjacentHTML('afterbegin',dayBarHTML(date,day,blocks));
       const bar=document.getElementById('chg-daybar');
-      bar.querySelectorAll('[data-wake]').forEach(b=>b.addEventListener('click',async()=>{
-        const on=b.getAttribute('aria-pressed')==='true';
-        bar.querySelectorAll('[data-wake]').forEach(x=>x.setAttribute('aria-pressed','false'));
-        b.setAttribute('aria-pressed',String(!on));
-        try{await saveDay(date,{wake:on?null:b.dataset.wake});}catch(e){console.error('[charge] wake',e);}
-      }));
       const offBtn=bar.querySelector('[data-off]');
       offBtn.addEventListener('click',async()=>{
         const on=offBtn.getAttribute('aria-pressed')==='true';
         offBtn.setAttribute('aria-pressed',String(!on));
         try{await saveDay(date,{is_off:!on});}catch(e){console.error('[charge] off',e);}
       });
-
-      // wellness fusionné : même ligne (athlete_id, date) que la page Wellness
-      const wForm=document.getElementById('chg-wform');
-      const wTog=document.getElementById('chg-wtoggle');
-      wTog.addEventListener('click',()=>{
-        wForm.classList.toggle('open');
-        wTog.setAttribute('aria-expanded',wForm.classList.contains('open'));
-      });
-      const flag=document.getElementById('chg-wsaved');
-      let wTimer=null;
-      const pushWell=()=>{
-        clearTimeout(wTimer);
-        wTimer=setTimeout(async()=>{
-          const payload={};
-          wForm.querySelectorAll('[data-wkey]').forEach(s=>{payload[s.dataset.wkey]=parseInt(s.value,10);});
-          const n=document.getElementById('cwv-notes');
-          payload.notes=(n&&n.value.trim())||null;
-          try{
-            await saveWell(date,payload);
-            flag.textContent='✓ Enregistré';flag.style.color='var(--muted)';
-            const s=wTog.querySelector('span');if(s)s.textContent='✓ rempli';
-          }catch(e){
-            console.error('[charge] wellness',e);
-            flag.textContent='Erreur d\'enregistrement';flag.style.color='#e0533f';
-          }
-        },600);
-      };
-      wForm.querySelectorAll('[data-wkey]').forEach(s=>{
-        s.addEventListener('input',()=>{
-          const v=parseInt(s.value,10),inv=s.dataset.winv==='1',c=wColor(v,inv),pct=(v-1)/9*100;
-          const lab=document.getElementById('cwv-'+s.dataset.wkey);
-          if(lab){lab.textContent=v+'/10';lab.style.color=c;}
-          s.style.background=`linear-gradient(to right,${c} 0%,${c} ${pct}%,var(--border) ${pct}%,var(--border) 100%)`;
-          pushWell();
-        });
-      });
-      const notesEl=document.getElementById('cwv-notes');
-      if(notesEl)notesEl.addEventListener('blur',pushWell);
     }
+    // la carte wellness existante remonte dans le bloc charge
+    mountWellnessCard();
 
     // séances libres (hors blocs programmés) + bouton d'ajout
     if(!document.getElementById('chg-free')){
@@ -508,7 +411,7 @@
     const r=a.ratio==null?null:Number(a.ratio);
     let s=0;
     if(r!=null){if(r>1.5)s+=100;else if(r>1.3)s+=60;else if(r<0.8)s+=20;}
-    if(a.hard_wakes>=3)s+=40;else if(a.hard_wakes>=2)s+=20;
+    if(a.hard_days>=3)s+=40;else if(a.hard_days>=2)s+=20;
     if(a.monotony!=null&&Number(a.monotony)>2)s+=25;
     if(!a.last_entry)s-=10;
     if(a.is_me)s+=5; // sa propre ligne remonte à profil de risque égal
@@ -527,7 +430,7 @@
             a.is_me?' <span style="font-size:10px;color:var(--muted);font-weight:500">· moi</span>':''}</div>
           <div class="s">${fmt(a.load7)} UA · 7 j · ${fmt(a.hours7,1)} h${
             a.monotony!=null?` · mono. ${fmt(a.monotony,2)}`:''}${
-            a.hard_wakes>0?` · ${a.hard_wakes} réveil${a.hard_wakes>1?'s':''} difficile${a.hard_wakes>1?'s':''}`:''}</div>
+            a.hard_days>0?` · ${a.hard_days} journée${a.hard_days>1?'s':''} difficile${a.hard_days>1?'s':''}`:''}</div>
           ${stale===null?'<div class="s" style="color:var(--muted)">aucune saisie</div>'
             :stale>7?`<div class="s" style="color:#e0a32a">dernière saisie il y a ${stale} j</div>`:''}
         </div>
