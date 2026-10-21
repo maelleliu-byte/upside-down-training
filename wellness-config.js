@@ -194,11 +194,14 @@
     panel.innerHTML =
       '<div class="wc-head">' +
         '<div class="wc-title">Suivi athlète</div>' +
-        '<div class="wc-sub">Les champs que tes athlètes notent de 1 à 5, dans leur espace perso.</div>' +
+        '<div class="wc-sub">Tes athlètes renseignent toujours leur état au réveil. ' +
+          'Ajoute ici les champs supplémentaires qu\'ils notent de 1 à 5, dans leur espace perso.</div>' +
       '</div>' +
       studioPicker +
       '<div class="wc-card">' +
-        '<div class="wc-lab">Champs évalués</div>' +
+        '<div class="wc-lab">Champs supplémentaires</div>' +
+        '<div class="wc-hint" style="margin-bottom:10px">Facultatif — sans aucun champ actif, ' +
+          'la saisie se limite à l\'état au réveil.</div>' +
         warn +
         '<div id="wc-rows">' + rows + '</div>' +
         '<button class="wc-add" id="wc-add-btn"' +
@@ -228,12 +231,22 @@
     var box = document.getElementById('wc-preview');
     if (!box) return;
     var fields = _wcConfig.fields.filter(function (f) { return f.active; });
+    // Toujours en tête : l'état au réveil, commun à tous les studios.
+    var wake =
+      '<div class="wc-prev-row">' +
+        '<div class="wc-prev-lab">Au réveil</div>' +
+        '<div class="wc-dots">' +
+          '<span class="wc-dot">💪</span><span class="wc-dot">😊</span>' +
+          '<span class="wc-dot">😮‍💨</span><span class="wc-dot">🥵</span>' +
+        '</div>' +
+      '</div>';
     if (!fields.length) {
-      box.innerHTML = '<div class="wc-hint">Aucun champ actif — rien ne s\'affichera chez l\'athlète.</div>';
+      box.innerHTML = wake +
+        '<div class="wc-hint">Aucun champ supplémentaire — l\'athlète renseigne seulement son état au réveil.</div>';
       return;
     }
     var max = _wcConfig.scale_max || 5;
-    box.innerHTML = fields.map(function (f) {
+    box.innerHTML = wake + fields.map(function (f) {
       var dots = '';
       for (var v = 1; v <= max; v++) dots += '<span class="wc-dot">' + v + '</span>';
       return '<div class="wc-prev-row">' +
@@ -348,7 +361,8 @@
       f.active = !!f.active;
     }
     var active = _wcConfig.fields.filter(function (f) { return f.active; }).length;
-    if (!active) { _toast('⚠️ Au moins un champ actif est nécessaire'); return; }
+    // Zéro champ actif est permis : l'athlète renseigne alors seulement son
+    // état au réveil, qui ne dépend pas de cette config.
     if (active > MAX_FIELDS) { _toast('⚠️ ' + MAX_FIELDS + ' champs actifs maximum'); return; }
 
     _wcConfig.scale_max = 5;

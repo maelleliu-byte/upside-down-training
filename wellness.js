@@ -8136,12 +8136,23 @@ async function claimFreeAccess(programmeId){
     humeur:'mood', mood:'mood'
   };
 
+  // État au réveil : 4 états fixes, enregistrés dans training_load_days.wake.
+  // Les clés doivent rester alignées sur la contrainte SQL de la table.
+  const WD_WAKE = [
+    ['Forme',   '\ud83d\udcaa', 'En forme'],
+    ['RAS',     '\ud83d\ude0a', 'RAS'],
+    ['Fatigue', '\ud83d\ude2e\u200d\ud83d\udca8', 'Fatigué'],
+    ['PLS',     '\ud83e\udd75', 'PLS']
+  ];
+  const WD_WAKE_C = {Forme:'#47ff8c', RAS:'var(--accent)', Fatigue:'#ff8c47', PLS:'#ff4747'};
+
   let _wdCfg = null;         // config du studio (cache)
   let _wdEntry = null;       // saisie du jour affiché
   let _wdDate = null;        // date de la saisie chargée
   let _wdOpen = false;       // carte dépliée ?
   let _wdSaveTimer = null;
   let _wdCoach = null;       // {name, phone} résolu une fois
+  let _wdWake = null;        // état au réveil du jour affiché
 
   function _wdEsc(s){
     return (s==null?'':String(s))
@@ -8191,10 +8202,16 @@ async function claimFreeAccess(programmeId){
   async function _wdLoadEntry(iso){
     _wdDate = iso;
     _wdEntry = null;
+    _wdWake = null;
     try{
-      const {data} = await sb.from('wellness_entries')
-        .select('*').eq('athlete_id',currentUser.id).eq('date',iso).maybeSingle();
-      _wdEntry = data || null;
+      const [{data:w},{data:d}] = await Promise.all([
+        sb.from('wellness_entries')
+          .select('*').eq('athlete_id',currentUser.id).eq('date',iso).maybeSingle(),
+        sb.from('training_load_days')
+          .select('wake').eq('athlete_id',currentUser.id).eq('date',iso).maybeSingle()
+      ]);
+      _wdEntry = w || null;
+      _wdWake = (d && d.wake) || null;
     }catch(e){ console.warn('wellness entry',e); }
   }
 
@@ -8212,8 +8229,31 @@ async function claimFreeAccess(programmeId){
   }
 
   function _wdFilled(){
+    if(_wdWake) return true;
     if(!_wdCfg || !_wdCfg.fields.length) return false;
     return _wdCfg.fields.some(f => _wdVal(f.key) != null);
+  }
+
+  // Libellé lisible d'un état au réveil
+  function _wdWakeLabel(k){
+    const w = WD_WAKE.find(x => x[0] === k);
+    return w ? (w[1]+' '+w[2]) : '';
+  }
+
+  // Les 4 boutons d'état au réveil — toujours présents, quels que soient
+  // les champs configurés par le studio.
+  function _wdWakeHTML(){
+    return '<div class="wd-wake-lab">Au réveil</div>'+
+      '<div class="wd-wake">'+
+        WD_WAKE.map(function(w){
+          const on = (_wdWake === w[0]);
+          const c = WD_WAKE_C[w[0]];
+          return '<button type="button" class="wd-wk'+(on?' on':'')+'" data-wake="'+w[0]+'"'+
+                 (on ? ' style="border-color:'+c+';background:'+c+'22;color:'+c+'"' : '')+'>'+
+                   '<span>'+w[1]+'</span>'+w[2]+
+                 '</button>';
+        }).join('')+
+      '</div>';
   }
 
   function _wdDotColor(v, inverted){
@@ -8230,8 +8270,9 @@ async function claimFreeAccess(programmeId){
     if(!area) return;
     if(document.getElementById('wd-card')) return;
 
-    const cfg = await _wdGetConfig();
-    if(!cfg.fields.length) return;              // studio sans champ actif
+    // Plus d'early-return si aucun champ n'est configuré : l'état au réveil
+    // suffit à lui seul, les champs 1-5 sont un complément facultatif.
+    await _wdGetConfig();
 
     const iso = (typeof selectedDate !== 'undefined' && selectedDate) ? selectedDate : _wdToday();
     if(iso > _wdToday()) return;                // pas de saisie pour un jour à venir
@@ -8253,12 +8294,15 @@ async function claimFreeAccess(programmeId){
 
     if(!open){
       // Replié : une ligne de résumé
-      const chips = _wdCfg.fields.map(f=>{
+      const parts = _wdCfg.fields.map(f=>{
         const v = _wdVal(f.key);
         if(v==null) return '';
         const c = _wdDotColor(v,f.inverted);
         return '<span style="color:'+c+';font-weight:700">'+_wdEsc(f.icon||'')+' '+v+'</span>';
-      }).filter(Boolean).join('<span style="opacity:.3"> · </span>');
+      }).filter(Boolean);
+      if(_wdWake) parts.unshift('<span style="color:'+WD_WAKE_C[_wdWake]+';font-weight:700">'+
+        _wdEsc(_wdWakeLabel(_wdWake))+'</span>');
+      const chips = parts.join('<span style="opacity:.3"> · </span>');
 
       wrap.innerHTML =
         '<div class="wd-box wd-done">'+
@@ -8297,10 +8341,20 @@ async function claimFreeAccess(programmeId){
           '<div class="wd-title">Comment tu te sens ?</div>'+
           '<div class="wd-date">'+_wdEsc(_wdPrettyDate(_wdDate))+'</div>'+
         '</div>'+
+        _wdWakeHTML()+
         rows+
         '<textarea class="wd-note" id="wd-note" rows="2" placeholder="Un mot pour ton coach… (optionnel)">'+_wdEsc(note)+'</textarea>'+
         '<button type="button" class="wd-send" id="wd-send-btn">📲 Envoyer à mon coach</button>'+
       '</div>';
+
+    wrap.querySelectorAll('.wd-wk').forEach(btn=>{
+      btn.onclick = function(){
+        const k = btn.dataset.wake;
+        _wdWake = (_wdWake === k) ? null : k;   // retaper le même état l'efface
+        _wdPaint();
+        _wdSaveWake();
+      };
+    });
 
     wrap.querySelectorAll('.wd-dot').forEach(btn=>{
       btn.onclick = function(){
@@ -8336,6 +8390,22 @@ async function claimFreeAccess(programmeId){
 
     clearTimeout(_wdSaveTimer);
     _wdSaveTimer = setTimeout(_wdSave, 450);
+  }
+
+  // L'état au réveil vit dans training_load_days (même table que le jour OFF
+  // et la charge) : c'est lui que lit training_load_series pour la frise.
+  async function _wdSaveWake(){
+    if(!_wdDate || !window.currentUser) return;
+    const {error} = await sb.from('training_load_days').upsert({
+      athlete_id: currentUser.id,
+      date: _wdDate,
+      wake: _wdWake,
+      updated_at: new Date().toISOString()
+    }, {onConflict:'athlete_id,date'});
+    if(error){
+      console.warn('wake save',error);
+      showToast('❌ '+error.message);
+    }
   }
 
   async function _wdSave(){
@@ -8406,10 +8476,12 @@ async function claimFreeAccess(programmeId){
     }
 
     const who = (currentProfile && currentProfile.full_name) || 'Un athlète';
-    const parts = _wdCfg.fields.map(f=>{
+    const list = _wdCfg.fields.map(f=>{
       const v = _wdVal(f.key);
       return (v==null) ? '' : (f.label||f.key)+' '+v+'/5';
-    }).filter(Boolean).join(' · ');
+    }).filter(Boolean);
+    if(_wdWake) list.unshift('Réveil : '+_wdWakeLabel(_wdWake));
+    const parts = list.join(' · ');
     const note = (_wdEntry && _wdEntry.notes) ? '\n« '+_wdEntry.notes+' »' : '';
     const msg = who+' — suivi du '+_wdPrettyDate(_wdDate)+'\n'+parts+note;
 
@@ -8444,7 +8516,15 @@ async function claimFreeAccess(programmeId){
       '.wd-done-t{font-size:12px;font-weight:700;margin-bottom:3px}'+
       '.wd-done-c{font-size:12px}'+
       '.wd-edit{flex:0 0 auto;background:transparent;border:1px solid var(--border2);color:var(--muted);'+
-        'border-radius:8px;padding:7px 11px;font-size:11px;cursor:pointer;font-family:inherit}';
+        'border-radius:8px;padding:7px 11px;font-size:11px;cursor:pointer;font-family:inherit}'+
+      '.wd-wake-lab{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;'+
+        'font-weight:700;margin-bottom:7px}'+
+      '.wd-wake{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:4px}'+
+      '.wd-wk{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px;'+
+        'border-radius:10px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);'+
+        'font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:transform .08s}'+
+      '.wd-wk span{font-size:17px;line-height:1}'+
+      '.wd-wk:active{transform:scale(.95)}';
     document.head.appendChild(st);
   }
 
