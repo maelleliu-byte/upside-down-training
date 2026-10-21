@@ -23,14 +23,28 @@
     run:['CAP',true], warmup:['BODY',false], mobility:['BODY',false]
   };
   const RPEC=['#2E8B57','#3F9A55','#6AA84F','#9DB443','#C9A93A','#D98A2B','#D7712C','#CF5A30','#C24A3D','#A8322B'];
-  const TEAL='#2dd4bf';
+
+  /* Charte graphique de l'appli (styles.css) : fond noir, cartes sombres et les
+     couleurs nommées. On passe par les variables CSS, donc l'accent suit celui du
+     studio et tout reste juste en thème clair. */
+  const AC='var(--accent)', GRID='var(--border)', BAR='var(--border2)',
+        OK='var(--green)', WARN='var(--orange)', BAD='var(--red)', LOW='var(--blue)';
+  const TEAL=AC;  // l'ancien teal codé en dur suit maintenant l'accent du studio
+  const tint=(c,p)=>`color-mix(in srgb, ${c} ${p}%, transparent)`;
+  // couleur par modalité, prise dans la palette de l'appli
+  const MODC={STR:'var(--red)',CF:'var(--accent)',WL:'var(--purple)',GYM:'var(--blue)',
+    BODY:'var(--green)',CAP:'var(--orange)',ERG:'var(--blue)',BIKE:'var(--green)',
+    SWI:'var(--purple)',COMP:'var(--red)'};
+  const WAKE=[['Forme','💪','En forme',OK],['RAS','😊','RAS',AC],
+              ['Fatigue','😮‍💨','Fatigué',WARN],['PLS','🥵','PLS',BAD]];
+  const WAKEC=Object.fromEntries(WAKE.map(([k,,,c])=>[k,c]));
 
   function zone(r){
     if(r==null)return{l:'Amorçage',c:'var(--muted)'};
-    if(r<0.8)return{l:'Sous-charge',c:'#47a7ff'};
-    if(r<=1.3)return{l:'Zone optimale',c:'#3fbf6a'};
-    if(r<=1.5)return{l:'Vigilance',c:'#e0a32a'};
-    return{l:'Risque élevé',c:'#e0533f'};
+    if(r<0.8)return{l:'Sous-charge',c:LOW};
+    if(r<=1.3)return{l:'Zone optimale',c:OK};
+    if(r<=1.5)return{l:'Vigilance',c:WARN};
+    return{l:'Risque élevé',c:BAD};
   }
   const fmt=(n,d=0)=>n==null?'–':Number(n).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});
   /* ATTENTION : currentUser / currentProg / selectedDate sont déclarés avec `let`
@@ -94,6 +108,23 @@
   .chg-tbl th:first-child,.chg-tbl td:first-child{text-align:left}
   .chg-tbl td{text-align:right;padding:6px 3px;border-bottom:1px solid var(--border);color:var(--text)}
   .chg-hint{font-size:10px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .chg-chart{width:100%;height:auto;display:block;font-family:inherit}
+  .chg-leg{display:flex;gap:14px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-top:6px}
+  .chg-leg i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;vertical-align:3px}
+  .chg-sec{display:flex;align-items:baseline;gap:8px;margin:16px 0 6px}
+  .chg-sec h4{margin:0;font-size:12px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.06em}
+  .chg-sec span{font-size:10px;color:var(--muted)}
+  .chg-axis{display:flex;justify-content:space-between;font-size:10px;color:var(--muted);margin-top:2px}
+  .chg-wk4 .chg-kpi{padding:8px 2px}
+  .chg-wk4 .chg-kpi span{font-size:9px;white-space:nowrap}
+  .chg-tbl tr.cur{background:var(--card2)}
+  .chg-tbl td small{display:block;font-size:9px;color:var(--muted);font-weight:400}
+  .chg-mrow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .chg-mk{flex:0 0 38%;font-size:11px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .chg-mk b{color:var(--text);font-weight:700;margin-right:4px}
+  .chg-mtr{flex:1;height:8px;border-radius:4px;background:var(--card2);overflow:hidden}
+  .chg-mtr i{display:block;height:100%;border-radius:4px}
+  .chg-mp{flex:0 0 42px;text-align:right;font-size:11px;font-weight:700;color:var(--text)}
   .chg-rost{display:flex;align-items:center;gap:10px;padding:11px 12px;margin-bottom:7px;
     background:var(--card);border:1px solid var(--border);border-radius:10px;cursor:pointer}
   .chg-rost .n{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -331,20 +362,159 @@
   }
 
   /* ---------- Vue « Mon suivi » (page Profil) ---------- */
-  function sparkline(series){
-    const s=series.slice(-42);if(s.length<2)return'';
-    const W=320,H=90,P=4;
-    const max=Math.max(1,...s.map(p=>Math.max(p.load,p.acute||0,p.chronic||0)));
-    const X=i=>P+i*(W-2*P)/(s.length-1), Y=v=>H-P-(v/max)*(H-2*P);
-    const bars=s.map((p,i)=>`<rect x="${X(i)-1.5}" y="${Y(p.load)}" width="3" height="${H-P-Y(p.load)}" fill="var(--border)"/>`).join('');
-    const path=k=>s.map((p,i)=>`${i?'L':'M'}${X(i).toFixed(1)} ${Y(p[k]||0).toFixed(1)}`).join(' ');
-    return`<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;margin-top:10px">
-      ${bars}
-      <path d="${path('chronic')}" fill="none" stroke="${TEAL}" stroke-width="2"/>
-      <path d="${path('acute')}" fill="none" stroke="#e0a32a" stroke-width="2"/>
-    </svg>
-    <div style="display:flex;gap:12px;font-size:10px;color:var(--muted);margin-top:4px">
-      <span>▬ Charge du jour</span><span style="color:#e0a32a">▬ Aiguë 7 j</span><span style="color:${TEAL}">▬ Chronique 28 j</span></div>`;
+  /* Graphiques repris de la feuille « Charge UDT » d'Alexis : axes gradués,
+     barres de charge quotidienne, courbes aiguë / chronique, et graphe de
+     ratio avec bandes de zones. Couleurs adaptées au thème de l'appli. */
+  const C_GRID=GRID,C_BAR=BAR,C_ACUTE=WARN,C_OK=OK,C_WARN=WARN,C_BAD=BAD;
+  const sdate=iso=>{
+    try{return new Date(iso+'T12:00:00').toLocaleDateString('fr-FR',{day:'numeric',month:'numeric'});}
+    catch(e){return iso;}
+  };
+  function niceMax(v){
+    if(v<=0)return 100;
+    const p=10**Math.floor(Math.log10(v)),n=v/p;
+    return(n<=1?1:n<=2?2:n<=2.5?2.5:n<=5?5:10)*p;
+  }
+  function xLabels(s,X,H,W,R){
+    let g='';
+    s.forEach((p,i)=>{
+      if((s.length-1-i)%7)return;
+      // la dernière étiquette tombe au bord : on l'aligne à droite pour ne pas la rogner
+      const near=X(i)>W-R-18;
+      g+=`<text x="${near?W-R:X(i)}" y="${H-7}" text-anchor="${near?'end':'middle'}"
+        font-size="9.5" fill="var(--muted)">${sdate(p.date)}</text>`;
+    });
+    return g;
+  }
+  function chartLoad(s){
+    if(!s.length)return'';
+    const W=340,H=200,L=36,R=8,T=12,B=24;
+    const max=niceMax(Math.max(1,...s.map(p=>Math.max(p.load,p.acute,p.chronic)))*1.05);
+    const st=(W-L-R)/s.length,X=i=>L+st*(i+.5),Y=v=>T+(1-v/max)*(H-T-B);
+    let g='';
+    for(let k=0;k<=4;k++){
+      const v=max*k/4;
+      g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${C_GRID}"/>`
+        +`<text x="${L-5}" y="${Y(v)+3.5}" text-anchor="end" font-size="9.5" fill="var(--muted)">${Math.round(v)}</text>`;
+    }
+    s.forEach((p,i)=>{if(p.load>0)
+      g+=`<rect x="${X(i)-st*.32}" y="${Y(p.load)}" width="${st*.64}" height="${Y(0)-Y(p.load)}" rx="1.5" fill="${C_BAR}"/>`;});
+    g+=xLabels(s,X,H,W,R);
+    const line=(k,c)=>`<path d="${s.map((p,i)=>(i?'L':'M')+X(i).toFixed(1)+' '+Y(p[k]).toFixed(1)).join('')}"`
+      +` fill="none" stroke="${c}" stroke-width="2" stroke-linejoin="round"/>`
+      +`<circle cx="${X(s.length-1)}" cy="${Y(s[s.length-1][k])}" r="3.5" fill="${c}"/>`;
+    return`<svg class="chg-chart" viewBox="0 0 ${W} ${H}" role="img"
+      aria-label="Charge quotidienne, aiguë et chronique">${g}${line('chronic',TEAL)}${line('acute',C_ACUTE)}</svg>
+      <div class="chg-leg"><span><i style="background:${C_BAR};height:9px;width:7px"></i>Charge du jour</span>
+        <span><i style="background:${C_ACUTE}"></i>Aiguë 7 j</span>
+        <span><i style="background:${TEAL}"></i>Chronique 28 j</span></div>`;
+  }
+  function chartRatio(s){
+    const v=s.map(p=>p.ratio).filter(x=>x!=null);
+    if(!v.length)return`<p class="chg-hint" style="padding:18px 4px;text-align:center;margin:0">
+      Le ratio apparaît après 28 jours d'historique : la charge chronique part de zéro,
+      les premières valeurs seraient faussées.</p>`;
+    const W=340,H=180,L=30,R=8,T=10,B=24;
+    const max=Math.max(2,Math.ceil(Math.max(...v)*5)/5);
+    const st=(W-L-R)/s.length,X=i=>L+st*(i+.5),Y=x=>T+(1-x/max)*(H-T-B);
+    const band=(a,b,c,o)=>`<rect x="${L}" y="${Y(b)}" width="${W-L-R}" height="${Y(a)-Y(b)}" fill="${c}" opacity="${o}"/>`;
+    let g=band(.8,1.3,C_OK,.16)+band(1.3,1.5,C_WARN,.18)+band(1.5,max,C_BAD,.12);
+    [0,.8,1.3,1.5,2].filter(x=>x<=max).forEach(x=>{
+      g+=`<line x1="${L}" x2="${W-R}" y1="${Y(x)}" y2="${Y(x)}" stroke="${C_GRID}" ${x&&x!==2?'stroke-dasharray="3 4"':''}/>`
+        +`<text x="${L-5}" y="${Y(x)+3.5}" text-anchor="end" font-size="9.5" fill="var(--muted)">${String(x).replace('.',',')}</text>`;
+    });
+    g+=xLabels(s,X,H,W,R);
+    let d='',pen=false;
+    s.forEach((p,i)=>{
+      if(p.ratio!=null){d+=(pen?'L':'M')+X(i).toFixed(1)+' '+Y(Math.min(p.ratio,max)).toFixed(1);pen=true;}
+      else pen=false;
+    });
+    g+=`<path d="${d}" fill="none" stroke="var(--text)" stroke-width="2" stroke-linejoin="round"/>`;
+    const lp=s[s.length-1];
+    if(lp.ratio!=null)g+=`<circle cx="${X(s.length-1)}" cy="${Y(Math.min(lp.ratio,max))}" r="4.5"
+      fill="${zone(Number(lp.ratio)).c}" stroke="var(--card)" stroke-width="2"/>`;
+    return`<svg class="chg-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Ratio aiguë sur chronique">${g}</svg>
+      <div class="chg-leg"><span><i style="background:${C_OK}"></i>0,8–1,3</span>
+        <span><i style="background:${C_WARN}"></i>1,3–1,5</span>
+        <span><i style="background:${C_BAD}"></i>&gt; 1,5</span></div>`;
+  }
+
+  /* État au réveil : 28 cases, une par jour. L'état vient du wellness (dérivé
+     côté SQL depuis sommeil / énergie / fatigue / courbatures…). */
+  function wakeStrip(series){
+    const s28=series.slice(-28),cnt={};let n=0;
+    s28.forEach(p=>{if(p.wake){cnt[p.wake]=(cnt[p.wake]||0)+1;n++;}});
+    const W=340,H=34,st=W/28,off=28-s28.length;
+    const cells=s28.map((p,i)=>
+      `<rect x="${(off+i)*st+1.5}" y="4" width="${st-3}" height="${H-8}" rx="3"
+        fill="${p.wake?WAKEC[p.wake]:GRID}" opacity="${p.wake?1:.5}"
+        ><title>${sdate(p.date)} : ${p.wake?(WAKE.find(w=>w[0]===p.wake)||[])[2]||p.wake:'non renseigné'}</title></rect>`
+    ).join('');
+    return`<svg class="chg-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="État au réveil sur 28 jours">${cells}</svg>
+      <div class="chg-axis"><span>${s28.length?sdate(s28[0].date):''}</span><span>aujourd'hui</span></div>
+      <div class="chg-kpis chg-wk4" style="grid-template-columns:repeat(4,1fr);margin-top:12px">
+        ${WAKE.map(([k,em,l,c])=>`<div class="chg-kpi"><b style="color:${c}">${cnt[k]||0}</b><span>${em} ${l==='En forme'?'Forme':l}</span></div>`).join('')}
+      </div>
+      ${n?'':'<p class="chg-hint">Aucun état renseigné sur la période : remplis le bloc wellness du jour.</p>'}`;
+  }
+
+  /* Charge par semaine : barres de charge + courbe de monotonie sur un 2e axe */
+  function chartWeeks(weeks){
+    const w=weeks.slice().reverse();           // du plus ancien au plus récent
+    if(!w.length)return'';
+    const W=340,H=190,L=38,R=26,T=16,B=36;
+    const maxL=niceMax(Math.max(1,...w.map(x=>x.total))*1.1);
+    const maxM=3;
+    const st=(W-L-R)/w.length,X=i=>L+st*(i+.5);
+    const Y=v=>T+(1-v/maxL)*(H-T-B), YM=v=>T+(1-v/maxM)*(H-T-B);
+    let g='';
+    for(let k=0;k<=4;k++){
+      const v=maxL*k/4;
+      g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${GRID}"/>`
+        +`<text x="${L-5}" y="${Y(v)+3.5}" text-anchor="end" font-size="9.5" fill="var(--muted)">${Math.round(v)}</text>`;
+    }
+    [0,1,2,3].forEach(v=>{
+      g+=`<text x="${W-R+5}" y="${YM(v)+3.5}" font-size="9.5" fill="${C_WARN}">${v}</text>`;
+    });
+    // seuil de monotonie à 2
+    g+=`<line x1="${L}" x2="${W-R}" y1="${YM(2)}" y2="${YM(2)}" stroke="${C_WARN}" stroke-dasharray="4 4" opacity=".7"/>`;
+    const cur=today();
+    w.forEach((x,i)=>{
+      const enCours=x.week_start<=cur&&addDays(x.week_start,7)>cur;
+      g+=`<rect x="${X(i)-st*.26}" y="${Y(x.total)}" width="${st*.52}" height="${Y(0)-Y(x.total)}" rx="2"
+        fill="${AC}" opacity="${enCours?.45:1}"/>`
+        +`<text x="${X(i)}" y="${Y(x.total)-5}" text-anchor="middle" font-size="9.5" fill="var(--text)">${fmt(x.total)}</text>`
+        +`<text x="${X(i)}" y="${H-20}" text-anchor="middle" font-size="9.5" fill="var(--muted)">S${isoWeek(x.week_start)}</text>`;
+    });
+    const mo=w.map((x,i)=>({i,v:x.monotony==null?null:Math.min(Number(x.monotony),maxM)})).filter(p=>p.v!=null);
+    if(mo.length){
+      g+=`<path d="${mo.map((p,k)=>(k?'L':'M')+X(p.i).toFixed(1)+' '+YM(p.v).toFixed(1)).join('')}"
+        fill="none" stroke="${C_WARN}" stroke-width="2" stroke-linejoin="round"/>`
+        +mo.map(p=>`<circle cx="${X(p.i)}" cy="${YM(p.v)}" r="3.5" fill="${C_WARN}"/>`).join('');
+    }
+    return`<svg class="chg-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Charge par semaine et monotonie">${g}</svg>
+      <div class="chg-leg"><span><i style="background:${AC}"></i>Semaine terminée</span>
+        <span><i style="background:${AC};opacity:.45"></i>En cours</span>
+        <span><i style="background:${C_WARN}"></i>Monotonie</span></div>`;
+  }
+  const addDays=(iso,n)=>{const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()+n);return d.toISOString().slice(0,10);};
+  const isoWeek=iso=>{
+    const d=new Date(iso+'T12:00:00');
+    d.setDate(d.getDate()+3-((d.getDay()+6)%7));
+    const y=d.getFullYear(),j=new Date(y,0,4,12);
+    return (1+Math.round(((d-j)/864e5-3+((j.getDay()+6)%7))/7))+'/'+String(y).slice(2);
+  };
+
+  /* Modalités : part de la charge par discipline sur 28 jours */
+  function modsHTML(rows){
+    if(!rows||!rows.length)return'<p class="chg-hint">Aucune séance sur cette période.</p>';
+    return rows.map(r=>{
+      const c=MODC[r.modality]||'var(--muted)';
+      return`<div class="chg-mrow">
+        <span class="chg-mk"><b>${r.modality}</b> ${MODMAP[r.modality]||''}</span>
+        <span class="chg-mtr"><i style="width:${Math.max(2,Number(r.pct))}%;background:${c}"></i></span>
+        <span class="chg-mp">${fmt(r.pct)} %</span></div>`;
+    }).join('');
   }
 
   async function renderSuivi(){
@@ -352,13 +522,14 @@
     if(!host||!uid())return;
     host.innerHTML=`<div class="chg-card"><div style="font-size:13px;font-weight:700">📉 Ma charge d'entraînement</div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">Chargement…</div></div>`;
-    let series=[],weeks=[];
+    let series=[],weeks=[],mods=[];
     try{
-      const[a,b]=await Promise.all([
+      const[a,b,m]=await Promise.all([
         sb.rpc('training_load_series',{p_athlete:uid(),p_days:120}),
-        sb.rpc('training_load_weeks',{p_athlete:uid(),p_weeks:8})
+        sb.rpc('training_load_weeks',{p_athlete:uid(),p_weeks:8}),
+        sb.rpc('training_load_modalities',{p_athlete:uid(),p_days:28})
       ]);
-      series=a.data||[];weeks=b.data||[];
+      series=a.data||[];weeks=b.data||[];mods=m.data||[];
     }catch(e){console.error('[charge] suivi',e);}
 
     if(!series.length){
@@ -374,19 +545,23 @@
         <span class="t">Ma charge d'entraînement</span>
         <span class="chg-val">${fmt(series.slice(-7).reduce((a,p)=>a+p.load,0))} UA · 7 j</span>
         <span style="color:var(--muted);font-size:14px">›</span></div>
-      <div class="chg-body open" id="chg-suivi-body">${suiviHTML(series,weeks)}</div>
+      <div class="chg-body open" id="chg-suivi-body">${suiviHTML(series,weeks,mods)}</div>
     </div>`;
     document.getElementById('chg-suivi-head')
       .addEventListener('click',()=>document.getElementById('chg-suivi-body').classList.toggle('open'));
   }
 
   /* Corps commun athlète / coach */
-  function suiviHTML(series,weeks){
+  function suiviHTML(series,weeks,mods){
     const last=series[series.length-1];
     const z=zone(last.ratio==null?null:Number(last.ratio));
     const h7=series.slice(-7).reduce((a,p)=>a+p.minutes,0)/60;
     const wk=weeks[0];
-    return`<div class="chg-zone" style="background:${z.c}22;color:${z.c}">
+    const s42=series.slice(-42).map(p=>({
+      date:p.d,load:+p.load,minutes:+p.minutes,wake:p.wake,
+      acute:+p.acute,chronic:+p.chronic,ratio:p.ratio==null?null:Number(p.ratio)
+    }));
+    return`<div class="chg-zone" style="background:${tint(z.c,14)};border:1px solid ${tint(z.c,45)};color:${z.c}">
         ${last.ratio==null?"Amorçage — le ratio s'affiche après 28 jours de données":`Ratio A/C ${fmt(last.ratio,2)} · ${z.l}`}</div>
       <div class="chg-kpis">
         <div class="chg-kpi"><b>${fmt(last.acute)}</b><span>Aiguë · 7 j</span></div>
@@ -394,12 +569,25 @@
         <div class="chg-kpi"><b>${fmt(h7,1)} h</b><span>Volume · 7 j</span></div>
         <div class="chg-kpi"><b>${wk&&wk.monotony!=null?fmt(wk.monotony,2):'–'}</b><span>Monotonie semaine</span></div>
       </div>
-      ${sparkline(series.map(p=>({load:+p.load,acute:+p.acute,chronic:+p.chronic})))}
+      <div class="chg-sec"><h4>Charge quotidienne</h4><span>42 jours</span></div>
+      ${chartLoad(s42)}
+      <div class="chg-sec"><h4>Ratio aiguë / chronique</h4><span>42 jours</span></div>
+      ${chartRatio(s42)}
+      <div class="chg-sec"><h4>État au réveil</h4><span>28 jours</span></div>
+      ${wakeStrip(s42)}
+      <div class="chg-sec"><h4>Semaines</h4><span>8 dernières</span></div>
+      ${chartWeeks(weeks)}
       <table class="chg-tbl"><thead><tr><th>Sem.</th><th>Charge</th><th>Moy.</th><th>Mono.</th><th>Contr.</th><th>OFF</th><th>Heures</th></tr></thead><tbody>
-        ${weeks.map(w=>`<tr><td>${w.week_start.slice(5)}</td><td>${fmt(w.total)}</td><td>${fmt(w.avg_day)}</td>
+        ${weeks.map(w=>{
+          const cur=w.week_start<=today()&&addDays(w.week_start,7)>today();
+          return`<tr${cur?' class="cur"':''}><td><b>S${isoWeek(w.week_start)}</b>${
+            cur?'<small>en cours</small>':`<small>${w.week_start.slice(8)}/${w.week_start.slice(5,7)}</small>`}</td>
+          <td>${fmt(w.total)}</td><td>${fmt(w.avg_day)}</td>
           <td>${w.monotony==null?'–':fmt(w.monotony,2)}</td><td>${w.strain==null?'–':fmt(w.strain)}</td>
-          <td>${w.off_days}</td><td>${fmt(w.hours,1)}</td></tr>`).join('')}
+          <td>${w.off_days}</td><td>${fmt(w.hours,1)}</td></tr>`;}).join('')}
       </tbody></table>
+      <div class="chg-sec"><h4>Modalités</h4><span>28 jours · % de la charge</span></div>
+      <div id="chg-mods">${modsHTML(mods)}</div>
       <div class="chg-hint">Ratio aigu / chronique : &lt; 0,8 sous-charge · 0,8–1,3 optimal · 1,3–1,5 vigilance · &gt; 1,5 risque élevé.
       Monotonie = charge moyenne ÷ écart-type de la semaine ; au-dessus de 2, la semaine manque de variation.
       Contrainte = charge × monotonie. Échauffement et mobilité sont exclus de la charge.</div>`;
@@ -432,7 +620,7 @@
             a.monotony!=null?` · mono. ${fmt(a.monotony,2)}`:''}${
             a.hard_days>0?` · ${a.hard_days} journée${a.hard_days>1?'s':''} difficile${a.hard_days>1?'s':''}`:''}</div>
           ${stale===null?'<div class="s" style="color:var(--muted)">aucune saisie</div>'
-            :stale>7?`<div class="s" style="color:#e0a32a">dernière saisie il y a ${stale} j</div>`:''}
+            :stale>7?`<div class="s" style="color:var(--orange)">dernière saisie il y a ${stale} j</div>`:''}
         </div>
         <div style="text-align:right">
           <div style="font-size:17px;font-weight:700;color:${z.c}">${r==null?'–':fmt(r,2)}</div>
@@ -484,17 +672,18 @@
     if(!fiche)return;
     list.style.display='none';fiche.style.display='';
     fiche.innerHTML='<div class="spinner"></div>';
-    let series=[],weeks=[];
+    let series=[],weeks=[],mods=[];
     try{
-      const[s,w]=await Promise.all([
+      const[s,w,m]=await Promise.all([
         sb.rpc('training_load_series',{p_athlete:athleteId,p_days:120}),
-        sb.rpc('training_load_weeks',{p_athlete:athleteId,p_weeks:8})
+        sb.rpc('training_load_weeks',{p_athlete:athleteId,p_weeks:8}),
+        sb.rpc('training_load_modalities',{p_athlete:athleteId,p_days:28})
       ]);
-      series=s.data||[];weeks=w.data||[];
+      series=s.data||[];weeks=w.data||[];mods=m.data||[];
     }catch(e){console.error('[charge] fiche',e);}
     fiche.innerHTML=`<button class="chg-back" id="chg-back">‹ Retour</button>
       <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${a.full_name||a.email||'Athlète'}</div>
-      ${series.length?suiviHTML(series,weeks)
+      ${series.length?suiviHTML(series,weeks,mods)
         :'<div style="color:var(--muted);font-size:13px;margin-top:8px">Aucune saisie de charge pour cet athlète.</div>'}`;
     document.getElementById('chg-back').addEventListener('click',()=>{
       fiche.style.display='none';list.style.display='';
