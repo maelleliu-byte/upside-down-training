@@ -79,7 +79,7 @@
   async function _loadFor(ids) {
     var uid = _uid();
     if (!uid || !ids.length || typeof sb === 'undefined') return;
-    if (cache.uid !== uid) { cache = { sessions: {}, docs: {}, settings: null, uid: uid }; }
+    if (cache.uid !== uid) { cache = { sessions: {}, docs: {}, settings: null, uid: uid, all: null }; }
     var missing = ids.filter(function (id) { return !(id in cache.sessions); });
     if (missing.length) {
       var res = await Promise.all([
@@ -94,6 +94,11 @@
       });
     }
     var vbtIds = ids.filter(function (id) { return cache.sessions[id]; });
+    if (vbtIds.length && !cache.all) {
+      var ra = await sb.from('vbt_journal').select('doc_key,data').eq('user_id', uid).like('doc_key', 's-%');
+      cache.all = {};
+      (ra.data || []).forEach(function (row) { cache.all[row.doc_key] = row.data; });
+    }
     var keys = vbtIds.map(_key).filter(function (k) { return !(k in cache.docs); });
     if (keys.length || !cache.settings) {
       var r2 = await sb.from('vbt_journal').select('doc_key,data').eq('user_id', uid).in('doc_key', keys.concat(['settings']));
@@ -171,7 +176,105 @@
           '<div class="vbx-st" id="vbx-st-' + sid + '-' + bi + '-' + si + '">' + _setStats(b, st) + '</div>' +
         '</div>';
       }).join('') +
+      '<div class="vbx-sug" id="vbx-sug-' + sid + '-' + bi + '">' + _sugHTML(sid, b, bi) + '</div>' +
     '</div>';
+  }
+
+  /* ---------- Charge suggérée (même calcul que le Journal VBT) ----------
+   * Pente charge-vitesse tirée, dans l'ordre : du profil de l'athlète
+   * (même mouvement et même résistance, 90 j puis tout l'historique),
+   * de ses séries du jour, de son 1RM de référence (force, barre seule),
+   * ou de son profil barre seule si résistance accommodante. */
+  function _stats(st) {
+    var vals = (st.v || []).filter(function (x) { return x != null && x > 0; });
+    if (!vals.length) return null;
+    var best = Math.max.apply(null, vals), last = vals[vals.length - 1];
+    return { n: vals.length, best: best, last: last, vl: vals.length > 1 ? (best - last) / best * 100 : null };
+  }
+  function _moveMeta(mv) {
+    var list = cache.settings && cache.settings.moves;
+    var m = Array.isArray(list) ? list.find(function (x) { return x.id === mv; }) : null;
+    return m || { id: mv, type: _isHalt(mv) ? 'haltero' : 'force', rm: null, mvt: null };
+  }
+  function _points(mv, acc, days, skipKey) {
+    var pts = [], now = Date.now();
+    Object.keys(cache.all || {}).forEach(function (k) {
+      if (k === skipKey) return;
+      var s = cache.all[k]; if (!s) return;
+      if (days && s.date && (now - new Date(s.date + 'T12:00:00').getTime()) / 864e5 > days) return;
+      (s.blocks || []).forEach(function (b) {
+        if (b.mv !== mv || (b.acc || '') !== (acc || '')) return;
+        (b.sets || []).forEach(function (st) { var k2 = _stats(st); if (k2 && st.load > 0) pts.push({ load: st.load, v: k2.best }); });
+      });
+    });
+    return pts;
+  }
+  function _fit(pts, minLoads) {
+    var n = pts.length; if (n < 2) return null;
+    var L = {}; pts.forEach(function (p) { L[p.load] = 1; });
+    if (Object.keys(L).length < minLoads) return null;
+    var sx = 0, sy = 0, sxx = 0, sxy = 0;
+    pts.forEach(function (p) { sx += p.load; sy += p.v; sxx += p.load * p.load; sxy += p.load * p.v; });
+    var den = n * sxx - sx * sx; if (!den) return null;
+    var b = (n * sxy - sx * sy) / den;
+    return b < 0 ? b : null;
+  }
+  function _profileSlope(mv, acc, skipKey) {
+    var p = _points(mv, acc, 90, skipKey);
+    if (p.length < 4) p = _points(mv, acc, 0, skipKey);
+    return p.length >= 3 ? _fit(p, 3) : null;
+  }
+  function _suggest(sid, b) {
+    var done = b.sets.filter(function (st) { return _stats(st); });
+    if (!done.length) return null;
+    var st = done[done.length - 1], k = _stats(st);
+    if (!(st.load > 0)) return { need: 'load' };
+    var lo = _num(b.vmin), hi = _num(b.vmax);
+    if (lo == null && hi == null) return { need: 'target' };
+    var vt = lo != null && hi != null ? (lo + hi) / 2 : lo != null ? lo + 0.05 : hi - 0.05;
+    var m = _moveMeta(b.mv), acc = b.acc || '', skip = _key(sid), slope = null, src = '';
+    var today = done.filter(function (x) { return x.load > 0; }).map(function (x) { return { load: x.load, v: _stats(x).best }; });
+    var fp = _profileSlope(b.mv, acc, skip);
+    if (fp != null) { slope = fp; src = acc ? 'ton profil avec ' + (ACC[acc] || 'résistance') : 'ton profil charge-vitesse'; }
+    else if (_fit(today, 2) != null) { slope = _fit(today, 2); src = 'tes séries du jour'; }
+    else if (!acc && m.type !== 'haltero' && m.rm > st.load && m.mvt != null && k.best > m.mvt) { slope = (m.mvt - k.best) / (m.rm - st.load); src = 'ton 1RM de référence'; }
+    else if (acc) { var f0 = _profileSlope(b.mv, '', skip); if (f0 != null) { slope = f0; src = 'ton profil barre seule (approximatif avec résistance)'; } }
+    if (slope == null) return { need: 'data' };
+    var step = m.type === 'haltero' ? 1 : 2.5;
+    var load = st.load + (vt - k.best) / slope;
+    load = Math.max(st.load * 0.75, Math.min(st.load * 1.25, load));
+    load = Math.round(load / step) * step;
+    var idx = b.sets.indexOf(st);
+    return { load: load, vt: vt, src: src, same: Math.abs(load - st.load) < step / 2, next: idx + 1 < b.sets.length, vlStop: b.vlMax != null && k.vl != null && k.vl > _num(b.vlMax), vl: k.vl };
+  }
+  function _sugHTML(sid, b, bi) {
+    if (b.calibrated === false) return '';
+    var g = _suggest(sid, b);
+    if (!g) return '';
+    var msg = function (txt) { return '<div class="vbx-sugt">' + txt + '</div>'; };
+    if (g.need === 'load') return msg('Indique la charge de la série pour obtenir la charge suivante.');
+    if (g.need === 'target') return '';
+    if (g.need === 'data') return msg('Fais une 2e série à une autre charge pour obtenir une charge suggérée.');
+    var stop = g.vlStop ? '<div class="vbx-sugstop">Perte de vitesse ' + Math.round(g.vl) + ' % &gt; ' + _show(_num(b.vlMax)) + ' % : stop sur cette série.</div>' : '';
+    return stop + '<div class="vbx-sugrow"><div class="vbx-sugt"><b>Série suivante : ' + (g.same ? 'garde ' + _show(g.load) + ' kg' : '≈ ' + _show(g.load) + ' kg') + '</b>' +
+      ' pour viser ' + _fmt(g.vt) + ' m/s<br><span>Calcul basé sur ' + _esc(g.src) + '</span></div>' +
+      (!g.same && g.next ? '<button type="button" class="vbx-apply" data-vbx-apply="' + sid + '" data-b="' + bi + '" data-l="' + g.load + '">Appliquer</button>' : '') + '</div>';
+  }
+  function _refreshSug(sid, bi) {
+    var el = document.getElementById('vbx-sug-' + sid + '-' + bi), d = drafts[sid];
+    if (el && d) el.innerHTML = _sugHTML(sid, d.blocks[bi], bi);
+  }
+  // « Appliquer » : la charge suggérée passe sur toutes les séries pas encore mesurées
+  function _apply(sid, bi, load) {
+    var d = drafts[sid]; if (!d) return;
+    var b = d.blocks[bi], lastDone = -1;
+    b.sets.forEach(function (st, i) { if (_stats(st)) lastDone = i; });
+    for (var i = lastDone + 1; i < b.sets.length; i++) {
+      b.sets[i].load = load;
+      var inp = document.querySelector('[data-vx="load"][data-sid="' + sid + '"][data-b="' + bi + '"][data-s="' + i + '"]');
+      if (inp) inp.value = _show(load);
+    }
+    _refreshSug(sid, bi);
   }
 
   function _cardHTML(s, doc) {
@@ -197,13 +300,14 @@
     if (!el.dataset || !el.dataset.vx) return;
     var d = drafts[el.dataset.sid]; if (!d) return;
     var b = d.blocks[+el.dataset.b], st = b && b.sets[+el.dataset.s]; if (!st) return;
-    if (el.dataset.vx === 'load') { st.load = _num(el.value); return; }
+    if (el.dataset.vx === 'load') { st.load = _num(el.value); _refreshSug(el.dataset.sid, +el.dataset.b); return; }
     st.v = st.v || [];
     st.v[+el.dataset.r] = _num(el.value);
     for (var i = 0; i < st.v.length; i++) if (st.v[i] === undefined) st.v[i] = null;
     el.className = 'vbx-v ' + _repCls(b, st.v[+el.dataset.r]);
     var out = document.getElementById('vbx-st-' + el.dataset.sid + '-' + el.dataset.b + '-' + el.dataset.s);
     if (out) out.innerHTML = _setStats(b, st);
+    _refreshSug(el.dataset.sid, +el.dataset.b);
   }
 
   // Résumé des vitesses joint au score (wod_scores.vbt) : visible dans le classement
@@ -267,6 +371,7 @@
     if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer mes vitesses'; }
     if (r.error) { if (msg) msg.textContent = '❌ ' + r.error.message; return; }
     cache.docs[_key(sid)] = JSON.parse(JSON.stringify(d));
+    if (cache.all) cache.all[_key(sid)] = JSON.parse(JSON.stringify(d));
     var scoreOk = true;
     try { await _syncScore(sid, d); } catch (e) { scoreOk = false; console.error('[vbt] score', e); }
     if (msg) msg.textContent = scoreOk
@@ -286,8 +391,9 @@
     window.__vbxBound = true;
     document.addEventListener('input', _onInput);
     document.addEventListener('click', function (e) {
-      var t = e.target.closest && e.target.closest('[data-vbx-open],[data-vbx-save]');
+      var t = e.target.closest && e.target.closest('[data-vbx-open],[data-vbx-save],[data-vbx-apply]');
       if (!t) return;
+      if (t.dataset.vbxApply) { _apply(t.dataset.vbxApply, +t.dataset.b, Number(t.dataset.l)); return; }
       if (t.dataset.vbxOpen) {
         var body = document.getElementById('vbx-body-' + t.dataset.vbxOpen);
         if (body) body.style.display = body.style.display === 'none' ? 'block' : 'none';
@@ -447,6 +553,14 @@
       '.vbx-save:disabled{opacity:.6}',
       '.vbx-msg{font-size:12px;color:var(--muted);margin-top:8px;text-align:center}',
       '.vbx-msg:empty{display:none}',
+      '.vbx-sug:empty{display:none}',
+      '.vbx-sug{margin-top:4px;padding:8px 10px;border-radius:9px;background:var(--card2);border:1px solid var(--border2)}',
+      '.vbx-sugrow{display:flex;align-items:center;gap:10px}',
+      '.vbx-sugt{flex:1;font-size:12px;color:var(--text2);line-height:1.45}',
+      '.vbx-sugt b{color:var(--text)}',
+      '.vbx-sugt span{font-size:10px;color:var(--muted)}',
+      '.vbx-sugstop{font-size:12px;font-weight:700;color:var(--red);margin-bottom:6px}',
+      '.vbx-apply{flex:0 0 auto;border:0;border-radius:8px;background:var(--accent);color:#000;font-weight:700;font-size:12px;padding:8px 12px;font-family:inherit;cursor:pointer}',
       '.vbl{margin:2px 0 6px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--card)}',
       '.vbl-chart{display:block;width:100%;height:auto;margin-top:6px}',
       '.vbl-leg{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:2px}',
