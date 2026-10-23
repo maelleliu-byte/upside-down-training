@@ -30,6 +30,14 @@
       title: 'Calculateur Erg',
       sub: 'Conversions et splits sur les machines Concept2.',
       url: 'https://calculateur-erg.vercel.app/'
+    },
+    {
+      id: 'vbt',
+      emoji: '⚡',
+      title: 'Journal VBT',
+      sub: 'Séances au capteur de vitesse, profil charge-vitesse et zones. Enregistré sur ton compte UDT.',
+      url: '/vbt.html',
+      tall: true
     }
   ];
 
@@ -96,7 +104,7 @@
         '<a class="ot-ext" href="' + _esc(t.url) + '" target="_blank" rel="noopener" ' +
            'title="Ouvrir dans un nouvel onglet">↗</a>' +
       '</div>' +
-      '<div class="ot-frame-wrap">' +
+      '<div class="ot-frame-wrap' + (t.tall ? ' ot-tall' : '') + '">' +
         '<div class="ot-frame-load" id="ot-frame-load"><div class="spinner"></div></div>' +
         '<iframe class="ot-frame" id="ot-frame" src="' + _esc(t.url) + '" ' +
           'loading="lazy" referrerpolicy="no-referrer-when-downgrade" ' +
@@ -153,6 +161,7 @@
       'display:flex;align-items:center;justify-content:center}',
       '.ot-frame-wrap{position:relative;border:1px solid var(--border);border-radius:14px;overflow:hidden;',
       'background:var(--dark);height:calc(100vh - 290px);min-height:480px}',
+      '.ot-frame-wrap.ot-tall{height:calc(100vh - 200px);min-height:620px}',
       '.ot-frame{width:100%;height:100%;border:0;display:block;background:var(--dark)}',
       '.ot-frame-load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;',
       'background:var(--dark);z-index:2}',
