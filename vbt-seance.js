@@ -143,11 +143,12 @@
             }).join('') + '</select></div>') +
           '<button type="button" class="vbs-del" data-vdel="' + i + '" aria-label="Supprimer l\'exercice">✕</button>' +
         '</div>' +
-        '<div class="vbs-grid3">' +
+        '<div class="vbs-grid4">' +
           '<div><label class="form-label">Séries</label><input class="form-input" inputmode="numeric" data-vf="sets" data-i="' + i + '" value="' + _show(b.sets) + '"></div>' +
           '<div><label class="form-label">Reps</label><input class="form-input" inputmode="numeric" data-vf="reps" data-i="' + i + '" value="' + _show(b.reps) + '"></div>' +
           '<div><label class="form-label">Repos</label><input class="form-input" data-vf="rest" data-i="' + i + '" value="' + _esc(b.rest) + '" placeholder="1:20"></div>' +
         '</div>' +
+          '<div><label class="form-label">Blocs / pins cm</label><input class="form-input" inputmode="decimal" data-vf="height" data-i="' + i + '" value="' + _show(b.height) + '" placeholder="38"></div>' +
         _loadHTML(b, i) +
         '<div class="vbs-grid3">' +
           '<div><label class="form-label">Cible min m/s</label><input class="form-input" inputmode="decimal" data-vf="vmin" data-i="' + i + '" value="' + _show(b.vmin) + '" placeholder="0,70"></div>' +
@@ -265,6 +266,7 @@
       if (f === 'acc' || f === 'rest' || f === 'note') { b[f] = el.value; return; }
       if (f === 'ref' || f === 'fmt') { b[f] = el.value; _render(); return; }
       if (f === 'pct') { b.pct = _num(el.value); _refreshFormula(el, b); return; }
+      if (f === 'height') { b.height = _num(el.value); return; }
       if (f === 'sets' || f === 'reps') { var n = parseInt(el.value, 10); b[f] = n > 0 ? n : null; return; }
       b[f] = _num(el.value);
     }
@@ -295,7 +297,7 @@
           ref: b.loadMode === 'kg' ? null : (b.ref || _defaultRef(b.mv)),
           fmt: b.loadMode === 'kg' ? null : (b.fmt || '1RM'),
           vmin: _num(b.vmin), vmax: _num(b.vmax), vlMax: _num(b.vlMax),
-          calibrated: b.calibrated !== false, note: (b.note || '').trim()
+          calibrated: b.calibrated !== false, note: (b.note || '').trim(), height: _num(b.height)
         };
       })
     };

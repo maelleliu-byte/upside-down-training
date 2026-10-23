@@ -23,7 +23,9 @@
     cl: 'Clean', pcl: 'Power Clean', hcl: 'Hang Clean', hpcl: 'Hang Power Clean', bpcl: 'Block Power Clean',
     pp: 'Push Press', pj: 'Push Jerk', jk: 'Split Jerk', snp: 'Snatch Pull', clp: 'Clean Pull'
   };
-  var ACC = { bl: 'bandes L', bm: 'bandes M', bh: 'bandes H', ch: 'chaînes', bc: 'bandes + chaînes', rb: 'reverse bands' };
+  // Mêmes termes que dans la sélection (Séance + / Journal VBT)
+  var ACC = { bl: 'bandes légères', bm: 'bandes moyennes', bh: 'bandes lourdes', ch: 'chaînes', bc: 'bandes + chaînes', rb: 'reverse bands' };
+  function _hText(h) { return h != null && h !== '' ? 'blocs ' + _show(h) + ' cm' : ''; }
 
   var cache = { sessions: {}, docs: {}, settings: null, uid: null };
 
@@ -114,7 +116,12 @@
   // Séance du journal : celle qui existe, ou construite depuis les réglages VBT
   function _doc(s) {
     var k = _key(s.id), d = cache.docs[k];
-    if (d && Array.isArray(d.blocks) && d.blocks.length === s.vbt.blocks.length) return JSON.parse(JSON.stringify(d));
+    if (d && Array.isArray(d.blocks) && d.blocks.length === s.vbt.blocks.length) {
+      var c = JSON.parse(JSON.stringify(d));
+      // hauteur des blocs / pins : toujours celle de la séance programmée
+      c.blocks.forEach(function (b, i) { var h = _num(s.vbt.blocks[i] && s.vbt.blocks[i].height); if (h != null) b.height = h; });
+      return c;
+    }
     var salt = _salt(s.id);
     return {
       id: k.slice(2), date: s.date, title: s.title || 'Séance VBT', status: 'planned',
@@ -128,7 +135,7 @@
         for (var j = 0; j < n; j++) sets.push({ id: 'x' + (i + 1) + 's' + (j + 1) + salt, load: load, reps: b.reps || 1, v: [], rpe: '', note: '' });
         return {
           id: 'x' + (i + 1) + salt, mv: b.mv, acc: b.acc || '', vmin: _num(b.vmin), vmax: _num(b.vmax), vlMax: _num(b.vlMax),
-          rest: b.rest || '', calibrated: b.calibrated !== false, note: b.note || '', sets: sets
+          rest: b.rest || '', calibrated: b.calibrated !== false, note: b.note || '', height: _num(b.height), sets: sets
         };
       })
     };
@@ -160,7 +167,7 @@
     var tgt = _target(b);
     var info = [b.rest ? 'Repos ' + _esc(b.rest) : '', tgt ? 'Cible ' + tgt : '', b.calibrated === false ? 'Charge fixe' : 'Calibrée'].filter(Boolean).join(' · ');
     return '<div class="vbx-block">' +
-      '<div class="vbx-name">' + _esc(_moveName(b.mv)) + (b.acc && ACC[b.acc] ? ' <span>+ ' + ACC[b.acc] + '</span>' : '') + '</div>' +
+      '<div class="vbx-name">' + _esc(_moveName(b.mv)) + [b.acc && ACC[b.acc] ? ACC[b.acc] : '', _hText(b.height)].filter(Boolean).map(function (x) { return ' <span>// ' + _esc(x) + '</span>'; }).join('') + '</div>' +
       '<div class="vbx-info">' + info + ' · ' + (halt ? 'vitesse pic' : 'vitesse moyenne') + '</div>' +
       (b.sets || []).map(function (st, si) {
         var reps = Math.max(1, st.reps || 1), v = st.v || [], inputs = '';
@@ -316,7 +323,7 @@
       v: 1,
       blocks: d.blocks.map(function (b) {
         return {
-          name: _moveName(b.mv), acc: ACC[b.acc] || '', halt: _isHalt(b.mv),
+          name: _moveName(b.mv), acc: ACC[b.acc] || '', height: b.height == null ? null : b.height, halt: _isHalt(b.mv),
           vmin: _num(b.vmin), vmax: _num(b.vmax), vlMax: _num(b.vlMax),
           sets: b.sets.map(function (st) {
             return { load: st.load == null ? null : st.load, v: (st.v || []).filter(function (x) { return x != null && x > 0; }) };
@@ -456,7 +463,7 @@
       var avg = bests.reduce(function (a, x) { return a + x; }, 0) / bests.length;
       var tgt = _target(b);
       return '<div class="vbl-b">' +
-        '<div class="vbl-h">⚡ ' + _esc(b.name) + (b.acc ? ' + ' + _esc(b.acc) : '') +
+        '<div class="vbl-h">⚡ ' + _esc(b.name) + (b.acc ? ' // ' + _esc(b.acc) : '') + (b.height != null ? ' // ' + _esc(_hText(b.height)) : '') +
           '<span>' + (tgt ? 'cible ' + tgt + ' · ' : '') + 'moy. ' + _fmt(avg) + (inT != null ? ' · ' + inT + '/' + bests.length + ' dans la cible' : '') + '</span></div>' +
         _chartSVG(b) +
         '<details class="vbl-det"><summary>Détail des reps</summary>' +
