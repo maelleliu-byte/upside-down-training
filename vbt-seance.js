@@ -44,6 +44,16 @@
     ['Vitesse-force', 1.00, 1.30], ['Vitesse max', 1.30, null]
   ];
 
+  // Mouvement de référence par défaut pour une charge en % (doit exister dans les mouvements de l'app)
+  var REF = {
+    bsq: 'Back Squat', boxsq: 'Back Squat', pinbsq: 'Back Squat', fsq: 'Front Squat', pinfsq: 'Front Squat',
+    bench: 'Bench Press', pinpress: 'Bench Press', dl: 'Deadlift', dldef: 'Deadlift', blockdl: 'Deadlift',
+    ohp: 'Shoulder Press', sn: 'Snatch', psn: 'Power Snatch', hsn: 'Snatch', hpsn: 'Hang Power Snatch',
+    cl: 'Clean', pcl: 'Power Clean', hcl: 'Clean', hpcl: 'Hang Power Clean', bpcl: 'Power Clean',
+    pp: 'Push Press', pj: 'PUSH JERK', jk: 'SPLIT JERK', snp: 'Snatch', clp: 'Clean'
+  };
+  var FORMATS = ['1RM', '2RM', '3RM', '5RM'];
+
   var state = { on: false, toJournal: true, blocks: [] };
   var moves = DEFAULT_MOVES.slice();
   var movesLoaded = false;
@@ -63,6 +73,16 @@
   function _show(v) { return v == null ? '' : String(v).replace('.', ','); }
   function _type() { var el = _byId('f-type'); return el ? el.value : ''; }
   function _isPerso() { try { return !!personalAthleteId; } catch (e) { return false; } }
+  // Mouvements de l'app (table movements, chargée par core.js)
+  function _appMoves() {
+    try { return (movements || []).map(function (m) { return m.name; }).filter(Boolean); } catch (e) { return []; }
+  }
+  function _defaultRef(mv) {
+    var want = REF[mv] || _move(mv).name;
+    var list = _appMoves();
+    var norm = function (s) { return String(s || '').toLowerCase().replace(/\s+/g, ''); };
+    return list.find(function (n) { return norm(n) === norm(want); }) || want;
+  }
   function _move(id) { return moves.find(function (m) { return m.id === id; }) || { id: id, name: id, type: 'force' }; }
 
   // Mouvements du Journal VBT du coach (noms modifiés, mouvements ajoutés)
@@ -87,6 +107,7 @@
     var mv = (moves.find(function (m) { return m.type === (halt ? 'haltero' : 'force'); }) || moves[0]).id;
     return {
       mv: mv, acc: '', sets: sets > 0 ? sets : 5, reps: halt ? 2 : 3, rest: '', load: null,
+      loadMode: 'pct', pct: null, ref: _defaultRef(mv), fmt: '1RM',
       vmin: null, vmax: null, vlMax: halt ? null : 20, calibrated: true, note: ''
     };
   }
@@ -120,12 +141,12 @@
             }).join('') + '</select></div>') +
           '<button type="button" class="vbs-del" data-vdel="' + i + '" aria-label="Supprimer l\'exercice">✕</button>' +
         '</div>' +
-        '<div class="vbs-grid4">' +
+        '<div class="vbs-grid3">' +
           '<div><label class="form-label">Séries</label><input class="form-input" inputmode="numeric" data-vf="sets" data-i="' + i + '" value="' + _show(b.sets) + '"></div>' +
           '<div><label class="form-label">Reps</label><input class="form-input" inputmode="numeric" data-vf="reps" data-i="' + i + '" value="' + _show(b.reps) + '"></div>' +
           '<div><label class="form-label">Repos</label><input class="form-input" data-vf="rest" data-i="' + i + '" value="' + _esc(b.rest) + '" placeholder="1:20"></div>' +
-          '<div><label class="form-label">Charge kg</label><input class="form-input" inputmode="decimal" data-vf="load" data-i="' + i + '" value="' + _show(b.load) + '" placeholder="–"></div>' +
         '</div>' +
+        _loadHTML(b, i) +
         '<div class="vbs-grid3">' +
           '<div><label class="form-label">Cible min m/s</label><input class="form-input" inputmode="decimal" data-vf="vmin" data-i="' + i + '" value="' + _show(b.vmin) + '" placeholder="0,70"></div>' +
           '<div><label class="form-label">Cible max m/s</label><input class="form-input" inputmode="decimal" data-vf="vmax" data-i="' + i + '" value="' + _show(b.vmax) + '" placeholder="0,80"></div>' +
@@ -141,6 +162,28 @@
         '</div>' +
         '<input class="form-input vbs-note" data-vf="note" data-i="' + i + '" value="' + _esc(b.note) + '" placeholder="Consigne (setup, bandes, hauteur des pins…)">' +
       '</div>';
+  }
+
+  function _loadHTML(b, i) {
+    var pct = b.loadMode !== 'kg';
+    var seg = '<div class="vbs-seg">' +
+      '<button type="button" data-vlm="pct" data-i="' + i + '" class="' + (pct ? 'on' : '') + '">%</button>' +
+      '<button type="button" data-vlm="kg" data-i="' + i + '" class="' + (pct ? '' : 'on') + '">kg</button></div>';
+    if (!pct) {
+      return '<div class="vbs-load"><div><label class="form-label">Charge</label>' + seg + '</div>' +
+        '<div class="vbs-grow"><label class="form-label">Charge kg</label><input class="form-input" inputmode="decimal" data-vf="load" data-i="' + i + '" value="' + _show(b.load) + '" placeholder="180"></div></div>';
+    }
+    var list = _appMoves();
+    var ref = b.ref || _defaultRef(b.mv);
+    if (list.indexOf(ref) < 0) list = [ref].concat(list);
+    return '<div class="vbs-load"><div><label class="form-label">Charge</label>' + seg + '</div>' +
+      '<div class="vbs-grow"><label class="form-label">%</label><input class="form-input" inputmode="decimal" data-vf="pct" data-i="' + i + '" value="' + _show(b.pct) + '" placeholder="85"></div>' +
+      '<div class="vbs-grow"><label class="form-label">Format</label><select class="form-select" data-vf="fmt" data-i="' + i + '">' +
+        FORMATS.map(function (f) { return '<option' + (f === (b.fmt || '1RM') ? ' selected' : '') + '>' + f + '</option>'; }).join('') + '</select></div>' +
+      '</div>' +
+      '<div style="margin-top:8px"><label class="form-label">Du mouvement (PR de l\'athlète)</label><select class="form-select" data-vf="ref" data-i="' + i + '">' +
+        list.map(function (n) { return '<option' + (n === ref ? ' selected' : '') + '>' + _esc(n) + '</option>'; }).join('') + '</select></div>' +
+      (_num(b.pct) != null ? '<div class="vbs-formula">Dans la séance : <code>' + _esc(_show(_num(b.pct)).replace(',', '.') + '%|' + (b.fmt || '1RM') + '|' + ref.toUpperCase() + '|') + '</code> → charge calculée pour chaque athlète</div>' : '');
   }
 
   function _destText() {
@@ -194,6 +237,11 @@
         if (!state.blocks.length) state.on = false;
         _render(); return;
       }
+      if (t.dataset.vlm != null && state.blocks[i]) {
+        state.blocks[i].loadMode = t.dataset.vlm;
+        if (t.dataset.vlm === 'pct' && !state.blocks[i].ref) state.blocks[i].ref = _defaultRef(state.blocks[i].mv);
+        _render(); return;
+      }
       if (t.dataset.vcal != null && state.blocks[i]) { state.blocks[i].calibrated = t.dataset.vcal === '1'; _render(); return; }
       if (t.dataset.vz != null && state.blocks[i]) {
         var z = ZONES[parseInt(t.dataset.vz, 10)];
@@ -208,15 +256,27 @@
       var b = state.blocks[parseInt(el.dataset.i, 10)]; if (!b) return;
       if (f === 'mv') {
         b.mv = el.value;
+        b.ref = _defaultRef(b.mv);
         if (_move(b.mv).type === 'haltero') { b.acc = ''; if (b.vlMax === 20) b.vlMax = null; }
         _render(); return;
       }
       if (f === 'acc' || f === 'rest' || f === 'note') { b[f] = el.value; return; }
+      if (f === 'ref' || f === 'fmt') { b[f] = el.value; _render(); return; }
+      if (f === 'pct') { b.pct = _num(el.value); _refreshFormula(el, b); return; }
       if (f === 'sets' || f === 'reps') { var n = parseInt(el.value, 10); b[f] = n > 0 ? n : null; return; }
       b[f] = _num(el.value);
     }
     box.addEventListener('input', onField);
     box.addEventListener('change', onField);
+  }
+
+  function _refreshFormula(el, b) {
+    var blk = el.closest('.vbs-block');
+    if (!blk) return;
+    var old = blk.querySelector('.vbs-formula');
+    var html = _num(b.pct) != null ? '<div class="vbs-formula">Dans la séance : <code>' + _esc(_show(_num(b.pct)).replace(',', '.') + '%|' + (b.fmt || '1RM') + '|' + (b.ref || '').toUpperCase() + '|') + '</code> → charge calculée pour chaque athlète</div>' : '';
+    if (old) old.outerHTML = html || '<span></span>';
+    else if (html) { var sel = blk.querySelector('[data-vf=ref]'); (sel ? sel.parentElement : blk.querySelector('.vbs-load')).insertAdjacentHTML('afterend', html); }
   }
 
   // ---------- API ----------
@@ -227,7 +287,12 @@
       blocks: state.blocks.map(function (b) {
         return {
           mv: b.mv, acc: b.acc || '', sets: b.sets || 1, reps: b.reps || 1, rest: (b.rest || '').trim(),
-          load: _num(b.load), vmin: _num(b.vmin), vmax: _num(b.vmax), vlMax: _num(b.vlMax),
+          loadMode: b.loadMode === 'kg' ? 'kg' : 'pct',
+          load: b.loadMode === 'kg' ? _num(b.load) : null,
+          pct: b.loadMode === 'kg' ? null : _num(b.pct),
+          ref: b.loadMode === 'kg' ? null : (b.ref || _defaultRef(b.mv)),
+          fmt: b.loadMode === 'kg' ? null : (b.fmt || '1RM'),
+          vmin: _num(b.vmin), vmax: _num(b.vmax), vlMax: _num(b.vlMax),
           calibrated: b.calibrated !== false, note: (b.note || '').trim()
         };
       })
@@ -238,7 +303,13 @@
 
   window.vbtSetFormData = function (vbt) {
     var blocks = vbt && Array.isArray(vbt.blocks) ? vbt.blocks : [];
-    state.blocks = blocks.map(function (b) { return Object.assign({}, b); });
+    state.blocks = blocks.map(function (b) {
+      var c = Object.assign({}, b);
+      if (!c.loadMode) c.loadMode = c.load != null ? 'kg' : 'pct';
+      if (c.loadMode === 'pct' && !c.ref) c.ref = _defaultRef(c.mv);
+      if (!c.fmt) c.fmt = '1RM';
+      return c;
+    });
     state.on = state.blocks.length > 0;
     state.toJournal = vbt && vbt.to_journal != null ? !!vbt.to_journal : true;
     _render();
@@ -280,6 +351,12 @@
       '.vbs-mode{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}',
       '.vbs-hint{font-size:11px;color:var(--muted);flex:1;min-width:150px}',
       '.vbs-note{margin-top:8px}',
+      '.vbs-load{display:flex;gap:8px;align-items:flex-end;margin-top:8px}',
+      '.vbs-seg{display:flex;border:1px solid var(--border2);border-radius:9px;overflow:hidden;height:38px}',
+      '.vbs-seg button{border:0;background:transparent;color:var(--text2);padding:0 11px;font-weight:700;font-size:12px;font-family:inherit;cursor:pointer}',
+      '.vbs-seg button.on{background:var(--accent);color:#000}',
+      '.vbs-formula{font-size:11px;color:var(--muted);margin-top:6px}',
+      '.vbs-formula code{color:var(--text2);font-size:11px}',
       '.vbs-add{width:100%;padding:10px;border:1.5px dashed var(--border2);border-radius:10px;background:transparent;',
       'color:var(--accent);font-weight:700;font-size:12px;font-family:inherit;cursor:pointer}'
     ].join('');
