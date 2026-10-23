@@ -205,7 +205,6 @@ label.f u{text-decoration:none;text-transform:none;letter-spacing:.02em}
 <script>try{var t=localStorage.getItem("udt-vbt-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <div id="app"></div>
 <nav class="tabs" aria-label="Navigation"><div class="in">
-  <button data-act="tab" data-tab="list">Séances</button>
   <button data-act="tab" data-tab="profile">Profil L-V</button>
   <button data-act="tab" data-tab="settings">Mouvements</button>
 </div></nav>
@@ -257,7 +256,7 @@ function accOf(k){return ACC.find(a=>a.k===(k||""))||ACC[0]}
 
 /* ---------- État ---------- */
 const state={sessions:{},settings:{moves:clone(DEFAULT_MOVES),sensor:"",folders:[],ver:SETTINGS_VER},
-  view:{name:"list",id:null},profileMove:"bsq",profileAcc:"",period:90,confirmDel:false,folder:(()=>{try{return localStorage.getItem("udt-vbt-folder")||"all"}catch(e){return "all"}})(),folderUI:null,confirmFolderDel:false,exportText:null};
+  view:{name:"profile",id:null},profileMove:"bsq",profileAcc:"",period:90,confirmDel:false,folder:(()=>{try{return localStorage.getItem("udt-vbt-folder")||"all"}catch(e){return "all"}})(),folderUI:null,confirmFolderDel:false,exportText:null};
 const store={mode:"none",sb:null,uid:null,sync:"wait",athletes:[],viewId:null};
 const writing={},pending={},timers={},dirty=new Set();
 let needRender=false;
@@ -366,11 +365,11 @@ async function loadAthletes(){
 async function viewAthlete(id){
   const prevView=state.view.name;
   if(!id){
-    state.ro=false;store.viewId=null;state.view={name:prevView==="session"?"list":prevView,id:null};
+    state.ro=false;store.viewId=null;state.view={name:prevView==="settings"?"settings":"profile",id:null};
     loadLocal();render();await pull();return;
   }
   const a=store.athletes.find(x=>x.id===id);
-  store.viewId=id;state.ro=true;state.view={name:prevView==="session"?"list":prevView,id:null};
+  store.viewId=id;state.ro=true;state.view={name:prevView==="settings"?"settings":"profile",id:null};
   state.sessions={};setSync("wait");render();
   try{
     const {data,error}=await store.sb.from("vbt_journal").select("doc_key,data").eq("user_id",id);
@@ -483,10 +482,10 @@ function render(){
   const v=state.view.name;
   document.querySelectorAll("nav.tabs button").forEach(b=>{const t=b.dataset.tab;if((t===v)||(t==="list"&&v==="session"))b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   const app=document.getElementById("app");
-  if(v==="session"&&state.sessions[state.view.id])app.innerHTML=viewSession(state.sessions[state.view.id]);
-  else if(v==="profile")app.innerHTML=viewProfile();
-  else if(v==="settings")app.innerHTML=viewSettings();
-  else{state.view={name:"list",id:null};app.innerHTML=viewList()}
+  /* Séances : saisies depuis la carte de séance (⚡ Mes vitesses) et visibles dans le classement.
+     Le journal ne garde ici que le profil charge-vitesse et les mouvements de référence. */
+  if(v==="settings")app.innerHTML=viewSettings();
+  else{state.view={name:"profile",id:null};app.innerHTML=viewProfile()}
   app.classList.toggle("ro",!!state.ro);
   if(state.ro)app.querySelectorAll("input,textarea,select").forEach(el=>{if(!el.dataset.who&&!el.dataset.pf)el.disabled=true});
   window.scrollTo(0,y);
@@ -705,11 +704,6 @@ function viewProfile(){
     <div class="card kpi"><b>${e1&&e1>0?Math.round(e1):"–"}</b><span>${halt?"1RM (réf.) "+(m.rm?show(m.rm):"–"):"1RM estimé (kg)"}</span></div>
   </div>
   ${f?`<p class="hint" style="margin-top:10px">Pente : ${fmt(f.b*100,2)} m/s par 100 kg. ${halt?"":"L’estimation du 1RM reste indicative : elle dépend de la MVT réglée dans Mouvements et de charges assez lourdes dans le profil."}</p>`:`<p class="hint" style="margin-top:10px">Il faut au moins 3 charges différentes pour tracer la droite.</p>`}
-  <div class="card test" style="margin-top:16px">
-    <h3>Tester ce mouvement</h3>
-    <p class="hint" style="margin:6px 0 12px">Crée une séance de test prête à remplir : 5 paliers croissants (≈ 40, 55, 70, 80, 90 % 1RM, en 3-3-2-2-1 reps). ${m.rm?"Les charges sont calculées depuis ton 1RM de référence.":"Renseigne ton 1RM dans Mouvements pour que les charges soient calculées, sinon tu les saisis toi-même."}</p>
-    <button class="btn primary full" data-act="profile-test">Créer un test ${esc(m.name)}</button>
-  </div>
   ${bestByLoad}
   <div class="sec"><h2>Dernières séances</h2></div>
   ${hist.length?`<div class="card tbl"><table><thead><tr><th>Date</th><th>Top set</th><th>V. à la top</th><th>Meilleure</th><th>Séries</th></tr></thead><tbody>${hist.map(h=>`<tr><td>${esc(fdate(h.date))}</td><td class="n">${show(h.top.load)} kg</td><td class="n">${fmt(h.top.v)}</td><td class="n">${fmt(h.best)}</td><td>${h.n}</td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">Rien sur cette période.</div>'}`;

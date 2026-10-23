@@ -299,6 +299,43 @@
 
   // ---------- classement : vitesses de chaque athlète ----------
 
+  // Récap de la séance : meilleure rep par série (barre), dernière rep (trait), cible (bande)
+  function _chartSVG(b) {
+    var W = 340, H = 168, L = 34, R = 8, T = 18, B = 34;
+    var lo = b.vmin, hi = b.vmax;
+    var sets = b.sets.map(function (st) {
+      var best = Math.max.apply(null, st.v), last = st.v[st.v.length - 1];
+      return { load: st.load, best: best, last: last, n: st.v.length, vl: st.v.length > 1 ? (best - last) / best * 100 : null };
+    });
+    var vmaxData = Math.max.apply(null, sets.map(function (x) { return x.best; }).concat([hi || 0, lo || 0]));
+    var step = Math.ceil(vmaxData * 1.15 / 4 * 10) / 10 || 0.3, ymax = step * 4;
+    var Y = function (v) { return T + (1 - v / ymax) * (H - T - B); };
+    var n = sets.length, slot = (W - L - R) / n, bw = Math.min(34, slot * 0.6);
+    var g = '';
+    for (var i = 0; i <= 4; i++) {
+      var v = ymax * i / 4;
+      g += '<line x1="' + L + '" x2="' + (W - R) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="var(--border)"/>' +
+        '<text x="' + (L - 5) + '" y="' + (Y(v) + 3.5) + '" text-anchor="end" font-size="9.5" fill="var(--muted)">' + v.toFixed(1).replace('.', ',') + '</text>';
+    }
+    if (lo != null || hi != null) {
+      var top = hi != null ? Math.min(hi, ymax) : ymax, bot = lo != null ? lo : 0;
+      g += '<rect x="' + L + '" y="' + Y(top) + '" width="' + (W - L - R) + '" height="' + Math.max(0, Y(bot) - Y(top)) + '" fill="#2dd4bf" opacity=".13"/>';
+    }
+    sets.forEach(function (k, i) {
+      var cx = L + slot * (i + 0.5);
+      var col = lo != null && k.best < lo ? 'var(--orange)' : hi != null && k.best > hi ? 'var(--blue)' : '#2dd4bf';
+      var stop = b.vlMax != null && k.vl != null && k.vl > b.vlMax;
+      g += '<rect x="' + (cx - bw / 2) + '" y="' + Y(k.best) + '" width="' + bw + '" height="' + (Y(0) - Y(k.best)) + '" rx="3" fill="' + col + '"/>';
+      if (k.n > 1) g += '<line x1="' + (cx - bw / 2 - 3) + '" x2="' + (cx + bw / 2 + 3) + '" y1="' + Y(k.last) + '" y2="' + Y(k.last) + '" stroke="' + (stop ? 'var(--red)' : 'var(--text)') + '" stroke-width="2"/>';
+      g += '<text x="' + cx + '" y="' + (Y(k.best) - 5) + '" text-anchor="middle" font-size="10.5" font-weight="700" fill="var(--text)">' + _fmt(k.best) + '</text>' +
+        '<text x="' + cx + '" y="' + (H - 19) + '" text-anchor="middle" font-size="9.5" fill="var(--muted)">S' + (i + 1) + '</text>' +
+        '<text x="' + cx + '" y="' + (H - 7) + '" text-anchor="middle" font-size="9.5" fill="var(--text)">' + (k.load != null ? _show(k.load) + ' kg' : '–') + '</text>';
+    });
+    return '<svg class="vbl-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Meilleure vitesse par série, ' + _esc(b.name) + '">' + g + '</svg>' +
+      '<div class="vbl-leg"><span><i style="background:#2dd4bf"></i>Meilleure rep</span><span><i class="ln"></i>Dernière rep</span>' +
+      (lo != null || hi != null ? '<span><i style="background:#2dd4bf;opacity:.3"></i>Cible</span><span><i style="background:var(--blue)"></i>Trop rapide</span><span><i style="background:var(--orange)"></i>Trop lent</span>' : '') + '</div>';
+  }
+
   function _lbHTML(vbt) {
     if (!vbt || !Array.isArray(vbt.blocks) || !vbt.blocks.length) return '';
     return '<div class="vbl">' + vbt.blocks.map(function (b) {
@@ -315,6 +352,8 @@
       return '<div class="vbl-b">' +
         '<div class="vbl-h">⚡ ' + _esc(b.name) + (b.acc ? ' + ' + _esc(b.acc) : '') +
           '<span>' + (tgt ? 'cible ' + tgt + ' · ' : '') + 'moy. ' + _fmt(avg) + (inT != null ? ' · ' + inT + '/' + bests.length + ' dans la cible' : '') + '</span></div>' +
+        _chartSVG(b) +
+        '<details class="vbl-det"><summary>Détail des reps</summary>' +
         b.sets.map(function (st, i) {
           var vl = st.v.length > 1 ? (Math.max.apply(null, st.v) - st.v[st.v.length - 1]) / Math.max.apply(null, st.v) * 100 : null;
           return '<div class="vbl-s"><span class="vbl-n">S' + (i + 1) + '</span>' +
@@ -323,6 +362,7 @@
             (vl != null ? '<span class="vbl-p' + (b.vlMax != null && vl > b.vlMax ? ' bad' : '') + '">-' + Math.round(vl) + '%</span>' : '') +
           '</div>';
         }).join('') +
+        '</details>' +
       '</div>';
     }).join('') + '</div>';
   }
@@ -333,9 +373,9 @@
     var r = await sb.from('wod_scores').select('id,vbt').eq('session_id', sessionId).not('vbt', 'is', null);
     (r.data || []).forEach(function (sc) {
       var row = document.getElementById('sr-' + sc.id);
-      if (!row || row.querySelector('.vbl')) return;
-      var host = row.querySelector('div[style*="flex:1"]') || row;
-      host.insertAdjacentHTML('beforeend', _lbHTML(sc.vbt));
+      if (!row || document.querySelector('[data-vbl-for="' + sc.id + '"]')) return;
+      row.insertAdjacentHTML('afterend', _lbHTML(sc.vbt));
+      var box = row.nextElementSibling; if (box) box.dataset.vblFor = sc.id;
     });
   }
 
@@ -407,7 +447,13 @@
       '.vbx-save:disabled{opacity:.6}',
       '.vbx-msg{font-size:12px;color:var(--muted);margin-top:8px;text-align:center}',
       '.vbx-msg:empty{display:none}',
-      '.vbl{margin-top:6px}',
+      '.vbl{margin:2px 0 6px;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--card)}',
+      '.vbl-chart{display:block;width:100%;height:auto;margin-top:6px}',
+      '.vbl-leg{display:flex;gap:10px;flex-wrap:wrap;font-size:10px;color:var(--muted);margin-top:2px}',
+      '.vbl-leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:4px;vertical-align:0}',
+      '.vbl-leg i.ln{width:12px;height:2px;background:var(--text);vertical-align:3px}',
+      '.vbl-det{margin-top:6px}',
+      '.vbl-det summary{font-size:11px;font-weight:700;color:var(--text2);cursor:pointer}',
       '.vbl-b{margin-top:4px}',
       '.vbl-h{font-size:11px;font-weight:700;color:var(--text2)}',
       '.vbl-h span{display:block;font-weight:500;color:var(--muted)}',

@@ -17,7 +17,7 @@
   // ---------- catalogue des outils ----------
 
   // À changer à chaque mise à jour de vbt.html : force le rechargement (cache navigateur)
-  var VBT_VERSION = '2026-10-23b';
+  var VBT_VERSION = '2026-10-23c';
 
   var TOOLS = [
     {
