@@ -83,8 +83,8 @@
     var missing = ids.filter(function (id) { return !(id in cache.sessions); });
     if (missing.length) {
       var res = await Promise.all([
-        sb.from('sessions').select('id,date,title,vbt').in('id', missing).not('vbt', 'is', null),
-        sb.from('personal_sessions').select('id,date,title,vbt').in('id', missing).not('vbt', 'is', null)
+        sb.from('sessions').select('id,date,title,vbt,score_type').in('id', missing).not('vbt', 'is', null),
+        sb.from('personal_sessions').select('id,date,title,vbt,score_type').in('id', missing).not('vbt', 'is', null)
       ]);
       missing.forEach(function (id) { cache.sessions[id] = null; });
       res.forEach(function (r) {
@@ -206,6 +206,50 @@
     if (out) out.innerHTML = _setStats(b, st);
   }
 
+  // Résumé des vitesses joint au score (wod_scores.vbt) : visible dans le classement
+  function _summary(d) {
+    return {
+      v: 1,
+      blocks: d.blocks.map(function (b) {
+        return {
+          name: _moveName(b.mv), acc: ACC[b.acc] || '', halt: _isHalt(b.mv),
+          vmin: _num(b.vmin), vmax: _num(b.vmax), vlMax: _num(b.vlMax),
+          sets: b.sets.map(function (st) {
+            return { load: st.load == null ? null : st.load, v: (st.v || []).filter(function (x) { return x != null && x > 0; }) };
+          }).filter(function (st) { return st.v.length; })
+        };
+      }).filter(function (b) { return b.sets.length; })
+    };
+  }
+
+  async function _syncScore(sid, d) {
+    var uid = _uid(), s = cache.sessions[sid];
+    var vbt = _summary(d);
+    var ex = await sb.from('wod_scores').select('id').eq('session_id', sid).eq('athlete_id', uid).maybeSingle();
+    if (ex.error) throw ex.error;
+    if (ex.data) {
+      var u = await sb.from('wod_scores').update({ vbt: vbt }).eq('id', ex.data.id);
+      if (u.error) throw u.error;
+      return;
+    }
+    // Pas encore de score : on en crée un, avec la charge max de la séance
+    var loads = [];
+    d.blocks.forEach(function (b) { b.sets.forEach(function (st) { if ((st.v || []).some(function (x) { return x > 0; }) && st.load > 0) loads.push(st.load); }); });
+    var maxLoad = loads.length ? Math.max.apply(null, loads) : 0;
+    var types = ['time', 'reps', 'rounds', 'weight', 'calories', 'text', 'watt'];
+    var level = 'rx';
+    try { if (typeof getSelectedLevel === 'function') level = getSelectedLevel(sid) || 'rx'; } catch (e) {}
+    var payload = {
+      session_id: sid, athlete_id: uid,
+      score_type: s && types.indexOf(s.score_type) >= 0 ? s.score_type : 'weight',
+      score_value: maxLoad, score_text: maxLoad ? _show(maxLoad) + ' kg' : 'VBT',
+      level: level, vbt: vbt
+    };
+    if (d.date) payload.done_at = d.date;
+    var ins = await sb.from('wod_scores').insert(payload);
+    if (ins.error) throw ins.error;
+  }
+
   async function _save(sid) {
     var d = drafts[sid], uid = _uid(), msg = document.getElementById('vbx-msg-' + sid);
     if (!d || !uid) return;
@@ -223,7 +267,15 @@
     if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer mes vitesses'; }
     if (r.error) { if (msg) msg.textContent = '❌ ' + r.error.message; return; }
     cache.docs[_key(sid)] = JSON.parse(JSON.stringify(d));
-    if (msg) msg.textContent = '✅ Enregistré dans ton Journal VBT (profil charge-vitesse mis à jour).';
+    var scoreOk = true;
+    try { await _syncScore(sid, d); } catch (e) { scoreOk = false; console.error('[vbt] score', e); }
+    if (msg) msg.textContent = scoreOk
+      ? '✅ Enregistré : visible dans le classement et dans ton Journal VBT.'
+      : '✅ Enregistré dans ton Journal VBT (le classement n\'a pas pu être mis à jour).';
+    if (scoreOk && typeof currentScoresSession !== 'undefined' && currentScoresSession && currentScoresSession.sessionId === sid
+        && typeof renderScoresModal === 'function') {
+      try { renderScoresModal(sid, currentScoresSession.scoreType, currentScoresSession.sets); } catch (e) {}
+    }
     var state = document.querySelector('[data-vbx="' + sid + '"] .vbx-state');
     if (state) state.textContent = 'Enregistrées ✓';
     if (typeof showToast === 'function') showToast('⚡ Vitesses enregistrées');
@@ -243,6 +295,59 @@
         _save(t.dataset.vbxSave).catch(function (err) { console.error('[vbt] save', err); });
       }
     });
+  }
+
+  // ---------- classement : vitesses de chaque athlète ----------
+
+  function _lbHTML(vbt) {
+    if (!vbt || !Array.isArray(vbt.blocks) || !vbt.blocks.length) return '';
+    return '<div class="vbl">' + vbt.blocks.map(function (b) {
+      var lo = b.vmin, hi = b.vmax;
+      var cls = function (v) {
+        if (lo != null && v < lo) return 'slow';
+        if (hi != null && v > hi) return 'fast';
+        return (lo != null || hi != null) ? 'ok' : '';
+      };
+      var bests = b.sets.map(function (st) { return Math.max.apply(null, st.v); });
+      var inT = (lo != null || hi != null) ? bests.filter(function (v) { return cls(v) === 'ok'; }).length : null;
+      var avg = bests.reduce(function (a, x) { return a + x; }, 0) / bests.length;
+      var tgt = _target(b);
+      return '<div class="vbl-b">' +
+        '<div class="vbl-h">⚡ ' + _esc(b.name) + (b.acc ? ' + ' + _esc(b.acc) : '') +
+          '<span>' + (tgt ? 'cible ' + tgt + ' · ' : '') + 'moy. ' + _fmt(avg) + (inT != null ? ' · ' + inT + '/' + bests.length + ' dans la cible' : '') + '</span></div>' +
+        b.sets.map(function (st, i) {
+          var vl = st.v.length > 1 ? (Math.max.apply(null, st.v) - st.v[st.v.length - 1]) / Math.max.apply(null, st.v) * 100 : null;
+          return '<div class="vbl-s"><span class="vbl-n">S' + (i + 1) + '</span>' +
+            '<span class="vbl-l">' + (st.load != null ? _show(st.load) + ' kg' : '–') + '</span>' +
+            '<span class="vbl-v">' + st.v.map(function (v) { return '<i class="' + cls(v) + '">' + _fmt(v) + '</i>'; }).join('') + '</span>' +
+            (vl != null ? '<span class="vbl-p' + (b.vlMax != null && vl > b.vlMax ? ' bad' : '') + '">-' + Math.round(vl) + '%</span>' : '') +
+          '</div>';
+        }).join('') +
+      '</div>';
+    }).join('') + '</div>';
+  }
+
+  async function _decorateLeaderboard(sessionId) {
+    var el = document.getElementById('smodal-leaderboard');
+    if (!el || !sessionId) return;
+    var r = await sb.from('wod_scores').select('id,vbt').eq('session_id', sessionId).not('vbt', 'is', null);
+    (r.data || []).forEach(function (sc) {
+      var row = document.getElementById('sr-' + sc.id);
+      if (!row || row.querySelector('.vbl')) return;
+      var host = row.querySelector('div[style*="flex:1"]') || row;
+      host.insertAdjacentHTML('beforeend', _lbHTML(sc.vbt));
+    });
+  }
+
+  function _wrapLeaderboard() {
+    if (window.__vbxLbWrapped || typeof window.renderScoresModal !== 'function') return;
+    window.__vbxLbWrapped = true;
+    var prev = window.renderScoresModal;
+    window.renderScoresModal = async function (sessionId) {
+      var r = await prev.apply(this, arguments);
+      try { await _decorateLeaderboard(sessionId); } catch (e) { console.error('[vbt] classement', e); }
+      return r;
+    };
   }
 
   // ---------- décoration des cartes ----------
@@ -301,7 +406,18 @@
       '.vbx-save{width:100%;padding:10px;border:0;border-radius:10px;background:var(--accent);color:#000;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer}',
       '.vbx-save:disabled{opacity:.6}',
       '.vbx-msg{font-size:12px;color:var(--muted);margin-top:8px;text-align:center}',
-      '.vbx-msg:empty{display:none}'
+      '.vbx-msg:empty{display:none}',
+      '.vbl{margin-top:6px}',
+      '.vbl-b{margin-top:4px}',
+      '.vbl-h{font-size:11px;font-weight:700;color:var(--text2)}',
+      '.vbl-h span{display:block;font-weight:500;color:var(--muted)}',
+      '.vbl-s{display:flex;align-items:center;gap:6px;font-size:11px;margin-top:3px;flex-wrap:wrap}',
+      '.vbl-n{color:var(--muted);font-weight:700;width:18px}',
+      '.vbl-l{color:#2dd4bf;font-weight:700;min-width:46px}',
+      '.vbl-v{display:flex;gap:3px;flex-wrap:wrap}',
+      '.vbl-v i{font-style:normal;font-weight:700;padding:1px 5px;border-radius:5px;background:var(--card2);color:var(--text)}',
+      '.vbl-v i.ok{color:#2dd4bf}.vbl-v i.slow{color:var(--orange)}.vbl-v i.fast{color:var(--blue)}',
+      '.vbl-p{color:var(--muted)}.vbl-p.bad{color:var(--red);font-weight:700}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -325,6 +441,7 @@
     _bindDoc();
     _wrap('renderSessions');
     _wrap('renderPersoSessions');
+    _wrapLeaderboard();
     setTimeout(function () { decorate().catch(function (e) { console.error('[vbt] decorate', e); }); }, 400);
   }
 
