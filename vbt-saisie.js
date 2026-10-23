@@ -18,7 +18,7 @@
 
   var NAMES = {
     bsq: 'Back Squat', boxsq: 'Box Squat', pinbsq: 'Pin Back Squat', fsq: 'Front Squat', pinfsq: 'Pin Front Squat',
-    bench: 'Bench Press', pinpress: 'Pin Press', dl: 'Deadlift', dldef: 'Deficit Deadlift', blockdl: 'Block Deadlift',
+    bench: 'Bench Press', pinpress: 'Pin Press', pinbench: 'Pin Bench Press', dl: 'Deadlift', dldef: 'Deficit Deadlift', blockdl: 'Block Deadlift',
     ohp: 'Shoulder Press', sn: 'Snatch', psn: 'Power Snatch', hsn: 'Hang Snatch', hpsn: 'Hang Power Snatch',
     cl: 'Clean', pcl: 'Power Clean', hcl: 'Hang Clean', hpcl: 'Hang Power Clean', bpcl: 'Block Power Clean',
     pp: 'Push Press', pj: 'Push Jerk', jk: 'Split Jerk', snp: 'Snatch Pull', clp: 'Clean Pull'

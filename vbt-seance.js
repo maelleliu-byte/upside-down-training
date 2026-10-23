@@ -25,7 +25,7 @@
   var DEFAULT_MOVES = [
     ['bsq', 'Back Squat', 'force'], ['boxsq', 'Box Squat', 'force'], ['pinbsq', 'Pin Back Squat', 'force'],
     ['fsq', 'Front Squat', 'force'], ['pinfsq', 'Pin Front Squat', 'force'], ['bench', 'Bench Press', 'force'],
-    ['pinpress', 'Pin Press', 'force'], ['dl', 'Deadlift', 'force'], ['dldef', 'Deficit Deadlift', 'force'],
+    ['pinpress', 'Pin Press', 'force'], ['pinbench', 'Pin Bench Press', 'force'], ['dl', 'Deadlift', 'force'], ['dldef', 'Deficit Deadlift', 'force'],
     ['blockdl', 'Block Deadlift', 'force'], ['ohp', 'Shoulder Press', 'force'], ['sn', 'Snatch', 'haltero'],
     ['psn', 'Power Snatch', 'haltero'], ['hsn', 'Hang Snatch', 'haltero'], ['hpsn', 'Hang Power Snatch', 'haltero'],
     ['cl', 'Clean', 'haltero'], ['pcl', 'Power Clean', 'haltero'], ['hcl', 'Hang Clean', 'haltero'],
@@ -47,7 +47,7 @@
   // Mouvement de référence par défaut pour une charge en % (doit exister dans les mouvements de l'app)
   var REF = {
     bsq: 'Back Squat', boxsq: 'Back Squat', pinbsq: 'Back Squat', fsq: 'Front Squat', pinfsq: 'Front Squat',
-    bench: 'Bench Press', pinpress: 'Bench Press', dl: 'Deadlift', dldef: 'Deadlift', blockdl: 'Deadlift',
+    bench: 'Bench Press', pinpress: 'Bench Press', pinbench: 'Bench Press', dl: 'Deadlift', dldef: 'Deadlift', blockdl: 'Deadlift',
     ohp: 'Shoulder Press', sn: 'Snatch', psn: 'Power Snatch', hsn: 'Snatch', hpsn: 'Hang Power Snatch',
     cl: 'Clean', pcl: 'Power Clean', hcl: 'Clean', hpcl: 'Hang Power Clean', bpcl: 'Power Clean',
     pp: 'Push Press', pj: 'PUSH JERK', jk: 'SPLIT JERK', snp: 'Snatch', clp: 'Clean'
@@ -96,6 +96,8 @@
       var list = r && r.data && r.data.data && r.data.data.moves;
       if (Array.isArray(list) && list.length) {
         moves = list.map(function (m) { return { id: m.id, name: m.name, type: m.type === 'haltero' ? 'haltero' : 'force' }; });
+        // mouvements ajoutés à la liste par défaut depuis (ex. Pin Bench Press)
+        DEFAULT_MOVES.forEach(function (d) { if (!moves.find(function (m) { return m.id === d.id; })) moves.push(d); });
         _render();
       }
     } catch (e) { /* liste par défaut */ }

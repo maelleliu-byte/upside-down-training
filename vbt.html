@@ -221,6 +221,7 @@ const DEFAULT_MOVES=[
   {id:"pinfsq",name:"Pin Front Squat",type:"force",mvt:0.30,rm:null},
   {id:"bench",name:"Bench Press",type:"force",mvt:0.17,rm:null},
   {id:"pinpress",name:"Pin Press",type:"force",mvt:0.17,rm:null},
+  {id:"pinbench",name:"Pin Bench Press",type:"force",mvt:0.17,rm:null},
   {id:"dl",name:"Deadlift",type:"force",mvt:0.15,rm:null},
   {id:"dldef",name:"Deficit Deadlift",type:"force",mvt:0.15,rm:null},
   {id:"blockdl",name:"Block Deadlift",type:"force",mvt:0.15,rm:null},
@@ -243,7 +244,7 @@ const DEFAULT_MOVES=[
 /* anciens noms par défaut -> nouveaux (les noms modifiés à la main ne sont pas touchés) */
 const OLD_NAMES={bsq:["Back squat"],boxsq:["Box squat"],fsq:["Front squat"],bench:["Développé couché"],dl:["Soulevé de terre"],dldef:["Deficit deadlift"],ohp:["Développé militaire"],
   sn:["Arraché"],psn:["Power arraché","Power snatch"],hsn:["Hang arraché","Hang snatch"],cl:["Épaulé"],pcl:["Power épaulé","Power clean"],hcl:["Hang épaulé","Hang clean"],jk:["Jeté","Jerk"],snp:["Tirage arraché","Snatch pull"],clp:["Tirage épaulé","Clean pull"]};
-const SETTINGS_VER=6;
+const SETTINGS_VER=7;
 const ZONES=[
   {k:"fmax",name:"Force maximale",min:null,max:0.50},
   {k:"facc",name:"Force accélération",min:0.50,max:0.75},
@@ -279,7 +280,7 @@ function normSettings(s){
   if((s.ver||1)<SETTINGS_VER){
     s.moves.forEach(m=>{const o=OLD_NAMES[m.id];const d=DEFAULT_MOVES.find(x=>x.id===m.id);if(o&&d&&o.includes(m.name))m.name=d.name});
     const ids=DEFAULT_MOVES.map(x=>x.id);
-    ["pinbsq","pinfsq","pinpress","dldef","blockdl","hpsn","hpcl","bpcl","pp","pj"].forEach(id=>{if(!s.moves.find(m=>m.id===id)){const d=clone(DEFAULT_MOVES.find(x=>x.id===id));const prev=ids[ids.indexOf(id)-1];const i=s.moves.findIndex(m=>m.id===prev);s.moves.splice(i<0?s.moves.length:i+1,0,d)}});
+    ["pinbsq","pinfsq","pinpress","pinbench","dldef","blockdl","hpsn","hpcl","bpcl","pp","pj"].forEach(id=>{if(!s.moves.find(m=>m.id===id)){const d=clone(DEFAULT_MOVES.find(x=>x.id===id));const prev=ids[ids.indexOf(id)-1];const i=s.moves.findIndex(m=>m.id===prev);s.moves.splice(i<0?s.moves.length:i+1,0,d)}});
     s.migrated=true;
   }
   s.ver=SETTINGS_VER;
