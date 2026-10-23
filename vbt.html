@@ -506,6 +506,7 @@ function viewSession(s){
       <button data-act="status" data-v="done" aria-pressed="${s.status==="done"}">Faite</button>
     </div>
   </div>
+  ${s.source?`<p class="hint" style="margin:0 0 10px">Programmée depuis Séance +. Les modifications faites dans l’app remplacent cette séance tant qu’aucune vitesse n’est saisie.</p>`:""}
   <div class="card stack">
     <div class="grid2">
       <div><label class="f" for="f-date">Date</label><input id="f-date" type="date" data-sf="date" value="${esc(s.date)}"></div>
@@ -536,6 +537,14 @@ function viewBlock(b,i){
     </div>
     ${halt?"":`<div style="margin-top:10px"><label class="f" for="acc-${b.id}">Résistance accommodante</label><select id="acc-${b.id}" data-bf="acc" data-b="${b.id}">${ACC.map(a=>`<option value="${a.k}" ${(b.acc||"")===a.k?"selected":""}>${a.name}</option>`).join("")}</select></div>`}
     <div class="kind" style="margin-top:6px">${halt?"Saisie : vitesse pic de chaque rep (m/s)":"Saisie : vitesse moyenne de chaque rep (m/s)"}${m.rm?` · 1RM réf. ${show(m.rm)} kg`:""}</div>
+    <div class="row" style="margin-top:10px;gap:10px;align-items:flex-end;flex-wrap:wrap">
+      <div><label class="f">Mode</label><div class="status" role="group" aria-label="Mode de charge">
+        <button data-act="calib" data-b="${b.id}" data-v="1" aria-pressed="${b.calibrated!==false}">Calibrée</button>
+        <button data-act="calib" data-b="${b.id}" data-v="0" aria-pressed="${b.calibrated===false}">Charge fixe</button>
+      </div></div>
+      <div style="flex:1;min-width:90px"><label class="f" for="rest-${b.id}">Repos</label><input id="rest-${b.id}" data-bt="rest" data-b="${b.id}" value="${esc(b.rest||"")}" placeholder="1:20, 3:00…"></div>
+    </div>
+    <div class="kind" style="margin-top:6px">${b.calibrated===false?"Charge fixe : la vitesse est mesurée, la charge ne bouge pas.":"Calibrée : la charge s’ajuste pour rester dans la plage de vitesse."}</div>
     <div class="grid3" style="margin-top:10px">
       <div><label class="f">Cible min <u>m/s</u></label><input inputmode="decimal" data-bf="vmin" data-b="${b.id}" value="${show(b.vmin)}" placeholder="0,70"></div>
       <div><label class="f">Cible max <u>m/s</u></label><input inputmode="decimal" data-bf="vmax" data-b="${b.id}" value="${show(b.vmax)}" placeholder="0,85"></div>
@@ -587,8 +596,9 @@ function statsHTML(b,st){
   if(!halt){const z=zoneOf(k.best);if(z)flags.push(`<span class="flag zone">${z.name}</span>`)}
   const lo=num(b.vmin),hi=num(b.vmax);
   if(lo!=null||hi!=null){
-    if(lo!=null&&k.best<lo)flags.push(`<span class="flag warn">Sous la cible : baisser la charge</span>`);
-    else if(hi!=null&&k.best>hi)flags.push(`<span class="flag fast">Au-dessus de la cible : monter la charge</span>`);
+    const fixed=b.calibrated===false;
+    if(lo!=null&&k.best<lo)flags.push(`<span class="flag warn">Sous la cible${fixed?"":" : baisser la charge"}</span>`);
+    else if(hi!=null&&k.best>hi)flags.push(`<span class="flag fast">Au-dessus de la cible${fixed?"":" : monter la charge"}</span>`);
     else flags.push(`<span class="flag ok">Dans la cible</span>`);
   }
   const vlm=num(b.vlMax);
@@ -597,7 +607,7 @@ function statsHTML(b,st){
   if(f&&st.load>0){const pred=f.a+f.b*st.load;if(pred>0){const d=(k.best-pred)/pred*100;flags.push(`<span class="flag ${d<=-8?"bad":d<=-4?"warn":""}">vs profil ${d>=0?"+":""}${fmt(d,0)} %</span>`)}}
   let sug="";
   const lastM=[...b.sets].reverse().find(x=>setStats(x));
-  if(lastM&&lastM.id===st.id){const g=suggestNext(b,st);
+  if(b.calibrated!==false&&lastM&&lastM.id===st.id){const g=suggestNext(b,st);
     const msg=t=>`<div class="suggest"><span class="k"><b style="font-size:13px">Série suivante :</b> ${t}</span></div>`;
     if(g&&g.need==="load")sug=msg("indique la charge de cette série pour obtenir une charge suggérée.");
     else if(g&&g.need==="target")sug=msg("renseigne une cible min ou max (m/s), ou touche un bouton de zone, pour obtenir une charge suggérée.");
@@ -707,10 +717,10 @@ function viewSettings(){
 function csv(){
   const q=s=>{s=String(s==null?"":s);return /[;"\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s};
   const c=v=>v==null?"":fmt(v);
-  const rows=[["Date","Dossier","Séance","Statut","Mouvement","Type","Série","Charge (kg)","% 1RM","Reps","Vitesses (m/s)","Meilleure","Moyenne","Dernière","Perte (%)","Zone","Cible min","Cible max","RPE/RIR","Résistance","Capteur","Note série","Note exercice"]];
+  const rows=[["Date","Dossier","Séance","Statut","Mouvement","Type","Série","Charge (kg)","% 1RM","Reps","Vitesses (m/s)","Meilleure","Moyenne","Dernière","Perte (%)","Zone","Cible min","Cible max","RPE/RIR","Résistance","Capteur","Note série","Note exercice","Mode","Repos"]];
   Object.values(state.sessions).sort((a,b)=>(a.date||"").localeCompare(b.date||"")).forEach(s=>(s.blocks||[]).forEach(b=>{const m=move(b.mv);(b.sets||[]).forEach((st,j)=>{
     const k=setStats(st);const z=k&&m.type==="force"?zoneOf(k.best):null;
-    rows.push([s.date,(folderOf(s.folder)||{}).name||"",s.title,s.status==="done"?"Faite":"Planifiée",m.name,m.type==="force"?"Force (moy.)":"Haltéro (pic)",j+1,st.load==null?"":show(st.load),m.rm&&st.load?Math.round(st.load/m.rm*100):"",st.reps,(st.v||[]).filter(x=>x!=null).map(x=>fmt(x)).join(" | "),k?c(k.best):"",k?c(k.avg):"",k?c(k.last):"",k&&k.vl!=null?fmt(k.vl,1):"",z?z.name:"",show(num(b.vmin)),show(num(b.vmax)),st.rpe,accOf(b.acc).name,s.sensor,st.note,b.note||""]);
+    rows.push([s.date,(folderOf(s.folder)||{}).name||"",s.title,s.status==="done"?"Faite":"Planifiée",m.name,m.type==="force"?"Force (moy.)":"Haltéro (pic)",j+1,st.load==null?"":show(st.load),m.rm&&st.load?Math.round(st.load/m.rm*100):"",st.reps,(st.v||[]).filter(x=>x!=null).map(x=>fmt(x)).join(" | "),k?c(k.best):"",k?c(k.avg):"",k?c(k.last):"",k&&k.vl!=null?fmt(k.vl,1):"",z?z.name:"",show(num(b.vmin)),show(num(b.vmax)),st.rpe,accOf(b.acc).name,s.sensor,st.note,b.note||"",b.calibrated===false?"Charge fixe":"Calibrée",b.rest||""]);
   })}));
   return "\uFEFF"+rows.map(r=>r.map(q).join(";")).join("\n");
 }
@@ -720,7 +730,7 @@ function cur(){return state.sessions[state.view.id]}
 function blk(s,id){return (s.blocks||[]).find(b=>b.id===id)}
 function touch(s){s.updatedAt=Date.now();clearFits();persist(s.id)}
 function newSet(from){return {id:uid(),load:from?from.load:null,reps:from?from.reps:3,v:[],rpe:"",note:""}}
-function newBlock(mv){const m=move(mv);return {id:uid(),mv,note:"",vmin:null,vmax:null,vlMax:m.type==="force"?20:null,sets:[newSet()]}}
+function newBlock(mv){const m=move(mv);return {id:uid(),mv,note:"",rest:"",calibrated:true,vmin:null,vmax:null,vlMax:m.type==="force"?20:null,sets:[newSet()]}}
 function lastMove(){const s=Object.values(state.sessions).sort((a,b)=>(b.updatedAt||0)-(a.updatedAt||0))[0];const b=s&&s.blocks&&s.blocks[s.blocks.length-1];return b?b.mv:state.settings.moves[0].id}
 function open(id){state.view={name:"session",id};state.confirmDel=false;render();window.scrollTo(0,0)}
 
@@ -740,6 +750,7 @@ document.addEventListener("click",async e=>{
     case "add-set":{const b=blk(s,t.dataset.b);b.sets.push(newSet(b.sets[b.sets.length-1]));touch(s);render();break}
     case "dup-set":{const b=blk(s,t.dataset.b);const i=b.sets.findIndex(x=>x.id===t.dataset.s);b.sets.splice(i+1,0,newSet(b.sets[i]));touch(s);render();break}
     case "del-set":{const b=blk(s,t.dataset.b);b.sets=b.sets.filter(x=>x.id!==t.dataset.s);touch(s);render();break}
+    case "calib":{const b=blk(s,t.dataset.b);b.calibrated=t.dataset.v==="1";touch(s);render();break}
     case "zone":{const b=blk(s,t.dataset.b);const z=ZONES.find(z=>z.k===t.dataset.z);b.vmin=z.min;b.vmax=z.max;touch(s);render();break}
     case "dup-session":{const id=uid();const c=clone(s);c.id=id;c.status="planned";c.date=today();c.title=(s.title||"Séance")+" (copie)";c.blocks.forEach(b=>{b.id=uid();b.sets.forEach(st=>{st.id=uid();st.v=[];st.rpe="";st.note=""})});c.updatedAt=Date.now();c.createdAt=Date.now();c.order=nextOrder();state.sessions[id]=c;persist(id);open(id);break}
     case "del-session":if(!state.confirmDel){state.confirmDel=true;render()}else{const id=s.id;delete state.sessions[id];persist(id);state.confirmDel=false;state.view={name:"list",id:null};render()}break;
@@ -779,6 +790,7 @@ document.addEventListener("click",async e=>{
 document.addEventListener("input",e=>{
   const el=e.target;const s=cur();
   if(el.dataset.sf&&s){s[el.dataset.sf]=el.value;if(el.dataset.sf==="sensor"){state.settings.sensor=el.value;persist("__settings")}touch(s);return}
+  if(el.dataset.bt&&s){const b=blk(s,el.dataset.b);b[el.dataset.bt]=el.value;touch(s);return}
   if(el.dataset.bn&&s){const b=blk(s,el.dataset.bn);b.note=el.value;touch(s);return}
   if(el.dataset.bf&&s&&el.dataset.bf!=="mv"&&el.dataset.bf!=="acc"){const b=blk(s,el.dataset.b);b[el.dataset.bf]=num(el.value);touch(s);refreshBlock(b);return}
   if(el.dataset.tf&&s){const b=blk(s,el.dataset.b),st=b.sets.find(x=>x.id===el.dataset.s);const f=el.dataset.tf;

@@ -878,6 +878,8 @@ async function saveSession(){
     score_labels:scoreLabels.length?JSON.stringify(scoreLabels):null,
     score_label1:scoreLabels[0]||null,score_label2:scoreLabels[1]||null,score_note_label:scoreLabels[scoreLabels.length-1]||null
   };
+  // Réglages VBT (vbt-seance.js) : null si pas de VBT ou type sans VBT
+  if(typeof window.vbtGetFormData==='function')payload.vbt=window.vbtGetFormData(type);
 
   let error;
   if(personalAthleteId){
@@ -910,6 +912,7 @@ async function saveSession(){
   ['f-target','f-tips','f-scaling-inter','f-scaling-scaled','f-scaling-foundation'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   setFormVideos([]);
   clearEditor();
+  if(typeof window.vbtFormReset==='function')window.vbtFormReset();
   document.getElementById('score-labels-container').innerHTML='';
   document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
   document.getElementById('f-date').value=new Date().toISOString().split('T')[0];
