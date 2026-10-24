@@ -20,6 +20,7 @@
   var _progOf = {};           // cycleId -> programme_id
   var _tab = 'all';           // 'all' | 'none' | programme_id
   var _savingProg = false;
+  var _opened = false;
   try { _tab = localStorage.getItem(LS_KEY) || 'all'; } catch (e) {}
 
   function $(id) { return document.getElementById(id); }
@@ -54,6 +55,14 @@
       return a.start_date.localeCompare(b.start_date);
     });
   }
+  function isTraining(p) { return /^training$/i.test((p.name || '').trim()); }
+  function sortedProgs(cnt) {
+    if (!cnt) { cnt = {}; cycles().forEach(function (c) { var p = _progOf[c.id]; if (p) cnt[p] = (cnt[p] || 0) + 1; }); }
+    return _progs.slice().sort(function (a, b) {
+      return (isTraining(b) - isTraining(a)) || (cnt[b.id] || 0) - (cnt[a.id] || 0) || a.name.localeCompare(b.name);
+    });
+  }
+  function defaultTab() { var l = sortedProgs(); return l.length ? l[0].id : 'none'; }
   function progName(id) { var p = _progs.find(function (x) { return x.id === id; }); return p ? p.name : ''; }
 
   // ---------- données ----------
@@ -108,7 +117,7 @@
       '.cp-cur .t{font-family:"Bebas Neue",sans-serif;font-size:20px;letter-spacing:1.5px;line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '.cp-cur .m{font-size:11px;color:var(--muted);margin-top:2px}',
       '.cp-cur .k{color:var(--accent);font-weight:700}',
-      '.cp-strip{display:flex;gap:6px;overflow-x:auto;margin-top:12px;padding-bottom:4px;scroll-snap-type:x proximity;scrollbar-width:none}',
+      '.cp-strip{display:flex;gap:6px;overflow-x:auto;margin-top:6px;padding:8px 0 4px;scroll-snap-type:x proximity;scrollbar-width:none}',
       '.cp-strip::-webkit-scrollbar{display:none}',
       '.cp-chip{flex:0 0 auto;scroll-snap-align:center;min-width:112px;max-width:150px;text-align:left;background:var(--card2);border:1.5px solid var(--border2);border-radius:10px;padding:8px 10px;color:var(--text);font-family:inherit;cursor:pointer;position:relative}',
       '.cp-chip .t{font-family:"Bebas Neue",sans-serif;font-size:14px;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -157,11 +166,10 @@
     var el = $('cp-tabs'); if (!el) return;
     var cnt = {}; var none = 0;
     cycles().forEach(function (c) { var p = _progOf[c.id]; if (p) cnt[p] = (cnt[p] || 0) + 1; else none++; });
-    var list = _progs.slice().sort(function (a, b) { return (cnt[b.id] || 0) - (cnt[a.id] || 0) || a.name.localeCompare(b.name); });
-    if (_tab !== 'all' && _tab !== 'none' && !list.some(function (p) { return p.id === _tab; })) _tab = 'all';
-    if (_tab === 'none' && !none) _tab = 'all';
-    var h = '<button class="cp-tab' + (_tab === 'all' ? ' active' : '') + '" data-t="all">Tous<span class="n">' + cycles().length + '</span></button>';
-    h += list.map(function (p) {
+    var list = sortedProgs(cnt);
+    if (_tab === 'all' || (_tab !== 'none' && !list.some(function (p) { return p.id === _tab; })) || (_tab === 'none' && !none))
+      _tab = defaultTab();
+    var h = list.map(function (p) {
       return '<button class="cp-tab' + (_tab === p.id ? ' active' : '') + '" data-t="' + p.id + '">' + esc(p.name) +
         (cnt[p.id] ? '<span class="n">' + cnt[p.id] + '</span>' : '') + '</button>';
     }).join('');
@@ -323,9 +331,13 @@
       try {
         if (!_progs.length) await loadProgs();
         await loadLinks();
+        var hasNone = cycles().some(function (c) { return !_progOf[c.id]; });
+        if (_tab === 'all' || (_tab === 'none' && !hasNone) || (_tab !== 'none' && !_progs.some(function (p) { return p.id === _tab; }))) _tab = defaultTab();
         if (typeof window.renderCycleSelector === 'function') window.renderCycleSelector();
         if (typeof window.renderSeasonOverview === 'function') window.renderSeasonOverview();
         render();
+        var cd0 = cur();
+        if (!_opened && (!cd0 || !cd0.id) && !(cd0 && cd0.programmeId)) { _opened = true; setTab(_tab, true); }
       } catch (e) { console.warn('[cycle-progs] loadAll', e); }
       return r;
     };
