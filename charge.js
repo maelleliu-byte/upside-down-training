@@ -666,8 +666,43 @@
     const csv=document.getElementById('chg-csv');
     if(csv)csv.addEventListener('click',exportCSV);
   }
-  async function openFiche(athleteId){
-    const a=_roster.find(x=>x.athlete_id===athleteId)||{};
+  /* Raccourci depuis l'espace perso : ouvre l'onglet ⚡ Charge directement
+     sur le suivi individuel de l'athlète affiché ; « Retour » ramène à son espace perso. */
+  async function openSuiviAthlete(){
+    const ath=window.currentPersoAthlete||(typeof currentPersoAthlete!=='undefined'?currentPersoAthlete:null);
+    if(!ath||!ath.id)return;
+    injectCoachTab();
+    const btn=document.getElementById('chg-admin-tab-btn');
+    const panel=document.getElementById('admin-charge');
+    if(!btn||!panel)return;
+    document.querySelectorAll('.admin-tab-btn').forEach(x=>x.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+    panel.classList.add('active');
+    try{btn.scrollIntoView({block:'nearest',inline:'center'});}catch(e){}
+    await loadRoster();
+    await openFiche(ath.id,{name:ath.full_name||ath.email,fromPerso:true});
+    const page=document.getElementById('page-admin');if(page)page.scrollTop=0;
+    window.scrollTo(0,0);
+  }
+  window.openSuiviAthlete=openSuiviAthlete;
+
+  function backToPerso(){
+    const pBtn=Array.from(document.querySelectorAll('.admin-tab-btn'))
+      .find(b=>(b.getAttribute('onclick')||'').indexOf("'perso'")>-1);
+    const pPanel=document.getElementById('admin-perso');
+    if(!pBtn||!pPanel)return;
+    // on réaffiche le panneau tel quel (fiche + semaine en cours), sans recharger la liste
+    document.querySelectorAll('.admin-tab-btn').forEach(x=>x.classList.remove('active'));
+    pBtn.classList.add('active');
+    document.querySelectorAll('.admin-panel').forEach(p=>p.classList.remove('active'));
+    pPanel.classList.add('active');
+    try{pBtn.scrollIntoView({block:'nearest',inline:'center'});}catch(e){}
+  }
+
+  async function openFiche(athleteId,opts){
+    opts=opts||{};
+    const a=_roster.find(x=>x.athlete_id===athleteId)||{full_name:opts.name};
     const list=document.getElementById('chg-rost-view'),fiche=document.getElementById('chg-fiche-view');
     if(!fiche)return;
     list.style.display='none';fiche.style.display='';
@@ -681,12 +716,13 @@
       ]);
       series=s.data||[];weeks=w.data||[];mods=m.data||[];
     }catch(e){console.error('[charge] fiche',e);}
-    fiche.innerHTML=`<button class="chg-back" id="chg-back">‹ Retour</button>
+    fiche.innerHTML=`<button class="chg-back" id="chg-back">${opts.fromPerso?'‹ Retour à l\'espace perso':'‹ Retour'}</button>
       <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${a.full_name||a.email||'Athlète'}</div>
       ${series.length?suiviHTML(series,weeks,mods)
         :'<div style="color:var(--muted);font-size:13px;margin-top:8px">Aucune saisie de charge pour cet athlète.</div>'}`;
     document.getElementById('chg-back').addEventListener('click',()=>{
       fiche.style.display='none';list.style.display='';
+      if(opts.fromPerso)backToPerso();
     });
   }
   async function exportCSV(){

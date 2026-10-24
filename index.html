@@ -129,7 +129,7 @@
 })();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="styles.css?v=20261024a">
 <style>
 /* PATCH: blocs séances en mode clair */
 :root[data-theme="light"] .cal-rich{background:#ffffff !important;border-color:#dcdcd2 !important}
@@ -764,10 +764,13 @@
           <button class="perso-add-btn" onclick="persoNewSession()">+ Séance</button>
         </div>
         <div class="perso-toolbar">
-          <div class="perso-view-toggle">
-            <button id="perso-view-day" onclick="persoSetView('day')">Jour</button>
-            <button id="perso-view-week" class="active" onclick="persoSetView('week')">Semaine</button>
-            <button id="perso-view-month" onclick="persoSetView('month')">Mois</button>
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+            <div class="perso-view-toggle">
+              <button id="perso-view-day" onclick="persoSetView('day')">Jour</button>
+              <button id="perso-view-week" class="active" onclick="persoSetView('week')">Semaine</button>
+              <button id="perso-view-month" onclick="persoSetView('month')">Mois</button>
+            </div>
+            <button class="perso-suivi-btn" id="perso-suivi-btn" onclick="openSuiviAthlete()" title="Suivi individuel de l'athlète (onglet Charge)">📊 Suivi</button>
           </div>
           <div class="perso-week-nav">
             <button class="arrow-btn" onclick="persoNav(-1)">‹</button>
@@ -1245,7 +1248,7 @@
 <script src="open-read-session.js"></script>
 <script src="abos.js"></script>
 <script src="wellness.js"></script>
-<script src="charge.js"></script>
+<script src="charge.js?v=20261024a"></script>
 <script>
 /* Tous les modules sont chargés en amont - lazy-load désactivé */
 const _pageModules = {prog:true, pr:true, videos:true, admin:true, abos:true, profil:true};
