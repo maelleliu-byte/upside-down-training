@@ -16,7 +16,7 @@
   var PALETTE = ['#e8ff47', '#2dd4bf', '#ff7a45', '#c084fc', '#47c8ff', '#f87171', '#4ade80', '#fbbf24', '#f472b6', '#a3a3a3'];
   var DAYS = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
   var SHORT = ['L', 'M', 'M', 'J', 'V', 'S', 'D'];
-  var HIDE_TYPES = { separator: 1, warmup: 1, mobility: 1 };
+  var HIDE_TYPES = { warmup: 1, mobility: 1 };
   var _cyc = {};      // programme_id -> [cycles]
   var _seq = 0;
 
@@ -69,7 +69,11 @@
       '.pg-blk{display:flex;align-items:center;gap:10px;padding:5px 0}',
       '.pg-blk .ty{flex:0 0 auto;font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:3px 8px;border-radius:6px;min-width:64px;text-align:center}',
       '.pg-blk .ti{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:1px;line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-      '.pg-none{font-size:12px;color:var(--muted)}'
+      '.pg-none{font-size:12px;color:var(--muted)}',
+      '.pg-cell .px{font-size:8.5px;font-weight:600;line-height:1.2;margin-top:3px;opacity:.75;overflow-wrap:anywhere}',
+      '.pg-sep{display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-size:9.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}',
+      '.pg-sep i{flex:1;height:1px}',
+      '.pg-sep span{flex:0 0 auto}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -105,22 +109,33 @@
     var week = days.map(function (d, k) {
       var blocks = byDay[isos[k]];
       var inCycle = isos[k] >= c.start_date && isos[k] <= iso(e0);
-      var seen = {}, types = [];
-      blocks.forEach(function (b) { var l = shortLabel(b.type); if (!seen[l]) { seen[l] = 1; types.push(l); } });
+      var seen = {}, types = [], extra = [], inExtra = false;
+      blocks.forEach(function (b) {
+        if (b.type === 'separator') { inExtra = true; return; }
+        var l = shortLabel(b.type); if (seen[l]) return; seen[l] = 1;
+        (inExtra ? extra : types).push(l);
+      });
       var txt = types.join(' + ');
+      var txtX = extra.length ? '+ ' + extra.join(' + ') : '';
       var sel = isos[k] === refIso;
-      return '<div class="pg-cell' + (txt ? '' : ' off') + '" data-d="' + isos[k] + '" style="' +
-        (txt && inCycle ? 'background:' + col + '1a;color:' + col + ';' : '') +
+      return '<div class="pg-cell' + (txt || txtX ? '' : ' off') + '" data-d="' + isos[k] + '" style="' +
+        ((txt || txtX) && inCycle ? 'background:' + col + '1a;color:' + col + ';' : '') +
         (sel ? 'border-color:' + col + ';' : '') + '">' +
         '<div class="dd">' + SHORT[k] + d.getDate() + '</div>' +
-        '<div class="pp">' + (txt ? esc(txt) : (isos[k] > iso(new Date()) ? '·' : 'Repos')) + '</div></div>';
+        '<div class="pp">' + (txt || txtX ? esc(txt) : (isos[k] > iso(new Date()) ? '·' : 'Repos')) + '</div>' +
+        (txtX ? '<div class="px">' + esc(txtX) + '</div>' : '') + '</div>';
     }).join('');
 
     var refD = d12(refIso);
     var todayLbl = refIso === iso(new Date()) ? "Aujourd'hui" : DAYS[dow(refD) - 1] + ' ' + refD.getDate();
     var blocks = byDay[refIso] || [];
-    var dayHtml = blocks.length ? blocks.map(function (b) {
+    // un séparateur seul (sans bloc après) n'est pas affiché
+    blocks = blocks.filter(function (b, i) { return b.type !== 'separator' || blocks.slice(i + 1).some(function (x) { return x.type !== 'separator'; }); });
+    var dayHtml = blocks.some(function (b) { return b.type !== 'separator'; }) ? blocks.map(function (b) {
       var bc = hex(b.color || col);
+      if (b.type === 'separator') {
+        return '<div class="pg-sep" style="color:' + bc + '"><i style="background:' + bc + '55"></i><span>' + esc(b.title || 'Bloc supplémentaire') + '</span><i style="background:' + bc + '55"></i></div>';
+      }
       return '<div class="pg-blk"><span class="ty" style="background:' + bc + '22;color:' + bc + '">' + esc(label(b.type)) + '</span>' +
         '<span class="ti">' + esc(b.title || label(b.type)) + '</span></div>';
     }).join('') : '<div class="pg-none">' + (refIso > iso(new Date()) ? 'Rien de publié pour l\'instant.' : 'Repos — pas de bloc programmé.') + '</div>';
