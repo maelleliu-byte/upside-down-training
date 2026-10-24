@@ -8395,7 +8395,7 @@ async function claimFreeAccess(programmeId){
   // L'état au réveil vit dans training_load_days (même table que le jour OFF
   // et la charge) : c'est lui que lit training_load_series pour la frise.
   async function _wdSaveWake(){
-    if(!_wdDate || !window.currentUser) return;
+    if(!_wdDate || !currentUser) return;
     const {error} = await sb.from('training_load_days').upsert({
       athlete_id: currentUser.id,
       date: _wdDate,
