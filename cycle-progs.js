@@ -20,6 +20,10 @@
   var _progOf = {};           // cycleId -> programme_id
   var _tab = 'all';           // 'all' | 'none' | programme_id
   var _savingProg = false;
+  var _colorOf = {};          // cycleId -> couleur choisie (null = auto)
+  var _seaYear = new Date().getFullYear();
+  var PALETTE = ['#e8ff47', '#2dd4bf', '#ff7a45', '#c084fc', '#47c8ff', '#f87171', '#4ade80', '#fbbf24', '#f472b6', '#a3a3a3'];
+  var MONTHS = ['JAN', 'FÉV', 'MARS', 'AVR', 'MAI', 'JUIN', 'JUIL', 'AOÛT', 'SEPT', 'OCT', 'NOV', 'DÉC'];
   var _opened = false;
   try { _tab = localStorage.getItem(LS_KEY) || 'all'; } catch (e) {}
 
@@ -63,6 +67,16 @@
     });
   }
   function defaultTab() { var l = sortedProgs(); return l.length ? l[0].id : 'none'; }
+  // couleur d'un cycle : choisie, sinon automatique selon son rang dans sa programmation
+  function colorOf(c) {
+    if (!c) return PALETTE[0];
+    if (_colorOf[c.id]) return _colorOf[c.id];
+    var p = _progOf[c.id] || null;
+    var same = cycles().filter(function (x) { return (_progOf[x.id] || null) === p; })
+      .sort(function (a, b) { return (a.start_date || '9').localeCompare(b.start_date || '9') || (a.name || '').localeCompare(b.name || ''); });
+    var i = same.findIndex(function (x) { return x.id === c.id; });
+    return PALETTE[(i < 0 ? 0 : i) % PALETTE.length];
+  }
   function progName(id) { var p = _progs.find(function (x) { return x.id === id; }); return p ? p.name : ''; }
 
   // ---------- données ----------
@@ -76,8 +90,9 @@
     var ids = cycles().map(function (c) { return c.id; }).filter(Boolean);
     _progOf = {};
     if (!ids.length) return;
-    var r = await sb.from('cycle_plans').select('id,programme_id').in('id', ids);
-    (r.data || []).forEach(function (x) { _progOf[x.id] = x.programme_id || null; });
+    var r = await sb.from('cycle_plans').select('id,programme_id,color').in('id', ids);
+    _colorOf = {};
+    (r.data || []).forEach(function (x) { _progOf[x.id] = x.programme_id || null; _colorOf[x.id] = x.color || null; });
     cycles().forEach(function (c) { c.programme_id = _progOf[c.id] || null; });
   }
 
@@ -86,12 +101,13 @@
     var cd = cur();
     if (!cd || !cd.id || _savingProg) return;
     var want = cd.programmeId || null;
-    if ((_progOf[cd.id] || null) === want) return;
+    var wantCol = cd.color || _colorOf[cd.id] || null;
+    if ((_progOf[cd.id] || null) === want && (_colorOf[cd.id] || null) === wantCol) return;
     _savingProg = true;
     try {
-      var r = await sb.from('cycle_plans').update({ programme_id: want }).eq('id', cd.id);
+      var r = await sb.from('cycle_plans').update({ programme_id: want, color: wantCol }).eq('id', cd.id);
       if (r.error) { console.warn('cycle programme_id', r.error.message); return; }
-      _progOf[cd.id] = want;
+      _progOf[cd.id] = want; _colorOf[cd.id] = wantCol;
       var c = cycles().find(function (x) { return x.id === cd.id; });
       if (c) c.programme_id = want;
       render();
@@ -131,7 +147,35 @@
       '.cp-empty{font-size:12px;color:var(--muted);text-align:center;padding:6px 0}',
       '.cp-assign{display:flex;align-items:center;gap:8px;margin-bottom:12px}',
       '.cp-assign label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;flex:0 0 auto}',
-      '.cp-assign select{flex:1;min-width:0}'
+      '.cp-assign select{flex:1;min-width:0}',
+      '.cp-colors{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin:-4px 0 12px}',
+      '.cp-colors label{font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-right:4px}',
+      '.cp-sw{width:24px;height:24px;border-radius:7px;border:2px solid transparent;cursor:pointer;padding:0}',
+      '.cp-sw.on{border-color:var(--text);box-shadow:0 0 0 2px var(--dark) inset}',
+      '.cp-chip{border-left-width:4px}',
+      '.cp-sea-head{display:flex;align-items:center;gap:8px;margin-bottom:10px}',
+      '.cp-sea-ti{flex:1;min-width:0}',
+      '.cp-sea-ti .t{font-family:"Bebas Neue",sans-serif;font-size:19px;letter-spacing:1.5px;line-height:1}',
+      '.cp-sea-ti .m{font-size:11px;color:var(--muted);margin-top:3px}',
+      '.cp-sea-scroll{overflow-x:auto;margin:0 -12px;padding:0 12px 6px;scrollbar-width:thin}',
+      '.cp-sea{display:grid;gap:0;position:relative;min-width:max-content}',
+      '.cp-sea .mo{font-family:"Bebas Neue",sans-serif;font-size:13px;letter-spacing:1.2px;color:var(--text2,var(--text));padding:4px 6px;border-left:1px solid var(--border2);background:var(--card2);white-space:nowrap;overflow:hidden}',
+      '.cp-sea .mo.now{color:#000;background:var(--accent)}',
+      '.cp-sea .wk{font-size:9px;color:var(--muted);text-align:center;padding:4px 0 6px;border-left:1px solid var(--border)}',
+      '.cp-sea .wk.m1{border-left-color:var(--border2)}',
+      '.cp-sea .wk.now{color:var(--accent);font-weight:800}',
+      '.cp-sea .col{border-left:1px solid var(--border);pointer-events:none;position:relative;z-index:0}',
+      '.cp-sea .col.m1{border-left-color:var(--border2)}',
+      '.cp-sea .col.now{background:rgba(255,255,255,.06);border-left:2px solid var(--accent)}',
+      '.cp-sea .bar{margin:3px 1px;border-radius:8px;padding:5px 7px 4px;cursor:pointer;overflow:hidden;min-height:40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;z-index:2;border:1px solid transparent}',
+      '.cp-sea .bar .n{font-family:"Bebas Neue",sans-serif;font-size:14px;letter-spacing:1px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#000}',
+      '.cp-sea .bar .w{display:grid;font-size:8.5px;font-weight:800;color:rgba(0,0,0,.55);text-align:center;margin:3px -7px 0}',
+      '.cp-sea .bar.sel{outline:2px solid var(--text);outline-offset:1px}',
+      '.cp-sea .gap{grid-column:1/-1;height:4px}',
+      '.cp-sea-leg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:10px}',
+      '.cp-sea-leg button{display:flex;align-items:center;gap:6px;background:none;border:0;padding:0;color:var(--text);font-family:inherit;font-size:11px;cursor:pointer}',
+      '.cp-sea-leg i{width:10px;height:10px;border-radius:3px;display:inline-block}',
+      '.cp-sea-leg span{color:var(--muted)}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -145,6 +189,14 @@
       if (years) { years.insertAdjacentElement('beforebegin', tabs); tabs.insertAdjacentElement('afterend', box); }
       else { panel.insertBefore(box, panel.firstChild); panel.insertBefore(tabs, box); }
     }
+    if (!$('cp-season')) {
+      var sea = document.createElement('div'); sea.className = 'cp-box'; sea.id = 'cp-season';
+      $('cp-box').insertAdjacentElement('afterend', sea);
+    }
+    // l'ancienne vue « année / saison » est remplacée par la vue saison par programmation
+    if (years) years.style.display = 'none';
+    var oldSea = $('cycle-season-overview'); if (oldSea) oldSea.style.setProperty('display', 'none', 'important');
+    try { if (typeof cycleYearFilter !== 'undefined' && cycleYearFilter !== 'all') cycleYearFilter = 'all'; } catch (e) {}
     if (!$('cp-assign')) {
       var sel = $('cycle-selector');
       var row = sel && sel.parentElement;
@@ -152,6 +204,8 @@
         var a = document.createElement('div'); a.className = 'cp-assign'; a.id = 'cp-assign';
         a.innerHTML = '<label>Programmation</label><select class="form-select" id="cp-assign-sel"></select>';
         row.insertAdjacentElement('afterend', a);
+        var cl = document.createElement('div'); cl.className = 'cp-colors'; cl.id = 'cp-colors';
+        a.insertAdjacentElement('afterend', cl);
         $('cp-assign-sel').addEventListener('change', function () {
           var cd = cur(); if (!cd) return;
           cd.programmeId = this.value || null;
@@ -228,7 +282,9 @@
       var w = parseInt(c.weeks) || 0, done = 0;
       if (s && w) done = Math.max(0, Math.min(w, Math.floor((new Date(today + 'T12:00:00') - s) / 604800000) + (isNow ? 1 : 0)));
       var bars = ''; for (var k = 0; k < Math.min(w, 16); k++) bars += '<i' + (k < done ? ' class="on"' : '') + '></i>';
-      return '<button class="cp-chip' + (i === idx ? ' sel' : '') + (isNow ? ' now' : '') + '" data-id="' + c.id + '">' +
+      var col = colorOf(c);
+      bars = bars.replace(/class="on"/g, 'class="on" style="background:' + col + '"');
+      return '<button class="cp-chip' + (i === idx ? ' sel' : '') + (isNow ? ' now' : '') + '" data-id="' + c.id + '" style="border-left-color:' + col + '">' +
         '<div class="t">' + esc(c.name || 'Cycle sans nom') + '</div>' +
         '<div class="m">' + (s ? fmt(s) + ' → ' + fmt(e) : 'sans date') + ' · ' + (c.weeks || '?') + ' sem.</div>' +
         (w ? '<div class="bar">' + bars + '</div>' : '') + '</button>';
@@ -266,10 +322,122 @@
       _progs.map(function (p) { return '<option value="' + p.id + '"' + (p.id === v ? ' selected' : '') + '>' + esc(p.name) + '</option>'; }).join('');
   }
 
+  function renderColors() {
+    var el = $('cp-colors'); if (!el) return;
+    var cd = cur();
+    var c = cd && cd.id ? cycles().find(function (x) { return x.id === cd.id; }) : null;
+    var now = (cd && cd.color) || (c ? colorOf(c) : null);
+    el.innerHTML = '<label>Couleur</label>' + PALETTE.map(function (p) {
+      return '<button class="cp-sw' + (p === now ? ' on' : '') + '" data-c="' + p + '" style="background:' + p + '" aria-label="Couleur ' + p + '"></button>';
+    }).join('');
+    el.querySelectorAll('[data-c]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var cd2 = cur(); if (!cd2) return;
+        cd2.color = b.dataset.c;
+        if (cd2.id) { _colorOf[cd2.id] = null; persistProg(); }
+        else render();
+      });
+    });
+  }
+
+  // lundi de la semaine d'une date
+  function monday(d) { var m = new Date(d); m.setHours(12, 0, 0, 0); var w = m.getDay(); m.setDate(m.getDate() - (w === 0 ? 6 : w - 1)); return m; }
+
+  function renderSeason() {
+    var box = $('cp-season'); if (!box) return;
+    var Y = _seaYear;
+    // semaines de l'année : du lundi de la semaine du 1er janvier au dernier lundi de l'année
+    var weeks = [];
+    var d = monday(new Date(Y, 0, 1));
+    while (d.getFullYear() < Y || (d.getFullYear() === Y)) {
+      weeks.push(new Date(d));
+      d.setDate(d.getDate() + 7);
+      if (d.getFullYear() > Y) break;
+    }
+    var W = weeks.length;
+    var wIso = weeks.map(iso);
+    var thisMon = iso(monday(new Date()));
+    var nowIdx = wIso.indexOf(thisMon);
+    var mOf = weeks.map(function (w) { var t = new Date(w); t.setDate(t.getDate() + 3); return t.getFullYear() === Y ? t.getMonth() : (t.getFullYear() < Y ? 0 : 11); });
+
+    var list = tabCycles().filter(function (c) {
+      var s = startOf(c), e = endOf(c); if (!s) return false;
+      return s.getFullYear() <= Y && e.getFullYear() >= Y;
+    });
+    // couloirs : un cycle qui chevauche le précédent passe sur la ligne suivante
+    var lanes = [];
+    var placed = list.map(function (c) {
+      var sI = Math.round((monday(startOf(c)) - weeks[0]) / 604800000);
+      var n = parseInt(c.weeks) || 1;
+      var a = Math.max(0, sI), b = Math.min(W - 1, sI + n - 1);
+      var lane = lanes.findIndex(function (end) { return end < a; });
+      if (lane < 0) { lane = lanes.length; lanes.push(b); } else lanes[lane] = b;
+      return { c: c, a: a, b: b, first: a - sI + 1, n: n, lane: lane };
+    }).filter(function (x) { return x.b >= x.a; });
+    var L = Math.max(1, lanes.length);
+
+    var cd = cur();
+    var h = '<div class="cp-sea" style="grid-template-columns:repeat(' + W + ',30px);grid-template-rows:auto auto repeat(' + L + ',auto)">';
+    // mois
+    var i = 0;
+    while (i < W) {
+      var m = mOf[i], j = i; while (j + 1 < W && mOf[j + 1] === m) j++;
+      var isNowM = new Date().getFullYear() === Y && new Date().getMonth() === m;
+      h += '<div class="mo' + (isNowM ? ' now' : '') + '" style="grid-column:' + (i + 1) + '/span ' + (j - i + 1) + ';grid-row:1">' + MONTHS[m] + '</div>';
+      i = j + 1;
+    }
+    // semaines (date du lundi) + colonnes de fond
+    weeks.forEach(function (w, k) {
+      var m1 = k === 0 || mOf[k] !== mOf[k - 1];
+      h += '<div class="wk' + (m1 ? ' m1' : '') + (k === nowIdx ? ' now' : '') + '" style="grid-column:' + (k + 1) + ';grid-row:2" title="Semaine du ' + fmt(w) + '">' + String(w.getDate()).padStart(2, '0') + '</div>';
+      h += '<div class="col' + (m1 ? ' m1' : '') + (k === nowIdx ? ' now' : '') + '" style="grid-column:' + (k + 1) + ';grid-row:3/span ' + L + '"></div>';
+    });
+    // cycles
+    placed.forEach(function (p) {
+      var col = colorOf(p.c);
+      var span = p.b - p.a + 1;
+      var nums = ''; for (var k = 0; k < span; k++) nums += '<span>' + (p.first + k) + '</span>';
+      h += '<div class="bar' + (cd && cd.id === p.c.id ? ' sel' : '') + '" data-id="' + p.c.id + '" title="' + esc(p.c.name) + ' · ' + fmt(startOf(p.c)) + ' → ' + fmt(endOf(p.c)) + ' · ' + p.n + ' sem." ' +
+        'style="grid-column:' + (p.a + 1) + '/span ' + span + ';grid-row:' + (p.lane + 3) + ';background:' + col + '">' +
+        '<div class="n">' + esc(p.c.name || 'Cycle') + '</div>' +
+        '<div class="w" style="grid-template-columns:repeat(' + span + ',1fr)">' + nums + '</div></div>';
+    });
+    if (!placed.length) h += '<div style="grid-column:1/-1;grid-row:3;font-size:12px;color:var(--muted);padding:14px 4px">Aucun cycle sur ' + Y + '.</div>';
+    h += '</div>';
+
+    var totalW = placed.reduce(function (t, p) { return t + (p.b - p.a + 1); }, 0);
+    var leg = placed.slice().sort(function (a, b) { return a.a - b.a; }).map(function (p) {
+      return '<button data-id="' + p.c.id + '"><i style="background:' + colorOf(p.c) + '"></i>' + esc(p.c.name) +
+        ' <span>' + fmt(startOf(p.c)) + ' → ' + fmt(endOf(p.c)) + '</span></button>';
+    }).join('');
+
+    box.innerHTML =
+      '<div class="cp-sea-head">' +
+        '<button class="cp-arrow" id="cp-sea-prev" aria-label="Saison précédente">‹</button>' +
+        '<div class="cp-sea-ti" style="text-align:center"><div class="t">Saison ' + Y + '</div>' +
+        '<div class="m">' + (progName(_tab) ? esc(progName(_tab)) + ' · ' : '') + placed.length + ' cycle' + (placed.length > 1 ? 's' : '') + ' · ' + totalW + ' semaine' + (totalW > 1 ? 's' : '') + ' programmée' + (totalW > 1 ? 's' : '') + ' sur ' + W + '</div></div>' +
+        '<button class="cp-arrow" id="cp-sea-next" aria-label="Saison suivante">›</button>' +
+      '</div>' +
+      '<div class="cp-sea-scroll" id="cp-sea-scroll">' + h + '</div>' +
+      (leg ? '<div class="cp-sea-leg">' + leg + '</div>' : '');
+
+    $('cp-sea-prev').addEventListener('click', function () { _seaYear--; renderSeason(); });
+    $('cp-sea-next').addEventListener('click', function () { _seaYear++; renderSeason(); });
+    box.querySelectorAll('[data-id]').forEach(function (b) { b.addEventListener('click', function () { openCycle(b.dataset.id); }); });
+
+    // centre sur la semaine en cours (ou le cycle ouvert)
+    var sc = $('cp-sea-scroll');
+    var target = box.querySelector('.bar.sel') || box.querySelector('.wk.now');
+    if (sc && target) {
+      var x = target.offsetLeft - sc.clientWidth / 2 + target.offsetWidth / 2;
+      sc.scrollLeft = Math.max(0, x);
+    }
+  }
+
   function render() {
     if (!ensureDom()) return;
     injectCss();
-    renderTabs(); renderBox(); renderAssign();
+    renderTabs(); renderBox(); renderAssign(); renderColors(); renderSeason();
   }
 
   // ---------- actions ----------
@@ -346,7 +514,12 @@
     window.loadCycle = async function (id) {
       var r = await oLoad.apply(this, arguments);
       var cd = cur();
-      if (cd && id) cd.programmeId = _progOf[id] || null;
+      if (cd && id) {
+        cd.programmeId = _progOf[id] || null;
+        cd.color = null;
+        var c = cycles().find(function (x) { return x.id === id; });
+        if (c && c.start_date) _seaYear = startOf(c).getFullYear();
+      }
       render();
       return r;
     };
