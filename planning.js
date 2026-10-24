@@ -244,10 +244,14 @@ async function buildSessionCard(s){
 }
 
 function buildSeparatorCard(s){
+  // couleur associée au séparateur (choisie à la création), sinon couleur du studio
+  const c=/^#[0-9a-f]{3,8}$/i.test(s.color||'')?s.color:'';
+  const line=c?` style="background:${c}"`:'';
+  const txt=c?` style="color:${c}"`:'';
   return`<div class="separator-block">
-    <div class="separator-line"></div>
-    <div class="separator-title">${s.title||'—'}</div>
-    <div class="separator-line"></div>
+    <div class="separator-line"${line}></div>
+    <div class="separator-title"${txt}>${s.title||'—'}</div>
+    <div class="separator-line"${line}></div>
   </div>`;
 }
 
