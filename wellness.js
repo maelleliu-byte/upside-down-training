@@ -9138,6 +9138,26 @@ async function claimFreeAccess(programmeId){
     const focus=(c.days||{})[String(_pcDow(refD))]||'';
     const todayLbl=refIso===todayIso?"Aujourd'hui":`${PC_DAYS[_pcDow(refD)-1]} ${refD.getDate()}`;
 
+    // récap des blocs du jour (séances perso de l'athlète)
+    let blocksHtml='';
+    try{
+      const HIDE={separator:1,warmup:1,mobility:1};
+      const {data:blk}=await sb.from('personal_sessions').select('type,title,color,sort_order,created_at')
+        .eq('athlete_id',currentUser.id).eq('date',refIso)
+        .order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+      const list=(blk||[]).filter(b=>!HIDE[b.type]);
+      const lab=t=>(typeof TYPE_LABELS!=='undefined'&&TYPE_LABELS[t])||t||'';
+      if(list.length){
+        blocksHtml='<div style="margin-top:8px">'+list.map(b=>{
+          const bc=/^#[0-9a-f]{6}$/i.test(b.color||'')?b.color:col;
+          return `<div style="display:flex;align-items:center;gap:10px;padding:4px 0">
+            <span style="flex:0 0 auto;min-width:64px;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:${bc}22;color:${bc}">${_pcEsc(lab(b.type))}</span>
+            <span style="font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_pcEsc(b.title||lab(b.type))}</span></div>`;
+        }).join('')+'</div>';
+      }
+    }catch(e){console.warn('blocs du jour',e);}
+
+    area.querySelectorAll('.pc-ath').forEach(n=>n.remove());
     const el=document.createElement('div');
     el.className='pc-ath';
     el.style.cssText=`background:${col}0f;border-color:${col}33;border-left-color:${col}`;
@@ -9149,7 +9169,7 @@ async function claimFreeAccess(programmeId){
       <div class="pc-ath-track"><div class="pc-ath-fill" style="width:${pct}%;background:${col}"></div></div>
       <div class="pc-ath-dates"><span>${_pcFmt(c.start_date)}</span><span>${_pcFmt(c.end_date)}</span></div>
       <div class="pc-ath-week">${week}</div>
-      ${focus?`<div class="pc-ath-today"><div class="lbl">${todayLbl} · au programme</div><div class="val" style="color:${col}">${_pcEsc(focus)}</div></div>`:''}`;
+      ${(focus||blocksHtml)?`<div class="pc-ath-today"><div class="lbl">${todayLbl} · au programme</div>${focus?`<div class="val" style="color:${col}">${_pcEsc(focus)}</div>`:''}${blocksHtml}</div>`:''}`;
     area.insertBefore(el,area.firstChild);
   }
 
