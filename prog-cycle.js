@@ -111,7 +111,8 @@
       var inCycle = isos[k] >= c.start_date && isos[k] <= iso(e0);
       var seen = {}, types = [], extra = [], inExtra = false;
       blocks.forEach(function (b) {
-        if (b.type === 'separator') { inExtra = true; return; }
+        if (b.type === 'separator') {
+        bc = '#2dd4bf'; inExtra = true; return; }
         var l = shortLabel(b.type); if (seen[l]) return; seen[l] = 1;
         (inExtra ? extra : types).push(l);
       });
@@ -134,6 +135,7 @@
     var dayHtml = blocks.some(function (b) { return b.type !== 'separator'; }) ? blocks.map(function (b) {
       var bc = hex(b.color || col);
       if (b.type === 'separator') {
+        bc = '#2dd4bf';
         return '<div class="pg-sep" style="color:' + bc + '"><i style="background:' + bc + '55"></i><span>' + esc(b.title || 'Bloc supplémentaire') + '</span><i style="background:' + bc + '55"></i></div>';
       }
       return '<div class="pg-blk"><span class="ty" style="background:' + bc + '22;color:' + bc + '">' + esc(label(b.type)) + '</span>' +

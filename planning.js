@@ -244,8 +244,8 @@ async function buildSessionCard(s){
 }
 
 function buildSeparatorCard(s){
-  // couleur associée au séparateur (choisie à la création), sinon couleur du studio
-  const c=/^#[0-9a-f]{3,8}$/i.test(s.color||'')?s.color:'';
+  // séparateurs toujours en teal
+  const c='#2dd4bf';
   const line=c?` style="background:${c}"`:'';
   const txt=c?` style="color:${c}"`:'';
   return`<div class="separator-block">

@@ -9152,8 +9152,8 @@ async function claimFreeAccess(programmeId){
       if(list.some(b=>b.type!=='separator')){
         blocksHtml='<div style="margin-top:8px">'+list.map(b=>{
           const bc=/^#[0-9a-f]{6}$/i.test(b.color||'')?b.color:col;
-          if(b.type==='separator')return `<div style="display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-size:9.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:${bc}">
-            <i style="flex:1;height:1px;background:${bc}55"></i><span>${_pcEsc(b.title||'Bloc supplémentaire')}</span><i style="flex:1;height:1px;background:${bc}55"></i></div>`;
+          if(b.type==='separator')return `<div style="display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-size:9.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:#2dd4bf">
+            <i style="flex:1;height:1px;background:#2dd4bf55"></i><span>${_pcEsc(b.title||'Bloc supplémentaire')}</span><i style="flex:1;height:1px;background:#2dd4bf55"></i></div>`;
           return `<div style="display:flex;align-items:center;gap:10px;padding:4px 0">
             <span style="flex:0 0 auto;min-width:64px;text-align:center;font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:3px 8px;border-radius:6px;background:${bc}22;color:${bc}">${_pcEsc(lab(b.type))}</span>
             <span style="font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${_pcEsc(b.title||lab(b.type))}</span></div>`;
