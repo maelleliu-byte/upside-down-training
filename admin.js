@@ -64,7 +64,7 @@ async function deleteProgramme(id,name,sessionCount){
   // Nettoyer toutes les FK possibles (silencieux si table absente)
   await sb.from('athlete_programmes').delete().eq('programme_id',id).then(r=>r.error&&console.warn('athlete_programmes',r.error.message));
   await sb.from('programme_access').delete().eq('programme_id',id).then(r=>r.error&&console.warn('programme_access',r.error.message));
-  await sb.from('cycle_plans').delete().eq('programme_id',id).then(r=>r.error&&console.warn('cycle_plans',r.error.message));
+  await sb.from('cycle_plans').update({programme_id:null}).eq('programme_id',id).then(r=>r.error&&console.warn('cycle_plans',r.error.message)); // on garde les cycles, ils passent en « Sans prog. »
   await sb.from('personal_sessions').delete().eq('programme_id',id).then(r=>r.error&&console.warn('personal_sessions',r.error.message));
   const {error,data}=await sb.from('programmes').delete().eq('id',id).select();
   if(error){showToast('❌ '+error.message);console.error('delete programme',error);return;}
