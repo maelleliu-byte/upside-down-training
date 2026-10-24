@@ -547,7 +547,8 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:20px;heigh
 
 /* CALENDRIER MENSUEL PERSO */
 .perso-month{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px}
-.perso-month-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.perso-month-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+.perso-month-cell{min-width:0}
 .perso-month-grid .h{text-align:center;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;padding:4px 0}
 .perso-month-cell{aspect-ratio:1;border-radius:8px;border:1px solid var(--border);background:var(--card);padding:5px;display:flex;flex-direction:column;gap:3px;cursor:pointer;position:relative;transition:border-color .15s}
 .perso-month-cell:hover{border-color:var(--border2)}

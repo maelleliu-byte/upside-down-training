@@ -8734,7 +8734,18 @@ async function claimFreeAccess(programmeId){
     .pc-btn{padding:9px 14px;border-radius:9px;border:none;background:var(--accent,#2dd4bf);color:#000;font-weight:700;font-size:13px;cursor:pointer}
     .pc-btn.ghost{background:transparent;border:1px solid var(--border2,#333);color:var(--text,#fff);font-weight:500}
     .pc-btn.danger{background:transparent;border:1px solid #f8717155;color:#f87171;font-weight:500}
-    @media(max-width:640px){.pc-day{font-size:9.5px;padding:3px 4px}.pc-row{grid-template-columns:70px 1fr}}
+    .pc-m-legend{display:flex;flex-wrap:wrap;gap:6px 16px;min-width:0}
+    .pc-m-leg{display:flex;align-items:center;gap:8px;cursor:pointer;min-width:0}
+    .pc-m-leg .sw{width:10px;height:10px;border-radius:3px;flex:0 0 auto}
+    .pc-m-leg .pc-bar-name{display:block;font-size:15px}
+    .pc-m-leg .pc-bar-meta{display:block;margin-top:2px}
+    .perso-month-cell.pc-m-on{padding-top:8px}
+    .pc-m-rib{position:absolute;top:-1px;left:-3px;right:-3px;height:4px;pointer-events:none}
+    .pc-m-rib.s{left:-1px;border-top-left-radius:8px;border-bottom-left-radius:2px}
+    .pc-m-rib.e{right:-1px;border-top-right-radius:8px;border-bottom-right-radius:2px}
+    .pc-m-wk{margin-left:4px;font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:.5px;line-height:1}
+    .pc-m-prio{font-size:8.5px;font-weight:700;line-height:1.15;text-transform:uppercase;letter-spacing:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;word-break:break-word;opacity:.9;margin-bottom:1px}
+    @media(max-width:640px){.pc-day{font-size:9.5px;padding:3px 4px}.pc-row{grid-template-columns:70px 1fr}.pc-m-wk{font-size:11px;margin-left:3px}.pc-m-prio{font-size:8px}}
 
     /* --- côté athlète --- */
     .pc-ath{border-radius:14px;padding:14px;margin-bottom:14px;border:1px solid transparent;border-left-width:4px}
@@ -8829,6 +8840,85 @@ async function claimFreeAccess(programmeId){
         <div class="pc-bar-meta">${_pcFmt(c.start_date)} → ${_pcFmt(c.end_date)}</div>`;
       const host=area.querySelector('.perso-day-view')||area;
       host.insertBefore(el,host.firstChild);
+    }
+
+    else if(persoView==='month'){
+      const items=[...area.querySelectorAll('.perso-month-cell')].map(el=>{
+        const m=(el.getAttribute('onclick')||'').match(/'(\d{4}-\d{2}-\d{2})'/);
+        return {el,iso:m?m[1]:null};
+      }).filter(x=>x.iso);
+      if(!items.length)return;
+      const inMonth=items.filter(x=>!x.el.classList.contains('other'));
+      const first=(inMonth[0]||items[0]).iso, last=(inMonth[inMonth.length-1]||items[items.length-1]).iso;
+      const vis=(rows||[]).filter(c=>c.start_date<=last&&c.end_date>=first)
+        .sort((a,b)=>a.start_date.localeCompare(b.start_date));
+
+      // légende des cycles du mois
+      const bar=document.createElement('div');
+      bar.className='pc-bar pc-month-bar';
+      if(vis.length){
+        bar.style.borderLeftColor=vis[0].color||'#2dd4bf';
+        bar.innerHTML=`<div class="pc-m-legend">${vis.map(c=>{
+            const col=c.color||'#2dd4bf';
+            return `<div class="pc-m-leg" onclick="openPersoCycles('${c.id}')">
+              <span class="sw" style="background:${col}"></span>
+              <span><span class="pc-bar-name" style="color:${col}">${_pcEsc(c.name)}</span>
+              <span class="pc-bar-meta">${_pcFmt(c.start_date)} → ${_pcFmt(c.end_date)}</span></span></div>`;
+          }).join('')}</div>
+          <div class="pc-bar-spacer"></div>
+          <button class="pc-bar-btn" onclick="openPersoCycles()">⚙ Gérer les cycles</button>`;
+      }else{
+        bar.style.borderLeftColor='var(--border2,#333)';
+        bar.innerHTML=`<div class="pc-bar-meta">Aucun cycle ce mois-ci</div>
+          <div class="pc-bar-spacer"></div>
+          <button class="pc-bar-btn" onclick="openPersoCycles()">+ Programmer un cycle</button>`;
+      }
+      const monthBox=area.querySelector('.perso-month');
+      area.insertBefore(bar,monthBox||area.firstChild);
+
+      // ruban de couleur + semaine du cycle + priorité du jour dans chaque case
+      items.forEach(({el,iso})=>{
+        el.querySelectorAll('.pc-m').forEach(n=>n.remove());
+        const c=_pcForDate(rows,iso);
+        if(!c)return;
+        const col=c.color||'#2dd4bf';
+        const d=new Date(iso+'T12:00:00');
+        const dow=_pcDow(d);
+        const isStart=iso===c.start_date||dow===1;
+        const isEnd=iso===c.end_date||dow===7;
+        el.classList.add('pc-m-on');
+        el.style.background=`${col}12`;
+        el.style.borderColor=`${col}40`;
+
+        const rib=document.createElement('div');
+        rib.className='pc-m pc-m-rib'+(isStart?' s':'')+(isEnd?' e':'');
+        rib.style.background=col;
+        el.insertBefore(rib,el.firstChild);
+
+        if(dow===1||iso===c.start_date){
+          const wi=_pcWeekIndex(c,iso);
+          const num=el.querySelector('.num');
+          if(wi&&num){
+            const tag=document.createElement('span');
+            tag.className='pc-m pc-m-wk';
+            tag.style.color=col;
+            tag.textContent=`S${wi.n}`;
+            tag.title=`${c.name} — semaine ${wi.n}/${wi.total}`;
+            num.appendChild(tag);
+          }
+        }
+
+        const txt=(c.days||{})[String(dow)]||'';
+        if(txt){
+          const p=document.createElement('div');
+          p.className='pc-m pc-m-prio';
+          p.style.color=col;
+          p.textContent=txt;
+          p.title=`${c.name} — ${txt}`;
+          const num=el.querySelector('.num');
+          if(num)num.insertAdjacentElement('afterend',p);else el.appendChild(p);
+        }
+      });
     }
   }
 
