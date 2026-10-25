@@ -106,81 +106,65 @@
   async function renderCard() {
     var prog = (typeof currentProg !== 'undefined') ? currentProg : null;
     if (!prog || !prog.id || prog.id === '__perso__') return;
-    try { if (typeof isOneshotProg === 'function' && isOneshotProg(prog)) { setPhase(null); return; } } catch (e) {}
-    try { if (typeof hasAccess === 'function' && !hasAccess(prog)) { setPhase(null); return; } } catch (e) {}
     var area = document.getElementById('sessions-area'); if (!area) return;
+    var clearAll = function () { area.querySelectorAll('.pg-card').forEach(function (n) { n.remove(); }); setPhase(null); };
+    try { if (typeof hasAccess === 'function' && !hasAccess(prog)) { clearAll(); return; } } catch (e) {}
     var my = ++_seq;
+    var oneshot = false;
+    try { oneshot = typeof isOneshotProg === 'function' && isOneshotProg(prog); } catch (e) {}
 
-    var refIso = (typeof selectedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) ? selectedDate : iso(new Date());
-    var list = await loadCycles(prog.id);
-    var c = cycleFor(list, refIso);
+    var phase = null, lbl = '', future = false, q;
+    if (oneshot) {
+      // programmation à durée fixe : bandeau « semaine n / total » de la programmation
+      var m = (typeof selectedDate === 'string') && selectedDate.match(/^__w(\d+)d(\d+)$/);
+      if (!m) { clearAll(); return; }
+      var wN = parseInt(m[1], 10), dN = parseInt(m[2], 10);
+      phase = { name: prog.name, color: prog.color || '#2dd4bf', n: wN, weeks: prog.total_weeks || 8 };
+      lbl = DAYS[dN] + ' · semaine ' + wN;
+      q = sb.from('sessions').select('type,title,color,sort_order,created_at')
+        .eq('programme_id', prog.id).eq('week_number', wN).eq('day_of_week', dN);
+    } else {
+      var refIso = (typeof selectedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) ? selectedDate : iso(new Date());
+      var c = cycleFor(await loadCycles(prog.id), refIso);
+      if (my !== _seq) return;
+      if (c) {
+        var s0 = d12(c.start_date);
+        phase = { name: c.name, color: colorOf(c), n: Math.floor((monday(d12(refIso)) - monday(s0)) / 604800000) + 1,
+          weeks: c.weeks, start: s0, end: endOf(c) };
+      }
+      var refD = d12(refIso);
+      lbl = refIso === iso(new Date()) ? "Aujourd'hui" : DAYS[dow(refD) - 1] + ' ' + refD.getDate();
+      future = refIso > iso(new Date());
+      q = sb.from('sessions').select('type,title,color,sort_order,created_at')
+        .eq('programme_id', prog.id).eq('date', refIso);
+    }
+    var r = await q.order('sort_order', { ascending: true, nullsFirst: false }).order('created_at');
     if (my !== _seq) return;
-    if (!c) { area.querySelectorAll('.pg-card').forEach(function (n) { n.remove(); }); setPhase(null); return; }
 
-    var mon = monday(d12(refIso));
-    var days = []; for (var i = 0; i < 7; i++) { var x = new Date(mon); x.setDate(mon.getDate() + i); days.push(x); }
-    var isos = days.map(iso);
-    var r = await sb.from('sessions').select('date,type,title,color,sort_order,created_at')
-      .eq('programme_id', prog.id).gte('date', isos[0]).lte('date', isos[6])
-      .order('sort_order', { ascending: true, nullsFirst: false }).order('created_at');
-    if (my !== _seq) return;
-    var byDay = {}; isos.forEach(function (k) { byDay[k] = []; });
-    (r.data || []).forEach(function (s) { if (byDay[s.date] && !HIDE_TYPES[s.type]) byDay[s.date].push(s); });
-
-    var col = hex(colorOf(c));
-    var s0 = d12(c.start_date), e0 = endOf(c);
-    var n = Math.floor((monday(d12(refIso)) - monday(s0)) / 604800000) + 1;
-    var pct = Math.max(4, Math.min(100, Math.round(n / (c.weeks || 1) * 100)));
-
-    var week = days.map(function (d, k) {
-      var blocks = byDay[isos[k]];
-      var inCycle = isos[k] >= c.start_date && isos[k] <= iso(e0);
-      var seen = {}, types = [], extra = [], inExtra = false;
-      blocks.forEach(function (b) {
-        if (b.type === 'separator') {
-        bc = '#2dd4bf'; inExtra = true; return; }
-        var l = shortLabel(b.type); if (seen[l]) return; seen[l] = 1;
-        (inExtra ? extra : types).push(l);
-      });
-      var txt = types.join(' + ');
-      var txtX = extra.length ? '+ ' + extra.join(' + ') : '';
-      var sel = isos[k] === refIso;
-      return '<div class="pg-cell' + (txt || txtX ? '' : ' off') + '" data-d="' + isos[k] + '" style="' +
-        ((txt || txtX) && inCycle ? 'background:' + col + '1a;color:' + col + ';' : '') +
-        (sel ? 'border-color:' + col + ';' : '') + '">' +
-        '<div class="dd">' + SHORT[k] + d.getDate() + '</div>' +
-        '<div class="pp">' + (txt || txtX ? esc(txt) : (isos[k] > iso(new Date()) ? '·' : 'Repos')) + '</div>' +
-        (txtX ? '<div class="px">' + esc(txtX) + '</div>' : '') + '</div>';
-    }).join('');
-
-    var refD = d12(refIso);
-    var todayLbl = refIso === iso(new Date()) ? "Aujourd'hui" : DAYS[dow(refD) - 1] + ' ' + refD.getDate();
-    var blocks = byDay[refIso] || [];
+    var blocks = (r.data || []).filter(function (b) { return !HIDE_TYPES[b.type]; });
     // un séparateur seul (sans bloc après) n'est pas affiché
     blocks = blocks.filter(function (b, i) { return b.type !== 'separator' || blocks.slice(i + 1).some(function (x) { return x.type !== 'separator'; }); });
-    var dayHtml = blocks.some(function (b) { return b.type !== 'separator'; }) ? blocks.map(function (b) {
-      var bc = hex(b.color || col);
-      if (b.type === 'separator') {
-        bc = '#2dd4bf';
-        return '<div class="pg-sep" style="color:' + bc + '"><i style="background:' + bc + '55"></i><span>' + esc(b.title || 'Bloc supplémentaire') + '</span><i style="background:' + bc + '55"></i></div>';
-      }
-      return '<div class="pg-blk"><span class="ty" style="background:' + bc + '22;color:' + bc + '">' + esc(label(b.type)) + '</span>' +
-        '<span class="ti">' + esc(b.title || label(b.type)) + '</span></div>';
-    }).join('') : '<div class="pg-none">' + (refIso > iso(new Date()) ? 'Rien de publié pour l\'instant.' : 'Repos — pas de bloc programmé.') + '</div>';
+    var col = hex(phase ? phase.color : (prog.color || '#2dd4bf'));
 
     css();
+    setPhase(phase);
     area.querySelectorAll('.pg-card').forEach(function (x) { x.remove(); });
+    if (!blocks.some(function (b) { return b.type !== 'separator'; })) return;   // le fil affiche déjà « pas de séance »
+
+    var dayHtml = blocks.map(function (b) {
+      if (b.type === 'separator') {
+        var t = '#2dd4bf';
+        return '<div class="pg-sep" style="color:' + t + '"><i style="background:' + t + '55"></i><span>' + esc(b.title || 'Bloc supplémentaire') + '</span><i style="background:' + t + '55"></i></div>';
+      }
+      var bc = hex(b.color || col);
+      return '<div class="pg-blk"><span class="ty" style="background:' + bc + '22;color:' + bc + '">' + esc(label(b.type)) + '</span>' +
+        '<span class="ti">' + esc(b.title || label(b.type)) + '</span></div>';
+    }).join('');
+
     var el = document.createElement('div');
-    el.className = 'pg-card';
     el.className = 'pg-card pg-recap';
-    el.innerHTML = '<div class="lbl">' + todayLbl + ' · au programme</div>' + dayHtml;
-    setPhase({ name: c.name, color: col, n: n, weeks: c.weeks, start: s0, end: e0 });
+    el.innerHTML = '<div class="lbl">' + esc(lbl) + ' · au programme</div>' + dayHtml;
     area.insertBefore(el, area.firstChild);
-    el.querySelectorAll('[data-d]').forEach(function (cell) {
-      cell.addEventListener('click', function () {
-        if (cell.dataset.d !== refIso && typeof window.selectDate === 'function') window.selectDate(cell.dataset.d);
-      });
-    });
   }
 
   function bind() {
