@@ -8760,6 +8760,74 @@ async function claimFreeAccess(programmeId){
   }
 
   // ---------- rendu dans le calendrier ----------
+  // ---------- frise des cycles de l'athlète (vue coach) ----------
+  function _pcRenderFrise(rows){
+    const area=document.getElementById('perso-calendar-area');
+    if(!area)return;
+    let box=document.getElementById('pc-frise');
+    if(!box){
+      box=document.createElement('div'); box.id='pc-frise';
+      box.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:14px;padding:10px 12px 8px;margin-bottom:12px';
+    }
+    if(box.nextElementSibling!==area)area.parentNode.insertBefore(box,area);
+
+    // période affichée dans le calendrier
+    const now=new Date(); let ref, refEnd;
+    if(persoView==='month'){ ref=new Date(now.getFullYear(),now.getMonth()+persoOffset,1,12); refEnd=new Date(ref.getFullYear(),ref.getMonth()+1,0,12); }
+    else if(persoView==='day'){ ref=new Date(now); ref.setDate(now.getDate()+persoOffset); ref.setHours(12,0,0,0); refEnd=ref; }
+    else { const d=getWeekDates(persoOffset); ref=new Date(d[0]); ref.setHours(12,0,0,0); refEnd=new Date(d[6]); refEnd.setHours(12,0,0,0); }
+    const Y=ref.getFullYear();
+    const mon=d=>{const m=new Date(d);m.setHours(12,0,0,0);m.setDate(m.getDate()-(_pcDow(m)-1));return m;};
+    const weeks=[]; let w=mon(new Date(Y,0,1,12));
+    while(w.getFullYear()<=Y){ weeks.push(new Date(w)); w.setDate(w.getDate()+7); }
+    const W=weeks.length, idxOf=d=>Math.round((mon(d)-weeks[0])/604800000);
+    const MO=['JAN','FÉV','MARS','AVR','MAI','JUIN','JUIL','AOÛT','SEPT','OCT','NOV','DÉC'];
+    const mOf=weeks.map(x=>{const t=new Date(x);t.setDate(t.getDate()+3);return t.getFullYear()===Y?t.getMonth():(t.getFullYear()<Y?0:11);});
+    const nowI=idxOf(now), r0=idxOf(ref), r1=idxOf(refEnd);
+
+    const list=(rows||[]).filter(c=>c.start_date&&c.end_date).slice().sort((a,b)=>a.start_date.localeCompare(b.start_date))
+      .filter(c=>new Date(c.start_date+'T12:00:00').getFullYear()<=Y&&new Date(c.end_date+'T12:00:00').getFullYear()>=Y);
+    const lanes=[];
+    const placed=list.map(c=>{
+      const a=Math.max(0,idxOf(new Date(c.start_date+'T12:00:00'))), b=Math.min(W-1,idxOf(new Date(c.end_date+'T12:00:00')));
+      let lane=lanes.findIndex(e=>e<a); if(lane<0){lane=lanes.length;lanes.push(b);}else lanes[lane]=b;
+      return {c,a,b,lane};
+    }).filter(p=>p.b>=p.a);
+    const L=Math.max(1,lanes.length);
+    // case « + » après le dernier cycle
+    const all=(rows||[]).filter(c=>c.end_date).sort((a,b)=>a.end_date.localeCompare(b.end_date));
+    const last=all[all.length-1];
+    let slot=null;
+    { const nx=last?new Date(last.end_date+'T12:00:00'):new Date(now); if(last)nx.setDate(nx.getDate()+1);
+      const a=idxOf(nx); if(a>=0&&a<W){ let ln=lanes.findIndex(e=>e<a); if(ln<0)ln=0; slot={a,b:Math.min(W-1,a+3),lane:ln}; } }
+
+    let h=`<div style="display:grid;grid-template-columns:repeat(${W},34px);grid-template-rows:auto repeat(${L},auto);position:relative;min-width:max-content">`;
+    for(let i=0;i<W;){ const m=mOf[i]; let j=i; while(j+1<W&&mOf[j+1]===m)j++;
+      const cur=now.getFullYear()===Y&&now.getMonth()===m;
+      h+=`<div style="grid-column:${i+1}/span ${j-i+1};grid-row:1;font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1.2px;padding:0 6px 4px;border-left:1px solid var(--border2);color:${cur?'var(--accent)':'var(--muted)'};white-space:nowrap;overflow:hidden">${MO[m]}</div>`;
+      i=j+1; }
+    weeks.forEach((x,k)=>{
+      const m1=k===0||mOf[k]!==mOf[k-1], inView=k>=r0&&k<=r1;
+      h+=`<div title="Semaine du ${_pcFmt(_pcIso(x))}" style="grid-column:${k+1};grid-row:2/span ${L};border-left:${k===nowI?'2px solid var(--text)':'1px solid '+(m1?'var(--border2)':'var(--border)')};${inView?'background:rgba(255,255,255,.07);':''}position:relative;z-index:1;pointer-events:none"></div>`;
+    });
+    placed.forEach(p=>{
+      const col=p.c.color||'#2dd4bf';
+      h+=`<div data-cy="${p.c.id}" title="${_pcEsc(p.c.name)} · ${_pcFmt(p.c.start_date)} → ${_pcFmt(p.c.end_date)}" style="grid-column:${p.a+1}/span ${p.b-p.a+1};grid-row:${p.lane+2};margin:3px 1px;height:26px;border-radius:7px;background:${col};padding:0 7px;display:flex;align-items:center;cursor:pointer;position:relative;z-index:2;overflow:hidden">
+        <span style="font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${_pcEsc(p.c.name)}</span></div>`;
+    });
+    if(slot)h+=`<div data-cy="" title="Programmer un cycle" style="grid-column:${slot.a+1}/span ${slot.b-slot.a+1};grid-row:${slot.lane+2};margin:3px 1px;height:26px;border-radius:7px;border:1.5px dashed var(--border2);color:var(--muted);display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;z-index:2">+</div>`;
+    h+='</div>';
+
+    box.innerHTML=`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+        <span style="font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);flex:1">Cycles ${Y}</span></div>
+      <div id="pc-frise-sc" style="overflow-x:auto;margin:0 -12px;padding:0 12px 4px">${h}</div>`;
+    box.querySelectorAll('[data-cy]').forEach(el=>el.addEventListener('click',()=>openPersoCycles(el.dataset.cy||undefined)));
+    const sc=document.getElementById('pc-frise-sc');
+    const center=(t)=>{ if(!sc.clientWidth){ if(t<40)setTimeout(()=>center(t+1),250); return; }
+      sc.scrollLeft=Math.max(0,(r0+0.5)*34-sc.clientWidth/2+12); };
+    center(0);
+  }
+
   async function _pcRenderBand(){
     const area=document.getElementById('perso-calendar-area');
     if(!area||!currentPersoAthlete)return;
@@ -8767,6 +8835,7 @@ async function claimFreeAccess(programmeId){
     _pcInjectCss();
 
     const rows=await _pcLoad(currentPersoAthlete.id);
+    try{ _pcRenderFrise(rows); }catch(e){ console.warn('frise cycles perso',e); }
 
     if(persoView==='week'){
       const dates=getWeekDates(persoOffset);
