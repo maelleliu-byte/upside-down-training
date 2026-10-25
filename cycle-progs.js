@@ -184,7 +184,8 @@
       '.cp-set[open] summary:after{transform:rotate(90deg)}',
       '.cp-set-sum{font-weight:500;color:var(--muted);display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}',
       '.cp-set-sum i{width:10px;height:10px;border-radius:3px;display:inline-block;flex:0 0 auto}',
-      '.cp-set-body{padding:2px 12px 2px}',
+      '.cp-set-body{padding:2px 12px 12px}',
+      '.cp-del{width:100%;padding:9px 12px;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);color:var(--red,#ff4747);border-radius:10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}',
       '.cp-sea .bar .w{display:grid;font-size:8.5px;font-weight:800;color:rgba(0,0,0,.55);text-align:center;margin:3px -7px 0}',
       '.cp-sea .bar.sel{outline:2px solid var(--text);outline-offset:1px}',
       '.cp-sea .gap{grid-column:1/-1;height:4px}',
@@ -220,6 +221,18 @@
         try { if (localStorage.getItem('udt_cycle_set_open') === '1') set.open = true; } catch (e) {}
         set.addEventListener('toggle', function () { try { localStorage.setItem('udt_cycle_set_open', set.open ? '1' : '0'); } catch (e) {} });
         var body = set.querySelector('.cp-set-body');
+        // la sélection se fait sur la frise : le menu déroulant est masqué (gardé pour la suppression)
+        row.style.display = 'none';
+        var del = document.createElement('button');
+        del.type = 'button'; del.className = 'cp-del'; del.textContent = '🗑 Supprimer ce cycle';
+        del.addEventListener('click', function () {
+          var cd = cur();
+          if (!cd || !cd.id) { toast('⚠️ Aucun cycle enregistré à supprimer'); return; }
+          if (!window.confirm('Supprimer le cycle « ' + (cd.name || 'sans nom') + ' » ?')) return;
+          var sel2 = $('cycle-selector'); if (sel2) { if (![].some.call(sel2.options, function (o) { return o.value === cd.id; })) { var o = document.createElement('option'); o.value = cd.id; sel2.appendChild(o); } sel2.value = cd.id; }
+          if (typeof window.deleteCycle === 'function') window.deleteCycle();
+        });
+        setTimeout(function () { body.appendChild(del); }, 0);
         var a = document.createElement('div'); a.className = 'cp-assign'; a.id = 'cp-assign';
         a.innerHTML = '<label>Programmation</label><select class="form-select" id="cp-assign-sel"></select>';
         body.appendChild(a);
@@ -445,12 +458,17 @@
     var slot = $('cp-slot'); if (slot) slot.addEventListener('click', addNext);
 
     // centre sur le cycle ouvert (ou la semaine en cours)
-    var sc = $('cp-sea-scroll');
-    var target = box.querySelector('.bar.sel') || box.querySelector('.col.now');
-    if (sc && target) {
-      var x = target.offsetLeft - sc.clientWidth / 2 + target.offsetWidth / 2;
-      sc.scrollLeft = Math.max(0, x);
-    }
+    centerFrise(0);
+  }
+
+  // centrage de la frise (réessaie tant que l'onglet est encore masqué)
+  function centerFrise(tries) {
+    var sc = $('cp-sea-scroll'); if (!sc) return;
+    var target = sc.querySelector('.bar.sel') || sc.querySelector('.col.now');
+    if (!target) return;
+    if (!sc.clientWidth) { if ((tries || 0) < 40) setTimeout(function () { centerFrise((tries || 0) + 1); }, 250); return; }
+    var r = target.getBoundingClientRect(), rs = sc.getBoundingClientRect();
+    sc.scrollLeft = Math.max(0, sc.scrollLeft + (r.left - rs.left) - sc.clientWidth / 2 + r.width / 2);
   }
 
   function render() {
