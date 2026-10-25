@@ -43,6 +43,14 @@
   }
   function _show(v) { return v == null ? '' : String(v).replace('.', ','); }
   function _fmt(v) { return v == null ? '–' : v.toFixed(2).replace('.', ','); }
+  // Nombre de reps à saisir : 2 -> 2, « 1.1 » (cluster) -> 2, « 1.1.1 » -> 3
+  function _repCount(r) {
+    var s = String(r == null ? '' : r).trim();
+    var n = /^[0-9]+([.,][0-9]+)+$/.test(s)
+      ? s.split(/[.,]/).reduce(function (a, x) { return a + (parseInt(x, 10) || 0); }, 0)
+      : parseInt(s, 10);
+    return Math.max(1, Math.min(20, n || 1));
+  }
   function _key(id) { return 's-x' + String(id).replace(/-/g, ''); }
   function _salt(id) { var h = 0; String(id).split('').forEach(function (c) { h = (h * 31 + c.charCodeAt(0)) | 0; }); return Math.abs(h).toString(36).slice(0, 6); }
 
@@ -132,7 +140,7 @@
         var load = b.loadMode === 'kg' ? _num(b.load) : _pctLoad(b);
         var n = Math.max(1, Math.min(30, parseInt(b.sets, 10) || 1));
         var sets = [];
-        for (var j = 0; j < n; j++) sets.push({ id: 'x' + (i + 1) + 's' + (j + 1) + salt, load: load, reps: b.reps || 1, v: [], rpe: '', note: '' });
+        for (var j = 0; j < n; j++) sets.push({ id: 'x' + (i + 1) + 's' + (j + 1) + salt, load: load, reps: _repCount(b.reps), v: [], rpe: '', note: '' });
         return {
           id: 'x' + (i + 1) + salt, mv: b.mv, acc: b.acc || '', vmin: _num(b.vmin), vmax: _num(b.vmax), vlMax: _num(b.vlMax),
           rest: b.rest || '', calibrated: b.calibrated !== false, note: b.note || '', height: _num(b.height), sets: sets
@@ -170,7 +178,7 @@
       '<div class="vbx-name">' + _esc(_moveName(b.mv)) + [b.acc && ACC[b.acc] ? ACC[b.acc] : '', _hText(b.height)].filter(Boolean).map(function (x) { return ' <span>// ' + _esc(x) + '</span>'; }).join('') + '</div>' +
       '<div class="vbx-info">' + info + ' · ' + (halt ? 'vitesse pic' : 'vitesse moyenne') + '</div>' +
       (b.sets || []).map(function (st, si) {
-        var reps = Math.max(1, st.reps || 1), v = st.v || [], inputs = '';
+        var reps = _repCount(st.reps), v = st.v || [], inputs = '';
         for (var r = 0; r < reps; r++) {
           inputs += '<input class="vbx-v ' + _repCls(b, v[r]) + '" inputmode="decimal" placeholder="R' + (r + 1) + '" aria-label="Série ' + (si + 1) + ' rep ' + (r + 1) + '"' +
             ' data-vx="v" data-sid="' + sid + '" data-b="' + bi + '" data-s="' + si + '" data-r="' + r + '" value="' + _show(v[r]) + '">';
