@@ -9,10 +9,11 @@
  * À l'enregistrement, les FC et la dérive vont dans wod_scores.ef :
  * visibles dans le classement et dans les retours de l'espace perso.
  *
- * Calcul (window.efCalc) :
- *   - FC seule : dérive = FC moy. 2e moitié / FC moy. 1re moitié − 1
- *   - FC + intensité réelle : découplage (FC/intensité 2e moitié) /
- *     (FC/intensité 1re moitié) − 1 ; une allure est convertie en vitesse.
+ * Calcul (window.efCalc), identique au Journal EF :
+ *   - dérive = FC du dernier relevé / FC du premier relevé compté − 1
+ *     (l'échauffement n'est pas saisi, il est exclu) ;
+ *   - à partir de 4 relevés : 1re moitié vs 2e moitié en complément ;
+ *   - variation de la puissance / de l'allure début → fin, RPE moyen.
  *   Couleurs : < 5 % vert · 5–10 % orange · > 10 % rouge.
  * Chargé APRÈS charge.js et vbt-saisie.js.
  * ============================================================ */
@@ -76,41 +77,38 @@
 
   // ---------- calcul ----------
 
-  // data : { mode, unit, hr: [...], out: [...] } -> { drift, dbpm, hr1, hr2, method, n }
+  function _r1(x) { return Math.round(x * 10) / 10; }
+
+  // data : { mode, unit, hr: [...], out: [...], rpe: [...] }
   function efCalc(data) {
     if (!data || !Array.isArray(data.hr)) return null;
     var unit = data.unit || 'W';
     var rows = data.hr.map(function (h, i) {
-      return { hr: _num(h), out: _intensity(data.out && data.out[i], unit) };
-    });
-    var first, second;
-    if (data.mode === 'splits') {
-      rows = rows.filter(function (r) { return r.hr > 0; });
-      var half = Math.floor(rows.length / 2);
-      if (half < 1) return null;
-      first = rows.slice(0, half);
-      second = rows.slice(rows.length - half);
-    } else {
-      if (!(rows[0] && rows[0].hr > 0) || !(rows[1] && rows[1].hr > 0)) return null;
-      first = [rows[0]]; second = [rows[1]];
-    }
-    var hr1 = _avg(first.map(function (r) { return r.hr; }));
-    var hr2 = _avg(second.map(function (r) { return r.hr; }));
-    var withOut = first.concat(second).every(function (r) { return r.out > 0; });
-    var drift, method;
-    if (withOut) {
-      var i1 = _avg(first.map(function (r) { return r.out; }));
-      var i2 = _avg(second.map(function (r) { return r.out; }));
-      drift = ((hr2 / i2) / (hr1 / i1) - 1) * 100;
-      method = 'decouplage';
-    } else {
-      drift = (hr2 / hr1 - 1) * 100;
-      method = 'fc';
-    }
-    return {
-      drift: Math.round(drift * 10) / 10, dbpm: Math.round(hr2 - hr1),
-      hr1: Math.round(hr1), hr2: Math.round(hr2), method: method, n: first.length + second.length
+      return {
+        i: i, hr: _num(h), out: _intensity(data.out && data.out[i], unit),
+        raw: data.out && data.out[i] != null && data.out[i] !== '' ? data.out[i] : null,
+        rpe: _num(data.rpe && data.rpe[i])
+      };
+    }).filter(function (r) { return r.hr > 0; });
+    if (rows.length < 2) return null;
+    var a = rows[0], b = rows[rows.length - 1];
+    var k = {
+      drift: _r1((b.hr - a.hr) / a.hr * 100), dbpm: Math.round(b.hr - a.hr),
+      hr1: Math.round(a.hr), hr2: Math.round(b.hr), i1: a.i, i2: b.i, n: rows.length,
+      out1: a.raw, out2: b.raw, dOut: a.out > 0 && b.out > 0 ? _r1((b.out - a.out) / a.out * 100) : null,
+      dec: null, method: 'fc'
     };
+    if (rows.length >= 4) {
+      var h = Math.floor(rows.length / 2);
+      var hA = _avg(rows.slice(0, h).map(function (r) { return r.hr; }));
+      var hB = _avg(rows.slice(rows.length - h).map(function (r) { return r.hr; }));
+      k.dec = _r1((hB - hA) / hA * 100); k.hrA = Math.round(hA); k.hrB = Math.round(hB);
+    }
+    var rp = rows.map(function (r) { return r.rpe; }).filter(function (x) { return x > 0; });
+    k.rpe = rp.length ? _r1(_avg(rp)) : null;
+    var outs = rows.map(function (r) { return _num(r.raw); }).filter(function (x) { return x > 0; });
+    k.outAvg = !_isPace(unit) && outs.length ? Math.round(_avg(outs)) : null;
+    return k;
   }
   function efTone(d) { return d == null ? '' : d < 5 ? 'ok' : d <= 10 ? 'mid' : 'bad'; }
   function efFmt(d) { return d == null ? '–' : (d > 0 ? '+' : d < 0 ? '−' : '') + _show(Math.abs(d).toFixed(1)) + ' %'; }
@@ -121,7 +119,9 @@
   // ---------- rendu partagé (classement, retours de l'espace perso) ----------
 
   function _sparkSVG(sc) {
-    var hr = (sc.hr || []).map(_num).filter(function (x) { return x > 0; });
+    var hr = (sc.hr || []).map(_num);
+    var allIdx = hr.every(function (x) { return x > 0; });
+    if (!allIdx) hr = hr.filter(function (x) { return x > 0; });
     if (hr.length < 3) return '';
     var W = 300, H = 92, L = 30, R = 8, T = 10, B = 20;
     var lo = Math.min.apply(null, hr), hi = Math.max.apply(null, hr);
@@ -136,30 +136,36 @@
     var half = Math.floor(hr.length / 2);
     g += '<line x1="' + X(half - 0.5) + '" x2="' + X(half - 0.5) + '" y1="' + T + '" y2="' + (H - B) + '" stroke="var(--border2)" stroke-dasharray="3 3"/>';
     g += '<polyline fill="none" stroke="#2dd4bf" stroke-width="2" points="' + hr.map(function (v, i) { return X(i) + ',' + Y(v); }).join(' ') + '"/>';
-    var every = sc.every || 10, wu = _minutes(sc.warmup) || 0;
     hr.forEach(function (v, i) {
       g += '<circle cx="' + X(i) + '" cy="' + Y(v) + '" r="3" fill="#2dd4bf"/>' +
-        '<text x="' + X(i) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="9" fill="var(--muted)">' + Math.round(wu + every * (i + 1)) + '′</text>';
+        '<text x="' + X(i) + '" y="' + (H - 6) + '" text-anchor="middle" font-size="9" fill="var(--muted)">' + (allIdx ? _lbl(sc, i) : '') + '</text>';
     });
     return '<svg class="efl-chart" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Fréquence cardiaque à chaque relevé">' + g + '</svg>';
   }
 
-  // Ligne de détail : « 142 → 148 bpm · +4,2 % (+6 bpm) »
+  // Minute du relevé i : échauffement + pas × (i + 1) ; en mode 2 valeurs : Début / Fin
+  function _lbl(sc, i) {
+    if (sc.mode !== 'splits') return i === 0 ? 'Début' : 'Fin';
+    return Math.round((_minutes(sc.warmup) || 0) + (sc.every || 10) * (i + 1)) + '′';
+  }
+
+  // Détail : dérive début vs fin, FC, intensité, moitiés, RPE
   function efDetailHTML(sc) {
     if (!sc) return '';
     var k = efCalc(sc);
     if (!k) return '';
     var unit = sc.unit || 'W';
-    var outs = (sc.out || []).filter(function (x) { return x != null && x !== ''; });
+    var parts = [];
+    if (k.out1 != null && k.out2 != null) parts.push(_esc(_show(k.out1)) + ' → ' + _esc(_show(k.out2)) + ' ' + _esc(unit));
+    if (k.dec != null) parts.push('1re vs 2e moitié ' + efFmt(k.dec));
+    if (k.rpe != null) parts.push('RPE moy. ' + _show(k.rpe));
     return '<div class="efl">' +
       '<div class="efl-h">🫀 Endurance fondamentale' + (sc.mod ? ' · ' + _esc(MODS[sc.mod] || sc.mod) : '') +
         (sc.duration ? ' · ' + _esc(sc.duration) : '') + '</div>' +
       '<div class="efl-r"><span class="efl-d ' + efTone(k.drift) + '">' + efFmt(k.drift) + '</span>' +
-        '<span>FC ' + k.hr1 + ' → ' + k.hr2 + ' bpm (' + (k.dbpm > 0 ? '+' : '') + k.dbpm + ' bpm)</span></div>' +
-      '<div class="efl-m">' + (k.method === 'decouplage'
-        ? 'Découplage FC / intensité réelle' + (outs.length ? ' · ' + outs.map(function (o) { return _esc(_show(o)); }).join(' → ') + ' ' + _esc(unit) : '')
-        : 'Dérive de la FC à intensité constante') +
-        (sc.warmup ? ' · échauffement ' + _esc(sc.warmup) + ' exclu' : '') + '</div>' +
+        '<span>FC ' + k.hr1 + ' → ' + k.hr2 + ' bpm (' + (k.dbpm > 0 ? '+' : '') + k.dbpm + ' bpm) · ' + _lbl(sc, k.i1) + ' → ' + _lbl(sc, k.i2) + '</span></div>' +
+      (parts.length ? '<div class="efl-m">' + parts.join(' · ') + '</div>' : '') +
+      (sc.notes ? '<div class="efl-m">« ' + _esc(sc.notes) + ' »</div>' : '') +
       _sparkSVG(sc) +
     '</div>';
   }
@@ -197,12 +203,14 @@
 
   function _draft(s) {
     var ef = s.ef, prev = cache.scores[s.id] || {}, n = _rowsCount(ef);
-    var hr = [], out = [];
+    var hr = [], out = [], rpe = [];
     for (var i = 0; i < n; i++) {
       hr.push(prev.hr && prev.hr[i] != null ? prev.hr[i] : null);
       out.push(prev.out && prev.out[i] != null ? prev.out[i] : null);
+      rpe.push(prev.rpe && prev.rpe[i] != null ? prev.rpe[i] : null);
     }
-    return { mode: ef.mode === 'splits' ? 'splits' : 'halves', every: ef.every || null, unit: _outUnit(ef), hr: hr, out: out };
+    return { mode: ef.mode === 'splits' ? 'splits' : 'halves', every: ef.every || null, warmup: ef.warmup || null,
+      unit: _outUnit(ef), hr: hr, out: out, rpe: rpe, notes: prev.notes || '' };
   }
 
   // ---------- carte de séance ----------
@@ -221,22 +229,23 @@
     var k = efCalc(d);
     if (!k) return '<span class="efx-wait">Saisis tes FC pour voir ta dérive.</span>';
     return '<span class="efx-d ' + efTone(k.drift) + '">Dérive ' + efFmt(k.drift) + '</span>' +
-      '<span class="efx-sub">' + k.hr1 + ' → ' + k.hr2 + ' bpm (' + (k.dbpm > 0 ? '+' : '') + k.dbpm + ' bpm)' +
-      (k.method === 'decouplage' ? ' · avec ton intensité réelle' : '') + '</span>';
+      '<span class="efx-sub">' + _lbl(d, k.i1) + ' → ' + _lbl(d, k.i2) + ' : ' + k.hr1 + ' → ' + k.hr2 + ' bpm (' + (k.dbpm > 0 ? '+' : '') + k.dbpm + ' bpm)' +
+      (k.dec != null ? ' · 1re vs 2e moitié ' + efFmt(k.dec) : '') + '</span>';
   }
 
   function _cardHTML(s, d) {
     var ef = s.ef, done = !!cache.scores[s.id];
-    var unit = d.unit, wu = _minutes(ef.warmup) || 0, every = ef.every || 10;
+    var unit = d.unit;
     var tgt = _targetHTML(ef);
     var info = [MODS[ef.mod] || '', ef.duration ? _esc(ef.duration) : '', ef.warmup ? 'échauffement ' + _esc(ef.warmup) + ' exclu' : '', tgt ? 'cible ' + tgt : '']
       .filter(Boolean).join(' · ');
     var rows = d.hr.map(function (h, i) {
-      var lbl = d.mode === 'splits' ? Math.round(wu + every * (i + 1)) + '′' : (i === 0 ? '1re moitié' : '2e moitié');
+      var lbl = _lbl(d, i);
       return '<div class="efx-row">' +
         '<div class="efx-l">' + lbl + '</div>' +
         '<input class="efx-in" inputmode="numeric" placeholder="bpm" aria-label="FC ' + lbl + '" data-efx="hr" data-sid="' + s.id + '" data-i="' + i + '" value="' + _show(h) + '">' +
         '<input class="efx-in efx-out" inputmode="' + (_isPace(unit) ? 'text' : 'decimal') + '" placeholder="' + _esc(unit) + '" aria-label="Intensité ' + lbl + ' en ' + _esc(unit) + '" data-efx="out" data-sid="' + s.id + '" data-i="' + i + '" value="' + _show(d.out[i]) + '">' +
+        '<input class="efx-in efx-out" inputmode="decimal" placeholder="RPE" aria-label="RPE ' + lbl + '" data-efx="rpe" data-sid="' + s.id + '" data-i="' + i + '" value="' + _show(d.rpe[i]) + '">' +
       '</div>';
     }).join('');
     return '<div class="efx" data-efx-card="' + s.id + '">' +
@@ -245,7 +254,7 @@
       '<div class="efx-body" id="efx-body-' + s.id + '" style="display:none">' +
         (info ? '<div class="efx-info">' + info + '</div>' : '') +
         (ef.note ? '<div class="efx-note">' + _esc(ef.note) + '</div>' : '') +
-        '<div class="efx-row efx-head"><div></div><div>FC moy.</div><div>' + _esc(unit) + ' <i>(option)</i></div></div>' +
+        '<div class="efx-row efx-head"><div></div><div>FC' + (d.mode === 'splits' ? ' fin' : '') + '</div><div>' + _esc(unit) + '</div><div>RPE</div></div>' +
         rows +
         '<div class="efx-res" id="efx-res-' + s.id + '">' + _resultHTML(d) + '</div>' +
         '<button type="button" class="efx-save" data-efx-save="' + s.id + '">Enregistrer ma FC</button>' +
@@ -262,6 +271,7 @@
     var d = drafts[el.dataset.sid]; if (!d) return;
     var i = +el.dataset.i, v = el.value.trim();
     if (el.dataset.efx === 'hr') d.hr[i] = _num(v);
+    else if (el.dataset.efx === 'rpe') d.rpe[i] = _num(v);
     else d.out[i] = v === '' ? null : (_isPace(d.unit) ? v : _num(v));
     var r = document.getElementById('efx-res-' + el.dataset.sid);
     if (r) r.innerHTML = _resultHTML(d);
@@ -272,14 +282,15 @@
     var msg = document.getElementById('efx-msg-' + sid);
     if (!d || !uid || !s) return;
     var k = efCalc(d);
-    if (!k) { if (msg) msg.textContent = d.mode === 'splits' ? 'Saisis au moins 2 relevés de FC.' : 'Saisis tes 2 FC moyennes.'; return; }
+    if (!k) { if (msg) msg.textContent = d.mode === 'splits' ? 'Saisis au moins 2 relevés de FC.' : 'Saisis ta FC de début et de fin.'; return; }
     var ef = s.ef;
     var payloadEf = {
       v: 1, mode: d.mode, every: d.every, unit: d.unit, mod: ef.mod || null,
       duration: ef.duration || null, warmup: ef.warmup || null,
       hr: d.hr.map(function (x) { return x == null ? null : x; }),
       out: d.out.map(function (x) { return x == null || x === '' ? null : x; }),
-      drift: k.drift, dbpm: k.dbpm, method: k.method
+      rpe: d.rpe.map(function (x) { return x == null ? null : x; }),
+      notes: d.notes || '', drift: k.drift, dbpm: k.dbpm, dec: k.dec, method: k.method
     };
     var btn = document.querySelector('[data-efx-save="' + sid + '"]');
     if (btn) { btn.disabled = true; btn.textContent = 'Enregistrement…'; }
@@ -297,7 +308,8 @@
         var payload = {
           session_id: sid, athlete_id: uid,
           score_type: types.indexOf(s.score_type) >= 0 ? s.score_type : 'text',
-          score_value: 0, score_text: 'Dérive FC ' + efFmt(k.drift), level: level, ef: payloadEf
+          score_value: s.score_type === 'watt' && k.outAvg ? k.outAvg : 0,
+          score_text: (k.outAvg && d.unit === 'W' ? k.outAvg + ' W · ' : '') + 'dérive ' + efFmt(k.drift), level: level, ef: payloadEf
         };
         if (dateEl && dateEl.value) payload.done_at = dateEl.value;
         r = await sb.from('wod_scores').insert(payload);
@@ -399,7 +411,7 @@
       '.efx-body{padding:10px 12px 12px}',
       '.efx-info{font-size:11px;color:var(--muted);line-height:1.5}',
       '.efx-note{font-size:12px;color:var(--text2);margin-top:4px;line-height:1.45}',
-      '.efx-row{display:grid;grid-template-columns:78px minmax(0,1fr) minmax(0,1fr);gap:6px;align-items:center;margin-top:6px}',
+      '.efx-row{display:grid;grid-template-columns:52px minmax(0,1.1fr) minmax(0,1fr) minmax(0,.8fr);gap:6px;align-items:center;margin-top:6px}',
       '.efx-head{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.5px;text-transform:uppercase;margin-top:10px}',
       '.efx-head i{font-style:normal;font-weight:500;text-transform:none}',
       '.efx-l{font-size:12px;font-weight:700;color:var(--text2)}',

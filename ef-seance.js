@@ -51,9 +51,9 @@
 
   function _new() {
     return {
-      mod: 'bike', duration: '40:00', warmup: '10:00', unit: 'W', target: null,
+      mod: 'bike', duration: '40:00', warmup: '5:00', unit: 'W', target: null,
       pct: null, fmt: 'PUISSANCE CRITIQUE', ref: _defaultRef('bike'),
-      mode: 'halves', every: 10, note: ''
+      mode: 'splits', every: 5, note: ''
     };
   }
 
@@ -96,17 +96,17 @@
           : '') +
         '<div class="efs-mode">' +
           '<span class="efs-lbl">Saisie FC</span>' +
-          '<button type="button" data-efmode="halves" class="' + (d.mode !== 'splits' ? 'on' : '') + '">2 moyennes</button>' +
           '<button type="button" data-efmode="splits" class="' + (d.mode === 'splits' ? 'on' : '') + '">Relevés réguliers</button>' +
+          '<button type="button" data-efmode="halves" class="' + (d.mode !== 'splits' ? 'on' : '') + '">Début / fin</button>' +
           (d.mode === 'splits'
             ? '<select class="form-select efs-every" data-ef="every">' + [5, 10].map(function (n) {
                 return '<option value="' + n + '"' + (n === d.every ? ' selected' : '') + '>toutes les ' + n + ' min</option>'; }).join('') + '</select>'
             : '') +
         '</div>' +
         '<div class="efs-hint">' + (d.mode === 'splits'
-          ? 'L\'athlète note sa FC à chaque relevé après l\'échauffement. Dérive = moyenne 2e moitié vs 1re moitié.'
-          : 'L\'athlète note sa FC moyenne de la 1re et de la 2e moitié (après l\'échauffement).') +
-          ' S\'il saisit aussi ' + (d.unit === 'W' || d.unit === '%' && d.mod !== 'run' ? 'ses watts' : 'son allure') + ', la dérive tient compte de l\'intensité réelle.</div>' +
+          ? 'L\'athlète note à chaque relevé sa FC de fin de tranche, ' + (d.unit === 'W' || d.unit === '%' && d.mod !== 'run' ? 'ses watts' : 'son allure') + ' et son RPE, après l\'échauffement.'
+          : 'L\'athlète note sa FC au début (après l\'échauffement) et à la fin.') +
+          ' Dérive = FC de fin vs FC du premier relevé compté.</div>' +
         '<input class="form-input efs-note" data-ef="note" value="' + _esc(d.note) + '" placeholder="Consigne (ex. si dérive > 5 % ou RPE > 3, baisse de 0,2 à 0,3 km/h)">' +
       '</div>';
   }
