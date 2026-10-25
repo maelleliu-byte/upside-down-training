@@ -167,8 +167,24 @@
       '.cp-sea .col{border-left:1px solid var(--border);pointer-events:none;position:relative;z-index:0}',
       '.cp-sea .col.m1{border-left-color:var(--border2)}',
       '.cp-sea .col.now{background:rgba(255,255,255,.06);border-left:2px solid var(--accent)}',
-      '.cp-sea .bar{margin:3px 1px;border-radius:8px;padding:5px 7px 4px;cursor:pointer;overflow:hidden;min-height:40px;display:flex;flex-direction:column;justify-content:space-between;position:relative;z-index:2;border:1px solid transparent}',
-      '.cp-sea .bar .n{font-family:"Bebas Neue",sans-serif;font-size:14px;letter-spacing:1px;line-height:1.05;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#000}',
+      '.cp-sea .bar{margin:3px 1px;border-radius:7px;padding:0 7px;cursor:pointer;overflow:hidden;height:28px;display:flex;align-items:center;position:relative;z-index:2}',
+      '.cp-sea .bar .n{font-family:"Bebas Neue",sans-serif;font-size:13px;letter-spacing:1px;line-height:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#000}',
+      '.cp-sea .slot{margin:3px 1px;border-radius:7px;height:28px;border:1.5px dashed var(--border2);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:16px;cursor:pointer;position:relative;z-index:2}',
+      '.cp-sea .slot:hover{border-color:var(--accent);color:var(--accent)}',
+      '.cp-sea .mo{background:transparent!important;padding:2px 6px 4px}',
+      '.cp-sea .mo.now{color:var(--accent)!important}',
+      '.cp-sea .col.now{background:transparent!important;border-left:2px solid var(--text)!important;z-index:1}',
+      '#cp-sea-host{margin-top:12px}',
+      '.cp-plus{color:var(--accent)!important;font-weight:700}',
+      '.cp-cur .t{font-size:19px!important}',
+      '.cp-set{background:var(--card);border:1px solid var(--border);border-radius:12px;margin-bottom:12px}',
+      '.cp-set summary{list-style:none;cursor:pointer;padding:10px 12px;font-size:12px;font-weight:700;color:var(--text2,var(--text));display:flex;align-items:center;gap:8px}',
+      '.cp-set summary::-webkit-details-marker{display:none}',
+      '.cp-set summary:after{content:"›";margin-left:auto;color:var(--muted);font-size:16px;transition:transform .15s}',
+      '.cp-set[open] summary:after{transform:rotate(90deg)}',
+      '.cp-set-sum{font-weight:500;color:var(--muted);display:flex;align-items:center;gap:6px;min-width:0;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}',
+      '.cp-set-sum i{width:10px;height:10px;border-radius:3px;display:inline-block;flex:0 0 auto}',
+      '.cp-set-body{padding:2px 12px 2px}',
       '.cp-sea .bar .w{display:grid;font-size:8.5px;font-weight:800;color:rgba(0,0,0,.55);text-align:center;margin:3px -7px 0}',
       '.cp-sea .bar.sel{outline:2px solid var(--text);outline-offset:1px}',
       '.cp-sea .gap{grid-column:1/-1;height:4px}',
@@ -189,10 +205,7 @@
       if (years) { years.insertAdjacentElement('beforebegin', tabs); tabs.insertAdjacentElement('afterend', box); }
       else { panel.insertBefore(box, panel.firstChild); panel.insertBefore(tabs, box); }
     }
-    if (!$('cp-season')) {
-      var sea = document.createElement('div'); sea.className = 'cp-box'; sea.id = 'cp-season';
-      $('cp-box').insertAdjacentElement('afterend', sea);
-    }
+    var oldBox = $('cp-season'); if (oldBox) oldBox.remove();
     // l'ancienne vue « année / saison » est remplacée par la vue saison par programmation
     if (years) years.style.display = 'none';
     var oldSea = $('cycle-season-overview'); if (oldSea) oldSea.style.setProperty('display', 'none', 'important');
@@ -201,11 +214,17 @@
       var sel = $('cycle-selector');
       var row = sel && sel.parentElement;
       if (row) {
+        var set = document.createElement('details'); set.className = 'cp-set'; set.id = 'cp-set';
+        set.innerHTML = '<summary>⚙ Réglages du cycle<span class="cp-set-sum" id="cp-set-sum"></span></summary><div class="cp-set-body"></div>';
+        row.insertAdjacentElement('afterend', set);
+        try { if (localStorage.getItem('udt_cycle_set_open') === '1') set.open = true; } catch (e) {}
+        set.addEventListener('toggle', function () { try { localStorage.setItem('udt_cycle_set_open', set.open ? '1' : '0'); } catch (e) {} });
+        var body = set.querySelector('.cp-set-body');
         var a = document.createElement('div'); a.className = 'cp-assign'; a.id = 'cp-assign';
         a.innerHTML = '<label>Programmation</label><select class="form-select" id="cp-assign-sel"></select>';
-        row.insertAdjacentElement('afterend', a);
+        body.appendChild(a);
         var cl = document.createElement('div'); cl.className = 'cp-colors'; cl.id = 'cp-colors';
-        a.insertAdjacentElement('afterend', cl);
+        body.appendChild(cl);
         $('cp-assign-sel').addEventListener('change', function () {
           var cd = cur(); if (!cd) return;
           cd.programmeId = this.value || null;
@@ -262,9 +281,8 @@
         var n = Math.floor((new Date(today + 'T12:00:00') - s) / 604800000) + 1;
         wkNow = ' · <span class="k">semaine ' + n + '/' + (sel.weeks || '?') + '</span>';
       }
-      curHtml = '<div class="t">' + esc(sel.name || 'Cycle sans nom') + '</div>' +
-        '<div class="m">Cycle ' + (idx + 1) + '/' + list.length + ' · ' + (s ? fmt(s) + ' → ' + fmt(e) : 'sans date') +
-        ' · ' + (sel.weeks || '?') + ' sem.' + wkNow + '</div>';
+      curHtml = '<div class="t" style="color:' + colorOf(sel) + '">' + esc(sel.name || 'Cycle sans nom') + '</div>' +
+        '<div class="m">' + (s ? fmt(s) + ' → ' + fmt(e) : 'sans date') + (wkNow || ' · ' + (sel.weeks || '?') + ' sem.') + '</div>';
     } else if (cd && !cd.id && cd.programmeId === _tab) {
       var ns = ($('cycle-start-date') || {}).value, nw = parseInt(($('cycle-weeks') || {}).value) || cd.weeks || 4;
       var nsd = ns ? new Date(ns + 'T12:00:00') : null, ned = nsd ? new Date(nsd) : null;
@@ -276,7 +294,7 @@
         '<div class="m">' + list.length + ' cycle' + (list.length > 1 ? 's' : '') + ' · choisis-en un</div>';
     }
 
-    var chips = list.map(function (c, i) {
+    var _unusedChips = false && list.map(function (c, i) {
       var s = startOf(c), e = endOf(c);
       var isNow = s && e && today >= iso(s) && today <= iso(e);
       var w = parseInt(c.weeks) || 0, done = 0;
@@ -301,17 +319,13 @@
         '<button class="cp-arrow" id="cp-prev" ' + (prevI < 0 ? 'disabled' : '') + ' aria-label="Cycle précédent">‹</button>' +
         '<div class="cp-cur">' + curHtml + '</div>' +
         '<button class="cp-arrow" id="cp-next" ' + (nextI < 0 || nextI >= list.length ? 'disabled' : '') + ' aria-label="Cycle suivant">›</button>' +
+        (canAdd ? '<button class="cp-arrow cp-plus" id="cp-add" aria-label="Cycle suivant" title="Créer le cycle suivant">+</button>' : '') +
       '</div>' +
-      '<div class="cp-strip" id="cp-strip">' + chips + '</div>';
+      '<div id="cp-sea-host"></div>';
 
     $('cp-prev').addEventListener('click', function () { if (prevI >= 0) openCycle(list[prevI].id); });
     $('cp-next').addEventListener('click', function () { if (nextI >= 0 && nextI < list.length) openCycle(list[nextI].id); });
-    box.querySelectorAll('.cp-chip[data-id]').forEach(function (b) {
-      b.addEventListener('click', function () { openCycle(b.dataset.id); });
-    });
     var add = $('cp-add'); if (add) add.addEventListener('click', addNext);
-    var selChip = box.querySelector('.cp-chip.sel') || (cd && !cd.id ? $('cp-add') : null) || box.querySelector('.cp-chip.now');
-    if (selChip) try { selChip.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
   }
 
   function renderAssign() {
@@ -327,6 +341,8 @@
     var cd = cur();
     var c = cd && cd.id ? cycles().find(function (x) { return x.id === cd.id; }) : null;
     var now = (cd && cd.color) || (c ? colorOf(c) : null);
+    var sum = $('cp-set-sum');
+    if (sum) sum.innerHTML = '· ' + esc(progName(cd && cd.programmeId) || 'Sans programmation') + (now ? ' <i style="background:' + now + '"></i>' : '');
     el.innerHTML = '<label>Couleur</label>' + PALETTE.map(function (p) {
       return '<button class="cp-sw' + (p === now ? ' on' : '') + '" data-c="' + p + '" style="background:' + p + '" aria-label="Couleur ' + p + '"></button>';
     }).join('');
@@ -344,7 +360,7 @@
   function monday(d) { var m = new Date(d); m.setHours(12, 0, 0, 0); var w = m.getDay(); m.setDate(m.getDate() - (w === 0 ? 6 : w - 1)); return m; }
 
   function renderSeason() {
-    var box = $('cp-season'); if (!box) return;
+    var box = $('cp-sea-host'); if (!box) return;
     var Y = _seaYear;
     // semaines de l'année : du lundi de la semaine du 1er janvier au dernier lundi de l'année
     var weeks = [];
@@ -377,57 +393,60 @@
     var L = Math.max(1, lanes.length);
 
     var cd = cur();
-    var h = '<div class="cp-sea" style="grid-template-columns:repeat(' + W + ',30px);grid-template-rows:auto auto repeat(' + L + ',auto)">';
+    // case « + » en pointillés juste après le dernier cycle de la programmation
+    var addSlot = null;
+    if (_tab !== 'none') {
+      var dated = tabCycles().filter(function (c) { return c.start_date; });
+      var lastC = dated[dated.length - 1];
+      var nxt = lastC ? endOf(lastC) : new Date();
+      if (lastC) nxt.setDate(nxt.getDate() + 1);
+      var aI = Math.round((monday(nxt) - weeks[0]) / 604800000);
+      if (lastC && aI < 0) aI = -1;
+      if (aI >= 0 && aI < W) {
+        var lane0 = lanes.findIndex(function (end) { return end < aI; });
+        if (lane0 < 0) lane0 = 0;
+        addSlot = { a: aI, b: Math.min(W - 1, aI + 3), lane: lane0 };
+      }
+    }
+    var h = '<div class="cp-sea" style="grid-template-columns:repeat(' + W + ',30px);grid-template-rows:auto repeat(' + L + ',auto)">';
     // mois
     var i = 0;
     while (i < W) {
       var m = mOf[i], j = i; while (j + 1 < W && mOf[j + 1] === m) j++;
       var isNowM = new Date().getFullYear() === Y && new Date().getMonth() === m;
-      h += '<div class="mo' + (isNowM ? ' now' : '') + '" style="grid-column:' + (i + 1) + '/span ' + (j - i + 1) + ';grid-row:1">' + MONTHS[m] + '</div>';
+      h += '<div class="mo' + (isNowM ? ' now' : '') + (i === 0 ? ' m0' : '') + '" style="grid-column:' + (i + 1) + '/span ' + (j - i + 1) + ';grid-row:1">' + MONTHS[m] + '</div>';
       i = j + 1;
     }
     // semaines (date du lundi) + colonnes de fond
     weeks.forEach(function (w, k) {
       var m1 = k === 0 || mOf[k] !== mOf[k - 1];
-      h += '<div class="wk' + (m1 ? ' m1' : '') + (k === nowIdx ? ' now' : '') + '" style="grid-column:' + (k + 1) + ';grid-row:2" title="Semaine du ' + fmt(w) + '">' + String(w.getDate()).padStart(2, '0') + '</div>';
-      h += '<div class="col' + (m1 ? ' m1' : '') + (k === nowIdx ? ' now' : '') + '" style="grid-column:' + (k + 1) + ';grid-row:3/span ' + L + '"></div>';
+      h += '<div class="col' + (m1 ? ' m1' : '') + (k === nowIdx ? ' now' : '') + '" title="Semaine du ' + fmt(w) + '" style="grid-column:' + (k + 1) + ';grid-row:2/span ' + L + '"></div>';
     });
     // cycles
     placed.forEach(function (p) {
       var col = colorOf(p.c);
       var span = p.b - p.a + 1;
-      var nums = ''; for (var k = 0; k < span; k++) nums += '<span>' + (p.first + k) + '</span>';
       h += '<div class="bar' + (cd && cd.id === p.c.id ? ' sel' : '') + '" data-id="' + p.c.id + '" title="' + esc(p.c.name) + ' · ' + fmt(startOf(p.c)) + ' → ' + fmt(endOf(p.c)) + ' · ' + p.n + ' sem." ' +
-        'style="grid-column:' + (p.a + 1) + '/span ' + span + ';grid-row:' + (p.lane + 3) + ';background:' + col + '">' +
-        '<div class="n">' + esc(p.c.name || 'Cycle') + '</div>' +
-        '<div class="w" style="grid-template-columns:repeat(' + span + ',1fr)">' + nums + '</div></div>';
+        'style="grid-column:' + (p.a + 1) + '/span ' + span + ';grid-row:' + (p.lane + 2) + ';background:' + col + '">' +
+        '<div class="n">' + esc(p.c.name || 'Cycle') + '</div></div>';
     });
-    if (!placed.length) h += '<div style="grid-column:1/-1;grid-row:3;font-size:12px;color:var(--muted);padding:14px 4px">Aucun cycle sur ' + Y + '.</div>';
+    if (addSlot) h += '<div class="slot" id="cp-slot" title="Créer le cycle suivant" style="grid-column:' + (addSlot.a + 1) + '/span ' + (addSlot.b - addSlot.a + 1) + ';grid-row:' + (addSlot.lane + 2) + '">+</div>';
+    if (!placed.length && !addSlot) h += '<div style="grid-column:1/-1;grid-row:2;font-size:12px;color:var(--muted);padding:10px 4px">Aucun cycle sur ' + Y + '.</div>';
     h += '</div>';
 
-    var totalW = placed.reduce(function (t, p) { return t + (p.b - p.a + 1); }, 0);
-    var leg = placed.slice().sort(function (a, b) { return a.a - b.a; }).map(function (p) {
+    var _totalW = placed.reduce(function (t, p) { return t + (p.b - p.a + 1); }, 0);
+    var _leg = placed.slice().sort(function (a, b) { return a.a - b.a; }).map(function (p) {
       return '<button data-id="' + p.c.id + '"><i style="background:' + colorOf(p.c) + '"></i>' + esc(p.c.name) +
         ' <span>' + fmt(startOf(p.c)) + ' → ' + fmt(endOf(p.c)) + '</span></button>';
     }).join('');
 
-    box.innerHTML =
-      '<div class="cp-sea-head">' +
-        '<button class="cp-arrow" id="cp-sea-prev" aria-label="Saison précédente">‹</button>' +
-        '<div class="cp-sea-ti" style="text-align:center"><div class="t">Saison ' + Y + '</div>' +
-        '<div class="m">' + (progName(_tab) ? esc(progName(_tab)) + ' · ' : '') + placed.length + ' cycle' + (placed.length > 1 ? 's' : '') + ' · ' + totalW + ' semaine' + (totalW > 1 ? 's' : '') + ' programmée' + (totalW > 1 ? 's' : '') + ' sur ' + W + '</div></div>' +
-        '<button class="cp-arrow" id="cp-sea-next" aria-label="Saison suivante">›</button>' +
-      '</div>' +
-      '<div class="cp-sea-scroll" id="cp-sea-scroll">' + h + '</div>' +
-      (leg ? '<div class="cp-sea-leg">' + leg + '</div>' : '');
-
-    $('cp-sea-prev').addEventListener('click', function () { _seaYear--; renderSeason(); });
-    $('cp-sea-next').addEventListener('click', function () { _seaYear++; renderSeason(); });
+    box.innerHTML = '<div class="cp-sea-scroll" id="cp-sea-scroll">' + h + '</div>';
     box.querySelectorAll('[data-id]').forEach(function (b) { b.addEventListener('click', function () { openCycle(b.dataset.id); }); });
+    var slot = $('cp-slot'); if (slot) slot.addEventListener('click', addNext);
 
-    // centre sur la semaine en cours (ou le cycle ouvert)
+    // centre sur le cycle ouvert (ou la semaine en cours)
     var sc = $('cp-sea-scroll');
-    var target = box.querySelector('.bar.sel') || box.querySelector('.wk.now');
+    var target = box.querySelector('.bar.sel') || box.querySelector('.col.now');
     if (sc && target) {
       var x = target.offsetLeft - sc.clientWidth / 2 + target.offsetWidth / 2;
       sc.scrollLeft = Math.max(0, x);
