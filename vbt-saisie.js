@@ -127,7 +127,11 @@
     if (d && Array.isArray(d.blocks) && d.blocks.length === s.vbt.blocks.length) {
       var c = JSON.parse(JSON.stringify(d));
       // hauteur des blocs / pins : toujours celle de la séance programmée
-      c.blocks.forEach(function (b, i) { var h = _num(s.vbt.blocks[i] && s.vbt.blocks[i].height); if (h != null) b.height = h; });
+      c.blocks.forEach(function (b, i) {
+        var sb2 = s.vbt.blocks[i] || {};
+        var h = _num(sb2.height); if (h != null) b.height = h;
+        b.cluster = !!sb2.cluster; b.clusterRest = sb2.clusterRest || '';
+      });
       return c;
     }
     var salt = _salt(s.id);
@@ -143,7 +147,8 @@
         for (var j = 0; j < n; j++) sets.push({ id: 'x' + (i + 1) + 's' + (j + 1) + salt, load: load, reps: _repCount(b.reps), v: [], rpe: '', note: '' });
         return {
           id: 'x' + (i + 1) + salt, mv: b.mv, acc: b.acc || '', vmin: _num(b.vmin), vmax: _num(b.vmax), vlMax: _num(b.vlMax),
-          rest: b.rest || '', calibrated: b.calibrated !== false, note: b.note || '', height: _num(b.height), sets: sets
+          rest: b.rest || '', calibrated: b.calibrated !== false, note: b.note || '', height: _num(b.height),
+          cluster: !!b.cluster, clusterRest: b.clusterRest || '', sets: sets
         };
       })
     };
@@ -173,7 +178,7 @@
 
   function _blockHTML(sid, b, bi, halt) {
     var tgt = _target(b);
-    var info = [b.rest ? 'Repos ' + _esc(b.rest) : '', tgt ? 'Cible ' + tgt : '', b.calibrated === false ? 'Charge fixe' : 'Calibrée'].filter(Boolean).join(' · ');
+    var info = [b.rest ? 'Repos ' + _esc(b.rest) : '', b.cluster ? 'Cluster' + (b.clusterRest ? ' · ' + _esc(b.clusterRest) + ' entre les reps' : '') : '', tgt ? 'Cible ' + tgt : '', b.calibrated === false ? 'Charge fixe' : 'Calibrée'].filter(Boolean).join(' · ');
     return '<div class="vbx-block">' +
       '<div class="vbx-name">' + _esc(_moveName(b.mv)) + [b.acc && ACC[b.acc] ? ACC[b.acc] : '', _hText(b.height)].filter(Boolean).map(function (x) { return ' <span>// ' + _esc(x) + '</span>'; }).join('') + '</div>' +
       '<div class="vbx-info">' + info + ' · ' + (halt ? 'vitesse pic' : 'vitesse moyenne') + '</div>' +

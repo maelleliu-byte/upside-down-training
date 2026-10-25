@@ -156,6 +156,11 @@
           '<div><label class="form-label">Perte max %</label><input class="form-input" inputmode="decimal" data-vf="vlMax" data-i="' + i + '" value="' + _show(b.vlMax) + '" placeholder="20"></div>' +
         '</div>' +
         zones +
+        '<div class="vbs-cluster">' +
+          '<label class="vbs-chk"><input type="checkbox" data-vf="cluster" data-i="' + i + '"' + (b.cluster ? ' checked' : '') + '> Cluster</label>' +
+          (b.cluster ? '<div class="vbs-grow"><input class="form-input" data-vf="clusterRest" data-i="' + i + '" value="' + _esc(b.clusterRest || '') + '" placeholder="Repos entre reps (15&quot;)"></div>' +
+            '<span class="vbs-hint">entre les reps · affiché « ' + _clusterTxt(b.reps) + ' »</span>' : '') +
+        '</div>' +
         '<div class="vbs-mode">' +
           '<button type="button" data-vcal="1" data-i="' + i + '" class="' + (b.calibrated !== false ? 'on' : '') + '">Calibrée</button>' +
           '<button type="button" data-vcal="0" data-i="' + i + '" class="' + (b.calibrated === false ? 'on' : '') + '">Charge fixe</button>' +
@@ -188,6 +193,9 @@
         list.map(function (n) { return '<option' + (n === ref ? ' selected' : '') + '>' + _esc(n) + '</option>'; }).join('') + '</select></div>' +
       (_num(b.pct) != null ? '<div class="vbs-formula">Dans la séance : <code>' + _esc(_show(_num(b.pct)).replace(',', '.') + '%|' + (b.fmt || '1RM') + '|' + ref.toUpperCase() + '|') + '</code> → charge calculée pour chaque athlète</div>' : '');
   }
+
+  // 2 reps en cluster -> « 1.1 »
+  function _clusterTxt(n) { var a = []; for (var k = 0; k < Math.max(2, n || 2); k++) a.push('1'); return a.join('.'); }
 
   function _destText() {
     if (!_isPerso()) return '';
@@ -267,7 +275,13 @@
       if (f === 'ref' || f === 'fmt') { b[f] = el.value; _render(); return; }
       if (f === 'pct') { b.pct = _num(el.value); _refreshFormula(el, b); return; }
       if (f === 'height') { b.height = _num(el.value); return; }
-      if (f === 'sets' || f === 'reps') { var n = parseInt(el.value, 10); b[f] = n > 0 ? n : null; return; }
+      if (f === 'cluster') { b.cluster = el.checked; if (b.cluster && !b.clusterRest) b.clusterRest = '15"'; _render(); return; }
+      if (f === 'clusterRest') { b.clusterRest = el.value; return; }
+      if (f === 'sets' || f === 'reps') {
+        var n = parseInt(el.value, 10); b[f] = n > 0 ? n : null;
+        if (f === 'reps' && b.cluster) { var h = el.closest('.vbs-block') && el.closest('.vbs-block').querySelector('.vbs-cluster .vbs-hint'); if (h) h.textContent = 'entre les reps · affiché « ' + _clusterTxt(b.reps) + ' »'; }
+        return;
+      }
       b[f] = _num(el.value);
     }
     box.addEventListener('input', onField);
@@ -297,7 +311,8 @@
           ref: b.loadMode === 'kg' ? null : (b.ref || _defaultRef(b.mv)),
           fmt: b.loadMode === 'kg' ? null : (b.fmt || '1RM'),
           vmin: _num(b.vmin), vmax: _num(b.vmax), vlMax: _num(b.vlMax),
-          calibrated: b.calibrated !== false, note: (b.note || '').trim(), height: _num(b.height)
+          calibrated: b.calibrated !== false, note: (b.note || '').trim(), height: _num(b.height),
+          cluster: !!b.cluster, clusterRest: b.cluster ? (b.clusterRest || '').trim() : ''
         };
       })
     };
@@ -355,6 +370,9 @@
       '.vbs-mode{display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap}',
       '.vbs-hint{font-size:11px;color:var(--muted);flex:1;min-width:150px}',
       '.vbs-note{margin-top:8px}',
+      '.vbs-cluster{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}',
+      '.vbs-chk{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:700;color:var(--text2);cursor:pointer}',
+      '.vbs-cluster .form-input{padding:8px 10px}',
       '.vbs-load{display:flex;gap:8px;align-items:flex-end;margin-top:8px}',
       '.vbs-seg{display:flex;border:1px solid var(--border2);border-radius:9px;overflow:hidden;height:38px}',
       '.vbs-seg button{border:0;background:transparent;color:var(--text2);padding:0 11px;font-weight:700;font-size:12px;font-family:inherit;cursor:pointer}',
