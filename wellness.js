@@ -9163,15 +9163,21 @@ async function claimFreeAccess(programmeId){
     }catch(e){console.warn('blocs du jour',e);}
 
     area.querySelectorAll('.pc-ath').forEach(n=>n.remove());
-    const el=document.createElement('div');
-    el.className='pc-ath';
-    el.style.cssText=`background:${col}0f;border-color:${col}33;border-left-color:${col}`;
     // la phase du cycle (nom, semaine, avancement) passe au-dessus des jours
     _phase.set({name:c.name,color:col,n:wi?wi.n:1,weeks:wi?wi.total:1,
       start:new Date(c.start_date+'T12:00:00'),end:new Date(c.end_date+'T12:00:00')});
-    el.innerHTML=`
-      <div class="pc-ath-week">${week}</div>
-      ${(focus||blocksHtml)?`<div class="pc-ath-today"><div class="lbl">${todayLbl} · au programme</div>${focus?`<div class="val" style="color:${col}">${_pcEsc(focus)}</div>`:''}${blocksHtml}</div>`:''}`;
+    if(!focus&&!blocksHtml)return;
+    // récap du jour (sans grille des priorités) + « Note du jour » repliée, seulement si le coach a mis une priorité
+    const note=focus?`<details style="margin:2px 0 6px;border:1px solid ${col}40;border-radius:9px;background:${col}0d">
+        <summary style="list-style:none;cursor:pointer;padding:7px 10px;font-size:11.5px;font-weight:700;color:${col};display:flex;align-items:center;gap:6px">📝 Note du jour<span style="margin-left:auto;color:var(--muted);font-size:14px">›</span></summary>
+        <div style="padding:0 10px 9px;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:${col}">${_pcEsc(focus)}</div>
+      </details>`:'';
+    const el=document.createElement('div');
+    el.className='pc-ath';
+    el.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:14px';
+    el.innerHTML=`<div style="font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">${todayLbl} · au programme</div>${note}${blocksHtml?blocksHtml.replace('<div style="margin-top:8px">','<div>'):''}`;
+    const d=el.querySelector('details');
+    if(d)d.addEventListener('toggle',()=>{const a=d.querySelector('summary span');if(a)a.textContent=d.open?'⌄':'›';});
     area.insertBefore(el,area.firstChild);
   }
 
