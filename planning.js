@@ -579,7 +579,10 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     }
     if(!values.length){showToast('⚠️ Entre au moins un score');return;}
     scoreText=values.join(' | ');
-    scoreValue=parseFloat(values[0])||0;
+    // Distance : on garde la meilleure distance (ex. D1…D8 sur des broad jumps)
+    scoreValue=scoreType==='distance'
+      ?Math.max(0,...values.map(v=>parseFloat(String(v).replace(',','.'))||0))
+      :(parseFloat(values[0])||0);
   } else if(scoreType==='time'){
     const dnf=document.getElementById(`dnf-${sessionId}`)?.checked;
     const mins=parseInt(document.getElementById(`time-min-${sessionId}`)?.value)||0;
@@ -606,7 +609,7 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     const input=document.getElementById(`score-input-${sessionId}`);
     scoreText=input?.value.trim();
     if(!scoreText){showToast('⚠️ Entre ton score');return;}
-    scoreValue=parseFloat(scoreText.replace(':','').replace('+',''))||0;
+    scoreValue=parseFloat(scoreText.replace(':','').replace('+','').replace(',','.'))||0;
   }
 
   // Date "fait le" choisie par l'athlète (défaut = date programmée de la séance)

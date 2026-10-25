@@ -301,7 +301,7 @@
       if (ex.data) {
         r = await sb.from('wod_scores').update({ ef: payloadEf }).eq('id', ex.data.id);
       } else {
-        var types = ['time', 'reps', 'rounds', 'weight', 'calories', 'text', 'watt'];
+        var types = ['time', 'reps', 'rounds', 'weight', 'calories', 'text', 'watt', 'distance'];
         var level = 'rx';
         try { if (typeof getSelectedLevel === 'function') level = getSelectedLevel(sid) || 'rx'; } catch (e2) {}
         var dateEl = document.getElementById('done-at-' + sid);

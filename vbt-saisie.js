@@ -360,7 +360,7 @@
     var loads = [];
     d.blocks.forEach(function (b) { b.sets.forEach(function (st) { if ((st.v || []).some(function (x) { return x > 0; }) && st.load > 0) loads.push(st.load); }); });
     var maxLoad = loads.length ? Math.max.apply(null, loads) : 0;
-    var types = ['time', 'reps', 'rounds', 'weight', 'calories', 'text', 'watt'];
+    var types = ['time', 'reps', 'rounds', 'weight', 'calories', 'text', 'watt', 'distance'];
     var level = 'rx';
     try { if (typeof getSelectedLevel === 'function') level = getSelectedLevel(sid) || 'rx'; } catch (e) {}
     var payload = {
