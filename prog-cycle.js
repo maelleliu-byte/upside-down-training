@@ -70,6 +70,15 @@
       '.pg-blk .ty{flex:0 0 auto;font-size:9.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;padding:3px 8px;border-radius:6px;min-width:64px;text-align:center}',
       '.pg-blk .ti{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:1px;line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.pg-none{font-size:12px;color:var(--muted)}',
+      '.pg-recap{background:var(--card);border:1px solid var(--border);border-left-width:1px;padding:12px 14px}',
+      '.pg-recap .lbl{font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}',
+      '.cyc-phase{padding:0 20px 8px}',
+      '.cyc-row{display:flex;align-items:baseline;gap:10px}',
+      '.cyc-nm{font-family:"Bebas Neue",sans-serif;font-size:17px;letter-spacing:1.5px;line-height:1;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+      '.cyc-wk{font-size:10.5px;color:var(--muted);white-space:nowrap}',
+      '.cyc-wk b{color:var(--text);font-size:12px}',
+      '.cyc-track{height:3px;border-radius:2px;background:var(--border2);overflow:hidden;margin-top:6px}',
+      '.cyc-track i{display:block;height:100%;border-radius:2px}',
       '.pg-cell .px{font-size:8.5px;font-weight:600;line-height:1.2;margin-top:3px;opacity:.75;overflow-wrap:anywhere}',
       '.pg-sep{display:flex;align-items:center;gap:8px;margin:8px 0 4px;font-size:9.5px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase}',
       '.pg-sep i{flex:1;height:1px}',
@@ -78,18 +87,35 @@
     document.head.appendChild(st);
   }
 
+  // Phase du cycle, au-dessus des jours (partagée avec l'espace perso)
+  function setPhase(o) {
+    css();
+    var strip = document.getElementById('day-strip'); if (!strip) return;
+    var el = document.getElementById('cyc-phase');
+    if (!o) { if (el) el.remove(); return; }
+    if (!el) { el = document.createElement('div'); el.id = 'cyc-phase'; el.className = 'cyc-phase'; }
+    if (el.nextElementSibling !== strip) strip.parentNode.insertBefore(el, strip);
+    var col = hex(o.color);
+    var pct = Math.max(4, Math.min(100, Math.round(o.n / (o.weeks || 1) * 100)));
+    el.innerHTML = '<div class="cyc-row"><span class="cyc-nm" style="color:' + col + '">' + esc(o.name) + '</span>' +
+      '<span class="cyc-wk">' + (o.start ? fmt(o.start) + ' → ' + fmt(o.end) + ' · ' : '') + 'Sem. <b>' + o.n + '</b>/' + (o.weeks || '?') + '</span></div>' +
+      '<div class="cyc-track"><i style="width:' + pct + '%;background:' + col + '"></i></div>';
+  }
+  window.__cyclePhase = { set: setPhase, clear: function () { setPhase(null); } };
+
   async function renderCard() {
     var prog = (typeof currentProg !== 'undefined') ? currentProg : null;
     if (!prog || !prog.id || prog.id === '__perso__') return;
-    try { if (typeof isOneshotProg === 'function' && isOneshotProg(prog)) return; } catch (e) {}
-    try { if (typeof hasAccess === 'function' && !hasAccess(prog)) return; } catch (e) {}
+    try { if (typeof isOneshotProg === 'function' && isOneshotProg(prog)) { setPhase(null); return; } } catch (e) {}
+    try { if (typeof hasAccess === 'function' && !hasAccess(prog)) { setPhase(null); return; } } catch (e) {}
     var area = document.getElementById('sessions-area'); if (!area) return;
     var my = ++_seq;
 
     var refIso = (typeof selectedDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(selectedDate)) ? selectedDate : iso(new Date());
     var list = await loadCycles(prog.id);
     var c = cycleFor(list, refIso);
-    if (!c || my !== _seq) { area.querySelectorAll('.pg-card').forEach(function (n) { n.remove(); }); return; }
+    if (my !== _seq) return;
+    if (!c) { area.querySelectorAll('.pg-card').forEach(function (n) { n.remove(); }); setPhase(null); return; }
 
     var mon = monday(d12(refIso));
     var days = []; for (var i = 0; i < 7; i++) { var x = new Date(mon); x.setDate(mon.getDate() + i); days.push(x); }
@@ -146,14 +172,9 @@
     area.querySelectorAll('.pg-card').forEach(function (x) { x.remove(); });
     var el = document.createElement('div');
     el.className = 'pg-card';
-    el.style.cssText = 'background:' + col + '0f;border-color:' + col + '33;border-left-color:' + col;
-    el.innerHTML =
-      '<div class="pg-head"><div class="pg-name" style="color:' + col + '">' + esc(c.name) + '</div>' +
-        '<div class="pg-wk">Semaine <b>' + n + '</b> / ' + (c.weeks || '?') + '</div></div>' +
-      '<div class="pg-track"><div class="pg-fill" style="width:' + pct + '%;background:' + col + '"></div></div>' +
-      '<div class="pg-dates"><span>' + fmt(s0) + '</span><span>' + fmt(e0) + '</span></div>' +
-      '<div class="pg-week">' + week + '</div>' +
-      '<div class="pg-today"><div class="lbl">' + todayLbl + ' · au programme</div>' + dayHtml + '</div>';
+    el.className = 'pg-card pg-recap';
+    el.innerHTML = '<div class="lbl">' + todayLbl + ' · au programme</div>' + dayHtml;
+    setPhase({ name: c.name, color: col, n: n, weeks: c.weeks, start: s0, end: e0 });
     area.insertBefore(el, area.firstChild);
     el.querySelectorAll('[data-d]').forEach(function (cell) {
       cell.addEventListener('click', function () {

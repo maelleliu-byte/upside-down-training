@@ -9108,13 +9108,14 @@ async function claimFreeAccess(programmeId){
     area.querySelectorAll('.pc-ath').forEach(n=>n.remove());
     _pcInjectCss();
 
+    const _phase=window.__cyclePhase||{set(){},clear(){}};
     const rows=await _pcLoadMine();
-    if(!rows.length)return;
+    if(!rows.length){_phase.clear();return;}
 
     const todayIso=_pcIso(new Date());
     const refIso=(typeof selectedDate!=='undefined'&&selectedDate)?selectedDate:todayIso;
     const c=_pcForDate(rows,refIso);
-    if(!c)return;
+    if(!c){_phase.clear();return;}
 
     const col=c.color||'#2dd4bf';
     const wi=_pcWeekIndex(c,refIso);
@@ -9165,13 +9166,10 @@ async function claimFreeAccess(programmeId){
     const el=document.createElement('div');
     el.className='pc-ath';
     el.style.cssText=`background:${col}0f;border-color:${col}33;border-left-color:${col}`;
+    // la phase du cycle (nom, semaine, avancement) passe au-dessus des jours
+    _phase.set({name:c.name,color:col,n:wi?wi.n:1,weeks:wi?wi.total:1,
+      start:new Date(c.start_date+'T12:00:00'),end:new Date(c.end_date+'T12:00:00')});
     el.innerHTML=`
-      <div class="pc-ath-head">
-        <div class="pc-ath-name" style="color:${col}">${_pcEsc(c.name)}</div>
-        ${wi?`<div class="pc-ath-wk">Semaine <b>${wi.n}</b> / ${wi.total}</div>`:''}
-      </div>
-      <div class="pc-ath-track"><div class="pc-ath-fill" style="width:${pct}%;background:${col}"></div></div>
-      <div class="pc-ath-dates"><span>${_pcFmt(c.start_date)}</span><span>${_pcFmt(c.end_date)}</span></div>
       <div class="pc-ath-week">${week}</div>
       ${(focus||blocksHtml)?`<div class="pc-ath-today"><div class="lbl">${todayLbl} · au programme</div>${focus?`<div class="val" style="color:${col}">${_pcEsc(focus)}</div>`:''}${blocksHtml}</div>`:''}`;
     area.insertBefore(el,area.firstChild);
