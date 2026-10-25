@@ -391,6 +391,18 @@ async function loadProgrammes(){
 
   await loadMyAccess();
   renderProgTabs();
+  // Suivi individuel : un athlète (non admin) qui a des séances perso récentes ou à venir
+  // ouvre directement son Espace perso au lieu d'une prog par défaut.
+  if(currentUser&&currentProfile?.role!=='admin'){
+    try{
+      const since=new Date(Date.now()-28*864e5).toISOString().split('T')[0];
+      const {count}=await sb.from('personal_sessions').select('id',{count:'exact',head:true}).eq('athlete_id',currentUser.id).gte('date',since);
+      if((count||0)>0&&document.querySelector('#prog-tabs [data-id="__perso__"]')){
+        selectProg('__perso__');
+        return;
+      }
+    }catch(e){console.warn('[perso] ouverture par défaut',e);}
+  }
   if(programmes.length>0){
     const isAdmin=currentProfile?.role==='admin';
     let first;
