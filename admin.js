@@ -880,6 +880,8 @@ async function saveSession(){
   };
   // Réglages VBT (vbt-seance.js) : null si pas de VBT ou type sans VBT
   if(typeof window.vbtGetFormData==='function')payload.vbt=window.vbtGetFormData(type);
+  // Suivi endurance fondamentale (ef-seance.js) : null si non coché ou type autre qu'Engine
+  if(typeof window.efGetFormData==='function')payload.ef=window.efGetFormData(type);
 
   let error;
   if(personalAthleteId){
@@ -913,6 +915,7 @@ async function saveSession(){
   setFormVideos([]);
   clearEditor();
   if(typeof window.vbtFormReset==='function')window.vbtFormReset();
+  if(typeof window.efFormReset==='function')window.efFormReset();
   document.getElementById('score-labels-container').innerHTML='';
   document.getElementById('f-intensity').value=7;document.getElementById('f-int-val').textContent='7';
   document.getElementById('f-date').value=new Date().toISOString().split('T')[0];

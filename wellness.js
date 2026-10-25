@@ -587,7 +587,7 @@ async function loadPersoRetours(sessionIds,athleteId,isos){
   try{
     if(sessionIds&&sessionIds.length){
       const {data:scores}=await sb.from('wod_scores')
-        .select('id,session_id,score_value,score_text,score_type,level,sets_data,created_at')
+        .select('id,session_id,score_value,score_text,score_type,level,sets_data,created_at,ef')
         .eq('athlete_id',athleteId).in('session_id',sessionIds);
       (scores||[]).forEach(sc=>{_persoRetoursCache.scoresBySid[sc.session_id]=sc;});
       const {data:notes}=await sb.from('session_notes')
@@ -637,6 +637,11 @@ function persoRetourBlock(sid,iso,autoOpen){
     v=String(v||'').slice(0,16);
     pills.push(`<span class="perso-r-pill score" title="Score athlète">✓ <span class="v">${escapeHtml(v)||'fait'}</span></span>`);
   }
+  // Dérive FC (suivi endurance fondamentale, ef-saisie.js)
+  if(sc&&sc.ef&&typeof window.efCalc==='function'){
+    const k=window.efCalc(sc.ef);
+    if(k)pills.push(`<span class="perso-r-pill ef ${window.efTone(k.drift)}" title="Dérive FC — endurance fondamentale">🫀 <span class="v">${window.efFmt(k.drift)}</span></span>`);
+  }
   if(nt)pills.push(`<span class="perso-r-pill note" title="Note de séance">📝 note</span>`);
   if(w){
     const mean=_persoWellMean(w);
@@ -667,6 +672,10 @@ function _persoDrawerInner(sc,nt,w){
       }
     }catch(e){}
     rows.push(`<div class="perso-r-row"><div class="lbl">Score</div><div class="val">${scoreHtml}${setsHtml}</div></div>`);
+    if(sc.ef&&typeof window.efDetailHTML==='function'){
+      const efHtml=window.efDetailHTML(sc.ef);
+      if(efHtml)rows.push(`<div class="perso-r-row"><div class="lbl">FC</div><div class="val">${efHtml}</div></div>`);
+    }
   }
   if(nt){
     rows.push(`<div class="perso-r-row"><div class="lbl">Note</div><div class="val note">${escapeHtml(nt.content||'')}</div></div>`);
