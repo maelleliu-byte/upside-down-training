@@ -18,6 +18,8 @@
 
   // À changer à chaque mise à jour de vbt.html : force le rechargement (cache navigateur)
   var VBT_VERSION = '2026-10-23c';
+  // Idem pour ef.html (profil endurance fondamentale)
+  var EF_VERSION = '2026-10-25a';
 
   var TOOLS = [
     {
@@ -40,6 +42,14 @@
       title: 'Journal VBT',
       sub: 'Séances au capteur de vitesse, profil charge-vitesse et zones. Enregistré sur ton compte UDT.',
       url: '/vbt.html?v=' + VBT_VERSION,
+      tall: true
+    },
+    {
+      id: 'ef',
+      emoji: '🫀',
+      title: 'Profil EF',
+      sub: 'Endurance fondamentale : dérive de la FC, FC moyenne et efficience par athlète. Lecture seule, coach référent.',
+      url: '/ef.html?v=' + EF_VERSION,
       tall: true
     }
   ];
