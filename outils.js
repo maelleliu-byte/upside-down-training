@@ -19,7 +19,7 @@
   // À changer à chaque mise à jour de vbt.html : force le rechargement (cache navigateur)
   var VBT_VERSION = '2026-10-23c';
   // Idem pour ef.html (profil endurance fondamentale)
-  var EF_VERSION = '2026-10-25a';
+  var EF_VERSION = '2026-10-25b';
 
   var TOOLS = [
     {

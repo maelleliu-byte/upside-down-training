@@ -1,7 +1,7 @@
 /* ============================================================
  * ENDURANCE FONDAMENTALE DANS SÉANCE + — « 🫀 Suivi endurance fondamentale »
  * ------------------------------------------------------------
- * Pour le type Engine : modalité, durée, échauffement exclu du
+ * Pour les types Engine et Run : modalité, durée, échauffement exclu du
  * calcul, intensité cible (valeur fixe ou % via %|FORMAT|MOUVEMENT|),
  * mode de saisie de la FC (2 moyennes ou relevés réguliers), consigne.
  *
@@ -17,7 +17,7 @@
   if (window.__patchBound_efSeance) return;
   window.__patchBound_efSeance = true;
 
-  var EF_TYPES = ['engine'];
+  var EF_TYPES = ['engine', 'run'];
   var MODS = [['run', 'Run'], ['bike', 'Bike'], ['row', 'Row'], ['ski', 'Ski'], ['autre', 'Autre']];
   var UNITS = ['W', 'km/h', 'min/km', '/500m', '%'];
   var FORMATS = ['VITESSE CRITIQUE', 'PUISSANCE CRITIQUE', 'TEST 20MIN / FTP', 'TEST 12MIN'];
@@ -49,10 +49,12 @@
   function _defaultUnit(mod) { return mod === 'run' ? 'km/h' : 'W'; }
   function _defaultFmt(mod) { return mod === 'run' ? 'VITESSE CRITIQUE' : 'PUISSANCE CRITIQUE'; }
 
+  // Séance de type Run : course à pied, allure en km/h par défaut
   function _new() {
+    var mod = _type() === 'run' ? 'run' : 'bike';
     return {
-      mod: 'bike', duration: '40:00', warmup: '5:00', unit: 'W', target: null,
-      pct: null, fmt: 'PUISSANCE CRITIQUE', ref: _defaultRef('bike'),
+      mod: mod, duration: '40:00', warmup: '5:00', unit: _defaultUnit(mod), target: null,
+      pct: null, fmt: _defaultFmt(mod), ref: _defaultRef(mod),
       mode: 'splits', every: 5, note: ''
     };
   }

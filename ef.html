@@ -346,7 +346,7 @@ function hrChart(rows){
   pts.forEach((r,i)=>{g+=`<circle cx="${X(i)}" cy="${Y(r.k.hrAvg)}" r="4" fill="var(--accent)"><title>${esc(dateFR(r.date))} : ${Math.round(r.k.hrAvg)} bpm à ${esc(outTxt(r.k))}</title></circle>`;
     if(pts.length<=14||i%Math.ceil(pts.length/10)===0){const d0=new Date(r.date+"T12:00:00");g+=`<text x="${X(i)}" y="${H-12}" text-anchor="middle" font-size="11" fill="var(--muted)">${d0.getDate()}/${d0.getMonth()+1}</text>`}});
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="FC moyenne et efficience par séance">${g}</svg>
-  <div class="legend"><span><i style="background:var(--accent)"></i>FC moyenne (bpm, échauffement exclu)</span>${effPts.length>=2?`<span><i style="background:var(--warn)"></i>Efficience (W par battement)</span>`:""}</div>`;
+  <div class="legend"><span><i style="background:var(--accent)"></i>FC moyenne (bpm, échauffement exclu)</span>${effPts.length>=2?`<span><i style="background:var(--warn)"></i>Efficience (${esc(effPts[0].k.unit)} par battement)</span>`:""}</div>`;
 }
 
 /* ---------- rendu ---------- */
@@ -393,7 +393,7 @@ function render(){
   </div>`;
   h+=`<div class="sec"><h2>Dérive par séance</h2><span>${rows.length} séance${rows.length>1?"s":""}</span></div><div class="card">${driftChart(rows)}</div>`;
   const hc=hrChart(rows);
-  if(hc)h+=`<div class="sec"><h2>FC moyenne et efficience</h2><span>à intensité cible</span></div><div class="card">${hc}<p class="hint" style="margin:8px 0 0">À puissance identique, une FC qui baisse et une efficience qui monte montrent que le moteur aérobie progresse.</p></div>`;
+  if(hc)h+=`<div class="sec"><h2>FC moyenne et efficience</h2><span>à intensité cible</span></div><div class="card">${hc}<p class="hint" style="margin:8px 0 0">À intensité identique, une FC qui baisse et une efficience qui monte montrent que le moteur aérobie progresse.</p></div>`;
   h+=`<div class="sec"><h2>Séances</h2><span>plus récentes en premier</span></div><div class="stack">${rows.slice().reverse().map(sessionCard).join("")}</div>`;
   app.innerHTML=h;window.scrollTo(0,y);
 }
