@@ -8198,6 +8198,29 @@ async function claimFreeAccess(programmeId){
     return _wdCfg;
   }
 
+  let _wdPeriod = false;
+  // Case « Règles aujourd'hui » : uniquement pour les profils féminins
+  function _wdIsFemale(){
+    const g = String((typeof currentProfile!=='undefined' && currentProfile && currentProfile.gender) || '').trim().toLowerCase();
+    return g === 'female' || g === 'f' || g === 'femme';
+  }
+  function _wdPeriodHTML(){
+    if(!_wdIsFemale()) return '';
+    const on = _wdPeriod;
+    return '<button type="button" class="wd-period'+(on?' on':'')+'" id="wd-period-btn" aria-pressed="'+on+'">'+
+      '<span class="bx">'+(on?'✓':'')+'</span>'+
+      '<span><span class="t1">🩸 Règles aujourd\'hui</span>'+
+      '<span class="t2">Visible seulement par toi et tes coachs</span></span></button>';
+  }
+  async function _wdSavePeriod(){
+    if(!_wdDate || !currentUser) return;
+    const {error} = await sb.from('training_load_days').upsert({
+      athlete_id: currentUser.id, date: _wdDate, period: _wdPeriod,
+      updated_at: new Date().toISOString()
+    }, {onConflict:'athlete_id,date'});
+    if(error){ console.warn('period save',error); showToast('❌ '+error.message); }
+  }
+
   async function _wdLoadEntry(iso){
     _wdDate = iso;
     _wdEntry = null;
@@ -8207,10 +8230,11 @@ async function claimFreeAccess(programmeId){
         sb.from('wellness_entries')
           .select('*').eq('athlete_id',currentUser.id).eq('date',iso).maybeSingle(),
         sb.from('training_load_days')
-          .select('wake').eq('athlete_id',currentUser.id).eq('date',iso).maybeSingle()
+          .select('wake,period').eq('athlete_id',currentUser.id).eq('date',iso).maybeSingle()
       ]);
       _wdEntry = w || null;
       _wdWake = (d && d.wake) || null;
+      _wdPeriod = !!(d && d.period);
     }catch(e){ console.warn('wellness entry',e); }
   }
 
@@ -8341,6 +8365,7 @@ async function claimFreeAccess(programmeId){
           '<div class="wd-date">'+_wdEsc(_wdPrettyDate(_wdDate))+'</div>'+
         '</div>'+
         _wdWakeHTML()+
+        _wdPeriodHTML()+
         rows+
         '<textarea class="wd-note" id="wd-note" rows="2" placeholder="Un mot pour ton coach… (optionnel)">'+_wdEsc(note)+'</textarea>'+
         '<button type="button" class="wd-send" id="wd-send-btn">📲 Envoyer à mon coach</button>'+
@@ -8354,6 +8379,13 @@ async function claimFreeAccess(programmeId){
         _wdSaveWake();
       };
     });
+
+    const pb = document.getElementById('wd-period-btn');
+    if(pb) pb.onclick = function(){
+      _wdPeriod = !_wdPeriod;
+      _wdPaint();
+      _wdSavePeriod();
+    };
 
     wrap.querySelectorAll('.wd-dot').forEach(btn=>{
       btn.onclick = function(){
@@ -8519,6 +8551,12 @@ async function claimFreeAccess(programmeId){
       '.wd-wake-lab{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1.2px;'+
         'font-weight:700;margin-bottom:7px}'+
       '.wd-wake{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:4px}'+
+      '.wd-period{display:flex;align-items:center;gap:10px;width:100%;text-align:left;margin:8px 0 6px;padding:9px 10px;border-radius:10px;border:1px solid var(--border2);background:var(--card2);color:var(--text);font-family:inherit;cursor:pointer}'+
+      '.wd-period .bx{width:20px;height:20px;border-radius:6px;border:1.5px solid var(--muted);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;color:#000;flex:0 0 auto}'+
+      '.wd-period .t1{display:block;font-size:13px}'+
+      '.wd-period .t2{display:block;font-size:10.5px;color:var(--muted);margin-top:1px}'+
+      '.wd-period.on{border-color:#f472b6;background:rgba(244,114,182,.08)}'+
+      '.wd-period.on .bx{background:#f472b6;border-color:#f472b6}'+
       '.wd-wk{display:flex;flex-direction:column;align-items:center;gap:3px;padding:9px 2px;'+
         'border-radius:10px;border:1.5px solid var(--border2);background:transparent;color:var(--muted);'+
         'font-family:inherit;font-size:11px;font-weight:600;cursor:pointer;transition:transform .08s}'+

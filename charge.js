@@ -441,17 +441,31 @@
 
   /* État au réveil : 28 cases, une par jour. L'état vient du wellness (dérivé
      côté SQL depuis sommeil / énergie / fatigue / courbatures…). */
+  /* Jours de règles (case cochée au réveil) : lus directement dans training_load_days */
+  async function addPeriods(athleteId,series){
+    if(!series||!series.length)return series;
+    try{
+      const{data}=await sb.from('training_load_days').select('date').eq('athlete_id',athleteId)
+        .eq('period',true).gte('date',series[0].d);
+      const set=new Set((data||[]).map(r=>r.date));
+      series.forEach(p=>{p.period=set.has(p.d);});
+    }catch(e){console.warn('[charge] règles',e);}
+    return series;
+  }
+
   function wakeStrip(series){
     const s28=series.slice(-28),cnt={};let n=0;
     s28.forEach(p=>{if(p.wake){cnt[p.wake]=(cnt[p.wake]||0)+1;n++;}});
-    const W=340,H=34,st=W/28,off=28-s28.length;
+    const W=340,H=40,st=W/28,off=28-s28.length;
+    const hasP=s28.some(p=>p.period);
     const cells=s28.map((p,i)=>
-      `<rect x="${(off+i)*st+1.5}" y="4" width="${st-3}" height="${H-8}" rx="3"
+      `<rect x="${(off+i)*st+1.5}" y="4" width="${st-3}" height="${H-14}" rx="3"
         fill="${p.wake?WAKEC[p.wake]:GRID}" opacity="${p.wake?1:.5}"
-        ><title>${sdate(p.date)} : ${p.wake?(WAKE.find(w=>w[0]===p.wake)||[])[2]||p.wake:'non renseigné'}</title></rect>`
+        ><title>${sdate(p.date)} : ${p.wake?(WAKE.find(w=>w[0]===p.wake)||[])[2]||p.wake:'non renseigné'}${p.period?' · règles':''}</title></rect>`+
+      (p.period?`<rect x="${(off+i)*st+1.5}" y="${H-7}" width="${st-3}" height="4" rx="2" fill="#f472b6"/>`:'')
     ).join('');
     return`<svg class="chg-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="État au réveil sur 28 jours">${cells}</svg>
-      <div class="chg-axis"><span>${s28.length?sdate(s28[0].date):''}</span><span>aujourd'hui</span></div>
+      <div class="chg-axis"><span>${s28.length?sdate(s28[0].date):''}</span>${hasP?'<span style="color:#f472b6">▬ règles</span>':''}<span>aujourd'hui</span></div>
       <div class="chg-kpis chg-wk4" style="grid-template-columns:repeat(4,1fr);margin-top:12px">
         ${WAKE.map(([k,em,l,c])=>`<div class="chg-kpi"><b style="color:${c}">${cnt[k]||0}</b><span>${em} ${l==='En forme'?'Forme':l}</span></div>`).join('')}
       </div>
@@ -530,6 +544,7 @@
         sb.rpc('training_load_modalities',{p_athlete:uid(),p_days:28})
       ]);
       series=a.data||[];weeks=b.data||[];mods=m.data||[];
+      await addPeriods(uid(),series);
     }catch(e){console.error('[charge] suivi',e);}
 
     if(!series.length){
@@ -558,7 +573,7 @@
     const h7=series.slice(-7).reduce((a,p)=>a+p.minutes,0)/60;
     const wk=weeks[0];
     const s42=series.slice(-42).map(p=>({
-      date:p.d,load:+p.load,minutes:+p.minutes,wake:p.wake,
+      date:p.d,load:+p.load,minutes:+p.minutes,wake:p.wake,period:!!p.period,
       acute:+p.acute,chronic:+p.chronic,ratio:p.ratio==null?null:Number(p.ratio)
     }));
     return`<div class="chg-zone" style="background:${tint(z.c,14)};border:1px solid ${tint(z.c,45)};color:${z.c}">
@@ -715,6 +730,7 @@
         sb.rpc('training_load_modalities',{p_athlete:athleteId,p_days:28})
       ]);
       series=s.data||[];weeks=w.data||[];mods=m.data||[];
+      await addPeriods(athleteId,series);
     }catch(e){console.error('[charge] fiche',e);}
     fiche.innerHTML=`<button class="chg-back" id="chg-back">${opts.fromPerso?'‹ Retour à l\'espace perso':'‹ Retour'}</button>
       <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${a.full_name||a.email||'Athlète'}</div>
