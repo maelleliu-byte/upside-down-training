@@ -457,14 +457,13 @@ async function renderPersoCalendar(){
     const wk=getWeekNum(dates[0]);
     const weekStartIso=dates[0].toISOString().split('T')[0];
     const baseWeekLabel=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
-    const {data:wlRow}=await sb.from('personal_week_labels').select('label').eq('athlete_id',currentPersoAthlete.id).eq('week_start',weekStartIso).maybeSingle();
-    const customWeekLabel=wlRow?.label||'';
+    // noms de semaine personnalisés retirés : les cycles donnent la phase
     const persoLblEl=document.getElementById('perso-period-label');
-    persoLblEl.textContent=customWeekLabel||baseWeekLabel;
-    persoLblEl.title=customWeekLabel?`${baseWeekLabel} · Cliquer pour modifier le nom`:'Cliquer pour nommer cette semaine';
-    persoLblEl.style.cursor='pointer';
-    persoLblEl.style.textDecoration='underline dotted';
-    persoLblEl.onclick=()=>openPersoWeekLabelEditor(currentPersoAthlete.id,weekStartIso,customWeekLabel,baseWeekLabel,()=>renderPersoCalendar());
+    persoLblEl.textContent=baseWeekLabel;
+    persoLblEl.title='';
+    persoLblEl.style.cursor='';
+    persoLblEl.style.textDecoration='';
+    persoLblEl.onclick=null;
     const isos=dates.map(d=>d.toISOString().split('T')[0]);
     const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
     persoSessionsCache=data||[];
@@ -1306,22 +1305,13 @@ async function renderPersoDayStrip(){
   const wk=getWeekNum(dates[0]);
   const weekStartIso=dates[0].toISOString().split('T')[0];
   const baseWeekLabel=`Sem. ${wk} — ${MONTHS[dates[0].getMonth()]}`;
-  const {data:wlRow}=await sb.from('personal_week_labels').select('label').eq('athlete_id',currentUser.id).eq('week_start',weekStartIso).maybeSingle();
-  const customWeekLabel=wlRow?.label||'';
+  // noms de semaine personnalisés retirés : les cycles donnent la phase
   const weekLblEl=document.getElementById('week-label');
-  weekLblEl.textContent=customWeekLabel||baseWeekLabel;
-  const isAdminSelf=currentProfile?.role==='admin';
-  if(isAdminSelf){
-    weekLblEl.title=customWeekLabel?`${baseWeekLabel} · Cliquer pour modifier le nom`:'Cliquer pour nommer cette semaine';
-    weekLblEl.style.cursor='pointer';
-    weekLblEl.style.textDecoration='underline dotted';
-    weekLblEl.onclick=()=>openPersoWeekLabelEditor(currentUser.id,weekStartIso,customWeekLabel,baseWeekLabel,()=>renderPersoDayStrip());
-  } else {
-    weekLblEl.title=customWeekLabel?baseWeekLabel:'';
-    weekLblEl.style.cursor='';
-    weekLblEl.style.textDecoration='';
-    weekLblEl.onclick=null;
-  }
+  weekLblEl.textContent=baseWeekLabel;
+  weekLblEl.title='';
+  weekLblEl.style.cursor='';
+  weekLblEl.style.textDecoration='';
+  weekLblEl.onclick=null;
   const isos=dates.map(d=>d.toISOString().split('T')[0]);
   const {data}=await sb.from('personal_sessions').select('date').eq('athlete_id',currentUser.id).in('date',isos);
   const withContent=new Set((data||[]).map(s=>s.date));
