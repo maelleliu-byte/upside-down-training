@@ -102,7 +102,7 @@ var REGIMES = {
 /* Matériel disponible — à remplacer par l'inventaire réel du club. */
 var RACKS = {
   barre:[1,5,7.5,10,12.5,15,17.5,20,22.5,25,27.5,30,32.5,35,37.5,40,42.5,45,47.5,50,52.5,55,57.5,60,65,70,75,80,85,90,95,100,105,110,120,130,140,150],
-  db:[2,3,4,5,6,7.5,8,10,12,14,16,18,20,22.5,25,30],
+  db:[2,3,4,5,6,7.5,8,9,10,12,12.5,14,15,16,17.5,18,20,22.5,25,27.5,30,32.5,35,40],
   kb:[4,6,8,10,12,16,20,24,28,32],
   wb:[2,3,4,5,6,7,9,10,12],
   sac:[5,10,15,20,25,30,35,40,50,60,70]
@@ -179,7 +179,7 @@ var ECHELLES = [
 
 /* Une paire "40/30" sans unité n'est lue comme une charge que sur une ligne
    de mouvement chargé — sinon "21-15-9" deviendrait des kilos. */
-var CHARGE_LEX = /snatch|clean|jerk|thrust|deadlift|soulev|squat|press|swing|lunge|fente|carry|port[ée]|wall ?ball|dumbbell|\bdb\b|haltère|kettlebell|\bkb\b|sandbag|\bsac\b|d-?ball|worm|barre|\bbar\b|overhead|\bohs\b|sdhp|farmer|devil|hang|complex/i;
+var CHARGE_LEX = /snatch|clean|jerk|thrust|deadlift|soulev|squat|press|swing|lunge|fente|carry|port[ée]|wall ?ball|dumb+ell|\bdb\b|haltère|kettlebell|\bkb\b|sandbag|\bsac\b|d-?ball|worm|barre|\bbar\b|overhead|\bohs\b|sdhp|farmer|devil|hang|complex|\b\d\s*[x×]\s*\d/i;
 
 /* Valeurs d'usine, pour le bouton « Rétablir » du panneau Outils. */
 var USINE = JSON.parse(JSON.stringify({
@@ -203,12 +203,24 @@ function snap(cible,rack){
   return best;
 }
 function fmtLoad(v,type){return (type==='barre'&&v<=1)?'PVC':nb(v)+' kg';}
+/* Mots qui désignent franchement un travail à la barre. Sert de garde-fou :
+   sans eux, une charge légère ne doit pas devenir « PVC ». */
+var BARRE_LEX=/barre|barbell|snatch|clean|jerk|thruster|deadlift|soulev|squat|press|overhead squat|\bohs\b|complex|\bbar\b/i;
+
 function equipOf(ligne){
   var l=ligne.toLowerCase();
+  /* Mots explicites d'abord : ils l'emportent toujours. */
   if(/wall ?ball|\bwb\b|médecine|medecine|med ?ball/.test(l))return 'wb';
-  if(/dumbbell|\bdb\b|haltères?\b/.test(l))return 'db';
   if(/kettlebell|\bkb\b/.test(l))return 'kb';
   if(/sandbag|sac lesté|sac\b|\bd-?ball|worm/.test(l))return 'sac';
+  if(/dumb+ell|\bdb\b|haltères?\b|devil press/.test(l))return 'db';
+  /* « 2x 22.5/15 » sans engin nommé = une paire d'haltères : c'est la
+     convention d'écriture de la prog. La ligne peut dire OVERHEAD LUNGE
+     ou FARMER LUNGE sans jamais nommer l'haltère. */
+  if(/\b\d\s*[x×]\s*\d/.test(l)||/farmer/.test(l))return 'db';
+  /* Rien d'explicite et aucun mot de barre : on évite le rack barre, sinon une
+     charge d'enfant tombe sur le PVC alors que c'est du travail à l'haltère. */
+  if(!BARRE_LEX.test(l))return 'db';
   return 'barre';
 }
 function repsOf(ligne){
@@ -245,6 +257,21 @@ function enTexte(html){
   var d=document.createElement('div');
   d.innerHTML=String(html).replace(/<br\s*\/?>/gi,'\n').replace(/<\/(p|div|li)>/gi,'\n');
   return (d.textContent||'').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+/* Texte de départ d'un niveau.
+   Les champs scaling_inter / scaling_scaled sont tantôt une variante complète
+   du WOD (« 1 WALLWALK + 1 à 3 PIKE PUSH UP / 12 TOES TO BAR… »), tantôt une
+   simple note de charge (« 2x 17.5/12.5 »). On ne s'en sert que dans le premier
+   cas : une note seule ne contient pas de WOD à convertir. */
+function texteSource(s,niveau){
+  var contenu=enTexte(s.content||'');
+  if(niveau.source==='content')return contenu;
+  var alt=enTexte(s[niveau.source]||'');
+  if(!alt.trim())return contenu;
+  var lignes=alt.split('\n').filter(function(x){return x.trim();});
+  var complet=(lignes.length>=2&&alt.replace(/\s+/g,' ').trim().length>=40);
+  return complet?alt:contenu;
 }
 
 /* Barreau retenu pour une tranche d'âge et un niveau. */
@@ -350,7 +377,7 @@ function scaleWod(texte,o){
 
     if(CHARGE_LEX.test(l)){
       l=safe(l,/(^|[^\d.,\/])(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)(?![\d.,\/])/g,function(m,pre,a,b){
-        return pre+paire(snap(num(a)*k,rack),snap(num(b)*k,rack));
+        return pre+paire(exact?num(a)*k:snap(num(a)*k,rack),exact?num(b)*k:snap(num(b)*k,rack));
       });
     }
 
@@ -496,7 +523,7 @@ function blocKids(s,niveauId){
   for(var i=0;i<NIVEAUX.length;i++){if(NIVEAUX[i].id===niveauId)niveau=NIVEAUX[i];}
   if(!niveau)niveau=NIVEAUX[0];
 
-  var brutTexte=enTexte(s[niveau.source]||s.content||'');
+  var brutTexte=texteSource(s,niveau);
   if(!brutTexte.trim())return '';
 
   var regime=REGIMES[s.type]||'auto';
@@ -624,7 +651,7 @@ document.addEventListener('click',function(e){
     if(txt===null){
       var niveau=null;
       for(var i=0;i<NIVEAUX.length;i++){if(NIVEAUX[i].id===niv)niveau=NIVEAUX[i];}
-      var src=enTexte(s[niveau.source]||s.content||'');
+      var src=texteSource(s,niveau);
       var gen=scaleWod(src,{categorie:cat,niveau:niv,intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
       txt=gen?gen.texte:'';
     }
