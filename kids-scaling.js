@@ -18,9 +18,10 @@
 
 /* ========================= CONFIG ========================= */
 
-/* Slugs de programmes où le bloc Kids s'affiche. 'training' = la prog adulte,
-   depuis laquelle on veut générer la version enfants. */
-var PROGS = ['training','kids'];
+/* Slugs de programmes où le bloc Kids s'affiche. Uniquement KIDS-TEENS :
+   on colle le WOD adulte dans la prog Kids, et il se décline par tranche d'âge.
+   La prog Training reste intacte côté adultes. */
+var PROGS = ['kids'];
 
 /* Ratios ♂/♀ : −30 % sur les charges, −20 % sur les calories. */
 var RATIO_CHARGE = 0.70, RATIO_CAL = 0.80;
@@ -202,7 +203,8 @@ function scaleWod(texte,o){
     /* Cible wall ball — avant les distances, sinon "cible 3 m" est lue comme une distance */
     if(equip==='wb'){
       if(/cible/i.test(l))l=safe(l,/cible\s*\d+(?:[.,]\d+)?\s*m/gi,L1+'cible '+nb(p.cible)+' m'+L2);
-      else l=l.replace(/\s*$/,' '+L1+'(cible '+nb(p.cible)+' m)'+L2);
+      /* Cible ajoutée seulement si elle s'écarte du standard adulte (3 m) */
+      else if(p.cible<3)l=l.replace(/\s*$/,' '+L1+'(cible '+nb(p.cible)+' m)'+L2);
     }
 
     /* Calories — premier nombre ♂, second ♀ ; valeur unique : ♀ = ♂ −20 % */
@@ -231,8 +233,14 @@ function scaleWod(texte,o){
       });
     }
 
-    /* Charges — premier nombre ♂, second ♀, même coefficient pour les deux */
-    var conv=function(v,u){return snap(num(v)*(/lb/i.test(u)?0.4536:1)*k,rack);};
+    /* Charges — premier nombre ♂, second ♀, même coefficient pour les deux.
+       À coefficient 1,00 (16-17 en RX) la charge écrite est conservée telle
+       quelle : pas d'arrondi matériel sur une valeur que le coach a saisie. */
+    var exact=(k===1);
+    var conv=function(v,u){
+      var val=num(v)*(/lb/i.test(u)?0.4536:1)*k;
+      return exact?val:snap(val,rack);
+    };
     var paire=function(nh,nf){return L1+'♂/♀ '+(nh===nf?fmtLoad(nh,equip):fmtLoad(nh,equip)+' / '+fmtLoad(nf,equip))+L2;};
 
     l=safe(l,new RegExp('(?:[♀♂]\\s*)?(\\d+(?:[.,]\\d+)?)'+SEP+'(\\d+(?:[.,]\\d+)?)\\s*(kgs?|lbs?)\\b','gi'),
@@ -241,7 +249,9 @@ function scaleWod(texte,o){
     l=safe(l,/([♀♂]\s*)?(\d+(?:[.,]\d+)?)\s*(kgs?|lbs?)\b/gi,function(m,g,a,u){
       var base=num(a)*(/lb/i.test(u)?0.4536:1);
       var refH=(g&&g.indexOf('♀')>=0)?base/RATIO_CHARGE:base;
-      return paire(snap(refH*k,rack),snap(refH*RATIO_CHARGE*k,rack));
+      /* La valeur saisie est conservée à coefficient 1 ; la colonne déduite est
+         toujours arrondie au matériel, puisqu'elle n'a pas été écrite par le coach. */
+      return paire(exact?refH*k:snap(refH*k,rack),snap(refH*RATIO_CHARGE*k,rack));
     });
 
     if(CHARGE_LEX.test(l)){
@@ -340,7 +350,9 @@ function blocKids(s,niveauId){
     tabs+='<button type="button" class="'+(n.id===niveau.id?'on':'')+
           '" data-udtk-niveau="'+n.id+'" data-udtk-sid="'+s.id+'">'+n.nom+'</button>';
   }
-  for(var c=0;c<CATS.length;c++){
+  /* Ordre décroissant : 16-17 en premier, puisque le texte collé EST leur version
+     (coefficient 1.00, identique au RX adulte), les autres en descendent. */
+  for(var c=CATS.length-1;c>=0;c--){
     var r=scaleWod(brutTexte,{categorie:CATS[c].id,niveau:niveau.id});
     if(!r)continue;
     var cat=r.categorie;
