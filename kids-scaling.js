@@ -151,7 +151,9 @@ var ECHELLES = [
   technique:['suspensions corde 10 s','rope pulls assis','prises de jambes au sol','montées 1/2 corde avec jambes','montées avec jambes',''],
   volume:['suspensions corde 10 s','rope pulls assis','rope pulls assis vers debout','montées 1/2 corde','montées avec jambes',''],
   force:['suspensions corde 20 s','rope pulls assis lestés','montées avec jambes','montées sans jambes 1/2','montées sans jambes','']}},
-{id:'du',nom:'Double-unders',re:/\b(double[- ]unders?|du)\b/gi,v:{
+/* `re2` est sensible à la casse : l'abréviation DU ne doit pas attraper
+   le mot français « du » dans une consigne. */
+{id:'du',nom:'Double-unders',re:/\bdouble[- ]unders?\b/gi,re2:/\bDU\b/g,v:{
   technique:['sauts à la corde réguliers','penguin jumps','single-double alternés','double-unders par 5','double-unders',''],
   volume:['single unders ×2','single unders ×2','single-double alternés','double-unders par 5','double-unders',''],
   force:['sauts à la corde lestés','single unders ×2','single-double alternés','double-unders','double-unders à la corde lourde','']}},
@@ -404,8 +406,10 @@ function scaleWod(texte,o){
       for(var i=0;i<ECHELLES.length;i++){
         var sub=marche(ECHELLES[i],voie,p.barreau);
         if(!sub)continue;
+        var poser=(function(x){return function(){return M1+x+M2;};})(sub);
         ECHELLES[i].re.lastIndex=0;
-        l=safeSub(l,ECHELLES[i].re,(function(x){return function(){return M1+x+M2;};})(sub));
+        l=safeSub(l,ECHELLES[i].re,poser);
+        if(ECHELLES[i].re2){ECHELLES[i].re2.lastIndex=0;l=safeSub(l,ECHELLES[i].re2,poser);}
       }
     }
     return l;
@@ -571,11 +575,7 @@ function blocKids(s,niveauId){
          (perso!==null?'<span class="udtk-tag">modifié</span>':'')+outils+'</div>'+
          '<div class="udtk-meta">coef '+r.k.toFixed(2)+' · barreau '+r.barreau+'/'+NB_BARREAUX+' · box '+r.box[0]+'/'+r.box[1]+' cm</div>'+
          '<div class="udtk-wod">'+corps+'</div>'+
-         '<div class="udtk-note">'+
-           (perso===null&&r.flags.max?'<span class="udtk-alerte">Charge proche du max : plancher ramené à 3 répétitions.</span>':'')+
-           (cat.alerte?'<span class="udtk-alerte">'+cat.alerte+'</span>':'')+
-           cat.note+
-         '</div>'+
+         '<div class="udtk-note">'+cat.note+'</div>'+
        '</div>';
   }
 
