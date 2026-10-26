@@ -324,13 +324,58 @@ var CSS=
 '.udtk-load{font-weight:800}'+
 '.udtk-sub{background:rgba(45,212,191,.15);color:var(--accent,#2dd4bf);padding:0 3px;border-radius:3px;font-weight:700}'+
 '.udtk-note{font-size:10.5px;color:var(--muted,#8b949e);margin-top:7px;line-height:1.5}'+
-'.udtk-alerte{display:block;color:var(--red,#f85149);margin-bottom:4px}';
+'.udtk-alerte{display:block;color:var(--red,#f85149);margin-bottom:4px}'+
+/* Édition admin */
+'.udtk-bloc.modifie{border-left-color:var(--purple,#bc8cff)}'+
+'.udtk-tag{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--purple,#bc8cff);border:1px solid currentColor;border-radius:4px;padding:1px 5px}'+
+'.udtk-actions{display:flex;gap:6px;align-items:center;margin-left:auto}'+
+'.udtk-ico{font:inherit;font-size:12px;line-height:1;background:transparent;border:0;color:var(--muted,#8b949e);cursor:pointer;padding:2px 4px;border-radius:4px}'+
+'.udtk-ico:hover{color:var(--accent,#2dd4bf)}'+
+'.udtk-edit{width:100%;min-height:150px;font:inherit;font-size:12px;line-height:1.65;color:var(--text,#e6edf3);background:var(--card,rgba(0,0,0,.25));border:1px solid var(--accent,#2dd4bf);border-radius:6px;padding:8px;resize:vertical}'+
+'.udtk-btns{display:flex;gap:6px;margin-top:7px;flex-wrap:wrap}'+
+'.udtk-btn{font:inherit;font-size:11px;font-weight:700;padding:6px 12px;border-radius:6px;border:1px solid var(--border,rgba(255,255,255,.18));background:transparent;color:var(--muted,#8b949e);cursor:pointer}'+
+'.udtk-btn.primaire{background:var(--accent,#2dd4bf);border-color:var(--accent,#2dd4bf);color:#0b1512}'+
+'.udtk-btn.danger{color:var(--red,#f85149)}';
 
 function injecterStyle(){
   if(document.getElementById(STYLE_ID))return;
   var st=document.createElement('style');
   st.id=STYLE_ID; st.textContent=CSS;
   document.head.appendChild(st);
+}
+
+/* ---- Retouches manuelles (colonne jsonb `kids`) ---- */
+
+function estAdmin(){
+  try{
+    var p=window.currentProfile||(typeof currentProfile!=='undefined'?currentProfile:null);
+    return !!(p&&p.role==='admin');
+  }catch(e){return false;}
+}
+function retouches(s){
+  var k=s&&s.kids;
+  if(typeof k==='string'){try{k=JSON.parse(k);}catch(e){k=null;}}
+  return (k&&typeof k==='object')?k:{};
+}
+function retouche(s,catId,nivId){
+  var r=retouches(s);
+  return (r[catId]&&typeof r[catId][nivId]==='string')?r[catId][nivId]:null;
+}
+/* Écrit une retouche (texte) ou la supprime (texte === null). */
+async function enregistrerRetouche(s,catId,nivId,texte){
+  var r=retouches(s);
+  if(texte===null){
+    if(r[catId]){delete r[catId][nivId];if(!Object.keys(r[catId]).length)delete r[catId];}
+  }else{
+    if(!r[catId])r[catId]={};
+    r[catId][nivId]=texte;
+  }
+  var payload=Object.keys(r).length?r:null;
+  var table=s.athlete_id?'personal_sessions':'sessions';
+  var res=await sb.from(table).update({kids:payload}).eq('id',s.id);
+  if(res&&res.error)throw res.error;
+  s.kids=payload;
+  return payload;
 }
 
 /* Construit le bloc Kids pour une séance. Rend '' si rien à convertir. */
@@ -352,16 +397,29 @@ function blocKids(s,niveauId){
   }
   /* Ordre décroissant : 16-17 en premier, puisque le texte collé EST leur version
      (coefficient 1.00, identique au RX adulte), les autres en descendent. */
+  var admin=estAdmin();
   for(var c=CATS.length-1;c>=0;c--){
     var r=scaleWod(brutTexte,{categorie:CATS[c].id,niveau:niveau.id});
     if(!r)continue;
     var cat=r.categorie;
-    g+='<div class="udtk-bloc'+(cat.officiel?' officiel':'')+'">'+
+    var perso=retouche(s,cat.id,niveau.id);
+    var corps=(perso!==null)
+      ? escapeHtml(perso).replace(/\n/g,'<br>')
+      : r.html;
+    var outils='';
+    if(admin){
+      outils='<span class="udtk-actions">'+
+        (perso!==null?'<button type="button" class="udtk-ico" title="Revenir au scaling automatique" data-udtk-reset="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">↺</button>':'')+
+        '<button type="button" class="udtk-ico" title="Modifier" data-udtk-edit="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">✏️</button>'+
+      '</span>';
+    }
+    g+='<div class="udtk-bloc'+(cat.officiel?' officiel':'')+(perso!==null?' modifie':'')+'" data-udtk-bloc="'+cat.id+'">'+
          '<div class="udtk-bloc-head"><span class="udtk-age">'+cat.nom+'</span>'+
-         '<span class="udtk-meta">coef '+r.k.toFixed(2)+' · box '+r.box[0]+'/'+r.box[1]+' cm</span></div>'+
-         '<div class="udtk-wod">'+r.html+'</div>'+
+         (perso!==null?'<span class="udtk-tag">modifié</span>':'')+outils+'</div>'+
+         '<div class="udtk-meta" style="margin-bottom:5px">coef '+r.k.toFixed(2)+' · box '+r.box[0]+'/'+r.box[1]+' cm</div>'+
+         '<div class="udtk-wod">'+corps+'</div>'+
          '<div class="udtk-note">'+
-           (r.flags.max?'<span class="udtk-alerte">Charge proche du max : plancher ramené à 3 répétitions.</span>':'')+
+           (perso===null&&r.flags.max?'<span class="udtk-alerte">Charge proche du max : plancher ramené à 3 répétitions.</span>':'')+
            (cat.alerte?'<span class="udtk-alerte">'+cat.alerte+'</span>':'')+
            cat.note+
          '</div>'+
@@ -390,18 +448,107 @@ function concerne(s){
   return false;
 }
 
-/* Changement d'onglet : délégation globale, pose une seule fois. */
-document.addEventListener('click',function(e){
-  var b=e.target.closest?e.target.closest('[data-udtk-niveau]'):null;
-  if(!b)return;
-  e.preventDefault(); e.stopPropagation();
-  var sid=b.getAttribute('data-udtk-sid'), niv=b.getAttribute('data-udtk-niveau');
+/* Re-rend le bloc Kids d'une séance pour un niveau donné. */
+function rafraichir(sid,niv){
   var s=CACHE[sid]; if(!s)return;
   var hote=document.querySelector('[data-udtk-card="'+sid+'"]');
   if(!hote)return;
   var neuf=document.createElement('div');
   neuf.innerHTML=blocKids(s,niv);
   if(neuf.firstElementChild)hote.replaceWith(neuf.firstElementChild);
+}
+function toast(msg){
+  try{if(typeof showToast==='function'){showToast(msg);return;}}catch(e){}
+}
+
+/* Délégation globale : onglets, crayon, enregistrer, annuler, réinitialiser. */
+document.addEventListener('click',function(e){
+  if(!e.target.closest)return;
+
+  /* Changement de niveau */
+  var tab=e.target.closest('[data-udtk-niveau]');
+  if(tab&&!tab.hasAttribute('data-udtk-cat')){
+    e.preventDefault(); e.stopPropagation();
+    rafraichir(tab.getAttribute('data-udtk-sid'),tab.getAttribute('data-udtk-niveau'));
+    return;
+  }
+
+  /* Ouvrir l'édition */
+  var crayon=e.target.closest('[data-udtk-edit]');
+  if(crayon){
+    e.preventDefault(); e.stopPropagation();
+    var sid=crayon.getAttribute('data-udtk-sid'),
+        cat=crayon.getAttribute('data-udtk-cat'),
+        niv=crayon.getAttribute('data-udtk-niv');
+    var s=CACHE[sid]; if(!s)return;
+    var bloc=crayon.closest('.udtk-bloc');
+    var zone=bloc.querySelector('.udtk-wod');
+    if(bloc.querySelector('.udtk-edit'))return;
+
+    var perso=retouche(s,cat,niv);
+    var txt=perso;
+    if(txt===null){
+      var niveau=null;
+      for(var i=0;i<NIVEAUX.length;i++){if(NIVEAUX[i].id===niv)niveau=NIVEAUX[i];}
+      var src=enTexte(s[niveau.source]||s.content||'');
+      var gen=scaleWod(src,{categorie:cat,niveau:niv});
+      txt=gen?gen.texte:'';
+    }
+    var ta=document.createElement('textarea');
+    ta.className='udtk-edit'; ta.value=txt; ta.spellcheck=false;
+    var btns=document.createElement('div');
+    btns.className='udtk-btns';
+    btns.innerHTML='<button type="button" class="udtk-btn primaire" data-udtk-save="1">Enregistrer</button>'+
+                   '<button type="button" class="udtk-btn" data-udtk-cancel="1">Annuler</button>'+
+                   (perso!==null?'<button type="button" class="udtk-btn danger" data-udtk-reset="1" data-udtk-sid="'+sid+'" data-udtk-cat="'+cat+'" data-udtk-niv="'+niv+'">Réinitialiser</button>':'');
+    zone.innerHTML=''; zone.appendChild(ta); zone.appendChild(btns);
+    ta.dataset.sid=sid; ta.dataset.cat=cat; ta.dataset.niv=niv;
+    ta.focus();
+    return;
+  }
+
+  /* Enregistrer */
+  var save=e.target.closest('[data-udtk-save]');
+  if(save){
+    e.preventDefault(); e.stopPropagation();
+    var zone2=save.closest('.udtk-wod'), ta2=zone2.querySelector('.udtk-edit');
+    var s2=CACHE[ta2.dataset.sid]; if(!s2)return;
+    save.disabled=true; save.textContent='…';
+    enregistrerRetouche(s2,ta2.dataset.cat,ta2.dataset.niv,ta2.value)
+      .then(function(){toast('✅ Scaling enregistré');rafraichir(ta2.dataset.sid,ta2.dataset.niv);})
+      .catch(function(err){
+        save.disabled=false; save.textContent='Enregistrer';
+        toast('❌ Enregistrement impossible');
+        if(window.console)console.error('[kids-scaling]',err);
+      });
+    return;
+  }
+
+  /* Annuler */
+  var cancel=e.target.closest('[data-udtk-cancel]');
+  if(cancel){
+    e.preventDefault(); e.stopPropagation();
+    var ta3=cancel.closest('.udtk-wod').querySelector('.udtk-edit');
+    rafraichir(ta3.dataset.sid,ta3.dataset.niv);
+    return;
+  }
+
+  /* Réinitialiser */
+  var reset=e.target.closest('[data-udtk-reset]');
+  if(reset){
+    e.preventDefault(); e.stopPropagation();
+    var sid4=reset.getAttribute('data-udtk-sid'),
+        cat4=reset.getAttribute('data-udtk-cat'),
+        niv4=reset.getAttribute('data-udtk-niv');
+    var s4=CACHE[sid4]; if(!s4)return;
+    enregistrerRetouche(s4,cat4,niv4,null)
+      .then(function(){toast('↺ Scaling automatique rétabli');rafraichir(sid4,niv4);})
+      .catch(function(err){
+        toast('❌ Réinitialisation impossible');
+        if(window.console)console.error('[kids-scaling]',err);
+      });
+    return;
+  }
 },true);
 
 /* ======================= PATCH ======================= */
