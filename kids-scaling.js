@@ -73,25 +73,42 @@ var RACKS = {
   sac:[5,10,15,20,25,30,35,40,50,60,70]
 };
 
+/* Régime de charge selon le type de séance (colonne sessions.type).
+   'auto' = déduit du nombre de répétitions de la ligne.
+   metcon = coefficient plein · lourd = −15 % · max = −20 %. */
+var REGIMES = {
+  wod:'metcon', strength:'lourd', weightlifting:'max', gymnastics:'metcon',
+  renforcement:'lourd', bodybuilding:'lourd', skill:'metcon', warmup:'metcon',
+  mobility:'metcon', engine:'metcon', run:'metcon'
+};
+
 /* Substitutions gymniques. Catégorie absente = mouvement inchangé. */
 var GYM = [
-  {re:/\b(ring muscle[- ]ups?|muscle[- ]ups? anneaux)\b/gi,s:{'6-7':'ring rows inclinées + push-ups genoux','8-9':'ring rows + push-ups sur box','10-11':'pull-ups sautées + dips sur box','12-13':'chest-to-bar + dips anneaux','14-15':'bar muscle-ups'}},
-  {re:/\b(bar muscle[- ]ups?|muscle[- ]ups?)\b/gi,s:{'6-7':'ring rows inclinées','8-9':'ring rows','10-11':'pull-ups sautées','12-13':'chest-to-bar','14-15':'chest-to-bar'}},
-  {re:/\b(chest[- ]to[- ]bar(?: pull[- ]ups?)?|c2b)\b/gi,s:{'6-7':'ring rows inclinées','8-9':'ring rows','10-11':'pull-ups sautées','12-13':'pull-ups'}},
-  {re:/\b(strict pull[- ]ups?|pull[- ]ups?|tractions?)\b/gi,s:{'6-7':'ring rows inclinées','8-9':'ring rows','10-11':'pull-ups sautées'}},
-  {re:/\b(toes[- ]to[- ]bar|ttb)\b/gi,s:{'6-7':'hollow hold 10 s','8-9':'knee raises suspendues','10-11':'knee raises suspendues','12-13':'knees-to-elbow'}},
-  {re:/\b(strict handstand push[- ]ups?|handstand push[- ]ups?|hspu)\b/gi,s:{'6-7':'push-ups au mur','8-9':'push-ups inclinés','10-11':'pike push-ups au sol','12-13':'pike push-ups sur box'}},
-  {re:/\b(handstand walks?|marche en ATR)\b/gi,s:{'6-7':'brouette 10 m','8-9':'bear crawl 10 m','10-11':'wall walks','12-13':'ATR au mur 20 s'}},
-  {re:/\b(wall walks?)\b/gi,s:{'6-7':'bear crawl 10 m','8-9':'bear crawl 10 m','10-11':'wall walks 3/4'}},
-  {re:/\b(legless rope climbs?)\b/gi,s:{'6-7':'suspension corde 10 s','8-9':'rope pulls assis','10-11':'rope pulls assis vers debout','12-13':'rope climbs avec jambes','14-15':'rope climbs avec jambes'}},
-  {re:/\b(rope climbs?|montées? de corde)\b/gi,s:{'6-7':'suspension corde 10 s','8-9':'rope pulls assis','10-11':'rope pulls assis vers debout'}},
-  {re:/\b(double[- ]unders?|du)\b/gi,s:{'6-7':'single unders ×2','8-9':'single unders ×2','10-11':'single unders ×2'}},
-  {re:/\b(ghd sit[- ]ups?)\b/gi,s:{'6-7':'hollow holds','8-9':'hollow rocks','10-11':'sit-ups','12-13':'sit-ups','14-15':'sit-ups ancrés'}},
-  {re:/\b(pistols?|squats? sur une jambe)\b/gi,s:{'6-7':'squats au poids de corps','8-9':'squats sur box','10-11':'split squats','12-13':'pistols sur box'}},
-  {re:/\b(ring dips?|dips anneaux|dips?)\b/gi,s:{'6-7':'push-ups genoux','8-9':'push-ups','10-11':'dips sur box','12-13':'dips sur box'}},
-  {re:/\b(box jumps?(?: overs?)?)\b/gi,s:{'6-7':'step-ups sur box','8-9':'step-ups sur box'}},
-  {re:/\b(kettlebell swings?|kb swings?)\b/gi,s:{'6-7':'KB swings russes','8-9':'KB swings russes'}}
+  {id:'ring-mu',nom:'Ring muscle-up',re:/\b(ring muscle[- ]ups?|muscle[- ]ups? anneaux)\b/gi,s:{'6-7':'ring rows inclinées + push-ups genoux','8-9':'ring rows + push-ups sur box','10-11':'pull-ups sautées + dips sur box','12-13':'chest-to-bar + dips anneaux','14-15':'bar muscle-ups'}},
+  {id:'bar-mu',nom:'Bar muscle-up',re:/\b(bar muscle[- ]ups?|muscle[- ]ups?)\b/gi,s:{'6-7':'ring rows inclinées','8-9':'ring rows','10-11':'pull-ups sautées','12-13':'chest-to-bar','14-15':'chest-to-bar'}},
+  {id:'c2b',nom:'Chest-to-bar',re:/\b(chest[- ]to[- ]bar(?: pull[- ]ups?)?|c2b)\b/gi,s:{'6-7':'ring rows inclinées','8-9':'ring rows','10-11':'pull-ups sautées','12-13':'pull-ups'}},
+  {id:'pull-up',nom:'Pull-up / traction',re:/\b(strict pull[- ]ups?|pull[- ]ups?|tractions?)\b/gi,s:{'6-7':'ring rows inclinées','8-9':'ring rows','10-11':'pull-ups sautées'}},
+  {id:'ttb',nom:'Toes-to-bar',re:/\b(toes[- ]to[- ]bar|ttb)\b/gi,s:{'6-7':'hollow hold 10 s','8-9':'knee raises suspendues','10-11':'knee raises suspendues','12-13':'knees-to-elbow'}},
+  {id:'hspu',nom:'Handstand push-up',re:/\b(strict handstand push[- ]ups?|handstand push[- ]ups?|hspu)\b/gi,s:{'6-7':'push-ups au mur','8-9':'push-ups inclinés','10-11':'pike push-ups au sol','12-13':'pike push-ups sur box'}},
+  {id:'hs-walk',nom:'Handstand walk',re:/\b(handstand walks?|marche en ATR)\b/gi,s:{'6-7':'brouette 10 m','8-9':'bear crawl 10 m','10-11':'wall walks','12-13':'ATR au mur 20 s'}},
+  {id:'wall-walk',nom:'Wall walk',re:/\b(wall walks?)\b/gi,s:{'6-7':'bear crawl 10 m','8-9':'bear crawl 10 m','10-11':'wall walks 3/4'}},
+  {id:'rope-legless',nom:'Corde sans jambes',re:/\b(legless rope climbs?)\b/gi,s:{'6-7':'suspension corde 10 s','8-9':'rope pulls assis','10-11':'rope pulls assis vers debout','12-13':'rope climbs avec jambes','14-15':'rope climbs avec jambes'}},
+  {id:'rope',nom:'Montée de corde',re:/\b(rope climbs?|montées? de corde)\b/gi,s:{'6-7':'suspension corde 10 s','8-9':'rope pulls assis','10-11':'rope pulls assis vers debout'}},
+  {id:'du',nom:'Double-unders',re:/\b(double[- ]unders?|du)\b/gi,s:{'6-7':'single unders ×2','8-9':'single unders ×2','10-11':'single unders ×2'}},
+  {id:'ghd',nom:'GHD sit-up',re:/\b(ghd sit[- ]ups?)\b/gi,s:{'6-7':'hollow holds','8-9':'hollow rocks','10-11':'sit-ups','12-13':'sit-ups','14-15':'sit-ups ancrés'}},
+  {id:'pistol',nom:'Pistol',re:/\b(pistols?|squats? sur une jambe)\b/gi,s:{'6-7':'squats au poids de corps','8-9':'squats sur box','10-11':'split squats','12-13':'pistols sur box'}},
+  {id:'dips',nom:'Dips',re:/\b(ring dips?|dips anneaux|dips?)\b/gi,s:{'6-7':'push-ups genoux','8-9':'push-ups','10-11':'dips sur box','12-13':'dips sur box'}},
+  {id:'box-jump',nom:'Box jump',re:/\b(box jumps?(?: overs?)?)\b/gi,s:{'6-7':'step-ups sur box','8-9':'step-ups sur box'}},
+  {id:'kb-swing',nom:'Kettlebell swing',re:/\b(kettlebell swings?|kb swings?)\b/gi,s:{'6-7':'KB swings russes','8-9':'KB swings russes'}}
 ];
+
+/* Valeurs d'usine, pour le bouton « Rétablir » du panneau Outils. */
+var USINE = {
+  cats:(function(){var o={};for(var i=0;i<CATS.length;i++)o[CATS[i].id]=CATS[i].k;return o;})(),
+  niveaux:(function(){var o={};for(var i=0;i<NIVEAUX.length;i++)o[NIVEAUX[i].id]=NIVEAUX[i].k;return o;})(),
+  regimes:JSON.parse(JSON.stringify(REGIMES)),
+  gym:(function(){var o={};for(var i=0;i<GYM.length;i++)o[GYM[i].id]=JSON.parse(JSON.stringify(GYM[i].s));return o;})()
+};
 
 /* Une paire "40/30" sans unité n'est lue comme une charge que sur une ligne
    de mouvement chargé — sinon "21-15-9" deviendrait des kilos. */
@@ -397,9 +414,12 @@ function blocKids(s,niveauId){
   }
   /* Ordre décroissant : 16-17 en premier, puisque le texte collé EST leur version
      (coefficient 1.00, identique au RX adulte), les autres en descendent. */
+  /* Le régime de charge vient du type de séance ; 'auto' retombe sur les reps. */
+  var regime=REGIMES[s.type]||'auto';
+
   var admin=estAdmin();
   for(var c=CATS.length-1;c>=0;c--){
-    var r=scaleWod(brutTexte,{categorie:CATS[c].id,niveau:niveau.id});
+    var r=scaleWod(brutTexte,{categorie:CATS[c].id,niveau:niveau.id,intensite:regime});
     if(!r)continue;
     var cat=r.categorie;
     var perso=retouche(s,cat.id,niveau.id);
@@ -491,7 +511,7 @@ document.addEventListener('click',function(e){
       var niveau=null;
       for(var i=0;i<NIVEAUX.length;i++){if(NIVEAUX[i].id===niv)niveau=NIVEAUX[i];}
       var src=enTexte(s[niveau.source]||s.content||'');
-      var gen=scaleWod(src,{categorie:cat,niveau:niv});
+      var gen=scaleWod(src,{categorie:cat,niveau:niv,intensite:REGIMES[s.type]||'auto'});
       txt=gen?gen.texte:'';
     }
     var ta=document.createElement('textarea');
@@ -586,8 +606,235 @@ if(!window.__patchBound_kidsScaling){
   }
 }
 
+/* ================= RÉGLAGES (table kids_scaling_config) ================= */
+
+var CFG={};
+
+function appliquerConfig(cfg){
+  if(!cfg||typeof cfg!=='object')return;
+  CFG=cfg;
+  var i;
+  if(cfg.cats)for(i=0;i<CATS.length;i++){
+    var v=cfg.cats[CATS[i].id];
+    if(typeof v==='number'&&v>0)CATS[i].k=v;
+  }
+  if(cfg.niveaux)for(i=0;i<NIVEAUX.length;i++){
+    var n=cfg.niveaux[NIVEAUX[i].id];
+    if(typeof n==='number'&&n>0)NIVEAUX[i].k=n;
+  }
+  if(cfg.regimes)for(var t in cfg.regimes){
+    if(Object.prototype.hasOwnProperty.call(cfg.regimes,t))REGIMES[t]=cfg.regimes[t];
+  }
+  if(cfg.gym)for(i=0;i<GYM.length;i++){
+    var g=cfg.gym[GYM[i].id];
+    if(!g)continue;
+    var propre={};
+    for(var cid in g){
+      if(Object.prototype.hasOwnProperty.call(g,cid)&&String(g[cid]||'').trim())propre[cid]=String(g[cid]).trim();
+    }
+    GYM[i].s=propre;
+  }
+}
+
+async function chargerConfig(){
+  try{
+    var r=await sb.from('kids_scaling_config').select('config').eq('id',1).single();
+    if(r&&r.data&&r.data.config)appliquerConfig(r.data.config);
+  }catch(e){
+    if(window.console)console.warn('[kids-scaling] config non chargée',e);
+  }
+  /* Re-rend les blocs déjà affichés avec les nouveaux réglages. */
+  var vus=document.querySelectorAll('[data-udtk-card]');
+  for(var i=0;i<vus.length;i++){
+    var sid=vus[i].getAttribute('data-udtk-card');
+    var on=vus[i].querySelector('.udtk-tabs button.on');
+    rafraichir(sid,on?on.getAttribute('data-udtk-niveau'):'rx');
+  }
+}
+
+async function sauverConfig(cfg){
+  var maj={config:cfg,updated_at:new Date().toISOString()};
+  try{if(window.currentUser)maj.updated_by=window.currentUser.id;
+      else if(typeof currentUser!=='undefined'&&currentUser)maj.updated_by=currentUser.id;}catch(e){}
+  var res=await sb.from('kids_scaling_config').update(maj).eq('id',1);
+  if(res&&res.error)throw res.error;
+  appliquerConfig(cfg);
+}
+
+/* ================= PANNEAU DANS « 🧰 OUTILS » ================= */
+
+var TYPES={wod:'WOD',strength:'Force',weightlifting:'Weightlifting',gymnastics:'Gymnastics',
+  renforcement:'Renforcement',bodybuilding:'Bodybuilding',skill:'Skill',warmup:'Échauffement',
+  mobility:'Mobilité',engine:'Engine',run:'Run'};
+var REGIME_LBL={auto:'Auto (reps)',metcon:'Metcon — coef plein',lourd:'Lourd — −15 %',max:'Max — −20 %'};
+
+function styleReglages(){
+  if(document.getElementById('udtk-cfg-style'))return;
+  var st=document.createElement('style');
+  st.id='udtk-cfg-style';
+  st.textContent=
+   '.udtkc-sec{margin-bottom:18px}'+
+   '.udtkc-h{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:4px}'+
+   '.udtkc-p{font-size:12px;color:var(--muted);margin:0 0 10px;line-height:1.5}'+
+   '.udtkc-row{display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px}'+
+   '.udtkc-lbl{flex:1;min-width:0;font-size:13px;font-weight:600}'+
+   '.udtkc-row input[type=number]{width:84px;font:inherit;font-size:13px;padding:6px 8px;background:var(--card2);color:var(--text);border:1px solid var(--border2);border-radius:8px;text-align:right}'+
+   '.udtkc-row select{font:inherit;font-size:12px;padding:6px 8px;background:var(--card2);color:var(--text);border:1px solid var(--border2);border-radius:8px}'+
+   '.udtkc-gym{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:6px;overflow:hidden}'+
+   '.udtkc-gym>summary{cursor:pointer;padding:10px 12px;font-size:13px;font-weight:700;list-style:none}'+
+   '.udtkc-gym>summary::-webkit-details-marker{display:none}'+
+   '.udtkc-gym[open]>summary{border-bottom:1px solid var(--border)}'+
+   '.udtkc-gym-body{padding:10px 12px;display:flex;flex-direction:column;gap:6px}'+
+   '.udtkc-gl{display:flex;align-items:center;gap:8px}'+
+   '.udtkc-gl span{flex:0 0 72px;font-size:11px;color:var(--muted);font-weight:700}'+
+   '.udtkc-gl input{flex:1;min-width:0;font:inherit;font-size:12px;padding:6px 8px;background:var(--card2);color:var(--text);border:1px solid var(--border2);border-radius:8px}'+
+   '.udtkc-bar{position:sticky;bottom:0;display:flex;gap:8px;padding:12px 0;background:linear-gradient(transparent,var(--dark) 30%)}'+
+   '.udtkc-save{flex:1;font:inherit;font-size:13px;font-weight:800;padding:12px;border:0;border-radius:10px;background:var(--accent);color:#0b1512;cursor:pointer}'+
+   '.udtkc-reset{font:inherit;font-size:12px;font-weight:700;padding:12px 14px;border:1px solid var(--border2);border-radius:10px;background:transparent;color:var(--muted);cursor:pointer}';
+  document.head.appendChild(st);
+}
+
+function panneauReglages(){
+  var panel=document.getElementById('admin-outils-panel');
+  if(!panel)return;
+  styleReglages();
+
+  var h='<div class="ot-bar">'+
+      '<button class="ot-back" id="udtkc-back">‹ Outils</button>'+
+      '<div class="ot-bar-ti">🧒 Scaling Kids &amp; Teens</div>'+
+    '</div>';
+
+  /* Coefficients */
+  h+='<div class="udtkc-sec"><div class="udtkc-h">Coefficients par tranche d\'âge</div>'+
+     '<p class="udtkc-p">Part de la charge adulte appliquée à chaque tranche. 14-15 et 16-17 sont les valeurs officielles CrossFit Games.</p>';
+  for(var i=0;i<CATS.length;i++){
+    h+='<div class="udtkc-row"><span class="udtkc-lbl">'+CATS[i].nom+'</span>'+
+       '<input type="number" step="0.01" min="0.05" max="1" data-udtkc-cat="'+CATS[i].id+'" value="'+CATS[i].k+'"></div>';
+  }
+  h+='</div>';
+
+  /* Niveaux */
+  h+='<div class="udtkc-sec"><div class="udtkc-h">Coefficients par niveau</div>'+
+     '<p class="udtkc-p">Appliqués par-dessus la tranche d\'âge. Scaled descend aussi d\'un cran sur la gymnastique et la box.</p>';
+  for(i=0;i<NIVEAUX.length;i++){
+    h+='<div class="udtkc-row"><span class="udtkc-lbl">'+NIVEAUX[i].nom+'</span>'+
+       '<input type="number" step="0.01" min="0.1" max="1" data-udtkc-niv="'+NIVEAUX[i].id+'" value="'+NIVEAUX[i].k+'"></div>';
+  }
+  h+='</div>';
+
+  /* Régimes */
+  h+='<div class="udtkc-sec"><div class="udtkc-h">Régime de charge par type de séance</div>'+
+     '<p class="udtkc-p">Plus la charge est proche du max, plus l\'écart avec l\'adulte se creuse. « Auto » déduit le régime du nombre de répétitions.</p>';
+  for(var t in TYPES){
+    if(!Object.prototype.hasOwnProperty.call(TYPES,t))continue;
+    var cur=REGIMES[t]||'auto', opts='';
+    for(var k in REGIME_LBL){
+      if(!Object.prototype.hasOwnProperty.call(REGIME_LBL,k))continue;
+      opts+='<option value="'+k+'"'+(k===cur?' selected':'')+'>'+REGIME_LBL[k]+'</option>';
+    }
+    h+='<div class="udtkc-row"><span class="udtkc-lbl">'+TYPES[t]+'</span>'+
+       '<select data-udtkc-reg="'+t+'">'+opts+'</select></div>';
+  }
+  h+='</div>';
+
+  /* Gymnastique */
+  h+='<div class="udtkc-sec"><div class="udtkc-h">Progressions gymniques</div>'+
+     '<p class="udtkc-p">Ce que devient chaque mouvement selon la tranche d\'âge. Laisser vide = mouvement conservé tel quel.</p>';
+  for(i=0;i<GYM.length;i++){
+    var g=GYM[i], corps='';
+    for(var c=CATS.length-1;c>=0;c--){
+      var val=g.s[CATS[c].id]||'';
+      corps+='<label class="udtkc-gl"><span>'+CATS[c].nom.replace(' ans','')+'</span>'+
+             '<input type="text" data-udtkc-gym="'+g.id+'" data-udtkc-gcat="'+CATS[c].id+'" value="'+
+             String(val).replace(/"/g,'&quot;')+'" placeholder="inchangé"></label>';
+    }
+    h+='<details class="udtkc-gym"><summary>'+g.nom+'</summary><div class="udtkc-gym-body">'+corps+'</div></details>';
+  }
+  h+='</div>';
+
+  h+='<div class="udtkc-bar"><button class="udtkc-save" id="udtkc-save">Enregistrer les réglages</button>'+
+     '<button class="udtkc-reset" id="udtkc-reset">Rétablir</button></div>';
+
+  panel.innerHTML=h;
+
+  document.getElementById('udtkc-back').addEventListener('click',function(){
+    try{if(typeof window.renderOutilsTab==='function')window.renderOutilsTab();}catch(e){}
+  });
+
+  document.getElementById('udtkc-save').addEventListener('click',function(){
+    var btn=this; btn.disabled=true; btn.textContent='…';
+    var cfg={cats:{},niveaux:{},regimes:{},gym:{}};
+    panel.querySelectorAll('[data-udtkc-cat]').forEach(function(el){
+      var v=parseFloat(el.value); if(v>0)cfg.cats[el.getAttribute('data-udtkc-cat')]=v;
+    });
+    panel.querySelectorAll('[data-udtkc-niv]').forEach(function(el){
+      var v=parseFloat(el.value); if(v>0)cfg.niveaux[el.getAttribute('data-udtkc-niv')]=v;
+    });
+    panel.querySelectorAll('[data-udtkc-reg]').forEach(function(el){
+      cfg.regimes[el.getAttribute('data-udtkc-reg')]=el.value;
+    });
+    panel.querySelectorAll('[data-udtkc-gym]').forEach(function(el){
+      var gid=el.getAttribute('data-udtkc-gym'), cid=el.getAttribute('data-udtkc-gcat');
+      if(!cfg.gym[gid])cfg.gym[gid]={};
+      if(String(el.value||'').trim())cfg.gym[gid][cid]=el.value.trim();
+    });
+    sauverConfig(cfg).then(function(){
+      btn.disabled=false; btn.textContent='Enregistrer les réglages';
+      toast('✅ Réglages enregistrés');
+    }).catch(function(err){
+      btn.disabled=false; btn.textContent='Enregistrer les réglages';
+      toast('❌ Enregistrement impossible');
+      if(window.console)console.error('[kids-scaling]',err);
+    });
+  });
+
+  document.getElementById('udtkc-reset').addEventListener('click',function(){
+    appliquerConfig(JSON.parse(JSON.stringify(USINE)));
+    panneauReglages();
+    toast('↺ Valeurs d\'usine rétablies — pense à enregistrer');
+  });
+
+  var p=document.getElementById('page-admin');
+  if(p)p.scrollTop=0;
+}
+
+/* Ajoute la carte dans la grille d'Outils, sans toucher à outils.js. */
+function carteOutils(){
+  var grille=document.querySelector('#admin-outils-panel .ot-grid');
+  if(!grille||grille.querySelector('[data-udtkc-card]'))return;
+  if(!estAdmin())return;
+  var b=document.createElement('button');
+  b.className='ot-card';
+  b.setAttribute('data-udtkc-card','1');
+  b.innerHTML='<span class="ot-card-ic">🧒</span><span class="ot-card-txt">'+
+    '<span class="ot-card-ti">Scaling Kids &amp; Teens</span>'+
+    '<span class="ot-card-sub">Coefficients par tranche d\'âge, régime de charge selon le type de séance, progressions gymniques.</span>'+
+    '</span><span class="ot-card-go">›</span>';
+  b.addEventListener('click',panneauReglages);
+  grille.appendChild(b);
+}
+
+if(window.MutationObserver){
+  var obs=new MutationObserver(function(){carteOutils();});
+  var demarrer=function(){
+    var hote=document.getElementById('admin-outils-panel');
+    if(hote){obs.observe(hote,{childList:true,subtree:true});carteOutils();return true;}
+    return false;
+  };
+  if(!demarrer()){
+    var n=0, iv=setInterval(function(){if(demarrer()||++n>80)clearInterval(iv);},250);
+  }
+}
+
+/* Chargement des réglages dès que la session Supabase est prête. */
+if(typeof sb!=='undefined'&&sb&&sb.from){
+  setTimeout(chargerConfig,1200);
+  document.addEventListener('studio:ready',function(){chargerConfig();});
+}
+
 /* Exposé pour réglage à chaud depuis la console ou un autre script. */
 window.UDTKids={scaleWod:scaleWod,profil:profil,blocKids:blocKids,
-  CATS:CATS,NIVEAUX:NIVEAUX,RACKS:RACKS,GYM:GYM,PROGS:PROGS};
+  chargerConfig:chargerConfig,sauverConfig:sauverConfig,panneauReglages:panneauReglages,
+  CATS:CATS,NIVEAUX:NIVEAUX,RACKS:RACKS,GYM:GYM,PROGS:PROGS,REGIMES:REGIMES,USINE:USINE};
 
 })();
