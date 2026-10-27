@@ -188,6 +188,21 @@
     <input class="auth-input" id="auth-pwd" type="password" placeholder="Mot de passe" autocomplete="current-password">
     <div class="auth-error" id="auth-error"></div>
     <button class="btn-auth" onclick="doAuth()">Se connecter</button>
+    <div id="auth-forgot" style="text-align:center;margin-top:2px">
+      <span onclick="doForgotPassword()" style="font-size:13px;color:var(--muted);cursor:pointer;text-decoration:underline">Mot de passe oublié ?</span>
+    </div>
+  </div>
+</div>
+
+<!-- Écran de saisie du nouveau mot de passe (retour du lien de récupération) -->
+<div id="recovery-screen" style="position:fixed;inset:0;z-index:201;background:var(--black);display:none;flex-direction:column;align-items:center;justify-content:center;padding:32px">
+  <div style="font-size:20px;font-weight:700;margin-bottom:8px;text-align:center">Nouveau mot de passe</div>
+  <div style="font-size:13px;color:var(--muted);margin-bottom:24px;text-align:center">Choisis un mot de passe d'au moins 8 caractères.</div>
+  <div class="auth-form">
+    <input class="auth-input" id="rec-pwd" type="password" placeholder="Nouveau mot de passe" autocomplete="new-password">
+    <input class="auth-input" id="rec-pwd2" type="password" placeholder="Confirme le mot de passe" autocomplete="new-password">
+    <div class="auth-error" id="rec-error"></div>
+    <button class="btn-auth" id="rec-btn" onclick="doSetNewPassword()">Valider</button>
   </div>
 </div>
 
