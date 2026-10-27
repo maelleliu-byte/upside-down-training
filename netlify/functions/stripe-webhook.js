@@ -237,6 +237,39 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'OK' };
     }
 
+    // ── GARDE-FOU ──────────────────────────────────────────────
+    // Un athlète peut avoir plusieurs abonnements successifs sur le même
+    // programme (résiliation puis reprise, échec de carte puis réabonnement).
+    // Stripe annule l'ANCIEN plus tard : sans cette vérification on couperait
+    // l'accès à quelqu'un qui paie toujours via son abonnement récent.
+    let hasOtherActiveSub = null; // null = vérification impossible
+    try {
+      const subs = await stripe.subscriptions.list(
+        { customer: customerId, status: 'all', limit: 100 },
+        stripeEvent.account ? { stripeAccount: stripeEvent.account } : {}
+      );
+      hasOtherActiveSub = subs.data.some(
+        (s) =>
+          s.id !== subscription.id &&
+          ['active', 'trialing'].includes(s.status) &&
+          s.items?.data?.some((i) => i.price?.id === priceId)
+      );
+    } catch (e) {
+      console.error('Impossible de lister les abonnements Stripe :', e.message);
+    }
+
+    if (hasOtherActiveSub !== false) {
+      // Soit il reste un abonnement actif, soit on n'a pas pu vérifier :
+      // dans le doute on garde l'accès (une révocation à tort est bien plus
+      // pénible qu'un accès laissé ouvert, qui se retire à la main).
+      console.log(
+        hasOtherActiveSub === true
+          ? `⏭️ Accès conservé : ${email} a un autre abonnement actif sur ${priceId}`
+          : `⏭️ Accès conservé par précaution : vérification Stripe impossible pour ${email}`
+      );
+      return { statusCode: 200, body: 'OK' };
+    }
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('id')
