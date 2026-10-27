@@ -4,6 +4,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const { notifyPurchase } = require('./lib/mailer');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -73,9 +74,11 @@ exports.handler = async (event) => {
     }
 
     // Trouver le programme via stripe_price_id en DB (marche pour TOUS les studios)
+    const PROG_FIELDS = 'id, name, slug, studio_id, price_monthly, price_oneshot';
+
     const { data: programme } = await supabase
       .from('programmes')
-      .select('id, slug, studio_id')
+      .select(PROG_FIELDS)
       .eq('stripe_price_id', priceId)
       .maybeSingle();
 
@@ -87,6 +90,7 @@ exports.handler = async (event) => {
       'price_1TVVFiGfW5FegIxCmwl0GkBV': 'kids',
     };
 
+    let programmeRow = programme || null;
     let programmeId = programme?.id;
     let studioId = programme?.studio_id;
 
@@ -96,9 +100,10 @@ exports.handler = async (event) => {
       if (legacySlug) {
         const { data: legacyProg } = await supabase
           .from('programmes')
-          .select('id, studio_id')
+          .select(PROG_FIELDS)
           .eq('slug', legacySlug)
           .maybeSingle();
+        programmeRow = legacyProg || null;
         programmeId = legacyProg?.id;
         studioId = legacyProg?.studio_id;
       }
@@ -125,6 +130,21 @@ exports.handler = async (event) => {
       return { statusCode: 200, body: 'OK' };
     }
 
+    // État de l'accès AVANT l'upsert : sert à ne notifier qu'une seule fois
+    // (checkout.session.completed + invoice.payment_succeeded arrivent tous
+    //  les deux sur un premier achat, puis tous les mois au renouvellement)
+    const { data: existingAccess } = await supabase
+      .from('programme_access')
+      .select('id, expires_at')
+      .eq('athlete_id', profileId)
+      .eq('programme_id', programmeId)
+      .maybeSingle();
+
+    const wasExpired =
+      !!existingAccess?.expires_at &&
+      new Date(existingAccess.expires_at) <= new Date();
+    const isNewAccess = !existingAccess || wasExpired;
+
     // Donner l'accès
     const { error } = await supabase
       .from('programme_access')
@@ -139,6 +159,28 @@ exports.handler = async (event) => {
     }
 
     console.log(`✅ Accès accordé : ${email || profileId} → programme ${programmeId}`);
+
+    // ── NOTIFICATION INTERNE ───────────────────────────────────
+    if (isNewAccess) {
+      try {
+        const { data: fullProfile } = await supabase
+          .from('profiles')
+          .select('id, email, full_name, role, studio_id')
+          .eq('id', profileId)
+          .maybeSingle();
+
+        if (fullProfile) {
+          await notifyPurchase(supabase, {
+            profile: fullProfile,
+            programme: programmeRow || { id: programmeId, studio_id: studioId },
+            renewal: wasExpired,
+          });
+        }
+      } catch (e) {
+        // Jamais bloquant : le paiement reste traité même si le mail échoue
+        console.error('Notif achat non envoyée :', e.message);
+      }
+    }
   }
 
   // ── RÉSILIATION ──────────────────────────────────────────────
