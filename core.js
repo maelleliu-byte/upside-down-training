@@ -1,6 +1,11 @@
 const SUPABASE_URL='https://tltqtpbaaxiwwpvuzszt.supabase.co';
 const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDA5NTQsImV4cCI6MjA5MzUxNjk1NH0.5LVedQ-ktLcTC6z2X0XIoqY-mqP9_tw-gzrt-KNfuuY';
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+// Le lien « mot de passe oublié » revient avec #...&type=recovery dans l'URL.
+// On capture le hash ICI, au parse du script : supabase-js le consomme et le
+// vide dès qu'il détecte la session, donc une lecture plus tardive arrive trop tard.
+const __INITIAL_HASH__=(typeof location!=='undefined'&&location.hash)?location.hash:'';
+const __IS_RECOVERY__=/[#&]type=recovery(\b|$)/.test(__INITIAL_HASH__)||/[?&]type=recovery(\b|$)/.test(location.search||'');
 const STRIPE_PK='pk_live_51TTgoeGfW5FegIxCCDUZQvm2EakuXj3rC2UFYiRDXfvuaE42WwX3Hjys4734FK0p9Dqe5ngaCNKpR35ssPKRUVSH004VamRL0F';
 const stripe=Stripe(STRIPE_PK);
 
@@ -111,6 +116,18 @@ window.addEventListener('load',()=>{
 
 // INIT
 window.onload=async()=>{
+  // Retour d'un lien de récupération : le token ouvre bien une session, mais
+  // l'utilisateur n'a aucun mot de passe qu'il connaît. On lui fait d'abord
+  // choisir le sien au lieu de le lâcher dans l'appli.
+  if(__IS_RECOVERY__){showRecoveryScreen();return;}
+  // Lien périmé ou déjà utilisé : Supabase renvoie l'erreur dans le hash.
+  // Sans ça l'athlète retombe sur la connexion sans comprendre pourquoi.
+  if(/error_description=/.test(__INITIAL_HASH__)){
+    const msg=decodeURIComponent((__INITIAL_HASH__.match(/error_description=([^&]*)/)||[])[1]||'').replace(/\+/g,' ');
+    const errEl=document.getElementById('auth-error');
+    if(errEl)errEl.textContent=msg||'Ce lien n\'est plus valide. Redemande un email.';
+    history.replaceState(null,'',location.origin+location.pathname);
+  }
   const {data:{session}}=await sb.auth.getSession();
   if(session){
     currentUser=session.user;
@@ -187,6 +204,67 @@ async function doAuth(){
   const redirecting=await _redirectToProfileStudio();
   if(!redirecting)await initApp();
 }
+// ── RÉCUPÉRATION DE MOT DE PASSE ─────────────────────────────────────
+// Envoi du mail depuis l'écran de connexion.
+async function doForgotPassword(){
+  const email=document.getElementById('auth-email').value.trim();
+  const errEl=document.getElementById('auth-error');
+  errEl.style.color='';
+  if(!email){errEl.textContent='Saisis ton email, puis reclique sur « Mot de passe oublié ? »';return;}
+  errEl.textContent='Envoi en cours…';
+  // redirectTo doit figurer dans les Redirect URLs du projet Supabase,
+  // sinon Supabase renvoie sur le Site URL par défaut.
+  const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+  if(error){errEl.textContent=error.message;return;}
+  errEl.style.color='var(--accent)';
+  errEl.textContent='Email envoyé — pense à regarder tes spams.';
+}
+
+// Affiche l'écran de saisie du nouveau mot de passe.
+function showRecoveryScreen(){
+  const rec=document.getElementById('recovery-screen');
+  if(!rec)return;
+  const splash=document.getElementById('splash-screen');
+  if(splash)splash.style.display='none';
+  const auth=document.getElementById('auth-screen');
+  if(auth)auth.classList.add('hidden');
+  rec.style.display='flex';
+}
+
+// Enregistre le nouveau mot de passe, puis entre dans l'appli.
+async function doSetNewPassword(){
+  const p1=document.getElementById('rec-pwd').value;
+  const p2=document.getElementById('rec-pwd2').value;
+  const errEl=document.getElementById('rec-error');
+  const btn=document.getElementById('rec-btn');
+  errEl.textContent='';
+  if(p1.length<8){errEl.textContent='8 caractères minimum';return;}
+  if(p1!==p2){errEl.textContent='Les deux mots de passe ne correspondent pas';return;}
+  btn.disabled=true;btn.textContent='Enregistrement…';
+  const {error}=await sb.auth.updateUser({password:p1});
+  if(error){
+    // Lien expiré ou déjà utilisé : pas de session valide pour updateUser.
+    errEl.textContent=error.message;
+    btn.disabled=false;btn.textContent='Valider';
+    return;
+  }
+  // Purge le token de l'URL, sinon un reload relance l'écran de récupération.
+  history.replaceState(null,'',location.origin+location.pathname);
+  document.getElementById('recovery-screen').style.display='none';
+  const {data:{session}}=await sb.auth.getSession();
+  if(!session){location.reload();return;}
+  currentUser=session.user;
+  await loadProfile();
+  const redirecting=await _redirectToProfileStudio();
+  if(!redirecting)await initApp();
+}
+
+// Filet de sécurité : supabase-js émet PASSWORD_RECOVERY en consommant le lien.
+// Couvre le cas où le hash a déjà été vidé avant la lecture de __INITIAL_HASH__.
+sb.auth.onAuthStateChange((event)=>{
+  if(event==='PASSWORD_RECOVERY')showRecoveryScreen();
+});
+
 async function doLogout(){await sb.auth.signOut();currentUser=null;currentProfile=null;location.reload();}
 async function loadProfile(){
   const {data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
