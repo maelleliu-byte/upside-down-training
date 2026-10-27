@@ -9216,14 +9216,14 @@ async function claimFreeAccess(programmeId){
 
     const _phase=window.__cyclePhase||{set(){},clear(){}};
     const rows=await _pcLoadMine();
-    if(!rows.length){_phase.clear();return;}
 
     const todayIso=_pcIso(new Date());
     const refIso=(typeof selectedDate!=='undefined'&&selectedDate)?selectedDate:todayIso;
-    const c=_pcForDate(rows,refIso);
-    if(!c){_phase.clear();return;}
+    // Sans cycle en cours, on affiche quand même le récap des blocs du jour
+    // (seuls la phase du cycle et la note du jour dépendent d'un cycle).
+    const c=rows.length?_pcForDate(rows,refIso):null;
 
-    const col=c.color||'#2dd4bf';
+    const col=(c&&c.color)||'#2dd4bf';
     const wi=_pcWeekIndex(c,refIso);
     const pct=wi?Math.max(4,Math.min(100,Math.round(wi.n/wi.total*100))):0;
     const dates=getWeekDates(typeof currentWeekOffset!=='undefined'?currentWeekOffset:0);
@@ -9242,7 +9242,7 @@ async function claimFreeAccess(programmeId){
     }).join('');
 
     const refD=new Date(refIso+'T12:00:00');
-    const focus=(c.days||{})[String(_pcDow(refD))]||'';
+    const focus=c?((c.days||{})[String(_pcDow(refD))]||''):'';
     const todayLbl=refIso===todayIso?"Aujourd'hui":`${PC_DAYS[_pcDow(refD)-1]} ${refD.getDate()}`;
 
     // récap des blocs du jour (séances perso de l'athlète)
@@ -9270,8 +9270,12 @@ async function claimFreeAccess(programmeId){
 
     area.querySelectorAll('.pc-ath').forEach(n=>n.remove());
     // la phase du cycle (nom, semaine, avancement) passe au-dessus des jours
-    _phase.set({name:c.name,color:col,n:wi?wi.n:1,weeks:wi?wi.total:1,
-      start:new Date(c.start_date+'T12:00:00'),end:new Date(c.end_date+'T12:00:00')});
+    if(c){
+      _phase.set({name:c.name,color:col,n:wi?wi.n:1,weeks:wi?wi.total:1,
+        start:new Date(c.start_date+'T12:00:00'),end:new Date(c.end_date+'T12:00:00')});
+    }else{
+      _phase.clear();
+    }
     if(!focus&&!blocksHtml)return;
     // récap du jour (sans grille des priorités) + « Note du jour » repliée, seulement si le coach a mis une priorité
     const note=focus?`<details style="margin:2px 0 6px;border:1px solid ${col}40;border-radius:9px;background:${col}0d">
