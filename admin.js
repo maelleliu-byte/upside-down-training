@@ -415,6 +415,50 @@ function importSessionTemplates(){
   inp.click();
 }
 
+// ===== PLANNING : contenu du bloc affiché en entier, mis en forme =====
+// Reprend le rendu des charges (renderContentWithCharges) puis met en valeur
+// les lignes MIN x :, REST, séparateurs ____ et ---PARTIE--- pour la lisibilité.
+function _sanitizePlanningHtml(html){
+  return (html||'')
+    .replace(/<\s*(script|style|iframe|object|embed)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,'')
+    .replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*>/gi,'')
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi,'')
+    .replace(/javascript:/gi,'');
+}
+function formatPlanningContent(raw){
+  if(!raw)return'';
+  let html='';
+  try{html=renderContentWithCharges(raw);}catch(e){html=raw;}
+  html=_sanitizePlanningHtml(html);
+  const lines=html.split(/<br\s*\/?>/i);
+  const txt=l=>stripHtml(l).replace(/ /g,' ').trim();
+  const out=[];
+  lines.forEach(line=>{
+    const t=txt(line);
+    if(!t){const tags=line.replace(/[^<>]*(<[^>]*>)?/g,'$1');if(tags)out.push({blk:true,tag:true,h:tags});out.push({blk:true,h:'<span class="cr-gap"></span>'});return;}
+    if(/^_{3,}$/.test(t)){out.push({blk:true,h:'<span class="cr-sep"></span>'});return;}
+    const part=t.match(/^-{2,}\s*(.+?)\s*-{2,}$/);
+    if(part){out.push({blk:true,h:`<span class="cr-part">${escapeHtml(part[1])}</span>`});return;}
+    if(/^REST\b/i.test(t)){out.push({blk:true,h:`<span class="cr-rest">${escapeHtml(t)}</span>`});return;}
+    if(/^direct into$/i.test(t)){out.push({blk:false,h:'<span class="cr-di">↓ Direct into</span>'});return;}
+    let h=line.replace(/MIN\s*(\d+)\s*:\s*/i,'<span class="cr-min">MIN $1</span>');
+    out.push({blk:false,h});
+  });
+  // retirer les espaces vides en début / fin et les doublons
+  while(out.length&&out[0].h==='<span class="cr-gap"></span>')out.shift();
+  for(let i=0;i<out.length&&(out[i].tag||out[i].h==='<span class="cr-gap"></span>');i++){if(!out[i].tag)out[i].h='';}
+  while(out.length&&out[out.length-1].h==='<span class="cr-gap"></span>')out.pop();
+  let res='';
+  out.forEach((o,i)=>{
+    const prev=out[i-1];
+    if(o.h==='<span class="cr-gap"></span>'&&prev&&prev.blk&&!prev.tag)return;
+    res+=o.blk?o.h:(o.h+'<br>');
+  });
+  res=res.replace(/(<br>)+$/,'');
+  // Refermer proprement les balises ouvertes (évite que le gras « déborde » sur les blocs suivants)
+  try{const t=document.createElement('template');t.innerHTML=res;return t.innerHTML;}catch(e){return res;}
+}
+
 let adminWeekOffset=0;
 async function loadAdminCalendar(){
   let progId=document.getElementById('admin-filter-prog').value;
@@ -462,8 +506,7 @@ async function loadAdminCalendar(){
           const color=s.color||'#e8ff47';
           const typeLabel=TYPE_LABELS[s.type]||s.type;
           const rawContent=s.content||'';
-          const withCharges=renderContentWithCharges(rawContent);
-          const preview=stripHtml(withCharges).slice(0,160);
+          const fullHtml=formatPlanningContent(rawContent);
           const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
           const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
           const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
@@ -478,7 +521,7 @@ async function loadAdminCalendar(){
               </div>
             </div>
             <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
-            ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
+            ${fullHtml?`<div class="cal-rich-full">${fullHtml}</div>`:''}
             <div class="cal-rich-meta">${intensity}${sets}${yt}</div>
           </div>`;
         }).join('')
@@ -535,8 +578,7 @@ async function loadAdminCalendar(){
         const typeLabel=TYPE_LABELS[s.type]||s.type;
         // Aperçu contenu (strip HTML, charges remplacées)
         const rawContent=s.content||'';
-        const withCharges=renderContentWithCharges(rawContent);
-        const preview=stripHtml(withCharges).slice(0,160);
+        const fullHtml=formatPlanningContent(rawContent);
         const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
         const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
         const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
@@ -559,7 +601,7 @@ async function loadAdminCalendar(){
             </div>
           </div>
           <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
-          ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
+          ${fullHtml?`<div class="cal-rich-full">${fullHtml}</div>`:''}
           <div class="cal-rich-meta">${intensity}${sets}${yt}</div>
         </div>`;
       }).join('')

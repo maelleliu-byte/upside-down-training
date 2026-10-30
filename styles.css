@@ -1184,3 +1184,29 @@ html[data-theme="light"] .perso-fav-btn:hover,
 :root[data-theme="light"] .perso-fav-btn:hover{background:#f0ede4 !important}
 html[data-theme="light"] .perso-athlete-card.fav,
 :root[data-theme="light"] .perso-athlete-card.fav{background:linear-gradient(180deg,rgba(201,167,0,.08),#fff) !important;border-color:rgba(201,167,0,.35) !important}
+
+/* ===== PLANNING ADMIN : blocs affichés en entier (V2) ===== */
+#admin-calendar{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+#admin-calendar .cal-grid{grid-template-columns:repeat(7,minmax(150px,1fr));gap:8px}
+#admin-calendar .cal-rich{padding:10px 11px 10px 13px;border-radius:12px;overflow:visible}
+#admin-calendar .cal-rich:hover{transform:none}
+#admin-calendar .cal-rich .cal-accent{width:4px;border-radius:12px 0 0 12px}
+#admin-calendar .cal-rich-title{font-size:18px;letter-spacing:1.2px;margin-bottom:8px}
+#admin-calendar .cal-rich.separator .cal-rich-title{font-size:13px}
+.cal-rich-full{font-size:11px;line-height:1.5;color:#d0d0d4;word-break:break-word;text-transform:none}
+.cal-rich-full b,.cal-rich-full strong{color:#fff;font-weight:700}
+.cal-rich-full i,.cal-rich-full em{font-style:italic}
+.cal-rich-full span{font-size:inherit!important}
+.cal-rich-full span[style*="232,255,71"]{background:rgba(45,212,191,.14)!important;color:#2dd4bf!important;padding:0 5px!important;font-weight:600!important}
+.cal-rich-full .cr-gap{display:block;height:6px}
+.cal-rich-full .cr-sep{display:block;height:1px;margin:8px 0;background:repeating-linear-gradient(90deg,#45454c 0 5px,transparent 5px 9px)}
+.cal-rich-full .cr-part{display:flex;align-items:center;gap:6px;margin:8px 0 4px;font-weight:700;font-size:10px!important;letter-spacing:1.6px;color:#e4e4e7;font-style:normal}
+.cal-rich-full .cr-part::before,.cal-rich-full .cr-part::after{content:'';flex:1;height:1px;background:#45454c}
+.cal-rich-full .cr-rest{display:table;margin:4px 0;padding:3px 7px;border-radius:5px;background:rgba(249,115,22,.14);color:#fdba74;font-weight:700;font-size:10px!important;letter-spacing:.5px;font-style:normal}
+.cal-rich-full .cr-min{display:inline-block;margin-right:5px;padding:1px 4px;border-radius:3px;background:#c8c8cc;color:#0d0d0e;font-weight:700;font-size:9px!important;vertical-align:1px;font-style:normal}
+.cal-rich-full .cr-di{font-style:italic;color:#9a9aa2}
+@media (min-width:900px){.cal-rich-full{font-size:12px}}
+html[data-theme="light"] .cal-rich-full,:root[data-theme="light"] .cal-rich-full{color:#3d3d3d!important}
+html[data-theme="light"] .cal-rich-full b,:root[data-theme="light"] .cal-rich-full b,html[data-theme="light"] .cal-rich-full strong,:root[data-theme="light"] .cal-rich-full strong{color:#0a0a0a!important}
+html[data-theme="light"] .cal-rich-full .cr-min,:root[data-theme="light"] .cal-rich-full .cr-min{background:#3d3d3d;color:#fff}
+html[data-theme="light"] .cal-rich-full .cr-rest,:root[data-theme="light"] .cal-rich-full .cr-rest{color:#b45309}
