@@ -417,7 +417,7 @@ function importSessionTemplates(){
 
 // ===== PLANNING : contenu du bloc affiché en entier, mis en forme =====
 // Reprend le rendu des charges (renderContentWithCharges) puis met en valeur
-// les lignes MIN x :, REST, séparateurs ____ et ---PARTIE--- pour la lisibilité.
+// les séparateurs ____ et ---PARTIE--- (MIN x : et REST restent tels qu'écrits).
 function _sanitizePlanningHtml(html){
   return (html||'')
     .replace(/<\s*(script|style|iframe|object|embed)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,'')
@@ -439,10 +439,8 @@ function formatPlanningContent(raw){
     if(/^_{3,}$/.test(t)){out.push({blk:true,h:'<span class="cr-sep"></span>'});return;}
     const part=t.match(/^-{2,}\s*(.+?)\s*-{2,}$/);
     if(part){out.push({blk:true,h:`<span class="cr-part">${escapeHtml(part[1])}</span>`});return;}
-    if(/^REST\b/i.test(t)){out.push({blk:true,h:`<span class="cr-rest">${escapeHtml(t)}</span>`});return;}
     if(/^direct into$/i.test(t)){out.push({blk:false,h:'<span class="cr-di">↓ Direct into</span>'});return;}
-    let h=line.replace(/MIN\s*(\d+)\s*:\s*/i,'<span class="cr-min">MIN $1</span>');
-    out.push({blk:false,h});
+    out.push({blk:false,h:line});
   });
   // retirer les espaces vides en début / fin et les doublons
   while(out.length&&out[0].h==='<span class="cr-gap"></span>')out.shift();
