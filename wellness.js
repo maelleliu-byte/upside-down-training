@@ -538,7 +538,7 @@ async function renderPersoCalendar(){
             <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveSession('${s.id}',1)" title="Descendre">↓</button>
             <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveToDay('${s.id}',1)" title="Jour suivant">›</button>
           </div>
-          ${persoRetourBlock(s.id, iso, true)}
+          ${persoRetourBlock(s.id, iso)}
         </div>`;
       }).join(''):`<div class="cal-empty-day" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}',null)" onclick="persoNewSessionOn('${iso}')">+</div>`;
       const addMore=sessions.length>0
