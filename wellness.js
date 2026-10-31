@@ -516,7 +516,7 @@ async function renderPersoCalendar(){
             <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveSession('${s.id}',1)" title="Descendre">↓</button>
             <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveToDay('${s.id}',1)" title="Jour suivant">›</button>
           </div>
-          ${persoRetourBlock(s.id, iso)}
+          ${persoRetourBlock(s.id, iso, true)}
         </div>`;
       }).join(''):`<div class="cal-empty-day" ondragover="persoDragOver(event)" ondrop="persoDrop(event,'${iso}',null)" onclick="persoNewSessionOn('${iso}')">+</div>`;
       const addMore=sessions.length>0
@@ -587,7 +587,7 @@ async function loadPersoRetours(sessionIds,athleteId,isos){
   try{
     if(sessionIds&&sessionIds.length){
       const {data:scores}=await sb.from('wod_scores')
-        .select('id,session_id,score_value,score_text,score_type,level,sets_data,created_at,ef')
+        .select('id,session_id,score_value,score_text,score_type,level,sets_data,created_at,ef,vbt')
         .eq('athlete_id',athleteId).in('session_id',sessionIds);
       (scores||[]).forEach(sc=>{_persoRetoursCache.scoresBySid[sc.session_id]=sc;});
       const {data:notes}=await sb.from('session_notes')
@@ -672,6 +672,10 @@ function _persoDrawerInner(sc,nt,w){
       }
     }catch(e){}
     rows.push(`<div class="perso-r-row"><div class="lbl">Score</div><div class="val">${scoreHtml}${setsHtml}</div></div>`);
+    if(sc.vbt&&typeof window.vbtRecapHTML==='function'){
+      const vbtHtml=window.vbtRecapHTML(sc.vbt);
+      if(vbtHtml)rows.push(`<div class="perso-r-row perso-r-vbt"><div class="lbl">VBT</div><div class="val">${vbtHtml}</div></div>`);
+    }
     if(sc.ef&&typeof window.efDetailHTML==='function'){
       const efHtml=window.efDetailHTML(sc.ef);
       if(efHtml)rows.push(`<div class="perso-r-row"><div class="lbl">FC</div><div class="val">${efHtml}</div></div>`);

@@ -1210,3 +1210,13 @@ html[data-theme="light"] .cal-rich-full,:root[data-theme="light"] .cal-rich-full
 html[data-theme="light"] .cal-rich-full b,:root[data-theme="light"] .cal-rich-full b,html[data-theme="light"] .cal-rich-full strong,:root[data-theme="light"] .cal-rich-full strong{color:#0a0a0a!important}
 html[data-theme="light"] .cal-rich-full .cr-min,:root[data-theme="light"] .cal-rich-full .cr-min{background:#3d3d3d;color:#fff}
 html[data-theme="light"] .cal-rich-full .cr-rest,:root[data-theme="light"] .cal-rich-full .cr-rest{color:#b45309}
+
+/* ===== Espace perso : retour athlète ouvert d'office + récap VBT ===== */
+.perso-r-row.perso-r-vbt{display:block}
+.perso-r-row.perso-r-vbt>.lbl{margin-bottom:4px}
+.perso-r-row.perso-r-vbt .vbl{margin:0;padding:6px 7px}
+#perso-calendar-area .cal-grid .perso-r-drawer{padding:8px 8px 7px}
+#perso-calendar-area .cal-grid .vbl-leg{font-size:8.5px;gap:6px}
+#perso-calendar-area .cal-grid .vbl-h{font-size:10px}
+#perso-calendar-area .cal-grid .perso-r-row{display:block}
+#perso-calendar-area .cal-grid .perso-r-row .lbl{min-width:0;padding-top:0;margin-bottom:2px}

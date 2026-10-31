@@ -493,6 +493,9 @@
     }).join('') + '</div>';
   }
 
+  // Exposé pour l'espace perso (retour coach affiché sous le bloc)
+  window.vbtRecapHTML = function (vbt) { try { _injectCSS(); return _lbHTML(vbt); } catch (e) { return ''; } };
+
   async function _decorateLeaderboard(sessionId) {
     var el = document.getElementById('smodal-leaderboard');
     if (!el || !sessionId) return;
