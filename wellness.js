@@ -429,7 +429,7 @@ async function renderPersoCalendar(){
       }
       const color=s.color||'#e8ff47';
       const typeLabel=TYPE_LABELS[s.type]||s.type;
-      const full=stripHtml(renderContentWithCharges(s.content||''));
+      const fullHtml=(typeof formatPlanningContent==='function')?formatPlanningContent(s.content||''):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
       const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
       const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
       const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
@@ -444,7 +444,7 @@ async function renderPersoCalendar(){
           </div>
         </div>
         <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
-        ${full?`<div class="cal-rich-content" style="-webkit-line-clamp:unset">${escapeHtml(full)}</div>`:''}
+        ${fullHtml?`<div class="cal-rich-full">${fullHtml}</div>`:''}
         <div class="cal-rich-meta">${intensity}${sets}${yt}</div>
         ${persoRetourBlock(s.id, iso, true)}
       </div>`;
@@ -493,7 +493,7 @@ async function renderPersoCalendar(){
         }
         const color=s.color||'#e8ff47';
         const typeLabel=TYPE_LABELS[s.type]||s.type;
-        const preview=stripHtml(renderContentWithCharges(s.content||'')).slice(0,160);
+        const fullHtml=(typeof formatPlanningContent==='function')?formatPlanningContent(s.content||''):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
         const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
         const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
         const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
@@ -508,7 +508,7 @@ async function renderPersoCalendar(){
             </div>
           </div>
           <div class="cal-rich-title">${escapeHtml(s.title||'')}</div>
-          ${preview?`<div class="cal-rich-content">${escapeHtml(preview)}</div>`:''}
+          ${fullHtml?`<div class="cal-rich-full">${fullHtml}</div>`:''}
           <div class="cal-rich-meta">${intensity}${sets}${yt}</div>
           <div class="cal-rich-nav">
             <button class="cal-action-btn" onclick="event.stopPropagation();persoMoveToDay('${s.id}',-1)" title="Jour précédent">‹</button>

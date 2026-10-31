@@ -1186,13 +1186,13 @@ html[data-theme="light"] .perso-athlete-card.fav,
 :root[data-theme="light"] .perso-athlete-card.fav{background:linear-gradient(180deg,rgba(201,167,0,.08),#fff) !important;border-color:rgba(201,167,0,.35) !important}
 
 /* ===== PLANNING ADMIN : blocs affichés en entier (V2) ===== */
-#admin-calendar{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
-#admin-calendar .cal-grid{grid-template-columns:repeat(7,minmax(150px,1fr));gap:8px}
-#admin-calendar .cal-rich{padding:10px 11px 10px 13px;border-radius:12px;overflow:visible}
-#admin-calendar .cal-rich:hover{transform:none}
-#admin-calendar .cal-rich .cal-accent{width:4px;border-radius:12px 0 0 12px}
-#admin-calendar .cal-rich-title{font-size:18px;letter-spacing:1.2px;margin-bottom:8px}
-#admin-calendar .cal-rich.separator .cal-rich-title{font-size:13px}
+#admin-calendar,#perso-calendar-area{overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:6px}
+#admin-calendar .cal-grid,#perso-calendar-area .cal-grid{grid-template-columns:repeat(7,minmax(150px,1fr));gap:8px}
+#admin-calendar .cal-rich,#perso-calendar-area .cal-rich{padding:10px 11px 10px 13px;border-radius:12px;overflow:visible}
+#admin-calendar .cal-rich:hover,#perso-calendar-area .cal-rich:hover{transform:none}
+#admin-calendar .cal-rich .cal-accent,#perso-calendar-area .cal-rich .cal-accent{width:4px;border-radius:12px 0 0 12px}
+#admin-calendar .cal-rich-title,#perso-calendar-area .cal-rich-title{font-size:18px;letter-spacing:1.2px;margin-bottom:8px}
+#admin-calendar .cal-rich.separator .cal-rich-title,#perso-calendar-area .cal-rich.separator .cal-rich-title{font-size:13px}
 .cal-rich-full{font-size:11px;line-height:1.5;color:#d0d0d4;word-break:break-word;text-transform:none}
 .cal-rich-full b,.cal-rich-full strong{color:#fff;font-weight:700}
 .cal-rich-full i,.cal-rich-full em{font-style:italic}
