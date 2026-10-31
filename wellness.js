@@ -84,6 +84,9 @@ async function openReadSession(id, source){
     body.innerHTML=buildSeparatorCard(data);
   } else {
     body.innerHTML=await buildSessionCard(data);
+    if(readModalIsPerso&&data.athlete_id){
+      try{await _readModalAppendRetour(body,data);}catch(e){console.warn('retour modale',e);}
+    }
   }
   // Bouton "Éditer" : visible uniquement si admin (toutes séances)
   // OU athlète propriétaire d'une séance perso (manuelle/coach-poussée)
@@ -94,6 +97,25 @@ async function openReadSession(id, source){
     editBtn.style.display=(isAdmin||isOwnPerso)?'':'none';
   }
   document.getElementById('read-modal').classList.add('open');
+}
+// Espace perso : score + détail (séries, VBT, FC, note, wellness) affichés
+// directement sous « Voir le classement » dans la fiche séance.
+async function _readModalAppendRetour(body,data){
+  const [scR,ntR,wR]=await Promise.all([
+    sb.from('wod_scores').select('id,session_id,score_value,score_text,score_type,level,sets_data,created_at,ef,vbt')
+      .eq('athlete_id',data.athlete_id).eq('session_id',data.id).order('created_at',{ascending:false}).limit(1),
+    sb.from('session_notes').select('id,session_id,content,created_at')
+      .eq('athlete_id',data.athlete_id).eq('session_id',data.id).order('created_at',{ascending:false}).limit(1),
+    sb.from('wellness_entries').select('date,sleep_quality,energy,fatigue,soreness,motivation,stress,notes')
+      .eq('athlete_id',data.athlete_id).eq('date',data.date).limit(1)
+  ]);
+  const sc=(scR.data||[])[0]||null, nt=(ntR.data||[])[0]||null, w=(wR.data||[])[0]||null;
+  if(readModalSession!==data)return; // modale fermée ou autre séance ouverte entre-temps
+  const inner=(sc||nt||w)?_persoDrawerInner(sc,nt,w):'<div class="perso-r-row"><div class="val" style="color:var(--muted);font-style:italic">Pas encore de retour</div></div>';
+  const html=`<div class="read-retour"><div class="read-retour-t">📊 Score &amp; retour</div><div class="perso-r-drawer open" style="margin-top:6px">${inner}</div></div>`;
+  const btn=body.querySelector('.btn-open-scores');
+  if(btn)btn.insertAdjacentHTML('afterend',html);
+  else body.insertAdjacentHTML('beforeend',html);
 }
 function closeReadModal(){
   document.getElementById('read-modal').classList.remove('open');
