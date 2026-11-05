@@ -269,6 +269,12 @@
   .chg-time input{width:100%;background:var(--card2,transparent);border:1px solid ${TEAL};color:var(--text);
     padding:10px;border-radius:8px;font-size:15px}
   .chg-thint{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .chg-itog{width:100%;display:flex;align-items:center;gap:8px;background:transparent;border:0;padding:2px 0;cursor:pointer;color:var(--text);font-family:inherit}
+  .chg-ival{margin-left:auto;font-size:12px;font-weight:700;color:${TEAL}}
+  .chg-ival.off{color:var(--muted);font-weight:500}
+  .chg-arw{color:var(--muted);font-size:14px;transition:transform .2s;display:inline-block}
+  .chg-itog[aria-expanded="false"] .chg-arw{transform:rotate(-90deg)}
+  .chg-ibody{margin-top:10px}
   .chg-pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;margin-left:auto;margin-right:8px}
   .chg-pill.ok{background:color-mix(in srgb,var(--green) 14%,transparent);color:var(--green)}
   .chg-pill.todo{background:color-mix(in srgb,var(--orange) 14%,transparent);color:var(--orange)}
@@ -471,8 +477,12 @@
     const rpe=saved?saved.rpe:0;
     const min=saved?saved.minutes:'';
     const ua=counts&&rpe&&min?rpe*min:0;
+    const head=saved?(counts?`${fmt(ua)} UA`:'hors charge'):'à renseigner';
     return`<div class="chg-inline" data-chg="${s.id}">
-      <div class="chg-isec">⚡ Ma charge</div>
+      <button type="button" class="chg-itog" data-itog aria-expanded="${saved?'false':'true'}">
+        <span class="chg-isec" style="margin:0">⚡ Ma charge</span>
+        <span class="chg-ival${saved?'':' off'}" data-ival>${head}</span><span class="chg-arw">▾</span></button>
+      <div class="chg-ibody" ${saved?'hidden':''}>
       <div class="chg-lbl">Modalité · pré-réglée, modifiable</div>
       <div class="chg-mods">${MODS.map(([k,l])=>`<button type="button" class="chg-mod" data-mod="${k}" aria-pressed="${mod===k}">${l}</button>`).join('')}</div>
       <div class="chg-time">
@@ -487,6 +497,7 @@
       <div class="chg-rpeh"><span>Très facile</span><span>Modéré</span><span>Maximal</span></div>
       <label class="chg-count"><input type="checkbox" data-counts ${counts?'checked':''}>
         <span>Compte dans la charge${(TYPEMAP[s.type]||['CF',true])[1]?'':' (échauffement / mobilité : décoché par défaut)'}</span></label>
+      </div>
     </div>`;
   }
   const SCORE_OPTIONAL=new Set(['warmup','mobility']);
@@ -527,6 +538,20 @@
     const state={score:hasScore,charge:!!saved};
     const uaEl=wrap.querySelector('[data-ua]');
     const recalc=()=>{uaEl.textContent=fmt(st.counts&&st.rpe&&st.min?st.rpe*st.min:0);};
+    const tog=wrap.querySelector('[data-itog]'),ib=wrap.querySelector('.chg-ibody'),iv=wrap.querySelector('[data-ival]');
+    const setOpen=o=>{tog.setAttribute('aria-expanded',String(o));ib.hidden=!o;};
+    tog.addEventListener('click',()=>setOpen(ib.hidden));
+    // Séance VBT : les vitesses font le score, pas besoin de remplir « Mon score » à côté
+    const isVbt=()=>!!card.querySelector('.vbx');
+    const hideClassic=()=>{
+      if(!isVbt())return;
+      [...zone.children].forEach(el=>{
+        if(el===btn||el===wrap||el.classList.contains('vbx')||el.classList.contains('score-title')||el.classList.contains('score-done-at-row'))return;
+        el.style.display='none';
+      });
+      const vs=card.querySelector('.vbx [data-vbx-save]');if(vs)vs.style.display='none';
+      const vb=card.querySelector('.vbx-body');if(vb&&!state.score)vb.style.display='block';
+    };
     wrap.querySelectorAll('[data-mod]').forEach(b=>b.addEventListener('click',()=>{
       st.mod=b.dataset.mod;
       wrap.querySelectorAll('[data-mod]').forEach(x=>x.setAttribute('aria-pressed',x===b));
@@ -547,7 +572,8 @@
     setPill(card,s,state.score,state.charge);
     btn.addEventListener('click',async()=>{
       const toast=m=>{if(typeof showToast==='function')showToast(m);};
-      const wantScore=scoreFilled(zone,s.id);
+      const vbt=isVbt()&&typeof window.vbxSave==='function';
+      const wantScore=vbt?(typeof window.vbxHasData==='function'&&window.vbxHasData(s.id)):scoreFilled(zone,s.id);
       const wantCharge=!!(st.rpe&&st.min);
       if(st.min&&!st.rpe){toast('⚠️ Choisis ton RPE');return;}
       if(st.rpe&&!st.min){toast('⚠️ Entre ton temps de séance');return;}
@@ -555,7 +581,11 @@
       btn.disabled=true;const lbl=btn.textContent;btn.textContent='Enregistrement…';
       let scoreOk=false,chargeOk=false;
       try{
-        if(wantScore&&submitCall){
+        if(wantScore&&vbt){
+          await window.vbxSave(s.id);
+          scoreOk=await scoreExists(s.id);
+          if(scoreOk)state.score=true;
+        }else if(wantScore&&submitCall){
           await new Function('return '+submitCall)();
           scoreOk=await scoreExists(s.id);
           if(scoreOk)state.score=true;
@@ -564,6 +594,9 @@
           const row={athlete_id:uid(),date:dayKey(),modality:st.mod,rpe:st.rpe,minutes:st.min,
             counts:st.counts,label:s.title||null,personal_session_id:s.id};
           st.id=await saveBlock(row,st.id);chargeOk=true;state.charge=true;
+          iv.className='chg-ival'+(st.counts?'':' off');
+          iv.textContent=st.counts?`${fmt(st.rpe*st.min)} UA`:'hors charge';
+          setOpen(false);
           refreshDayTotal();
         }
       }catch(err){console.error('[charge] valider bloc',err);toast('❌ Erreur à l\'enregistrement, réessaie');}
@@ -571,6 +604,7 @@
       setPill(card,s,state.score,state.charge);
       if(wantScore&&!scoreOk)return; // submitScore a déjà affiché son message
       const opt=SCORE_OPTIONAL.has(s.type);
+      if(wantScore&&vbt&&!scoreOk&&!wantCharge)return;
       if(state.score&&state.charge)toast('✅ Bloc validé : score + charge');
       else if(state.score)toast('✅ Score enregistré · ajoute ton temps de séance + RPE');
       else if(state.charge)toast(opt?'✅ Bloc validé':'✅ Charge enregistrée · il manque ton score');
@@ -578,7 +612,8 @@
     // le bouton reste en bas du formulaire, même si un module (VBT, EF) s'ajoute après
     const keepLast=()=>{if(btn.parentElement!==zone)return;
       if(zone.lastElementChild!==btn){zone.appendChild(wrap);zone.appendChild(btn);}};
-    keepLast();setTimeout(keepLast,800);setTimeout(keepLast,2000);
+    const fix=()=>{keepLast();hideClassic();};
+    fix();setTimeout(fix,800);setTimeout(fix,2000);
   }
 
   /* ---------- Injection dans les cartes de séance ---------- */

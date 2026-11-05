@@ -494,6 +494,12 @@
   }
 
   // Exposé pour l'espace perso (retour coach affiché sous le bloc)
+  // Utilisé par « Valider le bloc » (charge.js) : un seul bouton pour vitesses + charge
+  window.vbxHasData = function (sid) {
+    var d = drafts[sid];
+    return !!(d && d.blocks.some(function (b) { return b.sets.some(function (st) { return (st.v || []).some(function (x) { return x > 0; }); }); }));
+  };
+  window.vbxSave = function (sid) { return _save(sid); };
   window.vbtRecapHTML = function (vbt) { try { _injectCSS(); return _lbHTML(vbt); } catch (e) { return ''; } };
 
   async function _decorateLeaderboard(sessionId) {
