@@ -686,7 +686,8 @@
       ]);
       series=a.data||[];weeks=b.data||[];mods=m.data||[];
       await addPeriods(uid(),series);
-      if(isCoachUser()){rpe=await fetchRpe(uid());br=await fetchBreakdown(uid());}
+      br=await fetchBreakdown(uid());
+      if(isCoachUser())rpe=await fetchRpe(uid());
     }catch(e){console.error('[charge] suivi',e);}
 
     if(!series.length){
@@ -702,7 +703,7 @@
         <span class="t">Ma charge d'entraînement</span>
         <span class="chg-val">${fmt(series.slice(-7).reduce((a,p)=>a+p.load,0))} UA · 7 j</span>
         <span style="color:var(--muted);font-size:14px">›</span></div>
-      <div class="chg-body open" id="chg-suivi-body">${suiviHTML(series,weeks,mods,{coach:isCoachUser(),rpe})}</div>
+      <div class="chg-body open" id="chg-suivi-body">${suiviHTML(series,weeks,mods,{coach:isCoachUser(),history:true,rpe})}</div>
     </div>`;
     wireRpe(host,rpe);wireWeeks(host,series,br);wireYear(host,series,br);
     document.getElementById('chg-suivi-head')
@@ -1073,11 +1074,11 @@
       <div id="chg-mods">${modsHTML(mods)}</div></div>
       </div>
       </div>
-      ${opts.coach?weeksSectionHTML():''}
+      ${opts.coach||opts.history?weeksSectionHTML():''}
       <div class="chg-hint">Ratio aigu / chronique : &lt; 0,8 sous-charge · 0,8–1,3 optimal · 1,3–1,5 vigilance · &gt; 1,5 risque élevé.
       Monotonie = charge moyenne ÷ écart-type de la semaine ; au-dessus de 2, la semaine manque de variation.
       Contrainte = charge × monotonie. Échauffement et mobilité sont exclus de la charge.</div>
-      ${opts.coach?yearSectionHTML():''}`;
+      ${opts.coach||opts.history?yearSectionHTML():''}`;
   }
 
   /* ---------- Vue coach : onglet admin ⚡ Charge ---------- */
