@@ -261,6 +261,17 @@
     border:1px solid var(--border);border-radius:12px}
   .chg-addfree{width:100%;margin-bottom:16px;padding:11px;border-radius:10px;border:1px dashed var(--border);
     background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
+  .chg-inline{margin:12px 0 4px;padding-top:12px;border-top:1px dashed var(--border)}
+  .chg-inline .chg-lbl:first-child{margin-top:0}
+  .chg-isec{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px;font-weight:700}
+  .chg-time{display:flex;gap:10px;align-items:flex-start;margin-top:10px}
+  .chg-time .f{flex:1}
+  .chg-time input{width:100%;background:var(--card2,transparent);border:1px solid ${TEAL};color:var(--text);
+    padding:10px;border-radius:8px;font-size:15px}
+  .chg-thint{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
+  .chg-pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;margin-left:auto;margin-right:8px}
+  .chg-pill.ok{background:color-mix(in srgb,var(--green) 14%,transparent);color:var(--green)}
+  .chg-pill.todo{background:color-mix(in srgb,var(--orange) 14%,transparent);color:var(--orange)}
   `;
   function injectCSS(){
     if(document.getElementById('chg-css'))return;
@@ -417,6 +428,159 @@
     const sib=el.nextElementSibling;if(sib)sib.textContent=` UA · ${fmt(min)} min`;
   }
 
+  /* ---------- Score + charge dans un seul geste (« Valider le bloc ») ----------
+     Sur les séances programmées de l'espace perso, la charge n'est plus un volet
+     séparé : modalité, temps de séance et RPE se saisissent dans « Mon score »,
+     et un seul bouton enregistre le score ET la charge. Le RPE n'est demandé
+     qu'une fois. Les séances libres gardent l'ancien volet. */
+  const TIME_HINT={
+    strength:'1re série → dernière rep, repos compris',weightlifting:'1re série → dernière rep, repos compris',
+    gymnastics:'1re série → dernière rep, repos compris',skill:'1re série → dernière rep, repos compris',
+    wod:'temps du WOD + récup entre les blocs',engine:'temps total : warm-up + séance + récup',
+    run:'temps total : warm-up + séance + récup',bodybuilding:'temps total du bloc',renforcement:'temps total du bloc',
+    warmup:'temps total du bloc',mobility:'temps total du bloc'
+  };
+  const mmss=(m,s)=>(+m||0)+(+s||0)/60;
+  /* Repère « prévu par le format », à titre indicatif seulement */
+  function estimateMinutes(txt){
+    const t=String(txt||'').toUpperCase().replace(/ /g,' ');
+    let tot=0,m;
+    const used=[];
+    const take=(re,fn)=>{re.lastIndex=0;while((m=re.exec(t))){if(used.some(([a,b])=>m.index<b&&m.index+m[0].length>a))continue;used.push([m.index,m.index+m[0].length]);tot+=fn(m);}};
+    take(/(\d+)\s*SETS?\s+EVERY\s+(\d+):(\d{2})/g,m=>m[1]*mmss(m[2],m[3]));
+    take(/(\d+)\s*SETS?\s+REST\s+(\d+):(\d{2})/g,m=>m[1]*(mmss(m[2],m[3])+1)-mmss(m[2],m[3]));
+    take(/(\d+)\s*(?:X|SETS?)\s*(\d+):(\d{2})[^\n]*?REST\s+(\d+):(\d{2})/g,m=>m[1]*(mmss(m[2],m[3])+mmss(m[4],m[5]))-mmss(m[4],m[5]));
+    const onDur=new Set();
+    take(/(\d+)\s*SETS?\s+(\d+):(\d{2})\s*ON\s*\/?\s*(?:REST\s*)?(\d+):(\d{2})/g,m=>{onDur.add(m[2]+':'+m[3]);return m[1]*(mmss(m[2],m[3])+mmss(m[4],m[5]))-mmss(m[4],m[5]);});
+    take(/\b(?:EMOM|AMRAP|CAP|E\dMOM)\s*(\d+):(\d{2})/g,m=>onDur.has(m[1]+':'+m[2])?0:mmss(m[1],m[2]));
+    take(/(?:^|\n)\s*(\d+):(\d{2})\s*(?:\n|$)/g,m=>mmss(m[1],m[2]));
+    take(/(?:^|\n)\s*~?\s*(\d+):(\d{2})\s+(?:BIKE|ROW|SKI|RUN|EASY|FACILE|PROGRESSIF)/g,m=>mmss(m[1],m[2]));
+    return tot>0?Math.round(tot):0;
+  }
+  /* Modalité par défaut : type de bloc, avec le vélo séparé de l'ergo sur l'engine */
+  function defaultMod(s,txt){
+    const[def]=TYPEMAP[s.type]||['CF',true];
+    if(s.type==='engine'){
+      const t=String(txt||'').toUpperCase();
+      if(/\bBIKE/.test(t)&&!/\b(ROW|SKI|RUN|RAMEUR)\b/.test(t))return'BIKE';
+    }
+    return def;
+  }
+  function inlineHTML(s,saved,est,mod){
+    const counts=saved?saved.counts:(TYPEMAP[s.type]||['CF',true])[1];
+    const rpe=saved?saved.rpe:0;
+    const min=saved?saved.minutes:'';
+    const ua=counts&&rpe&&min?rpe*min:0;
+    return`<div class="chg-inline" data-chg="${s.id}">
+      <div class="chg-isec">⚡ Ma charge</div>
+      <div class="chg-lbl">Modalité · pré-réglée, modifiable</div>
+      <div class="chg-mods">${MODS.map(([k,l])=>`<button type="button" class="chg-mod" data-mod="${k}" aria-pressed="${mod===k}">${l}</button>`).join('')}</div>
+      <div class="chg-time">
+        <div class="f"><div class="chg-lbl" style="margin-top:0">Mon temps de séance (min)</div>
+          <input type="number" inputmode="numeric" min="1" max="600" data-min value="${min}" placeholder="${est||''}">
+          <div class="chg-thint">${TIME_HINT[s.type]||'temps total du bloc'}${est?` · prévu par le format : ~${est} min`:''}</div></div>
+        <div class="chg-ua"><b data-ua>${fmt(ua)}</b><span>RPE × min = UA</span></div>
+      </div>
+      <div class="chg-lbl">RPE du bloc</div>
+      <div class="chg-rpe">${[1,2,3,4,5,6,7,8,9,10].map(n=>
+        `<button type="button" data-rpe="${n}" ${n===rpe?`style="background:${RPEC[n-1]};border-color:${RPEC[n-1]};color:#fff"`:''}>${n}</button>`).join('')}</div>
+      <div class="chg-rpeh"><span>Très facile</span><span>Modéré</span><span>Maximal</span></div>
+      <label class="chg-count"><input type="checkbox" data-counts ${counts?'checked':''}>
+        <span>Compte dans la charge${(TYPEMAP[s.type]||['CF',true])[1]?'':' (échauffement / mobilité : décoché par défaut)'}</span></label>
+    </div>`;
+  }
+  const SCORE_OPTIONAL=new Set(['warmup','mobility']);
+  function pillState(s,hasScore,hasCharge){
+    if(hasScore&&hasCharge)return['ok','Validé'];
+    if(SCORE_OPTIONAL.has(s.type)&&(hasScore||hasCharge))return['ok','Validé'];
+    if(hasScore)return['todo','Charge manquante'];
+    if(hasCharge)return['todo','Score manquant'];
+    return['todo','À valider'];
+  }
+  function setPill(card,s,hasScore,hasCharge){
+    const head=card.querySelector('.session-header');if(!head)return;
+    let p=head.querySelector('.chg-pill');
+    if(!p){p=document.createElement('span');p.className='chg-pill';
+      const date=head.lastElementChild;head.insertBefore(p,date);}
+    const[c,l]=pillState(s,hasScore,hasCharge);
+    p.className='chg-pill '+c;p.textContent=l;
+  }
+  /* Le score a-t-il été rempli dans le formulaire ? */
+  function scoreFilled(zone,sid){
+    const els=[...zone.querySelectorAll('input,textarea')].filter(el=>
+      el.id&&el.id.includes(sid)&&!/^done-at-/.test(el.id)&&!el.closest('.chg-inline')&&!el.closest('.vbx')&&el.type!=='hidden');
+    return els.some(el=>el.type==='checkbox'?el.checked:String(el.value||el.innerText||'').trim()!=='');
+  }
+  async function scoreExists(sid){
+    const{data}=await sb.from('wod_scores').select('id').eq('session_id',sid).eq('athlete_id',uid()).maybeSingle();
+    return!!data;
+  }
+  function wireInline(card,s,saved,hasScore){
+    const wrap=card.querySelector(`.chg-inline[data-chg="${s.id}"]`);
+    const btn=card.querySelector('.btn-score');
+    if(!wrap||!btn)return;
+    const zone=btn.parentElement;
+    const st={id:saved?saved.id:null,
+      mod:wrap.querySelector('[data-mod][aria-pressed="true"]')?.dataset.mod||'CF',
+      rpe:saved?saved.rpe:0,min:saved?saved.minutes:0,
+      counts:saved?saved.counts:(TYPEMAP[s.type]||['CF',true])[1]};
+    const state={score:hasScore,charge:!!saved};
+    const uaEl=wrap.querySelector('[data-ua]');
+    const recalc=()=>{uaEl.textContent=fmt(st.counts&&st.rpe&&st.min?st.rpe*st.min:0);};
+    wrap.querySelectorAll('[data-mod]').forEach(b=>b.addEventListener('click',()=>{
+      st.mod=b.dataset.mod;
+      wrap.querySelectorAll('[data-mod]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+    }));
+    wrap.querySelectorAll('[data-rpe]').forEach(b=>b.addEventListener('click',()=>{
+      st.rpe=+b.dataset.rpe;
+      wrap.querySelectorAll('[data-rpe]').forEach(x=>x.removeAttribute('style'));
+      b.style.background=RPEC[st.rpe-1];b.style.borderColor=RPEC[st.rpe-1];b.style.color='#fff';
+      recalc();
+    }));
+    wrap.querySelector('[data-min]').addEventListener('input',e=>{st.min=parseInt(e.target.value,10)||0;recalc();});
+    wrap.querySelector('[data-counts]').addEventListener('change',e=>{st.counts=e.target.checked;recalc();});
+
+    // Un seul bouton : score + charge
+    const submitCall=btn.getAttribute('onclick')||'';
+    btn.removeAttribute('onclick');
+    btn.textContent='✓ Valider le bloc';
+    setPill(card,s,state.score,state.charge);
+    btn.addEventListener('click',async()=>{
+      const toast=m=>{if(typeof showToast==='function')showToast(m);};
+      const wantScore=scoreFilled(zone,s.id);
+      const wantCharge=!!(st.rpe&&st.min);
+      if(st.min&&!st.rpe){toast('⚠️ Choisis ton RPE');return;}
+      if(st.rpe&&!st.min){toast('⚠️ Entre ton temps de séance');return;}
+      if(!wantScore&&!wantCharge){toast('⚠️ Entre ton score, ou ton temps de séance + RPE');return;}
+      btn.disabled=true;const lbl=btn.textContent;btn.textContent='Enregistrement…';
+      let scoreOk=false,chargeOk=false;
+      try{
+        if(wantScore&&submitCall){
+          await new Function('return '+submitCall)();
+          scoreOk=await scoreExists(s.id);
+          if(scoreOk)state.score=true;
+        }
+        if(wantCharge){
+          const row={athlete_id:uid(),date:dayKey(),modality:st.mod,rpe:st.rpe,minutes:st.min,
+            counts:st.counts,label:s.title||null,personal_session_id:s.id};
+          st.id=await saveBlock(row,st.id);chargeOk=true;state.charge=true;
+          refreshDayTotal();
+        }
+      }catch(err){console.error('[charge] valider bloc',err);toast('❌ Erreur à l\'enregistrement, réessaie');}
+      btn.disabled=false;btn.textContent=lbl;
+      setPill(card,s,state.score,state.charge);
+      if(wantScore&&!scoreOk)return; // submitScore a déjà affiché son message
+      const opt=SCORE_OPTIONAL.has(s.type);
+      if(state.score&&state.charge)toast('✅ Bloc validé : score + charge');
+      else if(state.score)toast('✅ Score enregistré · ajoute ton temps de séance + RPE');
+      else if(state.charge)toast(opt?'✅ Bloc validé':'✅ Charge enregistrée · il manque ton score');
+    });
+    // le bouton reste en bas du formulaire, même si un module (VBT, EF) s'ajoute après
+    const keepLast=()=>{if(btn.parentElement!==zone)return;
+      if(zone.lastElementChild!==btn){zone.appendChild(wrap);zone.appendChild(btn);}};
+    keepLast();setTimeout(keepLast,800);setTimeout(keepLast,2000);
+  }
+
   /* ---------- Injection dans les cartes de séance ---------- */
   async function decorateSessions(){
     // La saisie de charge n'existe QUE dans l'espace perso de l'athlète.
@@ -465,15 +629,29 @@
       });
     }
 
-    for(const card of cards){
-      if(card.dataset.chgBound)continue;
-      const sid=(card.id||'').replace(/^sc-/,'');
-      if(!sid)continue;
+    const todo=cards.filter(c=>!c.dataset.chgBound&&/^sc-/.test(c.id||''));
+    const ids=todo.map(c=>c.id.replace(/^sc-/,''));
+    let scored=new Set();
+    if(ids.length){
+      const{data:sc}=await sb.from('wod_scores').select('session_id').eq('athlete_id',uid()).in('session_id',ids);
+      scored=new Set((sc||[]).map(r=>r.session_id));
+    }
+    for(const card of todo){
+      const sid=card.id.replace(/^sc-/,'');
       card.dataset.chgBound='1';
       const type=(card.querySelector('.badge')?.className||'').match(/badge-([a-z]+)/)?.[1]||'wod';
       const s={id:sid,type,title:card.querySelector('.session-title')?.textContent||null};
       const saved=byId[sid]||null;
       const body=card.querySelector('.session-body');if(!body)continue;
+      const btn=body.querySelector('.btn-score');
+      if(btn){
+        const txt=card.querySelector('.session-content')?.innerText||'';
+        const mod=saved?saved.modality:defaultMod(s,txt);
+        btn.insertAdjacentHTML('beforebegin',inlineHTML(s,saved,estimateMinutes(txt),mod));
+        wireInline(card,s,saved,scored.has(sid));
+        continue;
+      }
+      // pas de formulaire de score : on garde le volet charge seul
       const anchor=body.querySelector('.btn-open-scores');
       const html=blockHTML(s,saved);
       if(anchor)anchor.insertAdjacentHTML('beforebegin',html);
