@@ -139,8 +139,8 @@
     div.chg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
     div.chg-col{display:flex;flex-direction:column;gap:14px;min-width:0}
     div.chg-coach{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
-    .chg-panel{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card2,transparent)}
-    .chg-panel .chg-sec{margin-top:0}
+    .chg-panel.chg-panel.chg-panel{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card2,transparent);margin-top:0}
+    .chg-panel.chg-panel.chg-panel .chg-sec{margin-top:0}
     .chg-panel-tbl .chg-tbl{margin-top:0}
   }
   .chg-rest{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
@@ -148,6 +148,8 @@
   .chg-rest b{display:block;font-size:17px;color:var(--text)}
   .chg-rest span{font-size:10px;color:var(--muted)}
   .chg-grid{display:flex;flex-direction:column}
+  .chg-panel.chg-panel{border-top:2px solid var(--border2,var(--border));margin-top:20px;padding-top:2px}
+  .chg-panel.chg-panel .chg-sec{margin-top:12px}
   .chg-col{display:contents}
   .chg-sec .chg-strong{font-size:11px;font-weight:800;color:var(--text)}
   .chg-sec .chg-paren{font-size:11px;color:var(--text)}
@@ -171,6 +173,26 @@
   .chg-verdict i{flex:none;width:8px;height:8px;border-radius:50%;margin-top:4px}
   .chg-res3{grid-template-columns:repeat(3,1fr)}
   .chg-res3 small{font-size:11px;color:var(--muted);font-weight:500}
+  .chg-owk{padding:10px 0 4px;border-top:1px dashed var(--border)}
+  .chg-sec+.chg-owk{border-top:0;padding-top:2px}
+  .chg-owh{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+  .chg-owh b{font-size:12px;color:var(--text)}
+  .chg-owh span{font-size:10px;color:var(--muted)}
+  .chg-owh em{margin-left:auto;font-style:normal;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border:1px solid var(--border);border-radius:20px;padding:2px 7px}
+  .chg-onext .chg-owh em{color:var(--accent);border-color:var(--accent)}
+  .chg-onow{display:flex;justify-content:space-between;margin-top:8px}
+  .chg-onow span{display:block;font-size:10px;color:var(--muted)}
+  .chg-onow b{font-size:16px;color:var(--text)}
+  .chg-onow .r{text-align:right}.chg-onow .r b{font-size:13px;color:var(--muted)}
+  .chg-oprog{height:6px;border-radius:3px;background:var(--card2);margin-top:6px;overflow:hidden}
+  .chg-oprog i{display:block;height:100%;background:var(--accent);opacity:.7;border-radius:3px}
+  .chg-onote{font-size:11px;color:var(--muted);line-height:1.45;margin:4px 0 6px}
+  .chg-orow{display:flex;align-items:center;gap:8px;margin-top:8px;flex-wrap:wrap}
+  .chg-orow .k{flex:0 0 62px;font-size:11px;font-weight:700;color:var(--text)}
+  .chg-orow .v{margin-left:auto;font-size:16px;color:var(--accent)}
+  .chg-orow .t{flex:1;font-size:11px;color:var(--text2,var(--muted));line-height:1.45}
+  .chg-otop{align-items:flex-start}
+  .chg-obadge{font-size:11px;font-weight:700;padding:3px 9px;border:1px solid;border-radius:20px;white-space:nowrap}
   .chg-otgt{display:flex;justify-content:space-between;gap:10px;padding:10px;border:1px solid var(--border);border-radius:10px}
   .chg-otgt span{display:block;font-size:10px;color:var(--muted)}
   .chg-otgt b{font-size:17px;color:var(--accent)}
@@ -720,7 +742,18 @@
       s2='3 semaines de hausse d\'affilée : prévoir une semaine allégée (−20 à −30 %) en S+2.';
     else if(f[0]>=1.05)s2='Si S+1 passe bien (état de fatigue au réveil stable), poursuivre la progression sur le même rythme.';
     else if(f[1]<=0.95)s2='Reprendre la progression quand le ratio revient sous 1,3 et que l\'état de fatigue au réveil s\'améliore.';
-    return{txt,f,tgt,l7,tips,s2};
+    let ca;
+    if(f[1]<=0.8)ca=['↓↓ Décharger',BAD];
+    else if(f[1]<=0.95)ca=['↓ Alléger',WARN];
+    else if(f[0]>=1.05)ca=['↑ Augmenter',OK];
+    else if(f[1]>1.0)ca=['↗ Stable à légère hausse',AC];
+    else ca=['= Maintenir ou alléger',WARN];
+    let ia;
+    if(r!=null&&r>1.3)ia=['↓ Limiter',WARN];
+    else if(neg||(hp!=null&&hp>30))ia=['↓ Baisser',WARN];
+    else if(hp!=null&&hp<10&&r!=null&&r>=0.8)ia=['↑ Augmenter possible',OK];
+    else ia=['= Maintenir','var(--muted)'];
+    return{txt,f,tgt,l7,tips,s2,ca,ia};
   }
 
   function coachHTML(series,weeks,rpeRows){
@@ -728,6 +761,11 @@
     const o=orientation(series,weeks,rpeRows,res);
     const pct=x=>{const v=Math.round((x-1)*100);return v===0?'0 %':(v>0?'+':'−')+fmt(Math.abs(v))+' %';};
     const fr=o.f[0]===o.f[1]?pct(o.f[0]):`${pct(o.f[0])} à ${pct(o.f[1])}`;
+    const dm=d=>d.slice(8)+'/'+d.slice(5,7);
+    const mon=mondayOf(today()),nx=addDays(mon,7);
+    const pw=weeks.find(w=>w.week_start===addDays(mon,-7));
+    const cw={mon,day:Math.round((new Date(today()+'T12:00:00')-new Date(mon+'T12:00:00'))/864e5)+1,
+      done:sumLoad(series.filter(p=>p.d>=mon)),prev:pw?+pw.total:null};
     return`<div class="chg-coach">
       <div class="chg-panel chg-pcoach"><div class="chg-sec"><h4>Ressenti de la charge</h4><span>7 j vs 21 j précédents</span></div>
         ${res?`<div class="chg-verdict" style="border-color:${tint(res.c,45)};background:${tint(res.c,12)}"><i style="background:${res.c}"></i>${res.v}</div>
@@ -737,12 +775,25 @@
           <div><b>${res.bad}</b><span>réveil${res.bad>1?'s':''} Fatigué / PLS · 7 j</span></div></div>`
         :'<p class="chg-hint">Il faut au moins 14 jours de données pour évaluer le ressenti, et 1 à 2 cycles d\'entraînement pour qu\'il soit fiable.</p>'}
       </div>
-      <div class="chg-panel chg-pcoach"><div class="chg-sec"><h4>Orientation semaine à venir</h4><span>pour la programmation</span></div>
-        <div class="chg-otgt"><div><span>Charge S+1</span><b>${o.tgt?`${fmt(o.tgt[0])} – ${fmt(o.tgt[1])} UA`:'–'}</b></div>
-          <div class="r"><span>vs 7 derniers jours (${fmt(o.l7)} UA)</span><b>${fr}</b></div></div>
-        <div class="chg-otxt">${o.txt}</div>
-        ${o.tips.map(([k,t])=>`<div class="chg-otip"><b>${k}</b><span>${t}</span></div>`).join('')}
-        ${o.s2?`<div class="chg-otip"><b>S+2</b><span>${o.s2}</span></div>`:''}
+      <div class="chg-panel chg-pcoach"><div class="chg-sec"><h4>Orientation de la programmation</h4><span>repères coach</span></div>
+        <div class="chg-owk">
+          <div class="chg-owh"><b>Cette semaine · S${isoWeek(cw.mon)}</b><span>${dm(cw.mon)} → ${dm(addDays(cw.mon,6))}</span><em>en cours · jour ${cw.day}/7</em></div>
+          <div class="chg-onow"><div><span>Charge réalisée</span><b>${fmt(cw.done)} UA</b></div>
+            <div class="r"><span>Semaine dernière S${isoWeek(addDays(cw.mon,-7))}</span><b>${cw.prev==null?'–':fmt(cw.prev)+' UA'}</b></div></div>
+          ${cw.prev?`<div class="chg-oprog"><i style="width:${Math.min(100,cw.done/cw.prev*100)}%"></i></div>
+          <div class="chg-onote">${fmt(cw.done/cw.prev*100)} % de la charge de la semaine dernière, à ${cw.day} jour${cw.day>1?'s':''} sur 7. Semaine non terminée : simple point d'étape.</div>`:''}
+        </div>
+        <div class="chg-owk chg-onext">
+          <div class="chg-owh"><b>Semaine prochaine · S${isoWeek(nx)}</b><span>${dm(nx)} → ${dm(addDays(nx,6))}</span><em>à programmer</em></div>
+          <div class="chg-orow"><span class="k">Charge</span><span class="chg-obadge" style="color:${o.ca[1]};border-color:${tint(o.ca[1],45)};background:${tint(o.ca[1],12)}">${o.ca[0]}</span>
+            <b class="v">${o.tgt?`${fmt(o.tgt[0])} – ${fmt(o.tgt[1])} UA`:'–'}</b></div>
+          <div class="chg-onote">Cible = charge des 7 derniers jours glissants (${dm(addDays(today(),-6))} → ${dm(today())} : ${fmt(o.l7)} UA) ajustée de ${fr}. ${o.txt}</div>
+          <div class="chg-orow"><span class="k">Intensité</span><span class="chg-obadge" style="color:${o.ia[1]};border-color:${tint(o.ia[1],45)};background:${tint(o.ia[1],12)}">${o.ia[0]}</span></div>
+          ${o.tips.map(([k,t])=>k==='Intensité'?`<div class="chg-onote">${t}</div>`:'').join('')}
+          ${o.tips.filter(([k])=>k!=='Intensité').map(([k,t])=>`<div class="chg-orow chg-otop"><span class="k">${k}</span><span class="t">${t}</span></div>`).join('')}
+        </div>
+        ${o.s2?`<div class="chg-owk"><div class="chg-owh"><b>Dans 2 semaines · S${isoWeek(addDays(nx,7))}</b><span>${dm(addDays(nx,7))} → ${dm(addDays(nx,13))}</span></div>
+          <div class="chg-onote" style="margin-top:4px">${o.s2.replace(' en S+2','')}</div></div>`:''}
         <div class="chg-hint">Repères indicatifs calculés sur le ratio A/C, l'état de fatigue au réveil et l'intensité récente. Il faut 1 à 2 cycles d'entraînement de données pour que ces variables soient justes, et elles sont propres à chaque athlète : à ajuster selon le calendrier et l'objectif.</div>
       </div></div>`;
   }
