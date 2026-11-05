@@ -180,6 +180,14 @@
   .chg-otip{display:flex;gap:8px;font-size:11px;line-height:1.45;padding:6px 0;border-top:1px solid var(--border)}
   .chg-otip b{flex:0 0 62px;color:var(--text);font-weight:700}
   .chg-otip span{color:var(--text2,var(--muted))}
+  .chg-rrow{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+  .chg-rtrack{flex:1;height:12px;border-radius:4px;background:var(--card2);overflow:hidden}
+  .chg-rbar{display:flex;height:100%;border-radius:4px;overflow:hidden}
+  .chg-rbar i{display:block;height:100%}
+  .chg-rtot .chg-rtrack{height:16px}
+  .chg-rtot{margin-bottom:14px}
+  .chg-rleg b{color:var(--text);font-weight:700}
+  .chg-rleg small{color:var(--muted);opacity:.8}
   .chg-rpet th small{display:block;font-size:8px;font-weight:400;text-transform:none}
   .chg-rpet td small{display:block;font-size:9px;color:var(--muted)}
   .chg-rpet .z{color:var(--muted)}
@@ -666,11 +674,11 @@
     let v,c;
     if(wd==null){v="Pas assez d'états au réveil renseignés pour évaluer le ressenti.";c='var(--muted)';}
     else if(ld==='up'&&wd!=='down'){v='Absorbe bien la hausse de charge.';c=OK;}
-    else if(ld==='up'&&wd==='down'){v='Encaisse mal la hausse : le réveil se dégrade avec la charge.';c=BAD;}
-    else if(ld==='flat'&&wd==='down'){v='Charge stable mais réveil en baisse : fatigue qui s\'accumule ou facteur hors entraînement.';c=WARN;}
-    else if(ld==='down'&&wd==='down'){v='Réveil en baisse malgré moins de charge : regarder sommeil, stress, vie perso.';c=WARN;}
-    else if(wd==='up'){v=ld==='down'?'Récupère bien de la baisse de charge.':'Se sent de mieux en mieux à charge égale.';c=OK;}
-    else{v='Ressenti stable, en phase avec la charge.';c=AC;}
+    else if(ld==='up'&&wd==='down'){v='Encaisse mal la hausse : l\'état de fatigue au réveil augmente avec la charge.';c=BAD;}
+    else if(ld==='flat'&&wd==='down'){v='Charge stable mais état de fatigue au réveil en hausse : fatigue qui s\'accumule ou facteur hors entraînement.';c=WARN;}
+    else if(ld==='down'&&wd==='down'){v='État de fatigue au réveil en hausse malgré moins de charge : regarder sommeil, stress, vie perso.';c=WARN;}
+    else if(wd==='up'){v=ld==='down'?'Récupère bien de la baisse de charge : moins de fatigue au réveil.':'Moins de fatigue au réveil à charge égale.';c=OK;}
+    else{v='État de fatigue au réveil stable, en phase avec la charge.';c=AC;}
     return{dl,ld,wd,a7,ap,bad,v,c,l7};
   }
 
@@ -693,12 +701,12 @@
     const hard=rpeRows.filter(b=>b.rpe>=8).reduce((a,b)=>a+(+b.minutes||0),0);
     const hp=tot>0?hard/tot*100:null;
     if(r!=null&&r>1.3)tips.push(['Intensité','Garder une seule séance à RPE ≥ 8, le reste entre 5 et 7.']);
-    else if(neg)tips.push(['Intensité','Baisser l\'intensité avant le volume : RPE ≤ 7 tant que le réveil ne remonte pas.']);
+    else if(neg)tips.push(['Intensité','Baisser l\'intensité avant le volume : RPE ≤ 7 tant que l\'état de fatigue au réveil ne s\'améliore pas.']);
     else if(hp!=null&&hp>30)tips.push(['Intensité',`${fmt(hp)} % du temps à RPE ≥ 8 sur 14 j : c'est beaucoup, réduire les séances dures.`]);
     else if(hp!=null&&hp<10&&r!=null&&r>=0.8)tips.push(['Intensité',`Seulement ${fmt(hp)} % du temps à RPE ≥ 8 sur 14 j : place pour 1 séance intense de plus.`]);
     else if(hp!=null)tips.push(['Intensité',`${fmt(hp)} % du temps à RPE ≥ 8 sur 14 j : répartition correcte, la garder.`]);
     const wk=weeks[0];
-    if(wk&&wk.monotony!=null&&wk.monotony>2)tips.push(['Variation','Monotonie > 2 : alterner jours durs et jours faciles.']);
+    if(wk&&wk.monotony!=null&&wk.monotony>2)tips.push(['Variation','Monotonie > 2 : alterner jours difficiles, jours modérés et jours faciles.']);
     const off14=series.slice(-14).filter(p=>p.is_off).length;
     if(off14<2)tips.push(['Repos',`${off14} jour${off14>1?'s':''} OFF sur 14 j : prévoir au moins 1 jour OFF dans la semaine.`]);
     // S+2 : 3 semaines terminées en hausse -> semaine allégée
@@ -706,8 +714,8 @@
     let s2=null;
     if(done.length===3&&done[0].total>done[1].total&&done[1].total>done[2].total)
       s2='3 semaines de hausse d\'affilée : prévoir une semaine allégée (−20 à −30 %) en S+2.';
-    else if(f[0]>=1.05)s2='Si S+1 passe bien (réveil stable), poursuivre la progression sur le même rythme.';
-    else if(f[1]<=0.95)s2='Reprendre la progression quand le ratio revient sous 1,3 et que le réveil remonte.';
+    else if(f[0]>=1.05)s2='Si S+1 passe bien (état de fatigue au réveil stable), poursuivre la progression sur le même rythme.';
+    else if(f[1]<=0.95)s2='Reprendre la progression quand le ratio revient sous 1,3 et que l\'état de fatigue au réveil s\'améliore.';
     return{txt,f,tgt,l7,tips,s2};
   }
 
@@ -721,9 +729,9 @@
         ${res?`<div class="chg-verdict" style="border-color:${tint(res.c,45)};background:${tint(res.c,12)}"><i style="background:${res.c}"></i>${res.v}</div>
         <div class="chg-rest chg-res3">
           <div><b>${res.dl>=0?'+':'−'}${fmt(Math.abs(res.dl*100))} %</b><span>charge 7 j vs moy.</span></div>
-          <div><b>${res.a7==null?'–':fmt(res.a7,1)}${res.ap!=null?` <small>/ ${fmt(res.ap,1)}</small>`:''}</b><span>réveil 7 j / avant (sur 4)</span></div>
+          <div><b>${res.a7==null?'–':fmt(res.a7,1)}${res.ap!=null?` <small>/ ${fmt(res.ap,1)}</small>`:''}</b><span>état au réveil 7 j / avant (sur 4)</span></div>
           <div><b>${res.bad}</b><span>réveil${res.bad>1?'s':''} Fatigué / PLS · 7 j</span></div></div>`
-        :'<p class="chg-hint">Il faut au moins 14 jours de données pour évaluer le ressenti.</p>'}
+        :'<p class="chg-hint">Il faut au moins 14 jours de données pour évaluer le ressenti, et 1 à 2 cycles d\'entraînement pour qu\'il soit fiable.</p>'}
       </div>
       <div class="chg-panel chg-pcoach"><div class="chg-sec"><h4>Orientation semaine à venir</h4><span>pour la programmation</span></div>
         <div class="chg-otgt"><div><span>Charge S+1</span><b>${o.tgt?`${fmt(o.tgt[0])} – ${fmt(o.tgt[1])} UA`:'–'}</b></div>
@@ -731,25 +739,28 @@
         <div class="chg-otxt">${o.txt}</div>
         ${o.tips.map(([k,t])=>`<div class="chg-otip"><b>${k}</b><span>${t}</span></div>`).join('')}
         ${o.s2?`<div class="chg-otip"><b>S+2</b><span>${o.s2}</span></div>`:''}
-        <div class="chg-hint">Repères indicatifs calculés sur le ratio A/C, le ressenti et l'intensité récente : à ajuster selon le calendrier et l'objectif de l'athlète.</div>
+        <div class="chg-hint">Repères indicatifs calculés sur le ratio A/C, l'état de fatigue au réveil et l'intensité récente. Il faut 1 à 2 cycles d'entraînement de données pour que ces variables soient justes, et elles sont propres à chaque athlète : à ajuster selon le calendrier et l'objectif.</div>
       </div></div>`;
   }
 
+  const RPEBC=[RPEC[1],RPEC[4],RPEC[6],RPEC[9]];
   function rpeTableHTML(rows,wk){
     const wkRows=rows.filter(b=>mondayOf(b.date)===wk);
     if(!wkRows.length)return'<p class="chg-hint">Aucun bloc renseigné sur cette semaine.</p>';
     const by={};
     wkRows.forEach(b=>{const m=b.modality||'?';by[m]=by[m]||[0,0,0,0];
       const i=RPEB.findIndex(([, ,lo,hi])=>b.rpe>=lo&&b.rpe<=hi);if(i>=0)by[m][i]+=(+b.minutes||0);});
-    const mods=Object.keys(by).sort((a,b)=>by[b].reduce((x,y)=>x+y)-by[a].reduce((x,y)=>x+y));
+    const sum=a=>a.reduce((x,y)=>x+y,0);
+    const mods=Object.keys(by).sort((a,b)=>sum(by[b])-sum(by[a]));
     const col=[0,1,2,3].map(i=>mods.reduce((a,m)=>a+by[m][i],0));
-    const tot=col.reduce((a,b)=>a+b,0);
-    const cell=v=>`<td>${v?`${fmt(v)}′`:'<span class="z">·</span>'}</td>`;
-    return`<table class="chg-tbl chg-rpet"><thead><tr><th>Modalité</th>${RPEB.map(([r,l])=>`<th>${r}<small>${l}</small></th>`).join('')}<th>Total</th></tr></thead><tbody>
-      ${mods.map(m=>`<tr><td><b>${m}</b><small>${MODMAP[m]||''}</small></td>${by[m].map(cell).join('')}<td><b>${fmt(by[m].reduce((a,b)=>a+b,0))}′</b></td></tr>`).join('')}
-      <tr class="tot"><td><b>Total</b></td>${col.map(cell).join('')}<td><b>${fmt(tot)}′</b></td></tr>
-      <tr class="pct"><td>% du temps</td>${col.map(v=>`<td>${tot?fmt(v/tot*100):0} %</td>`).join('')}<td></td></tr>
-      </tbody></table>`;
+    const tot=sum(col),mx=Math.max(...mods.map(m=>sum(by[m])));
+    const bar=(v,w)=>`<span class="chg-rbar" style="width:${w}%">${v.map((x,i)=>x?
+      `<i style="flex:${x};background:${RPEBC[i]}" title="RPE ${RPEB[i][0]} · ${fmt(x)} min"></i>`:'').join('')}</span>`;
+    return`<div class="chg-rrow chg-rtot"><span class="chg-mk"><b>Semaine</b></span>
+        <span class="chg-rtrack">${bar(col,100)}</span><span class="chg-mp">${fmt(tot)}′</span></div>
+      ${mods.map(m=>`<div class="chg-rrow"><span class="chg-mk"><b>${m}</b> ${MODMAP[m]||''}</span>
+        <span class="chg-rtrack">${bar(by[m],sum(by[m])/mx*100)}</span><span class="chg-mp">${fmt(sum(by[m]))}′</span></div>`).join('')}
+      <div class="chg-leg chg-rleg">${RPEB.map(([r,l],i)=>`<span><i style="background:${RPEBC[i]};height:8px;width:8px;border-radius:2px"></i>${l} <small>${r}</small> <b>${tot?fmt(col[i]/tot*100):0} %</b></span>`).join('')}</div>`;
   }
   function rpePanelHTML(rows){
     const cur=mondayOf(today()),prev=addDays(cur,-7);
