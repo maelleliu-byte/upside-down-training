@@ -422,13 +422,13 @@
         <span><i style="background:${TEAL}"></i>Chronique 28 j</span></div>
       ${restHTML(s)}`;
   }
-  /* Jours de repos sur la période du graphique : charge du jour = 0 (même règle que la colonne OFF
-     du tableau Semaines). Aujourd'hui n'est compté que s'il est marqué OFF (journée en cours). */
+  /* Jours de repos sur la période du graphique : uniquement les jours marqués OFF par l'athlète.
+     Aujourd'hui n'entre dans la période que s'il est marqué OFF (journée en cours). */
   function restHTML(s){
     const t=today();
     const days=s.filter(p=>p.date!==t||p.off);
     if(!days.length)return'';
-    const rest=days.filter(p=>p.load===0).length;
+    const rest=days.filter(p=>p.off).length;
     const perWk=rest/days.length*7;
     return`<div class="chg-rest">
         <div><b>${rest}</b><span>jour${rest>1?'s':''} de repos sur ${days.length} j</span></div>
