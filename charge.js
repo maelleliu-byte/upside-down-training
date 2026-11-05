@@ -475,16 +475,17 @@
         <span><i style="background:${TEAL}"></i>Chronique 28 j</span></div>
       ${restHTML(s)}`;
   }
-  /* Jours de repos sur la période du graphique : uniquement les jours marqués OFF par l'athlète.
-     Aujourd'hui n'entre dans la période que s'il est marqué OFF (journée en cours). */
+  /* Jours de repos sur la période du graphique : uniquement les jours marqués OFF par l'athlète,
+     rapportés aux jours suivis (charge saisie ou OFF). */
   function restHTML(s){
-    const t=today();
-    const days=s.filter(p=>p.date!==t||p.off);
+    // Seuls les jours renseignés comptent (charge saisie ou OFF) : un début de suivi ou des trous
+    // de saisie ne faussent pas le ratio.
+    const days=s.filter(p=>p.load>0||p.off);
     if(!days.length)return'';
     const rest=days.filter(p=>p.off).length;
     const perWk=rest/days.length*7;
     return`<div class="chg-rest">
-        <div><b>${rest}</b><span>jour${rest>1?'s':''} de repos sur ${days.length} j</span></div>
+        <div><b>${rest}</b><span>jour${rest>1?'s':''} de repos sur ${days.length} j suivis</span></div>
         <div><b>${fmt(perWk,1)}</b><span>jour${perWk>=2?'s':''} de repos / semaine</span></div></div>`;
   }
   function chartRatio(s){
