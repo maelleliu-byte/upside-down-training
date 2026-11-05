@@ -58,6 +58,7 @@
     const d=(typeof selectedDate!=='undefined')?selectedDate:null;
     return(typeof d==='string'&&/^\d{4}-\d{2}-\d{2}$/.test(d))?d:today();
   }
+  const isCoachUser=()=>(typeof currentProfile!=='undefined'&&currentProfile&&currentProfile.role==='admin');
   const isPerso=()=>(typeof currentProg!=='undefined'&&currentProg&&currentProg.id==='__perso__');
 
   /* ---------- Styles ---------- */
@@ -137,6 +138,7 @@
     .chg-kpis{grid-template-columns:repeat(4,1fr)}
     div.chg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
     div.chg-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+    div.chg-coach{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
     .chg-panel{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card2,transparent)}
     .chg-panel .chg-sec{margin-top:0}
     .chg-panel-tbl .chg-tbl{margin-top:0}
@@ -164,6 +166,26 @@
   .chg-mleg{display:flex;gap:14px;font-size:10px;color:var(--muted);margin-top:2px}
   .chg-mleg i{display:inline-block;width:12px;height:6px;border-radius:3px;background:var(--text2,var(--text));margin-right:5px;vertical-align:1px}
   .chg-mleg i.t{height:4px;opacity:.5}
+  .chg-coach{display:flex;flex-direction:column}
+  .chg-verdict{display:flex;gap:8px;align-items:flex-start;padding:9px 10px;border:1px solid;border-radius:8px;font-size:12px;font-weight:600;color:var(--text);line-height:1.4}
+  .chg-verdict i{flex:none;width:8px;height:8px;border-radius:50%;margin-top:4px}
+  .chg-res3{grid-template-columns:repeat(3,1fr)}
+  .chg-res3 small{font-size:11px;color:var(--muted);font-weight:500}
+  .chg-otgt{display:flex;justify-content:space-between;gap:10px;padding:10px;border:1px solid var(--border);border-radius:10px}
+  .chg-otgt span{display:block;font-size:10px;color:var(--muted)}
+  .chg-otgt b{font-size:17px;color:var(--accent)}
+  .chg-otgt .r{text-align:right}
+  .chg-otgt .r b{font-size:14px;color:var(--text)}
+  .chg-otxt{font-size:12px;font-weight:600;color:var(--text);margin:10px 0 6px;line-height:1.4}
+  .chg-otip{display:flex;gap:8px;font-size:11px;line-height:1.45;padding:6px 0;border-top:1px solid var(--border)}
+  .chg-otip b{flex:0 0 62px;color:var(--text);font-weight:700}
+  .chg-otip span{color:var(--text2,var(--muted))}
+  .chg-rpet th small{display:block;font-size:8px;font-weight:400;text-transform:none}
+  .chg-rpet td small{display:block;font-size:9px;color:var(--muted)}
+  .chg-rpet .z{color:var(--muted)}
+  .chg-rpet tr.tot td{border-top:1px solid var(--border2,var(--border))}
+  .chg-rpet tr.pct td{color:var(--muted);font-size:10px}
+  .chg-rpeseg button[aria-pressed="true"]{border-color:var(--accent);color:var(--accent)}
   .chg-seg{display:flex;gap:6px;margin-bottom:10px}
   .chg-seg button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;
     color:var(--muted);font-size:12px;cursor:pointer}
@@ -587,7 +609,7 @@
     if(!host||!uid())return;
     host.innerHTML=`<div class="chg-card"><div style="font-size:13px;font-weight:700">📉 Ma charge d'entraînement</div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">Chargement…</div></div>`;
-    let series=[],weeks=[],mods=[];
+    let series=[],weeks=[],mods=[],rpe=[];
     try{
       const[a,b,m]=await Promise.all([
         sb.rpc('training_load_series',{p_athlete:uid(),p_days:120}),
@@ -596,6 +618,7 @@
       ]);
       series=a.data||[];weeks=b.data||[];mods=m.data||[];
       await addPeriods(uid(),series);
+      if(isCoachUser())rpe=await fetchRpe(uid());
     }catch(e){console.error('[charge] suivi',e);}
 
     if(!series.length){
@@ -611,14 +634,147 @@
         <span class="t">Ma charge d'entraînement</span>
         <span class="chg-val">${fmt(series.slice(-7).reduce((a,p)=>a+p.load,0))} UA · 7 j</span>
         <span style="color:var(--muted);font-size:14px">›</span></div>
-      <div class="chg-body open" id="chg-suivi-body">${suiviHTML(series,weeks,mods)}</div>
+      <div class="chg-body open" id="chg-suivi-body">${suiviHTML(series,weeks,mods,{coach:isCoachUser(),rpe})}</div>
     </div>`;
+    wireRpe(host,rpe);
     document.getElementById('chg-suivi-head')
       .addEventListener('click',()=>document.getElementById('chg-suivi-body').classList.toggle('open'));
   }
 
   /* Corps commun athlète / coach */
-  function suiviHTML(series,weeks,mods){
+  /* ---------- Ressenti, orientation S+1, RPE par modalité ---------- */
+  const WSCORE={Forme:4,RAS:3,Fatigue:2,PLS:1};
+  const avgOf=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+  const sumLoad=a=>a.reduce((x,p)=>x+(+p.load||0),0);
+  const RPEB=[['1–4','Facile',1,4],['5–6','Modéré',5,6],['7–8','Dur',7,8],['9–10','Max',9,10]];
+  const mondayOf=iso=>{const d=new Date(iso+'T12:00:00');const k=(d.getDay()+6)%7;d.setDate(d.getDate()-k);return d.toISOString().slice(0,10);};
+
+  /* Comment l'athlète encaisse : 7 derniers jours vs les 21 précédents, charge et état au réveil. */
+  function ressenti(series){
+    const s=series.slice(-28);
+    if(s.length<14)return null;
+    const last=s.slice(-7),prev=s.slice(0,-7);
+    const l7=sumLoad(last),lp=sumLoad(prev)/(prev.length/7);
+    const dl=lp>0?(l7-lp)/lp:null;
+    const w7=last.map(p=>WSCORE[p.wake]).filter(v=>v!=null),wp=prev.map(p=>WSCORE[p.wake]).filter(v=>v!=null);
+    const a7=avgOf(w7),ap=avgOf(wp);
+    const bad=last.filter(p=>p.wake==='Fatigue'||p.wake==='PLS').length;
+    if(dl==null)return null;
+    const ld=dl>0.10?'up':dl<-0.10?'down':'flat';
+    let wd=null;
+    if(a7!=null&&ap!=null&&w7.length>=3&&wp.length>=5)wd=a7-ap>0.25?'up':a7-ap<-0.25?'down':'flat';
+    let v,c;
+    if(wd==null){v="Pas assez d'états au réveil renseignés pour évaluer le ressenti.";c='var(--muted)';}
+    else if(ld==='up'&&wd!=='down'){v='Absorbe bien la hausse de charge.';c=OK;}
+    else if(ld==='up'&&wd==='down'){v='Encaisse mal la hausse : le réveil se dégrade avec la charge.';c=BAD;}
+    else if(ld==='flat'&&wd==='down'){v='Charge stable mais réveil en baisse : fatigue qui s\'accumule ou facteur hors entraînement.';c=WARN;}
+    else if(ld==='down'&&wd==='down'){v='Réveil en baisse malgré moins de charge : regarder sommeil, stress, vie perso.';c=WARN;}
+    else if(wd==='up'){v=ld==='down'?'Récupère bien de la baisse de charge.':'Se sent de mieux en mieux à charge égale.';c=OK;}
+    else{v='Ressenti stable, en phase avec la charge.';c=AC;}
+    return{dl,ld,wd,a7,ap,bad,v,c,l7};
+  }
+
+  function orientation(series,weeks,rpeRows,res){
+    const last=series[series.length-1];
+    const r=last.ratio==null?null:Number(last.ratio);
+    const l7=sumLoad(series.slice(-7));
+    const neg=res&&(res.wd==='down'||res.bad>=3);
+    let f,txt;
+    if(r==null){f=[1.0,1.1];txt='Amorçage : construire la base sans à-coup, charge proche de l\'actuelle.';}
+    else if(r<0.8){f=[1.1,1.2];txt='Sous-charge : remonter progressivement, sans viser plus de +20 % sur la semaine.';}
+    else if(r<=1.3&&!neg){f=[1.05,1.1];txt='Zone optimale et bon ressenti : progression possible.';}
+    else if(r<=1.3){f=[0.9,1.0];txt='Zone optimale mais ressenti en baisse : maintenir ou alléger légèrement.';}
+    else if(r<=1.5){f=[0.85,0.95];txt='Vigilance : stabiliser, ne pas ajouter de charge cette semaine.';}
+    else{f=[0.7,0.8];txt='Risque élevé : semaine de décharge.';}
+    const tgt=l7>0?[Math.round(l7*f[0]/10)*10,Math.round(l7*f[1]/10)*10]:null;
+    const tips=[];
+    // intensité : part du temps à RPE >= 8 sur 14 j
+    const tot=rpeRows.reduce((a,b)=>a+(+b.minutes||0),0);
+    const hard=rpeRows.filter(b=>b.rpe>=8).reduce((a,b)=>a+(+b.minutes||0),0);
+    const hp=tot>0?hard/tot*100:null;
+    if(r!=null&&r>1.3)tips.push(['Intensité','Garder une seule séance à RPE ≥ 8, le reste entre 5 et 7.']);
+    else if(neg)tips.push(['Intensité','Baisser l\'intensité avant le volume : RPE ≤ 7 tant que le réveil ne remonte pas.']);
+    else if(hp!=null&&hp>30)tips.push(['Intensité',`${fmt(hp)} % du temps à RPE ≥ 8 sur 14 j : c'est beaucoup, réduire les séances dures.`]);
+    else if(hp!=null&&hp<10&&r!=null&&r>=0.8)tips.push(['Intensité',`Seulement ${fmt(hp)} % du temps à RPE ≥ 8 sur 14 j : place pour 1 séance intense de plus.`]);
+    else if(hp!=null)tips.push(['Intensité',`${fmt(hp)} % du temps à RPE ≥ 8 sur 14 j : répartition correcte, la garder.`]);
+    const wk=weeks[0];
+    if(wk&&wk.monotony!=null&&wk.monotony>2)tips.push(['Variation','Monotonie > 2 : alterner jours durs et jours faciles.']);
+    const off14=series.slice(-14).filter(p=>p.is_off).length;
+    if(off14<2)tips.push(['Repos',`${off14} jour${off14>1?'s':''} OFF sur 14 j : prévoir au moins 1 jour OFF dans la semaine.`]);
+    // S+2 : 3 semaines terminées en hausse -> semaine allégée
+    const done=weeks.filter(w=>addDays(w.week_start,7)<=today()).slice(0,3);
+    let s2=null;
+    if(done.length===3&&done[0].total>done[1].total&&done[1].total>done[2].total)
+      s2='3 semaines de hausse d\'affilée : prévoir une semaine allégée (−20 à −30 %) en S+2.';
+    else if(f[0]>=1.05)s2='Si S+1 passe bien (réveil stable), poursuivre la progression sur le même rythme.';
+    else if(f[1]<=0.95)s2='Reprendre la progression quand le ratio revient sous 1,3 et que le réveil remonte.';
+    return{txt,f,tgt,l7,tips,s2};
+  }
+
+  function coachHTML(series,weeks,rpeRows){
+    const res=ressenti(series);
+    const o=orientation(series,weeks,rpeRows,res);
+    const pct=x=>{const v=Math.round((x-1)*100);return v===0?'0 %':(v>0?'+':'−')+fmt(Math.abs(v))+' %';};
+    const fr=o.f[0]===o.f[1]?pct(o.f[0]):`${pct(o.f[0])} à ${pct(o.f[1])}`;
+    return`<div class="chg-coach">
+      <div class="chg-panel chg-pcoach"><div class="chg-sec"><h4>Ressenti de la charge</h4><span>7 j vs 21 j précédents</span></div>
+        ${res?`<div class="chg-verdict" style="border-color:${tint(res.c,45)};background:${tint(res.c,12)}"><i style="background:${res.c}"></i>${res.v}</div>
+        <div class="chg-rest chg-res3">
+          <div><b>${res.dl>=0?'+':'−'}${fmt(Math.abs(res.dl*100))} %</b><span>charge 7 j vs moy.</span></div>
+          <div><b>${res.a7==null?'–':fmt(res.a7,1)}${res.ap!=null?` <small>/ ${fmt(res.ap,1)}</small>`:''}</b><span>réveil 7 j / avant (sur 4)</span></div>
+          <div><b>${res.bad}</b><span>réveil${res.bad>1?'s':''} Fatigué / PLS · 7 j</span></div></div>`
+        :'<p class="chg-hint">Il faut au moins 14 jours de données pour évaluer le ressenti.</p>'}
+      </div>
+      <div class="chg-panel chg-pcoach"><div class="chg-sec"><h4>Orientation semaine à venir</h4><span>pour la programmation</span></div>
+        <div class="chg-otgt"><div><span>Charge S+1</span><b>${o.tgt?`${fmt(o.tgt[0])} – ${fmt(o.tgt[1])} UA`:'–'}</b></div>
+          <div class="r"><span>vs 7 derniers jours (${fmt(o.l7)} UA)</span><b>${fr}</b></div></div>
+        <div class="chg-otxt">${o.txt}</div>
+        ${o.tips.map(([k,t])=>`<div class="chg-otip"><b>${k}</b><span>${t}</span></div>`).join('')}
+        ${o.s2?`<div class="chg-otip"><b>S+2</b><span>${o.s2}</span></div>`:''}
+        <div class="chg-hint">Repères indicatifs calculés sur le ratio A/C, le ressenti et l'intensité récente : à ajuster selon le calendrier et l'objectif de l'athlète.</div>
+      </div></div>`;
+  }
+
+  function rpeTableHTML(rows,wk){
+    const wkRows=rows.filter(b=>mondayOf(b.date)===wk);
+    if(!wkRows.length)return'<p class="chg-hint">Aucun bloc renseigné sur cette semaine.</p>';
+    const by={};
+    wkRows.forEach(b=>{const m=b.modality||'?';by[m]=by[m]||[0,0,0,0];
+      const i=RPEB.findIndex(([, ,lo,hi])=>b.rpe>=lo&&b.rpe<=hi);if(i>=0)by[m][i]+=(+b.minutes||0);});
+    const mods=Object.keys(by).sort((a,b)=>by[b].reduce((x,y)=>x+y)-by[a].reduce((x,y)=>x+y));
+    const col=[0,1,2,3].map(i=>mods.reduce((a,m)=>a+by[m][i],0));
+    const tot=col.reduce((a,b)=>a+b,0);
+    const cell=v=>`<td>${v?`${fmt(v)}′`:'<span class="z">·</span>'}</td>`;
+    return`<table class="chg-tbl chg-rpet"><thead><tr><th>Modalité</th>${RPEB.map(([r,l])=>`<th>${r}<small>${l}</small></th>`).join('')}<th>Total</th></tr></thead><tbody>
+      ${mods.map(m=>`<tr><td><b>${m}</b><small>${MODMAP[m]||''}</small></td>${by[m].map(cell).join('')}<td><b>${fmt(by[m].reduce((a,b)=>a+b,0))}′</b></td></tr>`).join('')}
+      <tr class="tot"><td><b>Total</b></td>${col.map(cell).join('')}<td><b>${fmt(tot)}′</b></td></tr>
+      <tr class="pct"><td>% du temps</td>${col.map(v=>`<td>${tot?fmt(v/tot*100):0} %</td>`).join('')}<td></td></tr>
+      </tbody></table>`;
+  }
+  function rpePanelHTML(rows){
+    const cur=mondayOf(today()),prev=addDays(cur,-7);
+    return`<div class="chg-panel" style="order:7" data-rpe-panel><div class="chg-sec"><h4>RPE par modalité</h4><span>minutes par zone d'effort</span></div>
+      <div class="chg-seg chg-rpeseg"><button data-wk="${cur}" aria-pressed="true">Semaine en cours</button><button data-wk="${prev}" aria-pressed="false">Semaine précédente</button></div>
+      <div data-rpe-body>${rpeTableHTML(rows,cur)}</div></div>`;
+  }
+  function wireRpe(root,rows){
+    const pnl=root&&root.querySelector('[data-rpe-panel]');if(!pnl)return;
+    pnl.querySelectorAll('[data-wk]').forEach(b=>b.addEventListener('click',()=>{
+      pnl.querySelectorAll('[data-wk]').forEach(x=>x.setAttribute('aria-pressed',x===b));
+      pnl.querySelector('[data-rpe-body]').innerHTML=rpeTableHTML(rows,b.dataset.wk);}));
+  }
+  async function fetchRpe(athleteId){
+    try{
+      const from=addDays(mondayOf(today()),-14);
+      const{data}=await sb.from('training_load_blocks').select('date,modality,rpe,minutes,load')
+        .eq('athlete_id',athleteId).gte('date',from).gt('load',0);
+      return data||[];
+    }catch(e){console.error('[charge] rpe',e);return[];}
+  }
+
+  function suiviHTML(series,weeks,mods,opts){
+    opts=opts||{};
+    const rpeRows=opts.rpe||[];
     const last=series[series.length-1];
     const z=zone(last.ratio==null?null:Number(last.ratio));
     const h7=series.slice(-7).reduce((a,p)=>a+p.minutes,0)/60;
@@ -635,6 +791,7 @@
         <div class="chg-kpi"><b>${fmt(h7,1)} h</b><span>Volume · 7 j</span></div>
         <div class="chg-kpi"><b>${wk&&wk.monotony!=null?fmt(wk.monotony,2):'–'}</b><span>Monotonie semaine</span></div>
       </div>
+      ${opts.coach?coachHTML(series,weeks,rpeRows):''}
       <div class="chg-grid">
       <div class="chg-col">
       <div style="order:1" class="chg-panel"><div class="chg-sec"><h4>Charge quotidienne</h4><span>42 jours</span></div>
@@ -657,6 +814,7 @@
       ${chartWeeks(weeks)}</div>
       <div style="order:6" class="chg-panel"><div class="chg-sec"><h4>Modalités</h4><span>28 jours · <span class="chg-paren">(<b class="chg-strong">% de la charge</b> / <span class="chg-thin">% du temps</span>)</span></span></div>
       <div id="chg-mods">${modsHTML(mods)}</div></div>
+      ${opts.coach?rpePanelHTML(rpeRows):''}
       </div>
       </div>
       <div class="chg-hint">Ratio aigu / chronique : &lt; 0,8 sous-charge · 0,8–1,3 optimal · 1,3–1,5 vigilance · &gt; 1,5 risque élevé.
@@ -778,7 +936,7 @@
     if(!fiche)return;
     list.style.display='none';fiche.style.display='';
     fiche.innerHTML='<div class="spinner"></div>';
-    let series=[],weeks=[],mods=[];
+    let series=[],weeks=[],mods=[],rpe=[];
     try{
       const[s,w,m]=await Promise.all([
         sb.rpc('training_load_series',{p_athlete:athleteId,p_days:120}),
@@ -787,11 +945,13 @@
       ]);
       series=s.data||[];weeks=w.data||[];mods=m.data||[];
       await addPeriods(athleteId,series);
+      rpe=await fetchRpe(athleteId);
     }catch(e){console.error('[charge] fiche',e);}
     fiche.innerHTML=`<button class="chg-back" id="chg-back">${opts.fromPerso?'‹ Retour à l\'espace perso':'‹ Retour'}</button>
       <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${a.full_name||a.email||'Athlète'}</div>
-      ${series.length?suiviHTML(series,weeks,mods)
+      ${series.length?suiviHTML(series,weeks,mods,{coach:true,rpe})
         :'<div style="color:var(--muted);font-size:13px;margin-top:8px">Aucune saisie de charge pour cet athlète.</div>'}`;
+    wireRpe(fiche,rpe);
     document.getElementById('chg-back').addEventListener('click',()=>{
       fiche.style.display='none';list.style.display='';
       if(opts.fromPerso)backToPerso();
