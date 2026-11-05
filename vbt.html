@@ -404,6 +404,9 @@ async function connect(){
     if(loadLocal()){store.sync="wait";render()}
     await pull();
     await loadAthletes();if(store.athletes.length)render();
+    /* Ouverture depuis l'espace perso d'un athlète : ?athlete=<id> */
+    const qa=new URLSearchParams(location.search).get("athlete");
+    if(qa&&qa!==store.uid&&store.athletes.some(a=>a.id===qa))await viewAthlete(qa);
     /* Retour sur l'onglet : on recharge pour récupérer ce qui a été saisi sur un autre appareil */
     document.addEventListener("visibilitychange",()=>{if(document.visibilityState==="visible"&&!dirty.size){if(state.ro)viewAthlete(store.viewId);else pull().catch(()=>setSync("err"))}});
   }catch(e){setSync("err")}

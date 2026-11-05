@@ -524,7 +524,9 @@ async function connect(){
     const {data:{session}}=await sb.auth.getSession();
     if(!session||!session.user){setSync("none","Connecte-toi à l’app UDT");render();return}
     store.sb=sb;store.uid=session.user.id;
-    await Promise.all([load(store.uid),loadAthletes()]);render();
+    const qa=new URLSearchParams(location.search).get("athlete");
+    if(qa&&qa!==store.uid)store.viewId=qa;
+    await Promise.all([load(store.viewId||store.uid),loadAthletes()]);render();
   }catch(e){setSync("err");render()}
 }
 connect();

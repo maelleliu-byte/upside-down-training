@@ -787,6 +787,8 @@
               <button id="perso-view-month" onclick="persoSetView('month')">Mois</button>
             </div>
             <button class="perso-suivi-btn" id="perso-suivi-btn" onclick="openSuiviAthlete()" title="Suivi individuel de l'athlète (onglet Charge)">📊 Suivi</button>
+            <button class="perso-suivi-btn" onclick="openOutilAthlete('vbt')" title="Profil charge-vitesse de l'athlète (Journal VBT)">⚡ VBT</button>
+            <button class="perso-suivi-btn" onclick="openOutilAthlete('pc')" title="Puissances et vitesse critiques de l'athlète, zones et formules">📈 PC / VC</button>
           </div>
           <div class="perso-week-nav">
             <button class="arrow-btn" onclick="persoNav(-1)">‹</button>
@@ -2892,7 +2894,7 @@ function _injectAdminBadgesTab() {
   else adminPage.appendChild(panel);
 }
 </script>
-<script src="outils.js?v=20261105d"></script>
+<script src="outils.js?v=20261105e"></script>
 <script src="vbt-seance.js?v=20261025b"></script>
 <script src="vbt-saisie.js?v=20261031a"></script>
 <script src="ef-seance.js?v=20261025c"></script>

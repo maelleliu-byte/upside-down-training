@@ -17,11 +17,11 @@
   // ---------- catalogue des outils ----------
 
   // À changer à chaque mise à jour de vbt.html : force le rechargement (cache navigateur)
-  var VBT_VERSION = '2026-10-23c';
+  var VBT_VERSION = '2026-11-05a';
   // Idem pour ef.html (profil endurance fondamentale)
   var EF_VERSION = '2026-10-25b';
   // Idem pour pc.html (profil puissance / vitesse critique)
-  var PC_VERSION = '2026-11-05d';
+  var PC_VERSION = '2026-11-05e';
 
   var TOOLS = [
     {
@@ -122,7 +122,7 @@
 
     panel.innerHTML =
       '<div class="ot-bar">' +
-        '<button class="ot-back" id="ot-back-btn">‹ Outils</button>' +
+        '<button class="ot-back" id="ot-back-btn">' + (t.fromPerso ? '‹ Espace perso' : '‹ Outils') + '</button>' +
         '<div class="ot-bar-ti">' + _esc(t.emoji) + ' ' + _esc(t.title) + '</div>' +
         '<a class="ot-ext" href="' + _esc(t.url) + '" target="_blank" rel="noopener" ' +
            'title="Ouvrir dans un nouvel onglet">↗</a>' +
@@ -139,7 +139,10 @@
       '</div>';
 
     var back = _byId('ot-back-btn');
-    if (back) back.addEventListener('click', function () { _openTool = null; _renderGrid(); });
+    if (back) back.addEventListener('click', function () {
+      if (t.fromPerso) { _openTool = null; _renderGrid(); _backToPerso(); return; }
+      _openTool = null; _renderGrid();
+    });
 
     var frame = _byId('ot-frame');
     var load = _byId('ot-frame-load');
@@ -216,7 +219,46 @@
     }
   }
 
+  /* Depuis l'espace perso d'un athlète : ouvre l'outil directement sur lui. */
+  function _backToPerso() {
+    var pBtn = Array.prototype.find.call(document.querySelectorAll('.admin-tab-btn'), function (b) {
+      return (b.getAttribute('onclick') || '').indexOf("'perso'") > -1;
+    });
+    var pPanel = _byId('admin-perso');
+    if (!pBtn || !pPanel) return;
+    document.querySelectorAll('.admin-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.admin-panel').forEach(function (p) { p.classList.remove('active'); });
+    pBtn.classList.add('active');
+    pPanel.classList.add('active');
+    try { pBtn.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
+  }
+  window.openOutilAthlete = function (toolId) {
+    var ath = window.currentPersoAthlete || (typeof currentPersoAthlete !== 'undefined' ? currentPersoAthlete : null);
+    var base = TOOLS.find(function (x) { return x.id === toolId; });
+    if (!base) return;
+    _inject();
+    var btn = _byId('admin-outils-tab-btn');
+    if (!btn) return;
+    document.querySelectorAll('.admin-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.admin-panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    var panel = _byId('admin-outils');
+    if (panel) panel.classList.add('active');
+    _injectStyles();
+    var t = {};
+    for (var k in base) t[k] = base[k];
+    if (ath && ath.id) {
+      t.url = base.url + (base.url.indexOf('?') > -1 ? '&' : '?') + 'athlete=' + encodeURIComponent(ath.id);
+      t.title = base.title + ' · ' + (ath.full_name || ath.email || 'Athlète');
+      t.fromPerso = true;
+    }
+    _openTool = t;
+    _renderTool(t);
+    try { btn.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
+  };
+
   function _activate(btn) {
+    if (_openTool && _openTool.fromPerso) _openTool = null;
     document.querySelectorAll('.admin-tab-btn').forEach(function (b) { b.classList.remove('active'); });
     document.querySelectorAll('.admin-panel').forEach(function (p) { p.classList.remove('active'); });
     btn.classList.add('active');
