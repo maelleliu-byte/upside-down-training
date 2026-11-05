@@ -138,6 +138,10 @@
     .chg-kpis{grid-template-columns:repeat(4,1fr)}
     div.chg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
     div.chg-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+    .chg-full.chg-full.chg-full{margin-top:14px}
+    div.chg-wcards{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+    div.chg-wprev{display:block}
+    div.chg-wcol+div.chg-wcol{border-left:1px solid var(--border);padding-left:14px}
     div.chg-coach{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
     .chg-panel.chg-panel.chg-panel{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card2,transparent);margin-top:0}
     .chg-panel.chg-panel.chg-panel .chg-sec{margin-top:0}
@@ -148,6 +152,35 @@
   .chg-rest b{display:block;font-size:17px;color:var(--text)}
   .chg-rest span{font-size:10px;color:var(--muted)}
   .chg-fiche-card{margin-top:10px}
+  .chg-wnav{margin-left:auto;display:flex;align-items:center;gap:8px}
+  .chg-wnav b{font-size:12px;color:var(--text);min-width:52px;text-align:center}
+  .chg-wnav button{width:28px;height:28px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);font-size:16px;cursor:pointer;line-height:1}
+  .chg-wnav button:disabled{opacity:.3;cursor:default}
+  .chg-wcards{display:block}
+  .chg-wprev{display:none}
+  .chg-wch{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+  .chg-wch b{font-size:13px;color:var(--text)}
+  .chg-wch span{font-size:10px;color:var(--muted)}
+  .chg-wch em{margin-left:auto;font-style:normal;font-size:9px;text-transform:uppercase;letter-spacing:.05em;color:var(--accent);border:1px solid var(--accent);border-radius:20px;padding:2px 7px}
+  .chg-wk6{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .chg-wk6 div{padding:7px 4px;border:1px solid var(--border);border-radius:8px;text-align:center}
+  .chg-wk6 b{display:block;font-size:15px;color:var(--text)}
+  .chg-wk6 span{font-size:9px;color:var(--muted)}
+  .chg-wz{height:12px;margin-top:2px}
+  .chg-year{margin-top:4px}
+  .chg-ychart{overflow-x:auto}
+  .chg-ychart .chg-year{min-width:700px}
+  .chg-ychart .chg-leg{position:sticky;left:0}
+  .chg-yscroll{overflow-x:auto;margin-top:12px;border:1px solid var(--border);border-radius:8px}
+  .chg-ytbl{border-collapse:collapse;font-size:10px;white-space:nowrap}
+  .chg-ytbl th,.chg-ytbl td{padding:5px 7px;border-bottom:1px solid var(--border);text-align:right;color:var(--text)}
+  .chg-ytbl th{position:sticky;left:0;z-index:1;background:var(--card);text-align:left;font-weight:600;color:var(--muted)}
+  .chg-ytbl th i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px;vertical-align:0}
+  .chg-ytbl thead td{color:var(--text);text-align:center}
+  .chg-ytbl thead td small{display:block;font-size:8px;color:var(--muted);font-weight:400}
+  .chg-ytbl td.cur{background:var(--card2);box-shadow:inset 0 0 0 1px var(--accent)}
+  .chg-ytbl td.fut{opacity:.35}
+  .chg-ytbl tr.sep th,.chg-ytbl tr.sep td{border-top:2px solid var(--border2,var(--border))}
   .chg-grid{display:flex;flex-direction:column}
   .chg-panel.chg-panel{border-top:2px solid var(--border2,var(--border));margin-top:20px;padding-top:2px}
   .chg-panel.chg-panel .chg-sec{margin-top:12px}
@@ -644,16 +677,16 @@
     if(!host||!uid())return;
     host.innerHTML=`<div class="chg-card"><div style="font-size:13px;font-weight:700">📉 Ma charge d'entraînement</div>
       <div style="font-size:11px;color:var(--muted);margin-top:4px">Chargement…</div></div>`;
-    let series=[],weeks=[],mods=[],rpe=[];
+    let series=[],weeks=[],mods=[],rpe=[],br=[];
     try{
       const[a,b,m]=await Promise.all([
-        sb.rpc('training_load_series',{p_athlete:uid(),p_days:120}),
+        sb.rpc('training_load_series',{p_athlete:uid(),p_days:800}),
         sb.rpc('training_load_weeks',{p_athlete:uid(),p_weeks:8}),
-        sb.rpc('training_load_modalities',{p_athlete:uid(),p_days:28})
+        sb.rpc('training_load_modalities',{p_athlete:uid(),p_days:42})
       ]);
       series=a.data||[];weeks=b.data||[];mods=m.data||[];
       await addPeriods(uid(),series);
-      if(isCoachUser())rpe=await fetchRpe(uid());
+      if(isCoachUser()){rpe=await fetchRpe(uid());br=await fetchBreakdown(uid());}
     }catch(e){console.error('[charge] suivi',e);}
 
     if(!series.length){
@@ -671,7 +704,7 @@
         <span style="color:var(--muted);font-size:14px">›</span></div>
       <div class="chg-body open" id="chg-suivi-body">${suiviHTML(series,weeks,mods,{coach:isCoachUser(),rpe})}</div>
     </div>`;
-    wireRpe(host,rpe);
+    wireRpe(host,rpe);wireWeeks(host,series,br);wireYear(host,series,br);
     document.getElementById('chg-suivi-head')
       .addEventListener('click',()=>document.getElementById('chg-suivi-body').classList.toggle('open'));
   }
@@ -856,6 +889,146 @@
     }catch(e){console.error('[charge] rpe',e);return[];}
   }
 
+  /* ---------- Bilan par semaine (3 semaines côte à côte) & périodisation annuelle ---------- */
+  const ddmm=d=>d.slice(8)+'/'+d.slice(5,7);
+  const MOIS=['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+  async function fetchBreakdown(athleteId){
+    try{
+      const y=+today().slice(0,4);
+      const{data}=await sb.rpc('training_load_week_breakdown',{p_athlete:athleteId,p_from:`${y-1}-01-01`});
+      return(data||[]).map(r=>({...r,week_start:String(r.week_start).slice(0,10),n:+r.n,load:+r.load,minutes:+r.minutes}));
+    }catch(e){console.error('[charge] breakdown',e);return[];}
+  }
+  // stats hebdo calculées comme training_load_weeks (jours présents dans la série), OFF = marqués OFF
+  function wkStatsFrom(series){
+    const by={},out={};
+    series.forEach(p=>{const m=mondayOf(p.d);(by[m]=by[m]||[]).push(p);});
+    for(const m in by){
+      const a=by[m],L=a.map(p=>+p.load||0),tot=L.reduce((x,y)=>x+y,0),avg=tot/a.length;
+      const sd=a.length>1?Math.sqrt(L.reduce((x,y)=>x+(y-avg)**2,0)/(a.length-1)):0;
+      const mono=sd>0?avg/sd:null;
+      out[m]={total:tot,avg,off:a.filter(p=>p.is_off).length,hours:a.reduce((x,p)=>x+(+p.minutes||0),0)/60,
+        mono,strain:mono!=null?tot*mono:null};
+    }
+    return out;
+  }
+  function weekCardHTML(mon,st,br){
+    const rows=br.filter(r=>r.week_start===mon);
+    const cur=mon===mondayOf(today());
+    const head=`<div class="chg-wch"><b>S${isoWeek(mon)}</b><span>${ddmm(mon)} → ${ddmm(addDays(mon,6))}</span>${cur?'<em>en cours</em>':''}</div>`;
+    if((!st||!st.total)&&!rows.length)return`<div class="chg-wcard">${head}<p class="chg-hint">Aucune donnée sur cette semaine.</p></div>`;
+    const k=(v,l)=>`<div><b>${v}</b><span>${l}</span></div>`;
+    const mm={};rows.forEach(r=>{mm[r.modality]=(mm[r.modality]||0)+r.load;});
+    const tl=Object.values(mm).reduce((a,b)=>a+b,0);
+    const mods=Object.keys(mm).sort((a,b)=>mm[b]-mm[a]);
+    const mx=Math.max(1,...Object.values(mm));
+    const dist=[];rows.forEach(r=>{for(let i=0;i<r.n;i++)dist.push({rpe:r.rpe});});
+    const zone=[0,0,0,0];rows.forEach(r=>{const i=RPEB.findIndex(([, ,lo,hi])=>r.rpe>=lo&&r.rpe<=hi);if(i>=0)zone[i]+=r.minutes;});
+    const zt=zone.reduce((a,b)=>a+b,0);
+    return`<div class="chg-wcard">${head}
+      <div class="chg-wk6">${k(fmt(st?st.total:tl),'Charge totale (UA)')}${k(st?fmt(st.avg):'–','Charge moyenne / j')}
+        ${k(st?st.off:'–','Jours OFF')}${k(st?fmt(st.hours,1):'–','Heures')}
+        ${k(st&&st.mono!=null?fmt(st.mono,1):'–','Monotonie')}${k(st&&st.strain!=null?fmt(st.strain):'–','Contrainte')}</div>
+      <div class="chg-sub">Répartition de la charge <span>par modalité</span></div>
+      ${mods.length?mods.map(m=>`<div class="chg-mrow"><span class="chg-mk"><b>${m}</b> ${MODMAP[m]||''}</span>
+        <span class="chg-mtr"><i style="width:${Math.max(2,mm[m]/mx*100)}%;background:${MODC[m]||'var(--muted)'}"></i></span>
+        <span class="chg-mp">${fmt(mm[m]/tl*100)} %</span></div>`).join(''):'<p class="chg-hint">Aucun bloc renseigné.</p>'}
+      ${dist.length?distHTML(dist):''}
+      ${zt?`<div class="chg-sub">Temps par zone <span>${fmt(zt)} min</span></div>
+        <div class="chg-rtrack chg-wz"><span class="chg-rbar" style="width:100%">${zone.map((x,i)=>x?`<i style="flex:${x};background:${RPEBC[i]}" title="RPE ${RPEB[i][0]} · ${fmt(x)} min"></i>`:'').join('')}</span></div>
+        <div class="chg-leg chg-rleg">${RPEB.map(([r,l],i)=>zone[i]?`<span><i style="background:${RPEBC[i]};height:8px;width:8px;border-radius:2px"></i>${l} <b>${fmt(zone[i]/zt*100)} %</b></span>`:'').join('')}</div>`:''}
+    </div>`;
+  }
+  function weeksSectionHTML(){
+    return`<div class="chg-panel chg-full" data-wk-section>
+      <div class="chg-sec"><h4>Bilan par semaine</h4><span>comparer les semaines</span>
+        <div class="chg-wnav"><button data-wnav="-1" aria-label="Semaine précédente">‹</button><b data-wlabel></b><button data-wnav="1" aria-label="Semaine suivante">›</button></div></div>
+      <div class="chg-wcards" data-wcards></div></div>`;
+  }
+  function wireWeeks(root,series,br){
+    const pnl=root&&root.querySelector('[data-wk-section]');if(!pnl)return;
+    const st=wkStatsFrom(series);const now=mondayOf(today());let sel=now;
+    const draw=()=>{
+      const ws=[addDays(sel,-14),addDays(sel,-7),sel];
+      pnl.querySelector('[data-wcards]').innerHTML=ws.map((m,i)=>`<div class="chg-wcol${i<2?' chg-wprev':''}">${weekCardHTML(m,st[m],br)}</div>`).join('');
+      pnl.querySelector('[data-wlabel]').textContent=`S${isoWeek(sel)}`;
+      pnl.querySelector('[data-wnav="1"]').disabled=sel>=now;
+    };
+    pnl.querySelectorAll('[data-wnav]').forEach(b=>b.addEventListener('click',()=>{sel=addDays(sel,7*(+b.dataset.wnav));draw();}));
+    draw();
+  }
+
+  function yearSectionHTML(){
+    return`<div class="chg-panel chg-full" data-year-section>
+      <div class="chg-sec"><h4>Périodisation annuelle</h4><span>charge par semaine et par modalité</span>
+        <div class="chg-wnav"><button data-ynav="-1" aria-label="Année précédente">‹</button><b data-ylabel></b><button data-ynav="1" aria-label="Année suivante">›</button></div></div>
+      <div data-ybody></div></div>`;
+  }
+  function isoWeeksOf(year){
+    const ws=[];let m=mondayOf(`${year}-01-04`);
+    while(addDays(m,3).slice(0,4)===String(year)){ws.push(m);m=addDays(m,7);}
+    return ws;
+  }
+  function yearChartHTML(ws,wm,mods){
+    const W=720,H=190,L=38,R=8,T=12,B=30;
+    const tot=ws.map(m=>mods.reduce((a,k)=>a+((wm[m]||{})[k]||0),0));
+    const max=niceMax(Math.max(1,...tot)*1.05);
+    const st=(W-L-R)/ws.length,X=i=>L+st*i,Y=v=>T+(1-v/max)*(H-T-B);
+    let g='';
+    for(let k=0;k<=4;k++){const v=max*k/4;g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="${C_GRID}"/>`
+      +`<text x="${L-5}" y="${Y(v)+3.5}" text-anchor="end" font-size="9" fill="var(--muted)">${Math.round(v)}</text>`;}
+    const now=mondayOf(today());
+    ws.forEach((m,i)=>{
+      let y0=0;
+      mods.forEach(k=>{const v=(wm[m]||{})[k]||0;if(!v)return;
+        g+=`<rect x="${X(i)+st*.15}" y="${Y(y0+v)}" width="${st*.7}" height="${Y(y0)-Y(y0+v)}" fill="${MODC[k]||'var(--muted)'}"><title>S${isoWeek(m)} · ${k} ${fmt(v)} UA</title></rect>`;y0+=v;});
+      if(m===now)g+=`<line x1="${X(i)+st/2}" x2="${X(i)+st/2}" y1="${T}" y2="${H-B}" stroke="var(--accent)" stroke-dasharray="3 3"/>`;
+      const th=addDays(m,3);
+      if(i===0||th.slice(5,7)!==addDays(ws[i-1],3).slice(5,7))
+        g+=`<text x="${X(i)+2}" y="${H-B+13}" font-size="9" fill="var(--muted)">${MOIS[+th.slice(5,7)-1]}</text>`;
+      if((i+1)%4===1)g+=`<text x="${X(i)+st/2}" y="${H-B+25}" text-anchor="middle" font-size="8" fill="var(--muted)">S${i+1}</text>`;
+    });
+    return`<svg class="chg-chart chg-year" viewBox="0 0 ${W} ${H}" role="img" aria-label="Charge par semaine sur l'année">${g}</svg>
+      <div class="chg-leg">${mods.map(k=>`<span><i style="background:${MODC[k]||'var(--muted)'};height:8px;width:8px;border-radius:2px"></i>${k} <small>${MODMAP[k]||''}</small></span>`).join('')}</div>`;
+  }
+  function yearTableHTML(ws,st,wm,mods){
+    const now=mondayOf(today());
+    const cell=(m,v)=>`<td class="${m===now?'cur':''}${m>now?' fut':''}">${v}</td>`;
+    const row=(lbl,f,cls)=>`<tr${cls?` class="${cls}"`:''}><th>${lbl}</th>${ws.map(m=>cell(m,m>now?'':f(m))).join('')}</tr>`;
+    const s=m=>st[m];
+    return`<div class="chg-yscroll"><table class="chg-ytbl"><thead><tr><th>Semaine</th>${ws.map((m,i)=>`<td class="${m===now?'cur':''}${m>now?' fut':''}"><b>S${i+1}</b><small>${ddmm(m)}</small></td>`).join('')}</tr></thead><tbody>
+      ${row('Charge (UA)',m=>s(m)&&s(m).total?`<b>${fmt(s(m).total)}</b>`:'·')}
+      ${row('Moyenne / j',m=>s(m)&&s(m).total?fmt(s(m).avg):'·')}
+      ${row('Jours OFF',m=>s(m)?s(m).off:'·')}
+      ${row('Heures',m=>s(m)&&s(m).hours?fmt(s(m).hours,1):'·')}
+      ${row('Monotonie',m=>s(m)&&s(m).mono!=null?fmt(s(m).mono,1):'·')}
+      ${row('Contrainte',m=>s(m)&&s(m).strain!=null?fmt(s(m).strain):'·')}
+      ${mods.map((k,j)=>row(`<i style="background:${MODC[k]||'var(--muted)'}"></i>${k}`,m=>(wm[m]||{})[k]?fmt(wm[m][k]):'·',j===0?'sep':'')).join('')}
+      </tbody></table></div>`;
+  }
+  function wireYear(root,series,br){
+    const pnl=root&&root.querySelector('[data-year-section]');if(!pnl)return;
+    const st=wkStatsFrom(series);
+    const wm={};br.forEach(r=>{(wm[r.week_start]=wm[r.week_start]||{})[r.modality]=((wm[r.week_start]||{})[r.modality]||0)+r.load;});
+    const cy=+isoWeek(today()).split('/')[1]+2000||+today().slice(0,4);
+    const years=[...new Set([...Object.keys(st),...Object.keys(wm)].map(m=>+addDays(m,3).slice(0,4)))];
+    const minY=Math.min(cy,...years);let year=cy;
+    const draw=()=>{
+      const ws=isoWeeksOf(year);
+      const mods=MODS.map(([k])=>k).filter(k=>ws.some(m=>(wm[m]||{})[k]));
+      Object.keys(wm).forEach(m=>Object.keys(wm[m]).forEach(k=>{if(!mods.includes(k)&&ws.includes(m))mods.push(k);}));
+      pnl.querySelector('[data-ylabel]').textContent=year;
+      pnl.querySelector('[data-ynav="1"]').disabled=year>=cy;
+      pnl.querySelector('[data-ynav="-1"]').disabled=year<=minY;
+      pnl.querySelector('[data-ybody]').innerHTML=`<div class="chg-ychart">${yearChartHTML(ws,wm,mods)}</div>`+yearTableHTML(ws,st,wm,mods);
+      const cur=pnl.querySelector('.chg-ytbl td.cur');const sc=pnl.querySelector('.chg-yscroll');
+      if(cur&&sc)sc.scrollLeft=Math.max(0,cur.offsetLeft-sc.clientWidth+cur.clientWidth*3);
+      const yc=pnl.querySelector('.chg-ychart');if(yc&&yc.scrollWidth>yc.clientWidth){const i=ws.indexOf(mondayOf(today()));yc.scrollLeft=i<0?0:Math.max(0,yc.scrollWidth*(i+3)/ws.length-yc.clientWidth);}
+    };
+    pnl.querySelectorAll('[data-ynav]').forEach(b=>b.addEventListener('click',()=>{year+=+b.dataset.ynav;draw();}));
+    draw();
+  }
+
   function suiviHTML(series,weeks,mods,opts){
     opts=opts||{};
     const rpeRows=opts.rpe||[];
@@ -896,14 +1069,15 @@
       ${chartRatio(s42)}</div>
       <div style="order:4" class="chg-panel"><div class="chg-sec"><h4>Semaines</h4><span>8 dernières</span></div>
       ${chartWeeks(weeks)}</div>
-      <div style="order:6" class="chg-panel"><div class="chg-sec"><h4>Modalités</h4><span>28 jours · <span class="chg-paren">(<b class="chg-strong">% de la charge</b> / <span class="chg-thin">% du temps</span>)</span></span></div>
+      <div style="order:6" class="chg-panel"><div class="chg-sec"><h4>Modalités</h4><span>42 jours · <span class="chg-paren">(<b class="chg-strong">% de la charge</b> / <span class="chg-thin">% du temps</span>)</span></span></div>
       <div id="chg-mods">${modsHTML(mods)}</div></div>
-      ${opts.coach?rpePanelHTML(rpeRows):''}
       </div>
       </div>
+      ${opts.coach?weeksSectionHTML():''}
       <div class="chg-hint">Ratio aigu / chronique : &lt; 0,8 sous-charge · 0,8–1,3 optimal · 1,3–1,5 vigilance · &gt; 1,5 risque élevé.
       Monotonie = charge moyenne ÷ écart-type de la semaine ; au-dessus de 2, la semaine manque de variation.
-      Contrainte = charge × monotonie. Échauffement et mobilité sont exclus de la charge.</div>`;
+      Contrainte = charge × monotonie. Échauffement et mobilité sont exclus de la charge.</div>
+      ${opts.coach?yearSectionHTML():''}`;
   }
 
   /* ---------- Vue coach : onglet admin ⚡ Charge ---------- */
@@ -1020,22 +1194,22 @@
     if(!fiche)return;
     list.style.display='none';fiche.style.display='';
     fiche.innerHTML='<div class="spinner"></div>';
-    let series=[],weeks=[],mods=[],rpe=[];
+    let series=[],weeks=[],mods=[],rpe=[],br=[];
     try{
       const[s,w,m]=await Promise.all([
-        sb.rpc('training_load_series',{p_athlete:athleteId,p_days:120}),
+        sb.rpc('training_load_series',{p_athlete:athleteId,p_days:800}),
         sb.rpc('training_load_weeks',{p_athlete:athleteId,p_weeks:8}),
-        sb.rpc('training_load_modalities',{p_athlete:athleteId,p_days:28})
+        sb.rpc('training_load_modalities',{p_athlete:athleteId,p_days:42})
       ]);
       series=s.data||[];weeks=w.data||[];mods=m.data||[];
       await addPeriods(athleteId,series);
-      rpe=await fetchRpe(athleteId);
+      rpe=await fetchRpe(athleteId);br=await fetchBreakdown(athleteId);
     }catch(e){console.error('[charge] fiche',e);}
     fiche.innerHTML=`<button class="chg-back" id="chg-back">${opts.fromPerso?'‹ Retour à l\'espace perso':'‹ Retour'}</button>
       <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${a.full_name||a.email||'Athlète'}</div>
       ${series.length?`<div class="chg-card chg-fiche-card">${suiviHTML(series,weeks,mods,{coach:true,rpe})}</div>`
         :'<div style="color:var(--muted);font-size:13px;margin-top:8px">Aucune saisie de charge pour cet athlète.</div>'}`;
-    wireRpe(fiche,rpe);
+    wireRpe(fiche,rpe);wireWeeks(fiche,series,br);wireYear(fiche,series,br);
     document.getElementById('chg-back').addEventListener('click',()=>{
       fiche.style.display='none';list.style.display='';
       if(opts.fromPerso)backToPerso();
