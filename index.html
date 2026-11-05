@@ -522,6 +522,7 @@
           <button class="arrow-btn" onclick="changeAdminWeek(-1)">‹</button>
           <button class="arrow-btn" onclick="changeAdminWeek(1)">›</button>
           <button class="arrow-btn" onclick="openDupWeekModalV2()" title="Dupliquer la semaine ou certains jours" style="font-size:14px">📋</button>
+          <button class="arrow-btn" onclick="deleteAdminWeek()" title="Supprimer toutes les séances de la semaine affichée" style="font-size:14px;color:var(--red)">🗑</button>
         </div>
       </div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;margin-bottom:10px;color:var(--muted)" id="admin-cal-week-label">—</div>
@@ -796,6 +797,7 @@
             <button class="arrow-btn" onclick="persoNav(1)">›</button>
             <button class="arrow-btn" onclick="openPersoDatePicker()" title="Choisir une date" style="font-size:14px">📅</button>
             <button class="arrow-btn" onclick="openDupPersoWeekModal()" title="Dupliquer la semaine entière" style="font-size:14px">📋</button>
+            <button class="arrow-btn" onclick="deletePersoWeek()" title="Supprimer toutes les séances perso de la semaine affichée" style="font-size:14px;color:var(--red)">🗑</button>
           </div>
         </div>
         <div id="perso-calendar-area"></div>
@@ -1265,7 +1267,7 @@
 <script src="admin.js?v=20261030b"></script>
 <script src="open-read-session.js"></script>
 <script src="abos.js"></script>
-<script src="wellness.js?v=20261031d"></script>
+<script src="wellness.js?v=20261105f"></script>
 <script src="kids-scaling.js?v=20261026a"></script>
 <script src="charge.js?v=20261025a"></script>
 <script>

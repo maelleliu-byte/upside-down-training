@@ -9345,3 +9345,110 @@ async function claimFreeAccess(programmeId){
     };
   }
 })();
+
+// ===== SUPPRESSION D'UNE SEMAINE ENTIÈRE — PLANNING + ESPACE PERSO =====
+// Bouton 🗑 à côté du 📋 (dupliquer la semaine) dans les deux écrans.
+// Supprime toutes les séances de la semaine affichée + cascade scores / notes.
+(function(){
+  if(window.__patchBound_delWeek)return;
+  window.__patchBound_delWeek=true;
+
+  const DW_DAYS=['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+
+  function _dwRecap(rows,keyFn){
+    const counts=[0,0,0,0,0,0,0];
+    rows.forEach(s=>{const i=keyFn(s);if(i>=0&&i<7)counts[i]++;});
+    return counts.map((n,i)=>n?`• ${DW_DAYS[i]} : ${n} séance${n>1?'s':''}`:null).filter(Boolean).join('\n');
+  }
+
+  async function _dwCountScores(ids){
+    try{
+      const {count}=await sb.from('wod_scores').select('id',{count:'exact',head:true}).in('session_id',ids);
+      return count||0;
+    }catch(e){console.warn('count scores',e);return 0;}
+  }
+
+  async function _dwCascade(ids){
+    await sb.from('wod_scores').delete().in('session_id',ids).then(r=>r.error&&console.warn('cascade wod_scores',r.error.message));
+    await sb.from('session_notes').delete().in('session_id',ids).then(r=>r.error&&console.warn('cascade session_notes',r.error.message));
+  }
+
+  // Confirmation commune : récap par jour, puis 2e garde-fou si des scores existent
+  async function _dwConfirm(label,rows,keyFn){
+    const ids=rows.map(s=>s.id);
+    const ok=confirm(
+      '⚠️ SUPPRIMER TOUTE LA SEMAINE ?\n\n'+label+'\n\n'+_dwRecap(rows,keyFn)+
+      '\n\nSoit '+ids.length+' séance'+(ids.length>1?'s':'')+' effacée'+(ids.length>1?'s':'')+' définitivement.\n\nCette action est irréversible.'
+    );
+    if(!ok)return null;
+    const nScores=await _dwCountScores(ids);
+    if(nScores>0){
+      if(!confirm('⛔ '+nScores+' score'+(nScores>1?'s':'')+' d\'athlète'+(nScores>1?'s':'')+' sont liés à ces séances.\n\nIls seront supprimés avec elles (ainsi que les notes de séance).\n\nConfirmer quand même ?'))return null;
+    }
+    return ids;
+  }
+
+  // ---------- PLANNING (onglet Admin / Séances) ----------
+  window.deleteAdminWeek=async function(){
+    const progId=document.getElementById('admin-filter-prog')?.value;
+    if(!progId){showToast('⚠️ Sélectionne un programme');return;}
+    const prog=getProgById(progId);
+    const oneshot=isOneshotProg(prog);
+    let rows=[],label='',keyFn=null;
+
+    if(oneshot){
+      const weekNum=adminWeekOffset+1;
+      label='Semaine '+weekNum+' / '+(prog.total_weeks||8)+' — '+(prog.name||'');
+      const {data,error}=await sb.from('sessions').select('id,day_of_week')
+        .eq('programme_id',progId).eq('week_number',weekNum);
+      if(error){showToast('❌ '+error.message);return;}
+      rows=data||[];
+      keyFn=s=>(s.day_of_week==null?0:s.day_of_week);
+    } else {
+      const dates=getWeekDates(adminWeekOffset);
+      const isos=dates.map(d=>d.toISOString().split('T')[0]);
+      label='Sem. '+getWeekNum(dates[0])+' — '+MONTHS[dates[0].getMonth()]+' '+dates[0].getFullYear()+' — '+(prog?prog.name:'');
+      const {data,error}=await sb.from('sessions').select('id,date')
+        .eq('programme_id',progId).in('date',isos);
+      if(error){showToast('❌ '+error.message);return;}
+      rows=data||[];
+      keyFn=s=>isos.indexOf(s.date);
+    }
+
+    if(!rows.length){showToast('⚠️ Aucune séance sur cette semaine');return;}
+    const ids=await _dwConfirm(label,rows,keyFn);
+    if(!ids)return;
+
+    showToast('Suppression en cours...');
+    await _dwCascade(ids);
+    const {error:eDel}=await sb.from('sessions').delete().in('id',ids);
+    if(eDel){showToast('❌ '+eDel.message);return;}
+    showToast('🗑 '+ids.length+' séance'+(ids.length>1?'s':'')+' supprimée'+(ids.length>1?'s':''));
+    if(typeof loadAdminCalendar==='function')loadAdminCalendar();
+  };
+
+  // ---------- ESPACE PERSO (fiche athlète, vue semaine) ----------
+  window.deletePersoWeek=async function(){
+    if(!currentPersoAthlete){showToast('⚠️ Aucun athlète sélectionné');return;}
+    if(persoView!=='week'){showToast('⚠️ Passe en vue semaine d\'abord');return;}
+    const dates=getWeekDates(persoOffset);
+    const isos=dates.map(d=>d.toISOString().split('T')[0]);
+    const label='Sem. '+getWeekNum(dates[0])+' — '+MONTHS[dates[0].getMonth()]+' '+dates[0].getFullYear()+
+      '\n'+(currentPersoAthlete.full_name||currentPersoAthlete.email||'');
+    const {data,error}=await sb.from('personal_sessions').select('id,date')
+      .eq('athlete_id',currentPersoAthlete.id).in('date',isos);
+    if(error){showToast('❌ '+error.message);return;}
+    const rows=data||[];
+    if(!rows.length){showToast('⚠️ Aucune séance perso sur cette semaine');return;}
+
+    const ids=await _dwConfirm(label,rows,s=>isos.indexOf(s.date));
+    if(!ids)return;
+
+    showToast('Suppression en cours...');
+    await _dwCascade(ids);
+    const {error:eDel}=await sb.from('personal_sessions').delete().in('id',ids);
+    if(eDel){showToast('❌ '+eDel.message);return;}
+    showToast('🗑 '+ids.length+' séance'+(ids.length>1?'s':'')+' supprimée'+(ids.length>1?'s':''));
+    if(typeof renderPersoCalendar==='function')renderPersoCalendar();
+  };
+})();
