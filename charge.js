@@ -13,7 +13,7 @@
   /* ---------- Référentiel (aligné sur la feuille UDT d'Alexis) ---------- */
   const MODS=[
     ['STR','Force'],['CF','CrossFit'],['WL','Haltéro'],['GYM','Gymnastique'],['BODY','Body / Renfo'],
-    ['CAP','Course à pied'],['ERG','Ergomètres'],['BIKE','Vélo'],['SWI','Natation'],['COMP','Compétition']
+    ['CAP','Course à pied'],['ERG','Ergo'],['BIKE','Vélo'],['SWI','Natation'],['COMP','Compétition']
   ];
   const MODMAP=Object.fromEntries(MODS);
   // type de bloc -> [modalité par défaut, compte dans la charge]
