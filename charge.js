@@ -147,6 +147,7 @@
   .chg-rest div{padding:8px;border:1px solid var(--border);border-radius:10px;text-align:center}
   .chg-rest b{display:block;font-size:17px;color:var(--text)}
   .chg-rest span{font-size:10px;color:var(--muted)}
+  .chg-fiche-card{margin-top:10px}
   .chg-grid{display:flex;flex-direction:column}
   .chg-panel.chg-panel{border-top:2px solid var(--border2,var(--border));margin-top:20px;padding-top:2px}
   .chg-panel.chg-panel .chg-sec{margin-top:12px}
@@ -1032,7 +1033,7 @@
     }catch(e){console.error('[charge] fiche',e);}
     fiche.innerHTML=`<button class="chg-back" id="chg-back">${opts.fromPerso?'‹ Retour à l\'espace perso':'‹ Retour'}</button>
       <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${a.full_name||a.email||'Athlète'}</div>
-      ${series.length?suiviHTML(series,weeks,mods,{coach:true,rpe})
+      ${series.length?`<div class="chg-card chg-fiche-card">${suiviHTML(series,weeks,mods,{coach:true,rpe})}</div>`
         :'<div style="color:var(--muted);font-size:13px;margin-top:8px">Aucune saisie de charge pour cet athlète.</div>'}`;
     wireRpe(fiche,rpe);
     document.getElementById('chg-back').addEventListener('click',()=>{
