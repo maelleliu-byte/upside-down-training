@@ -135,7 +135,8 @@
   @media (min-width:900px){
     .chg-card{max-width:1180px;margin:0 auto}
     .chg-kpis{grid-template-columns:repeat(4,1fr)}
-    .chg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
+    div.chg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
+    div.chg-col{display:flex;flex-direction:column;gap:14px;min-width:0}
     .chg-panel{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card2,transparent)}
     .chg-panel .chg-sec{margin-top:0}
     .chg-panel-tbl .chg-tbl{margin-top:0}
@@ -144,6 +145,19 @@
   .chg-rest div{padding:8px;border:1px solid var(--border);border-radius:10px;text-align:center}
   .chg-rest b{display:block;font-size:17px;color:var(--text)}
   .chg-rest span{font-size:10px;color:var(--muted)}
+  .chg-grid{display:flex;flex-direction:column}
+  .chg-col{display:contents}
+  .chg-sec .chg-strong{font-size:11px;font-weight:800;color:var(--text)}
+  .chg-mbars{flex:1;display:flex;flex-direction:column;gap:3px}
+  .chg-mbars .chg-mtr{flex:none}
+  .chg-mtr-t{height:5px!important;opacity:.5}
+  .chg-mhead{margin-bottom:4px}
+  .chg-mhead .chg-mtr0{flex:1}
+  .chg-mhead .chg-mp{font-size:9px;font-weight:500;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+  .chg-mt{color:var(--muted)!important}
+  .chg-mleg{display:flex;gap:14px;font-size:10px;color:var(--muted);margin-top:2px}
+  .chg-mleg i{display:inline-block;width:12px;height:6px;border-radius:3px;background:var(--text2,var(--text));margin-right:5px;vertical-align:1px}
+  .chg-mleg i.t{height:4px;opacity:.5}
   .chg-seg{display:flex;gap:6px;margin-bottom:10px}
   .chg-seg button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;
     color:var(--muted);font-size:12px;cursor:pointer}
@@ -547,14 +561,20 @@
   /* Modalités : part de la charge par discipline sur 28 jours */
   function modsHTML(rows){
     if(!rows||!rows.length)return'<p class="chg-hint">Aucune séance sur cette période.</p>';
-    return rows.map(r=>{
+    const hasT=rows.some(r=>r.pct_time!=null);
+    return`<div class="chg-mrow chg-mhead"><span class="chg-mk"></span><span class="chg-mtr0"></span>
+        <span class="chg-mp">Charge</span>${hasT?'<span class="chg-mp chg-mt">Temps</span>':''}</div>`
+      +rows.map(r=>{
       const c=MODC[r.modality]||'var(--muted)';
       return`<div class="chg-mrow">
         <span class="chg-mk"><b>${r.modality}</b> ${MODMAP[r.modality]||''}</span>
-        <span class="chg-mtr"><i style="width:${Math.max(2,Number(r.pct))}%;background:${c}"></i></span>
-        <span class="chg-mp">${fmt(r.pct)} %</span></div>`;
-    }).join('');
+        <span class="chg-mbars"><span class="chg-mtr"><i style="width:${Math.max(2,Number(r.pct))}%;background:${c}"></i></span>${
+          hasT?`<span class="chg-mtr chg-mtr-t"><i style="width:${Math.max(2,Number(r.pct_time||0))}%;background:${c}"></i></span>`:''}</span>
+        <span class="chg-mp">${fmt(r.pct)} %</span>${hasT?`<span class="chg-mp chg-mt">${fmt(r.pct_time)} %</span>`:''}</div>`;
+    }).join('')
+      +(hasT?'<div class="chg-mleg"><span><i></i>Charge</span><span><i class="t"></i>Temps</span></div>':'');
   }
+
 
   async function renderSuivi(){
     const host=document.getElementById('charge-section');
@@ -610,15 +630,12 @@
         <div class="chg-kpi"><b>${wk&&wk.monotony!=null?fmt(wk.monotony,2):'–'}</b><span>Monotonie semaine</span></div>
       </div>
       <div class="chg-grid">
-      <div class="chg-panel"><div class="chg-sec"><h4>Charge quotidienne</h4><span>42 jours</span></div>
+      <div class="chg-col">
+      <div style="order:1" class="chg-panel"><div class="chg-sec"><h4>Charge quotidienne</h4><span>42 jours</span></div>
       ${chartLoad(s42)}</div>
-      <div class="chg-panel"><div class="chg-sec"><h4>Ratio aiguë / chronique</h4><span>42 jours</span></div>
-      ${chartRatio(s42)}</div>
-      <div class="chg-panel"><div class="chg-sec"><h4>État au réveil</h4><span>28 jours</span></div>
+      <div style="order:3" class="chg-panel"><div class="chg-sec"><h4>État au réveil</h4><span>28 jours</span></div>
       ${wakeStrip(s42)}</div>
-      <div class="chg-panel"><div class="chg-sec"><h4>Semaines</h4><span>8 dernières</span></div>
-      ${chartWeeks(weeks)}</div>
-      <div class="chg-panel chg-panel-tbl"><table class="chg-tbl"><thead><tr><th>Sem.</th><th>Charge</th><th>Moy.</th><th>Mono.</th><th>Contr.</th><th>OFF</th><th>Heures</th></tr></thead><tbody>
+      <div style="order:5" class="chg-panel chg-panel-tbl"><table class="chg-tbl"><thead><tr><th>Sem.</th><th>Charge</th><th>Moy.</th><th>Mono.</th><th>Contr.</th><th>OFF</th><th>Heures</th></tr></thead><tbody>
         ${weeks.map(w=>{
           const cur=w.week_start<=today()&&addDays(w.week_start,7)>today();
           return`<tr${cur?' class="cur"':''}><td><b>S${isoWeek(w.week_start)}</b>${
@@ -627,8 +644,14 @@
           <td>${w.monotony==null?'–':fmt(w.monotony,2)}</td><td>${w.strain==null?'–':fmt(w.strain)}</td>
           <td>${w.off_days}</td><td>${fmt(w.hours,1)}</td></tr>`;}).join('')}
       </tbody></table></div>
-      <div class="chg-panel"><div class="chg-sec"><h4>Modalités</h4><span>28 jours · % de la charge</span></div>
+      </div><div class="chg-col">
+      <div style="order:2" class="chg-panel"><div class="chg-sec"><h4>Ratio aiguë / chronique</h4><span>42 jours</span></div>
+      ${chartRatio(s42)}</div>
+      <div style="order:4" class="chg-panel"><div class="chg-sec"><h4>Semaines</h4><span>8 dernières</span></div>
+      ${chartWeeks(weeks)}</div>
+      <div style="order:6" class="chg-panel"><div class="chg-sec"><h4>Modalités</h4><span>28 jours · <b class="chg-strong">(% de la charge / % du temps)</b></span></div>
       <div id="chg-mods">${modsHTML(mods)}</div></div>
+      </div>
       </div>
       <div class="chg-hint">Ratio aigu / chronique : &lt; 0,8 sous-charge · 0,8–1,3 optimal · 1,3–1,5 vigilance · &gt; 1,5 risque élevé.
       Monotonie = charge moyenne ÷ écart-type de la semaine ; au-dessus de 2, la semaine manque de variation.
