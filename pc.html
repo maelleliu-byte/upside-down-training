@@ -250,6 +250,13 @@ details[open]>summary{color:var(--text)}
 .fx.ok{border-color:var(--accent);color:var(--accent)}
 .link{color:var(--accent);text-decoration:underline;font-size:13px}
 .who{margin-bottom:14px}
+.cust{font:700 10px var(--sg);letter-spacing:.06em;text-transform:uppercase;color:var(--accent);border:1px solid var(--accent);border-radius:10px;padding:1px 6px;vertical-align:2px}
+.okban{font-size:13px;padding:9px 10px;border-radius:8px;background:var(--chip);margin-bottom:10px}
+.prop{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px;padding:10px;border:1px solid var(--accent);border-radius:10px}
+.prop span{display:block;font-size:12px;color:var(--muted)}
+.prop b{display:block;font:700 18px var(--sg)}
+.prop small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.dr{font:700 13px var(--sg)}.dr.ok{color:var(--fast)}.dr.mid{color:var(--warn)}.dr.bad{color:var(--bad)}
 </style>
 </head>
 <body>
@@ -289,7 +296,7 @@ const ZONES=[
 ];
 const MARGES=[0,5];
 const store={sb:null,uid:null,sync:"wait",syncMsg:"",athletes:[],viewId:null,prs:[],gender:null,mod:"row",
-  in3:null,in12:null,m3:0,m12:0,tP:null,tT:"",touched:false};
+  in3:null,in12:null,m3:0,m12:0,tP:null,tT:"",touched:false,ov:[],canVal:false,ef:[],busy:false};
 
 function esc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
 function num(s){if(s==null||s==="")return null;const n=parseFloat(String(s).replace(",",".").trim());return isFinite(n)?n:null}
@@ -299,6 +306,44 @@ function dateFR(iso){if(!iso)return "";const d=new Date(iso+"T12:00:00");return 
 function parseDur(t){t=String(t||"").trim();if(!t)return null;if(t.includes(":")){const p=t.split(":").map(Number);if(p.some(x=>!isFinite(x)))return null;return p.length===2?p[0]*60+p[1]:p[0]*3600+p[1]*60+p[2]}const n=num(t);return n==null?null:n*60}
 const norm=s=>String(s||"").toLowerCase().replace(/\s+/g,"");
 const mod=()=>MODS.find(m=>m.k===store.mod)||MODS[0];
+function mean(a){return a.length?a.reduce((x,y)=>x+y,0)/a.length:null}
+function paceSec(s){const t=String(s==null?"":s).trim();if(!t)return null;if(t.includes(":")){const p=t.split(":").map(Number);return p.length===2&&p.every(isFinite)?p[0]*60+p[1]:null}return num(t)}
+/* Dérive : même calcul que le Profil EF (FC du dernier relevé / premier relevé − 1) */
+function efCalc(ef){
+  if(!ef||!Array.isArray(ef.hr))return null;
+  const unit=ef.unit||"W";
+  const rows=ef.hr.map((h,i)=>({hr:num(h),raw:ef.out&&ef.out[i]!=null&&ef.out[i]!==""?ef.out[i]:null})).filter(r=>r.hr>0);
+  if(rows.length<2)return null;
+  const drift=Math.round((rows[rows.length-1].hr-rows[0].hr)/rows[0].hr*1000)/10;
+  let v=null;
+  if(unit==="/500m"||unit==="min/km"){const p=mean(rows.map(r=>paceSec(r.raw)).filter(x=>x>0));if(p)v=unit==="/500m"?2.8/Math.pow(p/500,3):3600/p}
+  else if(unit==="W"||unit==="km/h"){v=mean(rows.map(r=>num(r.raw)).filter(x=>x>0))}
+  return v?{drift,v,unit}:null;
+}
+const EFMOD={row:"row",ski:"ski",run:"run",bike:"bike",assault:"bike",echo:"bike"};
+const ovFor=k=>store.ov.find(o=>o.mod===k)||null;
+function zonesFor(m){
+  const base=(m.run?ZONES:ZONES_ERG).map(z=>Object.assign({},z));
+  const o=ovFor(m.k);if(!o)return base;
+  const z2=base.find(z=>z.z==="Z2"),z3=base.find(z=>z.z==="Z3"),z1=base.find(z=>z.z==="Z1");
+  const v=Math.min(+o.z2_hi,z3.hi-1);
+  z2.hi=v;z3.lo=v;if(v<=z2.lo+3){z2.lo=Math.max(40,v-10);z1.hi=z2.lo}
+  z2.custom=true;return base;
+}
+function efRows(m,cp){
+  const want=EFMOD[m.k];
+  return store.ef.filter(r=>r.mod===want&&(m.run?r.k.unit==="km/h"||r.k.unit==="min/km":r.k.unit==="W"||r.k.unit==="/500m"))
+    .map(r=>Object.assign({},r,{pct:r.k.v/cp*100}));
+}
+function proposal(rows){
+  const ok=rows.filter(r=>r.k.drift<5),bad=rows.filter(r=>r.k.drift>=5);
+  if(ok.length<2)return {ok,bad,val:null};
+  let v=Math.max(...ok.map(r=>r.pct));
+  const lowBad=bad.length?Math.min(...bad.map(r=>r.pct)):null;
+  if(lowBad!=null&&lowBad<=v)v=lowBad-1;
+  v=Math.max(40,Math.min(99,Math.round(v)));
+  return {ok,bad,val:v};
+}
 
 /* ---------- calculs ---------- */
 function best(fmt){
@@ -338,7 +383,9 @@ async function load(id){
   const {data,error}=await store.sb.rpc("pc_profile",{p_athlete:id});
   if(error){setSync("err","Lecture impossible");render();return}
   if((store.viewId||store.uid)!==id)return;
-  store.prs=(data&&data.prs)||[];store.gender=data&&data.gender;
+  store.prs=(data&&data.prs)||[];store.gender=data&&data.gender;store.ov=(data&&data.overrides)||[];store.canVal=!!(data&&data.can_validate);
+  try{const ef=await store.sb.rpc("ef_profile",{p_athlete:id});
+    store.ef=((ef&&ef.data)||[]).map(r=>{const e=r.ef||{},c=r.cfg||{};const x=Object.assign({},e,{mod:e.mod||c.mod||"autre",unit:e.unit||c.unit||"W"});return {date:r.date,title:r.title||"Séance",mod:x.mod,k:efCalc(x)}}).filter(r=>r.k)}catch(_){store.ef=[]}
   // modalité par défaut : la première qui a des tests
   const has=MODS.find(m=>store.prs.some(p=>p.mv===m.mv&&/test/i.test(p.format)));
   if(has&&!store.touched)store.mod=has.k;
@@ -398,15 +445,33 @@ function render(){
   const f=m.run?"VITESSE CRITIQUE":"PUISSANCE CRITIQUE";
   const fx=pc=>`${pc}%|${f}|${m.tok}|`;
   h+=`<div class="sec"><h2>Zones d'intensité</h2><span>% de la ${m.run?"VC":"PC"}</span></div><div class="card zl">
-    ${(m.run?ZONES:ZONES_ERG).map(z=>{const lo=p.cp*z.lo/100,hi=z.hi?p.cp*z.hi/100:null;
+    ${zonesFor(m).map(z=>{const lo=p.cp*z.lo/100,hi=z.hi?p.cp*z.hi/100:null;
       const v=m.run?(hi?fr(lo,1)+" – "+fr(hi,1):"&gt; "+fr(lo,1))+" km/h":(hi?Math.round(lo)+" – "+Math.round(hi):"&gt; "+Math.round(lo))+" W";
       const sp=m.run?(hi?mmss(allure(hi))+" – "+mmss(allure(lo)):"&lt; "+mmss(allure(lo)))+" /km":m.p500?(hi?mmss(pace500(hi))+" – "+mmss(pace500(lo)):"&lt; "+mmss(pace500(lo)))+" /500m":"";
       const fo=hi?fx(z.lo)+" / "+fx(z.hi):fx(z.lo);
-      return `<div class="zr"><div class="zh"><b class="zn z${z.z.slice(1)}">${z.z}</b><span class="znm">${esc(z.n)}</span><span class="zp">${z.hi?z.lo+"–"+z.hi:"&gt; "+z.lo} %</span></div>
+      return `<div class="zr"><div class="zh"><b class="zn z${z.z.slice(1)}">${z.z}</b><span class="znm">${esc(z.n)}${z.custom?' <span class="cust">validée EF</span>':""}</span><span class="zp">${z.hi?z.lo+"–"+z.hi:"&gt; "+z.lo} %</span></div>
         <div class="zv"><b>${v}</b>${sp?`<span>${sp}</span>`:""}</div>
         <div class="pct">${esc(z.dom)} · ${esc(z.dur)}</div>
         <button class="fx" data-copy="${esc(fo)}" title="Copier la formule">${esc(fo)}</button></div>`}).join("")}
     <p class="hint" style="margin:10px 0 0">Touche une formule pour la copier, puis colle-la dans Séance+ : l'app calcule la cible de chaque athlète à partir de sa propre ${m.run?"VC":"PC"}. Au-delà de la Z5 (capacité tampon, sprint), on travaille sur la réserve ${m.run?"D′":"W′"}.</p></div>`;
+
+  // calibrage EF
+  {const rows=efRows(m,p.cp),pr=proposal(rows),o=ovFor(m.k),R=m.run?"VC":"PC";
+   const def=(m.run?ZONES:ZONES_ERG).find(z=>z.z==="Z2").hi;
+   h+=`<div class="sec"><h2>Calibrage EF</h2><span>dérive cardiaque</span></div><div class="card">`;
+   if(o)h+=`<div class="okban">Z2 validée jusqu'à <b>${fr(+o.z2_hi,0)} % de la ${R}</b>${o.n?` sur ${o.n} séance${o.n>1?"s":""}`:""} · ${esc(o.by||"coach")}, ${esc(dateFR(String(o.at).slice(0,10)))}</div>`;
+   if(!rows.length)h+=`<p class="hint" style="margin:0">Aucune séance d'endurance fondamentale ${m.run?"en course":"sur cette machine"} avec FC et ${m.run?"vitesse ou allure":"watts ou allure /500m"}. Active « 🫀 Suivi endurance fondamentale » dans Séance+ : les séances arrivent ici.</p>`;
+   else{
+     h+=`<div class="tbl"><table><thead><tr><th>Séance</th><th>${m.run?"Vitesse":"Puissance"}</th><th>% ${R}</th><th>Dérive</th></tr></thead><tbody>
+       ${rows.slice().sort((a,b)=>b.pct-a.pct).map(r=>`<tr><td>${esc(dateFR(r.date))}<div class="pct">${esc(r.title)}</div></td><td class="n">${m.run?fr(r.k.v,1)+" km/h":Math.round(r.k.v)+" W"}</td><td class="n">${fr(r.pct,0)} %</td><td class="n"><span class="dr ${r.k.drift<5?"ok":r.k.drift<=10?"mid":"bad"}">${r.k.drift>0?"+":""}${fr(r.k.drift,1)} %</span></td></tr>`).join("")}
+       </tbody></table></div>`;
+     if(pr.val!=null){
+       h+=`<div class="prop"><div><span>Borne haute de Z2 proposée</span><b>${pr.val} % de la ${R}</b><small>défaut ${def} % · ${pr.ok.length} séances sous 5 % de dérive${pr.bad.length?" · "+pr.bad.length+" au-dessus":""}</small></div>
+         ${store.canVal?`<button class="btn primary sm" data-val="${pr.val}" data-n="${pr.ok.length}" ${store.busy?"disabled":""}>Valider ${pr.val} %</button>`:""}</div>`;
+     }else h+=`<p class="hint" style="margin:10px 0 0">Il faut au moins 2 séances avec une dérive sous 5 % pour proposer une borne.</p>`;
+   }
+   if(o&&store.canVal)h+=`<button class="link" data-unval="1" style="margin-top:10px">Retirer la validation (revenir à ${def} %)</button>`;
+   h+=`<p class="hint" style="margin:10px 0 0">Proposition = séance la plus intense tenue avec moins de 5 % de dérive, sans dépasser une séance où la dérive a franchi 5 %. Une fois validée par le coach référent, elle remplace la borne Z2 par défaut pour cet athlète.</p></div>`;}
 
   // temps de soutien
   const tP=store.tP!=null?store.tP:(m.run?Math.round(p.cp*1.1*10)/10:Math.round(p.cp*1.2));
@@ -431,6 +496,7 @@ document.addEventListener("click",e=>{
   const t=e.target.closest("button");if(!t)return;
   if(t.dataset.mod){store.mod=t.dataset.mod;store.touched=true;store.tP=null;store.tT="";fill();render();return}
   if(t.dataset.act==="reset"){fill();render();return}
+  if(t.dataset.val||t.dataset.unval){validate(t.dataset.val?+t.dataset.val:null,+(t.dataset.n||0));return}
   if(t.dataset.copy){const s=t.dataset.copy;(navigator.clipboard?navigator.clipboard.writeText(s):Promise.reject()).then(()=>{t.classList.add("ok");setTimeout(()=>t.classList.remove("ok"),900)}).catch(()=>{});return}
   if(t.dataset.act==="theme"){document.documentElement.dataset.theme=t.dataset.v;try{localStorage.setItem("udt-vbt-theme",t.dataset.v)}catch(_){}render()}
 });
@@ -442,6 +508,14 @@ document.addEventListener("change",e=>{
   if(d.tp){store.tP=num(e.target.value);render();return}
   if(d.tt){store.tT=e.target.value;render();return}
 });
+async function validate(v,n){
+  if(store.busy)return;store.busy=true;render();
+  const id=store.viewId||store.uid;
+  const {error}=await store.sb.rpc("pc_validate_ef",{p_athlete:id,p_mod:mod().k,p_z2hi:v,p_n:n||null});
+  store.busy=false;
+  if(error){setSync("err","Validation impossible");render();return}
+  store.touched=true;await load(id);
+}
 async function connect(){
   render();
   try{

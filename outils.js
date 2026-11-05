@@ -21,7 +21,7 @@
   // Idem pour ef.html (profil endurance fondamentale)
   var EF_VERSION = '2026-10-25b';
   // Idem pour pc.html (profil puissance / vitesse critique)
-  var PC_VERSION = '2026-11-05c';
+  var PC_VERSION = '2026-11-05d';
 
   var TOOLS = [
     {
