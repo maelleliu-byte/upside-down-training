@@ -140,6 +140,10 @@
     .chg-panel .chg-sec{margin-top:0}
     .chg-panel-tbl .chg-tbl{margin-top:0}
   }
+  .chg-rest{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+  .chg-rest div{padding:8px;border:1px solid var(--border);border-radius:10px;text-align:center}
+  .chg-rest b{display:block;font-size:17px;color:var(--text)}
+  .chg-rest span{font-size:10px;color:var(--muted)}
   .chg-seg{display:flex;gap:6px;margin-bottom:10px}
   .chg-seg button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;
     color:var(--muted);font-size:12px;cursor:pointer}
@@ -415,7 +419,20 @@
       aria-label="Charge quotidienne, aiguë et chronique">${g}${line('chronic',TEAL)}${line('acute',C_ACUTE)}</svg>
       <div class="chg-leg"><span><i style="background:${C_BAR};height:9px;width:7px"></i>Charge du jour</span>
         <span><i style="background:${C_ACUTE}"></i>Aiguë 7 j</span>
-        <span><i style="background:${TEAL}"></i>Chronique 28 j</span></div>`;
+        <span><i style="background:${TEAL}"></i>Chronique 28 j</span></div>
+      ${restHTML(s)}`;
+  }
+  /* Jours de repos sur la période du graphique : charge du jour = 0 (même règle que la colonne OFF
+     du tableau Semaines). Aujourd'hui n'est compté que s'il est marqué OFF (journée en cours). */
+  function restHTML(s){
+    const t=today();
+    const days=s.filter(p=>p.date!==t||p.off);
+    if(!days.length)return'';
+    const rest=days.filter(p=>p.load===0).length;
+    const perWk=rest/days.length*7;
+    return`<div class="chg-rest">
+        <div><b>${rest}</b><span>jour${rest>1?'s':''} de repos sur ${days.length} j</span></div>
+        <div><b>${fmt(perWk,1)}</b><span>jour${perWk>=2?'s':''} de repos / semaine</span></div></div>`;
   }
   function chartRatio(s){
     const v=s.map(p=>p.ratio).filter(x=>x!=null);
@@ -581,7 +598,7 @@
     const h7=series.slice(-7).reduce((a,p)=>a+p.minutes,0)/60;
     const wk=weeks[0];
     const s42=series.slice(-42).map(p=>({
-      date:p.d,load:+p.load,minutes:+p.minutes,wake:p.wake,period:!!p.period,
+      date:p.d,load:+p.load,minutes:+p.minutes,wake:p.wake,period:!!p.period,off:!!p.is_off,
       acute:+p.acute,chronic:+p.chronic,ratio:p.ratio==null?null:Number(p.ratio)
     }));
     return`<div class="chg-zone" style="background:${tint(z.c,14)};border:1px solid ${tint(z.c,45)};color:${z.c}">
