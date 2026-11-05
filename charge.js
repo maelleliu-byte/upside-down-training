@@ -148,6 +148,12 @@
   .chg-grid{display:flex;flex-direction:column}
   .chg-col{display:contents}
   .chg-sec .chg-strong{font-size:11px;font-weight:800;color:var(--text)}
+  .chg-sec .chg-paren{font-size:11px;color:var(--text)}
+  .chg-thin{font-weight:300}
+  .chg-sec .chg-paren .chg-thin{color:var(--muted);font-size:11px}
+  .chg-mhead .chg-mp.chg-hc{font-weight:800;color:var(--text)}
+  .chg-mhead .chg-mp.chg-ht{font-weight:300}
+  .chg-lc{font-weight:800;color:var(--text)}
   .chg-mbars{flex:1;display:flex;flex-direction:column;gap:3px}
   .chg-mbars .chg-mtr{flex:none}
   .chg-mtr-t{height:5px!important;opacity:.5}
@@ -563,7 +569,7 @@
     if(!rows||!rows.length)return'<p class="chg-hint">Aucune séance sur cette période.</p>';
     const hasT=rows.some(r=>r.pct_time!=null);
     return`<div class="chg-mrow chg-mhead"><span class="chg-mk"></span><span class="chg-mtr0"></span>
-        <span class="chg-mp">Charge</span>${hasT?'<span class="chg-mp chg-mt">Temps</span>':''}</div>`
+        <span class="chg-mp chg-hc">Charge</span>${hasT?'<span class="chg-mp chg-mt chg-ht">Temps</span>':''}</div>`
       +rows.map(r=>{
       const c=MODC[r.modality]||'var(--muted)';
       return`<div class="chg-mrow">
@@ -572,7 +578,7 @@
           hasT?`<span class="chg-mtr chg-mtr-t"><i style="width:${Math.max(2,Number(r.pct_time||0))}%;background:${c}"></i></span>`:''}</span>
         <span class="chg-mp">${fmt(r.pct)} %</span>${hasT?`<span class="chg-mp chg-mt">${fmt(r.pct_time)} %</span>`:''}</div>`;
     }).join('')
-      +(hasT?'<div class="chg-mleg"><span><i></i>Charge</span><span><i class="t"></i>Temps</span></div>':'');
+      +(hasT?'<div class="chg-mleg"><span><i></i><b class="chg-lc">Charge</b></span><span><i class="t"></i><span class="chg-thin">Temps</span></span></div>':'');
   }
 
 
@@ -649,7 +655,7 @@
       ${chartRatio(s42)}</div>
       <div style="order:4" class="chg-panel"><div class="chg-sec"><h4>Semaines</h4><span>8 dernières</span></div>
       ${chartWeeks(weeks)}</div>
-      <div style="order:6" class="chg-panel"><div class="chg-sec"><h4>Modalités</h4><span>28 jours · <b class="chg-strong">(% de la charge / % du temps)</b></span></div>
+      <div style="order:6" class="chg-panel"><div class="chg-sec"><h4>Modalités</h4><span>28 jours · <span class="chg-paren">(<b class="chg-strong">% de la charge</b> / <span class="chg-thin">% du temps</span>)</span></span></div>
       <div id="chg-mods">${modsHTML(mods)}</div></div>
       </div>
       </div>
