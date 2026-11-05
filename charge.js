@@ -132,6 +132,14 @@
   .chg-csv,.chg-back{padding:7px 12px;border-radius:8px;border:1px solid var(--border);background:transparent;
     color:var(--muted);font-size:12px;cursor:pointer}
   .chg-csv:disabled{opacity:.5}
+  @media (min-width:900px){
+    .chg-card{max-width:1180px;margin:0 auto}
+    .chg-kpis{grid-template-columns:repeat(4,1fr)}
+    .chg-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
+    .chg-panel{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card2,transparent)}
+    .chg-panel .chg-sec{margin-top:0}
+    .chg-panel-tbl .chg-tbl{margin-top:0}
+  }
   .chg-seg{display:flex;gap:6px;margin-bottom:10px}
   .chg-seg button{flex:1;padding:8px;border-radius:8px;border:1px solid var(--border);background:transparent;
     color:var(--muted);font-size:12px;cursor:pointer}
@@ -584,15 +592,16 @@
         <div class="chg-kpi"><b>${fmt(h7,1)} h</b><span>Volume · 7 j</span></div>
         <div class="chg-kpi"><b>${wk&&wk.monotony!=null?fmt(wk.monotony,2):'–'}</b><span>Monotonie semaine</span></div>
       </div>
-      <div class="chg-sec"><h4>Charge quotidienne</h4><span>42 jours</span></div>
-      ${chartLoad(s42)}
-      <div class="chg-sec"><h4>Ratio aiguë / chronique</h4><span>42 jours</span></div>
-      ${chartRatio(s42)}
-      <div class="chg-sec"><h4>État au réveil</h4><span>28 jours</span></div>
-      ${wakeStrip(s42)}
-      <div class="chg-sec"><h4>Semaines</h4><span>8 dernières</span></div>
-      ${chartWeeks(weeks)}
-      <table class="chg-tbl"><thead><tr><th>Sem.</th><th>Charge</th><th>Moy.</th><th>Mono.</th><th>Contr.</th><th>OFF</th><th>Heures</th></tr></thead><tbody>
+      <div class="chg-grid">
+      <div class="chg-panel"><div class="chg-sec"><h4>Charge quotidienne</h4><span>42 jours</span></div>
+      ${chartLoad(s42)}</div>
+      <div class="chg-panel"><div class="chg-sec"><h4>Ratio aiguë / chronique</h4><span>42 jours</span></div>
+      ${chartRatio(s42)}</div>
+      <div class="chg-panel"><div class="chg-sec"><h4>État au réveil</h4><span>28 jours</span></div>
+      ${wakeStrip(s42)}</div>
+      <div class="chg-panel"><div class="chg-sec"><h4>Semaines</h4><span>8 dernières</span></div>
+      ${chartWeeks(weeks)}</div>
+      <div class="chg-panel chg-panel-tbl"><table class="chg-tbl"><thead><tr><th>Sem.</th><th>Charge</th><th>Moy.</th><th>Mono.</th><th>Contr.</th><th>OFF</th><th>Heures</th></tr></thead><tbody>
         ${weeks.map(w=>{
           const cur=w.week_start<=today()&&addDays(w.week_start,7)>today();
           return`<tr${cur?' class="cur"':''}><td><b>S${isoWeek(w.week_start)}</b>${
@@ -600,9 +609,10 @@
           <td>${fmt(w.total)}</td><td>${fmt(w.avg_day)}</td>
           <td>${w.monotony==null?'–':fmt(w.monotony,2)}</td><td>${w.strain==null?'–':fmt(w.strain)}</td>
           <td>${w.off_days}</td><td>${fmt(w.hours,1)}</td></tr>`;}).join('')}
-      </tbody></table>
-      <div class="chg-sec"><h4>Modalités</h4><span>28 jours · % de la charge</span></div>
-      <div id="chg-mods">${modsHTML(mods)}</div>
+      </tbody></table></div>
+      <div class="chg-panel"><div class="chg-sec"><h4>Modalités</h4><span>28 jours · % de la charge</span></div>
+      <div id="chg-mods">${modsHTML(mods)}</div></div>
+      </div>
       <div class="chg-hint">Ratio aigu / chronique : &lt; 0,8 sous-charge · 0,8–1,3 optimal · 1,3–1,5 vigilance · &gt; 1,5 risque élevé.
       Monotonie = charge moyenne ÷ écart-type de la semaine ; au-dessus de 2, la semaine manque de variation.
       Contrainte = charge × monotonie. Échauffement et mobilité sont exclus de la charge.</div>`;
