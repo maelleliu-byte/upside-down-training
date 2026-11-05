@@ -261,7 +261,7 @@
     border:1px solid var(--border);border-radius:12px}
   .chg-addfree{width:100%;margin-bottom:16px;padding:11px;border-radius:10px;border:1px dashed var(--border);
     background:transparent;color:var(--muted);font-size:13px;cursor:pointer}
-  .chg-inline{margin:12px 0 4px;padding-top:12px;border-top:1px dashed var(--border)}
+  .chg-inline{margin-top:10px;border:1px solid var(--border2);border-radius:10px;overflow:hidden}
   .chg-inline .chg-lbl:first-child{margin-top:0}
   .chg-isec{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:0 0 8px;font-weight:700}
   .chg-time{display:flex;gap:10px;align-items:flex-start;margin-top:10px}
@@ -269,12 +269,16 @@
   .chg-time input{width:100%;background:var(--card2,transparent);border:1px solid ${TEAL};color:var(--text);
     padding:10px;border-radius:8px;font-size:15px}
   .chg-thint{font-size:10px;color:var(--muted);margin-top:4px;line-height:1.4}
-  .chg-itog{width:100%;display:flex;align-items:center;gap:8px;background:transparent;border:0;padding:2px 0;cursor:pointer;color:var(--text);font-family:inherit}
-  .chg-ival{margin-left:auto;font-size:12px;font-weight:700;color:${TEAL}}
-  .chg-ival.off{color:var(--muted);font-weight:500}
+  .chg-itog{width:100%;display:flex;align-items:center;gap:8px;background:var(--card2);border:0;padding:11px 12px;cursor:pointer;
+    color:var(--text);font-family:inherit;font-size:13px;font-weight:700}
+  .chg-ival{margin-left:auto;font-size:11px;font-weight:600;color:${TEAL}}
+  .chg-ival.off{color:var(--muted)}
+  .vbx-toggle,.efx-toggle{gap:8px}
+  .vbx-toggle::after,.efx-toggle::after{content:"▾";color:var(--muted);font-size:14px;margin-left:6px;display:inline-block;transition:transform .2s}
+  .vbx-toggle.chg-closed::after,.efx-toggle.chg-closed::after{transform:rotate(-90deg)}
   .chg-arw{color:var(--muted);font-size:14px;transition:transform .2s;display:inline-block}
   .chg-itog[aria-expanded="false"] .chg-arw{transform:rotate(-90deg)}
-  .chg-ibody{margin-top:10px}
+  .chg-ibody{padding:10px 12px 12px}
   .chg-pill{font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;white-space:nowrap;margin-left:auto;margin-right:8px}
   .chg-pill.ok{background:color-mix(in srgb,var(--green) 14%,transparent);color:var(--green)}
   .chg-pill.todo{background:color-mix(in srgb,var(--orange) 14%,transparent);color:var(--orange)}
@@ -479,10 +483,10 @@
     const ua=counts&&rpe&&min?rpe*min:0;
     const head=saved?(counts?`${fmt(ua)} UA`:'hors charge'):'à renseigner';
     return`<div class="chg-inline" data-chg="${s.id}">
-      <button type="button" class="chg-itog" data-itog aria-expanded="${saved?'false':'true'}">
-        <span class="chg-isec" style="margin:0">⚡ Ma charge</span>
-        <span class="chg-ival${saved?'':' off'}" data-ival>${head}</span><span class="chg-arw">▾</span></button>
-      <div class="chg-ibody" ${saved?'hidden':''}>
+      <button type="button" class="chg-itog" data-itog aria-expanded="false">
+        <span>⚡ Ma charge</span>
+        <span class="chg-ival${saved?'':' off'}" data-ival>${saved?head+' ✓':'Ajouter'}</span><span class="chg-arw">▾</span></button>
+      <div class="chg-ibody" hidden>
       <div class="chg-lbl">Modalité · pré-réglée, modifiable</div>
       <div class="chg-mods">${MODS.map(([k,l])=>`<button type="button" class="chg-mod" data-mod="${k}" aria-pressed="${mod===k}">${l}</button>`).join('')}</div>
       <div class="chg-time">
@@ -542,16 +546,20 @@
     const setOpen=o=>{tog.setAttribute('aria-expanded',String(o));ib.hidden=!o;};
     tog.addEventListener('click',()=>setOpen(ib.hidden));
     // Séance VBT : les vitesses font le score, pas besoin de remplir « Mon score » à côté
-    const isVbt=()=>!!card.querySelector('.vbx');
+    const isVbt=()=>!!zone.querySelector('.vbx');
+    const isEf=()=>!!zone.querySelector('.efx');
     const hideClassic=()=>{
-      if(!isVbt())return;
+      if(!isVbt()&&!isEf())return;
       [...zone.children].forEach(el=>{
-        if(el===btn||el===wrap||el.classList.contains('vbx')||el.classList.contains('score-title')||el.classList.contains('score-done-at-row'))return;
+        if(el===btn||el===wrap||el.classList.contains('vbx')||el.classList.contains('efx')||el.classList.contains('score-title')||el.classList.contains('score-done-at-row'))return;
         el.style.display='none';
       });
-      const vs=card.querySelector('.vbx [data-vbx-save]');if(vs)vs.style.display='none';
-      const vb=card.querySelector('.vbx-body');if(vb&&!state.score)vb.style.display='block';
+      zone.querySelectorAll('[data-vbx-save],[data-efx-save]').forEach(b=>b.style.display='none');
     };
+    // flèche d'état sur les onglets Vitesses / FC (fermés par défaut)
+    const syncArrows=()=>zone.querySelectorAll('.vbx-toggle,.efx-toggle').forEach(t=>{
+      const b=t.nextElementSibling;t.classList.toggle('chg-closed',!b||b.style.display==='none');});
+    zone.addEventListener('click',e=>{if(e.target.closest('.vbx-toggle,.efx-toggle'))setTimeout(syncArrows,0);});
     wrap.querySelectorAll('[data-mod]').forEach(b=>b.addEventListener('click',()=>{
       st.mod=b.dataset.mod;
       wrap.querySelectorAll('[data-mod]').forEach(x=>x.setAttribute('aria-pressed',x===b));
@@ -573,7 +581,10 @@
     btn.addEventListener('click',async()=>{
       const toast=m=>{if(typeof showToast==='function')showToast(m);};
       const vbt=isVbt()&&typeof window.vbxSave==='function';
-      const wantScore=vbt?(typeof window.vbxHasData==='function'&&window.vbxHasData(s.id)):scoreFilled(zone,s.id);
+      const ef=!vbt&&isEf()&&typeof window.efxSave==='function';
+      const wantScore=vbt?(typeof window.vbxHasData==='function'&&window.vbxHasData(s.id))
+        :ef?(typeof window.efxHasData==='function'&&window.efxHasData(s.id))
+        :scoreFilled(zone,s.id);
       const wantCharge=!!(st.rpe&&st.min);
       if(st.min&&!st.rpe){toast('⚠️ Choisis ton RPE');return;}
       if(st.rpe&&!st.min){toast('⚠️ Entre ton temps de séance');return;}
@@ -581,8 +592,8 @@
       btn.disabled=true;const lbl=btn.textContent;btn.textContent='Enregistrement…';
       let scoreOk=false,chargeOk=false;
       try{
-        if(wantScore&&vbt){
-          await window.vbxSave(s.id);
+        if(wantScore&&(vbt||ef)){
+          await (vbt?window.vbxSave(s.id):window.efxSave(s.id));
           scoreOk=await scoreExists(s.id);
           if(scoreOk)state.score=true;
         }else if(wantScore&&submitCall){
@@ -595,7 +606,7 @@
             counts:st.counts,label:s.title||null,personal_session_id:s.id};
           st.id=await saveBlock(row,st.id);chargeOk=true;state.charge=true;
           iv.className='chg-ival'+(st.counts?'':' off');
-          iv.textContent=st.counts?`${fmt(st.rpe*st.min)} UA`:'hors charge';
+          iv.textContent=(st.counts?`${fmt(st.rpe*st.min)} UA`:'hors charge')+' ✓';
           setOpen(false);
           refreshDayTotal();
         }
@@ -604,16 +615,25 @@
       setPill(card,s,state.score,state.charge);
       if(wantScore&&!scoreOk)return; // submitScore a déjà affiché son message
       const opt=SCORE_OPTIONAL.has(s.type);
-      if(wantScore&&vbt&&!scoreOk&&!wantCharge)return;
       if(state.score&&state.charge)toast('✅ Bloc validé : score + charge');
       else if(state.score)toast('✅ Score enregistré · ajoute ton temps de séance + RPE');
       else if(state.charge)toast(opt?'✅ Bloc validé':'✅ Charge enregistrée · il manque ton score');
     });
     // le bouton reste en bas du formulaire, même si un module (VBT, EF) s'ajoute après
-    const keepLast=()=>{if(btn.parentElement!==zone)return;
-      if(zone.lastElementChild!==btn){zone.appendChild(wrap);zone.appendChild(btn);}};
-    const fix=()=>{keepLast();hideClassic();};
-    fix();setTimeout(fix,800);setTimeout(fix,2000);
+    // Zone de validation (charge + date + bouton) toujours SOUS les scores,
+    // y compris quand Vitesses / FC s'ajoutent après coup.
+    const doneRow=zone.querySelector('.score-done-at-row');
+    const order=()=>[...zone.querySelectorAll(':scope > .vbx, :scope > .efx'),wrap,doneRow,btn].filter(Boolean);
+    let arranging=false;
+    const arrange=()=>{
+      if(arranging||btn.parentElement!==zone)return;
+      const want=order(),kids=[...zone.children],tail=kids.slice(kids.length-want.length);
+      if(want.every((el,i)=>tail[i]===el))return;
+      arranging=true;want.forEach(el=>zone.appendChild(el));arranging=false;
+    };
+    const fix=()=>{arrange();hideClassic();syncArrows();};
+    fix();
+    new MutationObserver(()=>{if(!arranging)fix();}).observe(zone,{childList:true});
   }
 
   /* ---------- Injection dans les cartes de séance ---------- */

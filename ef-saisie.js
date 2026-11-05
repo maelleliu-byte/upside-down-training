@@ -282,7 +282,7 @@
     var msg = document.getElementById('efx-msg-' + sid);
     if (!d || !uid || !s) return;
     var k = efCalc(d);
-    if (!k) { if (msg) msg.textContent = d.mode === 'splits' ? 'Saisis au moins 2 relevés de FC.' : 'Saisis ta FC de début et de fin.'; return; }
+    if (!k) { if (msg) msg.textContent = d.mode === 'splits' ? 'Saisis au moins 2 relevés de FC.' : 'Saisis ta FC de début et de fin.'; return false; }
     var ef = s.ef;
     var payloadEf = {
       v: 1, mode: d.mode, every: d.every, unit: d.unit, mod: ef.mod || null,
@@ -318,7 +318,7 @@
     } catch (err) {
       if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer ma FC'; }
       if (msg) msg.textContent = '❌ ' + (err.message || err);
-      return;
+      return false;
     }
     if (btn) { btn.disabled = false; btn.textContent = 'Enregistrer ma FC'; }
     cache.scores[sid] = payloadEf;
@@ -330,7 +330,11 @@
       try { renderScoresModal(sid, currentScoresSession.scoreType, currentScoresSession.sets); } catch (e3) {}
     }
     if (typeof showToast === 'function') showToast('🫀 FC enregistrée');
+    return true;
   }
+  // Utilisé par « Valider le bloc » (charge.js) : un seul bouton pour FC + charge
+  window.efxHasData = function (sid) { var d = drafts[sid]; return !!(d && efCalc(d)); };
+  window.efxSave = function (sid) { return _save(sid); };
 
   function _bindDoc() {
     if (window.__efxBound) return;
