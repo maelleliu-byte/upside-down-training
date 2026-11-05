@@ -186,6 +186,9 @@
   .chg-rbar i{display:block;height:100%}
   .chg-rtot .chg-rtrack{height:16px}
   .chg-rtot{margin-bottom:14px}
+  .chg-sub{font-size:11px;font-weight:700;color:var(--text);margin:12px 0 6px}
+  .chg-sub span{font-size:10px;font-weight:400;color:var(--muted);margin-left:6px}
+  .chg-dist{margin-bottom:4px}
   .chg-rleg b{color:var(--text);font-weight:700}
   .chg-rleg small{color:var(--muted);opacity:.8}
   .chg-rpet th small{display:block;font-size:8px;font-weight:400;text-transform:none}
@@ -744,6 +747,21 @@
   }
 
   const RPEBC=[RPEC[1],RPEC[4],RPEC[6],RPEC[9]];
+  /* Distribution d'intensité : nombre de blocs par RPE (1 à 10) sur la semaine, couleurs par zone. */
+  function distHTML(wkRows){
+    const n=Array(10).fill(0);wkRows.forEach(b=>{if(b.rpe>=1&&b.rpe<=10)n[b.rpe-1]++;});
+    const W=340,H=130,L=22,R=6,T=10,B=20,mx=Math.max(2,...n);
+    const st=(W-L-R)/10,Y=v=>T+(1-v/mx)*(H-T-B);
+    let g='';
+    for(let k=0;k<=mx;k+=mx>6?2:1)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(k)}" y2="${Y(k)}" stroke="${C_GRID}"/>`
+      +`<text x="${L-5}" y="${Y(k)+3.5}" text-anchor="end" font-size="9" fill="var(--muted)">${k}</text>`;
+    n.forEach((v,i)=>{const x=L+st*i,c=RPEBC[RPEB.findIndex(([, ,lo,hi])=>i+1>=lo&&i+1<=hi)];
+      if(v)g+=`<rect x="${x+st*.2}" y="${Y(v)}" width="${st*.6}" height="${Y(0)-Y(v)}" rx="2" fill="${c}"><title>RPE ${i+1} · ${v} bloc${v>1?'s':''}</title></rect>`
+        +`<text x="${x+st/2}" y="${Y(v)-3}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--text)">${v}</text>`;
+      g+=`<text x="${x+st/2}" y="${H-6}" text-anchor="middle" font-size="9.5" fill="var(--muted)">${i+1}</text>`;});
+    return`<div class="chg-sub">Distribution d'intensité <span>nombre de blocs par RPE</span></div>
+      <svg class="chg-chart chg-dist" viewBox="0 0 ${W} ${H}" role="img" aria-label="Distribution d'intensité de la semaine">${g}</svg>`;
+  }
   function rpeTableHTML(rows,wk){
     const wkRows=rows.filter(b=>mondayOf(b.date)===wk);
     if(!wkRows.length)return'<p class="chg-hint">Aucun bloc renseigné sur cette semaine.</p>';
@@ -756,7 +774,9 @@
     const tot=sum(col),mx=Math.max(...mods.map(m=>sum(by[m])));
     const bar=(v,w)=>`<span class="chg-rbar" style="width:${w}%">${v.map((x,i)=>x?
       `<i style="flex:${x};background:${RPEBC[i]}" title="RPE ${RPEB[i][0]} · ${fmt(x)} min"></i>`:'').join('')}</span>`;
-    return`<div class="chg-rrow chg-rtot"><span class="chg-mk"><b>Semaine</b></span>
+    return`${distHTML(wkRows)}
+      <div class="chg-sub">Temps par zone et par modalité <span>minutes</span></div>
+      <div class="chg-rrow chg-rtot"><span class="chg-mk"><b>Semaine</b></span>
         <span class="chg-rtrack">${bar(col,100)}</span><span class="chg-mp">${fmt(tot)}′</span></div>
       ${mods.map(m=>`<div class="chg-rrow"><span class="chg-mk"><b>${m}</b> ${MODMAP[m]||''}</span>
         <span class="chg-rtrack">${bar(by[m],sum(by[m])/mx*100)}</span><span class="chg-mp">${fmt(sum(by[m]))}′</span></div>`).join('')}
@@ -764,7 +784,7 @@
   }
   function rpePanelHTML(rows){
     const cur=mondayOf(today()),prev=addDays(cur,-7);
-    return`<div class="chg-panel" style="order:7" data-rpe-panel><div class="chg-sec"><h4>RPE par modalité</h4><span>minutes par zone d'effort</span></div>
+    return`<div class="chg-panel" style="order:7" data-rpe-panel><div class="chg-sec"><h4>Intensité de la semaine</h4><span>RPE par bloc</span></div>
       <div class="chg-seg chg-rpeseg"><button data-wk="${cur}" aria-pressed="true">Semaine en cours</button><button data-wk="${prev}" aria-pressed="false">Semaine précédente</button></div>
       <div data-rpe-body>${rpeTableHTML(rows,cur)}</div></div>`;
   }
