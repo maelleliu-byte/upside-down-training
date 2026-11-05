@@ -269,7 +269,17 @@ const MODS=[
   {k:"echo",mv:"Echo Bike",label:"Echo",tok:"ECHO BIKE"},
   {k:"run",mv:"Run",label:"Course",tok:"RUN",run:true}
 ];
-/* Bornes de zones en % de PC / VC (onglet PARAMETRES du template VC) */
+/* Course : bornes en % de la VC (onglet PARAMETRES du template VC).
+   Ergos : bornes en % de la PC en watts. En puissance, le 1er seuil (fin du domaine modéré)
+   tombe vers ~75 % de la PC et l'état stable maximal un peu sous la PC issue du 3'/12' :
+   grille abaissée pour que la Z2 reste en intensité modérée. */
+const ZONES_ERG=[
+  {z:"Z5",n:"VO₂max",lo:100,hi:null,dom:"Sévère",dur:"de 3′ à 15–20′"},
+  {z:"Z4",n:"Seuil",lo:88,hi:100,dom:"Lourd",dur:"de 20′ à 60′ selon le niveau"},
+  {z:"Z3",n:"Tempo",lo:75,hi:88,dom:"Lourd",dur:"long, selon le niveau"},
+  {z:"Z2",n:"Endurance fondamentale",lo:60,hi:75,dom:"Modéré",dur:"plusieurs heures"},
+  {z:"Z1",n:"Récupération active",lo:45,hi:60,dom:"Modéré",dur:"plusieurs heures"}
+];
 const ZONES=[
   {z:"Z5",n:"VO₂max",lo:103,hi:null,dom:"Sévère",dur:"de 3′ à 15–20′"},
   {z:"Z4",n:"Seuil",lo:93,hi:103,dom:"Lourd",dur:"de 20′ à 60′ selon le niveau"},
@@ -388,7 +398,7 @@ function render(){
   const f=m.run?"VITESSE CRITIQUE":"PUISSANCE CRITIQUE";
   const fx=pc=>`${pc}%|${f}|${m.tok}|`;
   h+=`<div class="sec"><h2>Zones d'intensité</h2><span>% de la ${m.run?"VC":"PC"}</span></div><div class="card zl">
-    ${ZONES.map(z=>{const lo=p.cp*z.lo/100,hi=z.hi?p.cp*z.hi/100:null;
+    ${(m.run?ZONES:ZONES_ERG).map(z=>{const lo=p.cp*z.lo/100,hi=z.hi?p.cp*z.hi/100:null;
       const v=m.run?(hi?fr(lo,1)+" – "+fr(hi,1):"&gt; "+fr(lo,1))+" km/h":(hi?Math.round(lo)+" – "+Math.round(hi):"&gt; "+Math.round(lo))+" W";
       const sp=m.run?(hi?mmss(allure(hi))+" – "+mmss(allure(lo)):"&lt; "+mmss(allure(lo)))+" /km":m.p500?(hi?mmss(pace500(hi))+" – "+mmss(pace500(lo)):"&lt; "+mmss(pace500(lo)))+" /500m":"";
       const fo=hi?fx(z.lo)+" / "+fx(z.hi):fx(z.lo);
