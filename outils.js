@@ -20,6 +20,8 @@
   var VBT_VERSION = '2026-10-23c';
   // Idem pour ef.html (profil endurance fondamentale)
   var EF_VERSION = '2026-10-25b';
+  // Idem pour pc.html (profil puissance / vitesse critique)
+  var PC_VERSION = '2026-11-05a';
 
   var TOOLS = [
     {
@@ -50,6 +52,14 @@
       title: 'Profil EF',
       sub: 'Endurance fondamentale : dérive de la FC, FC moyenne et efficience par athlète. Lecture seule, coach référent.',
       url: '/ef.html?v=' + EF_VERSION,
+      tall: true
+    },
+    {
+      id: 'pc',
+      emoji: '📈',
+      title: 'Profil PC / VC',
+      sub: 'Puissance critique (Row, Ski, Bike Erg, Assault, Echo) et vitesse critique (course) depuis les tests 3′ et 12′ : W′, profil énergétique, zones et formules Séance+.',
+      url: '/pc.html?v=' + PC_VERSION,
       tall: true
     }
   ];
