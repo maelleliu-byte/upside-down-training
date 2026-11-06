@@ -677,10 +677,12 @@ function closeScoresModal(){
 async function renderScoresModal(sessionId, scoreType, sets){
   const el=document.getElementById('smodal-leaderboard');
   el.innerHTML='<div class="spinner"></div>';
-  const [scoresRes, notesRes] = await Promise.all([
+  const [scoresRes, notesRes, sessRes] = await Promise.all([
     sb.from('wod_scores').select('*,profiles(full_name,gender,avatar_url)').eq('session_id',sessionId),
-    sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false})
+    sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false}),
+    sb.from('sessions').select('type').eq('id',sessionId).maybeSingle()
   ]);
+  const isWodBlock=((sessRes&&sessRes.data&&sessRes.data.type)||'')==='wod';
   const data=scoresRes.data;
   const allNotes=notesRes.data||[];
 
@@ -727,7 +729,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
   });
 
   const rankIcons=['gold','silver','bronze'];
-  el.innerHTML=`<div class="scores-list">
+  el.innerHTML=(isWodBlock?podiumHtml(sorted,isTime,g):'')+`<div class="scores-list">
     ${sorted.map((sc,i)=>{
       const isMe=sc.athlete_id===currentUser?.id;
       const setsDetail=sc.sets_data?JSON.parse(typeof sc.sets_data==='string'?sc.sets_data:JSON.stringify(sc.sets_data)):null;
@@ -776,6 +778,53 @@ async function renderScoresModal(sessionId, scoreType, sets){
 
   for(const sc of sorted){loadReactions(sc.id);loadComments(sc.id);}
 }
+
+/* Podium des blocs WOD : top 3 du classement (RX > Inter > Scaled > Fondation,
+   puis score), avec la photo de profil. Suit le filtre Tous / Hommes / Femmes. */
+function podiumHtml(sorted,isTime,g){
+  const top=sorted.filter(sc=>!(isTime&&(sc.score_value||0)<0)).slice(0,3);
+  if(!top.length)return '';
+  const first=n=>escapeHtml(String(n||'Athlète').split(' ')[0]);
+  const step=(sc,rank)=>{
+    if(!sc)return `<div class="pod-col pod-r${rank} pod-empty"><div class="pod-step">${rank}</div></div>`;
+    const val=sc.score_text||sc.score_value||'—';
+    return `<div class="pod-col pod-r${rank}">
+      ${rank===1?'<div class="pod-crown">★</div>':''}
+      <div class="pod-av">${avatarHtml(sc.profiles,{cls:'pod-avatar'})}</div>
+      <div class="pod-name">${first(sc.profiles&&sc.profiles.full_name)}</div>
+      <div class="pod-score">${escapeHtml(String(val))}</div>
+      <span class="level-badge lbadge-${sc.level}">${LEVEL_LABELS[sc.level]||sc.level}</span>
+      <div class="pod-step">${rank}</div></div>`;
+  };
+  const lbl=g==='male'?'Podium hommes':g==='female'?'Podium femmes':'Podium mixte';
+  return `<div class="pod-wrap"><div class="pod-title">🏆 ${lbl}</div>
+    <div class="pod">${step(top[1],2)}${step(top[0],1)}${step(top[2],3)}</div></div>`;
+}
+(function(){
+  if(document.getElementById('pod-css'))return;
+  const st=document.createElement('style');st.id='pod-css';
+  st.textContent=`
+  .pod-wrap{margin:6px 0 16px;padding:14px 10px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);overflow:hidden}
+  .pod-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:10px}
+  .pod{display:grid;grid-template-columns:1fr 1.1fr 1fr;align-items:end;gap:8px}
+  .pod-col{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0}
+  .pod-crown{color:#F5C542;font-size:16px;line-height:1;margin-bottom:2px}
+  .pod-av .pod-avatar{width:54px;height:54px;border-radius:50%;background:var(--card2) center/cover no-repeat;display:flex;align-items:center;justify-content:center;
+    font-weight:700;font-size:16px;color:var(--text);border:3px solid var(--border2)}
+  .pod-r1 .pod-av .pod-avatar{width:66px;height:66px;border-color:#F5C542;font-size:19px}
+  .pod-r2 .pod-av .pod-avatar{border-color:#C9CED6}
+  .pod-r3 .pod-av .pod-avatar{border-color:#CD8A4E}
+  .pod-name{font-size:12px;font-weight:700;color:var(--text);margin-top:6px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .pod-score{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:var(--text);line-height:1.1}
+  .pod-col .level-badge{margin:2px 0 8px;transform:scale(.9)}
+  .pod-step{width:100%;border-radius:10px 10px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:8px;
+    font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--text);background:var(--card2);border:1px solid var(--border2);border-bottom:0}
+  .pod-r1 .pod-step{height:86px;background:var(--accent);color:var(--accent-ink,#000);border-color:var(--accent)}
+  .pod-r2 .pod-step{height:62px}
+  .pod-r3 .pod-step{height:46px}
+  .pod-empty .pod-step{opacity:.35}`;
+  document.head.appendChild(st);
+})();
 
 async function toggleReactionModal(scoreId){
   await toggleReaction(scoreId);
