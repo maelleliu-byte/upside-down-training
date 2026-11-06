@@ -661,6 +661,9 @@ function setLeaderboardGender(g){
 
 async function openScoresModal(sessionId, scoreType, sets){
   currentScoresSession={sessionId, scoreType, sets};
+  // le classement s'ouvre toujours sur « Tous » (podium mixte)
+  window._leaderboardGender='all';
+  document.querySelectorAll('#smodal-gender-tabs .cls-gtab').forEach(b=>b.classList.toggle('active',b.dataset.g==='all'));
   document.getElementById('smodal-title').textContent='🏆 Classement';
   document.getElementById('smodal-sub').textContent='Résultats de la séance';
   document.getElementById('session-note-input').value='';
@@ -779,20 +782,22 @@ async function renderScoresModal(sessionId, scoreType, sets){
   for(const sc of sorted){loadReactions(sc.id);loadComments(sc.id);}
 }
 
-/* Podium des blocs WOD : top 3 du classement (RX > Inter > Scaled > Fondation,
-   puis score), avec la photo de profil. Suit le filtre Tous / Hommes / Femmes. */
+/* Podium des blocs WOD : top 3 du classement tel quel (RX > Inter > Scaled > Fondation,
+   puis score ; un RX en DNF reste devant un Inter qui a fini), avec la photo de profil.
+   Suit le filtre Tous / Hommes / Femmes. */
 function podiumHtml(sorted,isTime,g){
-  const top=sorted.filter(sc=>!(isTime&&(sc.score_value||0)<0)).slice(0,3);
+  const top=sorted.slice(0,3);
   if(!top.length)return '';
   const first=n=>escapeHtml(String(n||'Athlète').split(' ')[0]);
   const step=(sc,rank)=>{
     if(!sc)return `<div class="pod-col pod-r${rank} pod-empty"><div class="pod-step">${rank}</div></div>`;
-    const val=sc.score_text||sc.score_value||'—';
+    const dnf=isTime&&(sc.score_value||0)<0;
+    const val=dnf?`DNF<small>${(sc.score_value||0)+1000} reps</small>`:escapeHtml(String(sc.score_text||sc.score_value||'—'));
     return `<div class="pod-col pod-r${rank}">
       ${rank===1?'<div class="pod-crown">★</div>':''}
       <div class="pod-av">${avatarHtml(sc.profiles,{cls:'pod-avatar'})}</div>
       <div class="pod-name">${first(sc.profiles&&sc.profiles.full_name)}</div>
-      <div class="pod-score">${escapeHtml(String(val))}</div>
+      <div class="pod-score${dnf?' pod-dnf':''}">${val}</div>
       <span class="level-badge lbadge-${sc.level}">${LEVEL_LABELS[sc.level]||sc.level}</span>
       <div class="pod-step">${rank}</div></div>`;
   };
@@ -820,6 +825,10 @@ function podiumHtml(sorted,isTime,g){
   .pod-step{width:100%;border-radius:10px 10px 0 0;display:flex;align-items:flex-start;justify-content:center;padding-top:8px;
     font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--text);background:var(--card2);border:1px solid var(--border2);border-bottom:0}
   .pod-r1 .pod-step{height:86px;background:var(--accent);color:var(--accent-ink,#000);border-color:var(--accent)}
+  .pod-r2 .pod-step,.pod-r3 .pod-step{background:#3a3a3a;border-color:#4a4a4a}
+  [data-theme="light"] .pod-r2 .pod-step,[data-theme="light"] .pod-r3 .pod-step{background:#d9d9d2;border-color:#c6c6bc}
+  .pod-score small{display:block;font-family:'DM Sans',sans-serif;font-size:10px;color:var(--muted);letter-spacing:0}
+  .pod-dnf{color:var(--orange)}
   .pod-r2 .pod-step{height:62px}
   .pod-r3 .pod-step{height:46px}
   .pod-empty .pod-step{opacity:.35}`;
