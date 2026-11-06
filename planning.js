@@ -174,7 +174,7 @@ async function buildSessionCard(s){
       ${Array.from({length:count},(_,i)=>`
         <div class="multi-score-row">
           <div class="multi-score-lbl">${scoreLabels[i]||`Score ${i+1}`}</div>
-          <input class="multi-score-input" id="score-${i}-${s.id}" type="text" ${s.score_type==='time'?`inputmode="decimal" placeholder="2:00" onblur="normTimeInput(this)"`:`placeholder="${getScorePlaceholder(s.score_type)}"`}>
+          <input class="multi-score-input" id="score-${i}-${s.id}" type="text" ${s.score_type==='time'?`inputmode="text" placeholder="2:00" pattern="\\d{1,2}:\\d{2}" onblur="checkTimeInput(this)" oninput="this.classList.remove('bad-time')"`:`placeholder="${getScorePlaceholder(s.score_type)}"`}>
         </div>`).join('')}
     </div>`;
   } else if(s.score_type==='time'){
@@ -564,6 +564,11 @@ function parseTimeLoose(v){
 }
 function fmtTimeSec(x){const h=Math.floor(x/3600),m=Math.floor(x%3600/60),s=x%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(s).padStart(2,'0');}
 function normTimeInput(el){const v=parseTimeLoose(el.value);if(el.value.trim()&&v!=null)el.value=fmtTimeSec(v);}
+/* Strict : m:ss ou h:mm:ss uniquement */
+function parseTimeStrict(v){const t=String(v||'').trim();if(!/^\d{1,2}(:\d{2}){1,2}$/.test(t))return null;return parseTimeLoose(t);}
+function checkTimeInput(el){const v=el.value.trim();el.classList.toggle('bad-time',!!v&&parseTimeStrict(v)==null);}
+(function(){if(document.getElementById('time-strict-css'))return;const st=document.createElement('style');st.id='time-strict-css';
+  st.textContent='.multi-score-input.bad-time{border-color:var(--red)!important;box-shadow:0 0 0 2px rgba(255,68,68,.25)}';document.head.appendChild(st);})();
 
 async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,scoreCount){
   let scoreText='',scoreValue=0,setsData=null;
@@ -592,9 +597,11 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     }
     if(!values.length){showToast('⚠️ Entre au moins un score');return;}
     if(scoreType==='time'){
-      // temps saisis librement (2:00, 2.00, 2,00, 2'00, 2) → toujours m:ss
-      const secs=values.map(parseTimeLoose);
-      if(secs.some(x=>x==null)){showToast('⚠️ Temps au format 2:00 (minutes:secondes)');return;}
+      // format obligatoire minutes:secondes (ex. 1:47) — pas de 1'47, 1.47 ni 1,47
+      const secs=values.map(parseTimeStrict);
+      if(secs.some(x=>x==null)){
+        for(let i=0;i<scoreCount;i++){const el=document.getElementById(`score-${i}-${sessionId}`);if(el)checkTimeInput(el);}
+        showToast('⚠️ Format obligatoire minutes:secondes, ex. 1:47');return;}
       scoreText=secs.map(fmtTimeSec).join(' | ');
       scoreValue=secs.reduce((a,b)=>a+b,0);
     } else {
@@ -684,6 +691,7 @@ async function openScoresModal(sessionId, scoreType, sets){
   currentScoresSession={sessionId, scoreType, sets};
   // le classement s'ouvre toujours sur « Tous » (podium mixte)
   window._leaderboardGender='all';
+  const _nf=document.getElementById('smodal-note');if(_nf)_nf.open=false;
   document.querySelectorAll('#smodal-gender-tabs .cls-gtab').forEach(b=>b.classList.toggle('active',b.dataset.g==='all'));
   document.getElementById('smodal-title').textContent='🏆 Classement';
   document.getElementById('smodal-sub').textContent='Résultats de la séance';
@@ -830,6 +838,13 @@ function podiumHtml(sorted,isTime,g){
   if(document.getElementById('pod-css'))return;
   const st=document.createElement('style');st.id='pod-css';
   st.textContent=`
+  .smodal-note{margin-top:10px}
+  .smodal-note>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
+    font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+  .smodal-note>summary::-webkit-details-marker{display:none}
+  .smodal-note>summary span{font-size:16px;letter-spacing:0;transition:transform .2s}
+  .smodal-note[open]>summary{margin-bottom:8px}
+  .smodal-note[open]>summary span{transform:rotate(90deg)}
   .pod-wrap{margin:6px 0 16px;padding:14px 10px 0;border:1px solid var(--border);border-radius:14px;background:var(--card);overflow:hidden}
   .pod-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);text-align:center;margin-bottom:10px}
   .pod{display:grid;grid-template-columns:1fr 1.1fr 1fr;align-items:end;gap:8px}

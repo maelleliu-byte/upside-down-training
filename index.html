@@ -1187,17 +1187,17 @@
     </div>
     <div class="scores-modal-title" id="smodal-title" style="padding-right:40px;margin-top:-26px">Classement</div>
     <div class="scores-modal-sub" id="smodal-sub">—</div>
-    <div id="smodal-gender-tabs" style="display:flex;gap:6px;margin:10px 0 4px">
-      <button class="cls-gtab active" data-g="all" onclick="setLeaderboardGender('all')">Tous</button>
-      <button class="cls-gtab" data-g="male" onclick="setLeaderboardGender('male')">♂ Hommes</button>
-      <button class="cls-gtab" data-g="female" onclick="setLeaderboardGender('female')">♀ Femmes</button>
-    </div>
-    <div class="scores-modal-input">
-      <div style="font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin-bottom:8px">📝 Ma note de séance</div>
+    <details class="scores-modal-input smodal-note" id="smodal-note">
+      <summary class="smodal-note-sum">📝 Ma note de séance <span>›</span></summary>
       <textarea id="session-note-input" style="width:100%;background:transparent;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;resize:none;outline:none;min-height:60px" placeholder="Comment s'est passée la séance ? Sensations, difficultés..."></textarea>
       <button onclick="saveSessionNote()" style="margin-top:6px;padding:6px 14px;background:var(--accent);color:#000;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">Sauvegarder</button>
       <button onclick="deleteOwnSessionNote()" style="margin-top:6px;margin-left:6px;padding:6px 12px;background:transparent;color:var(--red);border:1px solid rgba(255,68,68,.3);border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">🗑️ Supprimer</button>
       <div id="session-notes-list" style="margin-top:12px"></div>
+    </details>
+    <div id="smodal-gender-tabs" style="display:flex;gap:6px;margin:12px 0 10px">
+      <button class="cls-gtab active" data-g="all" onclick="setLeaderboardGender('all')">Tous</button>
+      <button class="cls-gtab" data-g="male" onclick="setLeaderboardGender('male')">♂ Hommes</button>
+      <button class="cls-gtab" data-g="female" onclick="setLeaderboardGender('female')">♀ Femmes</button>
     </div>
     <div id="smodal-leaderboard"></div>
     <button class="btn-modal-cancel" style="margin-top:12px" onclick="closeScoresModal()">Fermer</button>
@@ -1263,7 +1263,7 @@
  * ============================================================ */
 </script>
 <script src="core.js?v=20261025d"></script>
-<script src="planning.js?v=20261106c"></script>
+<script src="planning.js?v=20261106d"></script>
 <script src="admin.js?v=20261030b"></script>
 <script src="open-read-session.js"></script>
 <script src="abos.js"></script>
