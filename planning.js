@@ -777,8 +777,8 @@ async function renderScoresModal(sessionId, scoreType, sets){
       } else {
         scoreDisplay=`<div class="score-val">${sc.score_text||sc.score_value||'—'}</div>`;
       }
-      return `<div>
-        <div class="score-row ${isDnf?'score-row-dnf':''}" style="${isMe?'border:1px solid rgba(232,255,71,.2)':''}" id="sr-${sc.id}">
+      return `<div class="sc-card${isMe?' sc-me':''}${i<3?' sc-r'+(i+1):''}">
+        <div class="score-row ${isDnf?'score-row-dnf':''}" id="sr-${sc.id}">
           <div class="score-rank ${!isDnf?(rankIcons[i]||''):''}">${i+1}</div>
           ${avatarHtml(sc.profiles)}
           <div style="flex:1">
@@ -838,6 +838,18 @@ function podiumHtml(sorted,isTime,g){
   if(document.getElementById('pod-css'))return;
   const st=document.createElement('style');st.id='pod-css';
   st.textContent=`
+  /* Classement : chaque athlète dans sa carte (score + j'aime / commentaires) */
+  #smodal-leaderboard .scores-list{gap:10px}
+  .sc-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:4px 12px 8px;position:relative;overflow:hidden}
+  .sc-card.sc-me{border-color:color-mix(in srgb,var(--accent) 55%,var(--border))}
+  .sc-card.sc-r1::before,.sc-card.sc-r2::before,.sc-card.sc-r3::before{content:'';position:absolute;left:0;top:0;bottom:0;width:4px}
+  .sc-card.sc-r1::before{background:#F5C542}.sc-card.sc-r2::before{background:#C9CED6}.sc-card.sc-r3::before{background:#CD8A4E}
+  .sc-card .score-row{background:transparent;padding:8px 0;border-radius:0}
+  .sc-card .score-actions{margin-top:2px;padding-top:8px;border-top:1px dashed var(--border2)}
+  .sc-card .react-btn{flex:0 0 auto;width:auto;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:4px 12px}
+  .sc-card .likers-line{padding:6px 0 0!important}
+  .sc-card .comments-area{margin-top:6px}
+  .sc-card .score-note-attached{margin:2px 0 6px}
   .smodal-note{margin-top:10px}
   .smodal-note>summary{list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;
     font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
