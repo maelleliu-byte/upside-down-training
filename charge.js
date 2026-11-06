@@ -32,9 +32,10 @@
   const TEAL=AC;  // l'ancien teal codé en dur suit maintenant l'accent du studio
   const tint=(c,p)=>`color-mix(in srgb, ${c} ${p}%, transparent)`;
   // couleur par modalité, prise dans la palette de l'appli
-  const MODC={STR:'var(--red)',CF:'var(--accent)',WL:'var(--purple)',GYM:'var(--blue)',
-    BODY:'var(--green)',CAP:'var(--orange)',ERG:'var(--blue)',BIKE:'var(--green)',
-    SWI:'var(--purple)',COMP:'var(--red)'};
+  // une couleur distincte par modalité (graphiques empilés lisibles)
+  const MODC={STR:'var(--red)',CF:'var(--accent)',WL:'var(--purple)',GYM:'#8C7CFF',
+    BODY:'var(--orange)',CAP:'#F2C94C',ERG:'var(--blue)',BIKE:'var(--green)',
+    SWI:'#FF7EB6',COMP:'#B8B8B8'};
   const WAKE=[['Forme','💪','En forme',OK],['RAS','😊','RAS',AC],
               ['Fatigue','😮‍💨','Fatigué',WARN],['PLS','🥵','PLS',BAD]];
   const WAKEC=Object.fromEntries(WAKE.map(([k,,,c])=>[k,c]));
