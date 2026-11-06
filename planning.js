@@ -1900,6 +1900,43 @@ async function loadBenchLeaderboard(benchmarkId){
   </div>`).join('');
 }
 
+// STATS WOD : niveaux pratiqués + podiums (classement mixte des blocs WOD)
+function wodStatsHTML(d){
+  if(!d||!d.wods)return '<div class="ws"><div class="ws-empty">Aucun WOD enregistré pour l\'instant.</div></div>';
+  const pct=n=>Math.round(n/d.wods*100);
+  const L=[['rx','RX',d.rx,'#f0f0f0'],['inter','Inter',d.inter,'#ff7a7a'],['scaled','Scaled',d.scaled,'#7ad6ff'],['found','Fond.',d.found,'#c847ff']];
+  return `<div class="ws">
+    <div class="ws-head"><span>Niveau des WODs</span><b>${d.wods} WOD${d.wods>1?'s':''}</b></div>
+    <div class="ws-bar">${L.map(([k,l,n,c])=>n?`<i style="flex:${n};background:${c}" title="${l} : ${n}"></i>`:'').join('')}</div>
+    <div class="ws-leg">${L.map(([k,l,n,c])=>`<span><i style="background:${c}"></i>${l} <b>${pct(n)} %</b></span>`).join('')}</div>
+    <div class="ws-pods">
+      <div><b>${d.podiums}</b><span>podium${d.podiums>1?'s':''}</span></div>
+      <div><b>${pct(d.podiums)} %</b><span>des WODs sur le podium</span></div>
+      <div><b>${d.wins}</b><span>victoire${d.wins>1?'s':''}</span></div>
+    </div></div>`;
+}
+async function loadWodStatsInto(el,athleteId){
+  if(!el||!athleteId)return;
+  try{const {data}=await sb.rpc('athlete_wod_stats',{p_athlete:athleteId});el.innerHTML=data?wodStatsHTML(data):'';}
+  catch(e){el.innerHTML='';}
+}
+window.loadWodStatsInto=loadWodStatsInto;
+(function(){if(document.getElementById('ws-css'))return;const st=document.createElement('style');st.id='ws-css';st.textContent=`
+  .ws{margin-top:12px;padding:12px;border:1px solid var(--border);border-radius:14px;background:var(--card2)}
+  .ws-head{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:8px;margin-bottom:10px;border-bottom:1px dashed var(--border2)}
+  .ws-head span{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted)}
+  .ws-head b{font-size:13px;color:var(--text)}
+  .ws-bar{display:flex;height:12px;border-radius:6px;overflow:hidden;background:var(--dark)}
+  .ws-bar i{display:block;height:100%}
+  .ws-leg{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:8px;font-size:11px;color:var(--muted)}
+  .ws-leg i{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:5px}
+  .ws-leg b{color:var(--text)}
+  .ws-pods{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+  .ws-pods div{border:1px solid var(--border);border-radius:10px;padding:8px 4px;text-align:center}
+  .ws-pods b{display:block;font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:1px;color:var(--accent)}
+  .ws-pods span{font-size:10px;color:var(--muted)}
+  .ws-empty{font-size:12px;color:var(--muted)}`;document.head.appendChild(st);})();
+
 // PROFIL STATS
 async function loadProfilStats(){
   if(!currentUser)return;
@@ -1911,5 +1948,11 @@ async function loadProfilStats(){
   document.getElementById('stat-pr').textContent=prs.count||0;
   document.getElementById('stat-wod').textContent=scores.count||0;
   document.getElementById('stat-bench').textContent=bench.count||0;
+  const stats=document.querySelector('#page-profil .profil-stats');
+  if(stats){
+    let box=document.getElementById('pf-wodstats');
+    if(!box){box=document.createElement('div');box.id='pf-wodstats';stats.insertAdjacentElement('afterend',box);}
+    loadWodStatsInto(box,currentUser.id);
+  }
 }
 

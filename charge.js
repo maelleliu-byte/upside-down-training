@@ -1445,9 +1445,11 @@
     }catch(e){console.error('[charge] fiche',e);}
     fiche.innerHTML=`<button class="chg-back" id="chg-back">${opts.fromPerso?'‹ Retour à l\'espace perso':'‹ Retour'}</button>
       <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${a.full_name||a.email||'Athlète'}</div>
+      <div class="chg-card chg-fiche-card" id="chg-fiche-wod" style="padding-top:2px"></div>
       ${series.length?`<div class="chg-card chg-fiche-card">${suiviHTML(series,weeks,mods,{coach:true,rpe})}</div>`
         :'<div style="color:var(--muted);font-size:13px;margin-top:8px">Aucune saisie de charge pour cet athlète.</div>'}`;
     wireRpe(fiche,rpe);wireWeeks(fiche,series,br);wireYear(fiche,series,br);
+    if(window.loadWodStatsInto)window.loadWodStatsInto(document.getElementById('chg-fiche-wod'),athleteId);
     document.getElementById('chg-back').addEventListener('click',()=>{
       fiche.style.display='none';list.style.display='';
       if(opts.fromPerso)backToPerso();
