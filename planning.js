@@ -557,7 +557,7 @@ function parseTimeLoose(v){
   let t=String(v||'').trim().toLowerCase().replace(/\s+/g,'').replace(/''|"|″|s$/g,'').replace(/min|mn|m|'|’|′|\.|,|h/g,':').replace(/:+$/,'');
   if(!t)return null;
   if(/^\d+$/.test(t))return parseInt(t,10)*60;
-  if(!/^\d+(:\d{1,2}){1,2}$/.test(t))return null;
+  if(!/^\d+(:\d{2}){1,2}$/.test(t))return null;
   const p=t.split(':').map(Number);
   if(p.length===2){if(p[1]>59)return null;return p[0]*60+p[1];}
   if(p[1]>59||p[2]>59)return null;return p[0]*3600+p[1]*60+p[2];
