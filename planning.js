@@ -174,7 +174,7 @@ async function buildSessionCard(s){
       ${Array.from({length:count},(_,i)=>`
         <div class="multi-score-row">
           <div class="multi-score-lbl">${scoreLabels[i]||`Score ${i+1}`}</div>
-          <input class="multi-score-input" id="score-${i}-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}">
+          <input class="multi-score-input" id="score-${i}-${s.id}" type="text" ${s.score_type==='time'?`inputmode="decimal" placeholder="2:00" onblur="normTimeInput(this)"`:`placeholder="${getScorePlaceholder(s.score_type)}"`}>
         </div>`).join('')}
     </div>`;
   } else if(s.score_type==='time'){
@@ -552,6 +552,19 @@ async function loadScores(sessionId,scoreType,sets){
   }
 }
 
+/* Temps libres → secondes. Accepte 2:00, 2.00, 2,00, 2'00, 2'00'', 2m00, 2min, 2 (= 2:00), 1:02:30. */
+function parseTimeLoose(v){
+  let t=String(v||'').trim().toLowerCase().replace(/\s+/g,'').replace(/''|"|″|s$/g,'').replace(/min|mn|m|'|’|′|\.|,|h/g,':').replace(/:+$/,'');
+  if(!t)return null;
+  if(/^\d+$/.test(t))return parseInt(t,10)*60;
+  if(!/^\d+(:\d{1,2}){1,2}$/.test(t))return null;
+  const p=t.split(':').map(Number);
+  if(p.length===2){if(p[1]>59)return null;return p[0]*60+p[1];}
+  if(p[1]>59||p[2]>59)return null;return p[0]*3600+p[1]*60+p[2];
+}
+function fmtTimeSec(x){const h=Math.floor(x/3600),m=Math.floor(x%3600/60),s=x%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(s).padStart(2,'0');}
+function normTimeInput(el){const v=parseTimeLoose(el.value);if(el.value.trim()&&v!=null)el.value=fmtTimeSec(v);}
+
 async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,scoreCount){
   let scoreText='',scoreValue=0,setsData=null;
   const level=getSelectedLevel(sessionId);
@@ -578,11 +591,19 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
       if(v)values.push(v);
     }
     if(!values.length){showToast('⚠️ Entre au moins un score');return;}
+    if(scoreType==='time'){
+      // temps saisis librement (2:00, 2.00, 2,00, 2'00, 2) → toujours m:ss
+      const secs=values.map(parseTimeLoose);
+      if(secs.some(x=>x==null)){showToast('⚠️ Temps au format 2:00 (minutes:secondes)');return;}
+      scoreText=secs.map(fmtTimeSec).join(' | ');
+      scoreValue=secs.reduce((a,b)=>a+b,0);
+    } else {
     scoreText=values.join(' | ');
     // Distance : on garde la meilleure distance (ex. D1…D8 sur des broad jumps)
     scoreValue=scoreType==='distance'
       ?Math.max(0,...values.map(v=>parseFloat(String(v).replace(',','.'))||0))
       :(parseFloat(values[0])||0);
+    }
   } else if(scoreType==='time'){
     const dnf=document.getElementById(`dnf-${sessionId}`)?.checked;
     const mins=parseInt(document.getElementById(`time-min-${sessionId}`)?.value)||0;
