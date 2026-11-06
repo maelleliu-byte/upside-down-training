@@ -144,7 +144,8 @@
     div.chg-wprev{display:block}
     div.chg-wcol+div.chg-wcol{border-left:1px solid var(--border);padding-left:14px}
     div.chg-coach{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:14px;align-items:start}
-    .chg-panel.chg-panel.chg-panel{padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:var(--card2,transparent);margin-top:0}
+    .chg-panel.chg-panel.chg-panel{padding:12px 14px 14px;border:1px solid var(--border);border-radius:14px;background:var(--card2,transparent);margin-top:0}
+    .chg-panel.chg-panel.chg-panel.chg-pcoach{border-left:4px solid var(--accent)}
     .chg-panel.chg-panel.chg-panel .chg-sec{margin-top:0}
     .chg-panel-tbl .chg-tbl{margin-top:0}
   }
@@ -183,8 +184,10 @@
   .chg-ytbl td.fut{opacity:.35}
   .chg-ytbl tr.sep th,.chg-ytbl tr.sep td{border-top:2px solid var(--border2,var(--border))}
   .chg-grid{display:flex;flex-direction:column}
-  .chg-panel.chg-panel{border-top:2px solid var(--border2,var(--border));margin-top:20px;padding-top:2px}
-  .chg-panel.chg-panel .chg-sec{margin-top:12px}
+  /* chaque partie dans sa carte (même logique que le classement) */
+  .chg-panel.chg-panel{background:var(--card2);border:1px solid var(--border);border-radius:14px;padding:12px 12px 14px;margin-top:12px}
+  .chg-panel.chg-panel .chg-sec{margin-top:0;padding-bottom:8px;margin-bottom:10px;border-bottom:1px dashed var(--border2)}
+  .chg-panel.chg-pcoach{border-left:4px solid var(--accent)}
   .chg-col{display:contents}
   .chg-sec .chg-strong{font-size:11px;font-weight:800;color:var(--text)}
   .chg-sec .chg-paren{font-size:11px;color:var(--text)}
