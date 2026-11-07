@@ -207,6 +207,10 @@ async function buildSessionCard(s){
     const {count}=await sb.from('wod_scores').select('id',{count:'exact',head:true}).eq('session_id',s.id);
     scoreCount=count||0;
   }catch(e){}
+  let myScore=null;
+  try{
+    if(currentUser?.id){const r=await sb.from('wod_scores').select('score_text,score_value,level').eq('session_id',s.id).eq('athlete_id',currentUser.id).maybeSingle();myScore=r&&r.data||null;}
+  }catch(e){}
   const scoreCountBadge=scoreCount>0
     ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;margin-left:8px;border-radius:11px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'};font-size:12px;font-weight:700;line-height:1">${scoreCount}</span>`
     : `<span style="margin-left:8px;font-size:12px;color:var(--muted);font-weight:500">· 0 score</span>`;
@@ -221,8 +225,9 @@ async function buildSessionCard(s){
       <div class="session-content">${contentHtml}</div>
       ${scalingHtml}
       ${intHtml}${targetHtml}${tipsHtml}${videoHtml}
-      <div style="margin-top:16px">
-        <div class="score-title" style="margin-bottom:8px">📊 Mon score</div>
+      <details class="ms-fold${myScore?' ms-done':''}" id="ms-${s.id}" ${myScore?'':'open'}>
+        <summary class="ms-sum">${myScoreSummary(myScore,s.type==='wod')}</summary>
+        <div class="ms-body">
 ${s.type==='wod'?`        <div class="level-selector">
           <button class="level-btn rx active" onclick="selectLevel('${s.id}','rx',this)">RX</button>
           <button class="level-btn inter" onclick="selectLevel('${s.id}','intermediate',this)">INTER</button>
@@ -235,12 +240,27 @@ ${s.type==='wod'?`        <div class="level-selector">
           <input type="date" id="done-at-${s.id}" value="${s.date||''}" max="${new Date().toISOString().slice(0,10)}" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px">
         </div>
         <button class="btn-score" style="width:100%;margin-top:6px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'}" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0},${!!isMulti},${isText?'true':'false'},${s.score_count||0})">✓ Valider</button>
-      </div>
+        </div>
+      </details>
       <button class="btn-open-scores" onclick="openScoresModal('${s.id}','${s.score_type||'reps'}',${s.sets||0})">
         🏆 Voir le classement${scoreCountBadge}
       </button>
     </div>
   </div>`;
+}
+
+// Encart « Mon score » : déroulé tant que rien n'est saisi, rabattu en vert une fois le score rentré
+function myScoreSummary(sc,isWod){
+  if(!sc)return '<span class="score-title">📊 Mon score</span><span class="ms-chev">▾</span>';
+  const v=escapeHtml(String(sc.score_text||sc.score_value||''));
+  const lvl=isWod&&sc.level?' · '+(LEVEL_LABELS[sc.level]||sc.level):'';
+  return '<span class="ms-ok">✓ Score rentré</span><span class="ms-val">'+v+lvl+'</span><span class="ms-chev">▾</span>';
+}
+function markMyScoreDone(sessionId,payload){
+  const d=document.getElementById('ms-'+sessionId);if(!d)return;
+  const isWod=!!d.querySelector('.level-selector');
+  d.querySelector('.ms-sum').innerHTML=myScoreSummary({score_text:payload.score_text,score_value:payload.score_value,level:payload.level},isWod);
+  d.classList.add('ms-done');d.open=false;
 }
 
 function buildSeparatorCard(s){
@@ -669,6 +689,7 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     }
   }
   showToast('✅ Score enregistré !');
+  try{markMyScoreDone(sessionId,payload);}catch(e){}
   if(typeof checkAutoBadges==='function')setTimeout(checkAutoBadges,1500);
   if(currentScoresSession?.sessionId===sessionId){
     await renderScoresModal(sessionId,scoreType,sets);

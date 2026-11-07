@@ -1224,3 +1224,16 @@ html[data-theme="light"] .cal-rich-full .cr-rest,:root[data-theme="light"] .cal-
 /* Fiche séance (espace perso) : score & retour sous le classement */
 .read-retour{margin-top:12px}
 .read-retour-t{font-size:11px;font-weight:700;letter-spacing:1.5px;color:var(--muted);text-transform:uppercase}
+
+/* Encart « Mon score » rabattable */
+.ms-fold{margin-top:16px}
+.ms-sum{list-style:none;display:flex;align-items:center;gap:8px;cursor:pointer;margin-bottom:8px;user-select:none;-webkit-tap-highlight-color:transparent}
+.ms-sum::-webkit-details-marker{display:none}
+.ms-sum .score-title{margin:0}
+.ms-chev{margin-left:auto;font-size:12px;color:var(--muted);transition:transform .2s}
+.ms-fold[open] .ms-chev{transform:rotate(180deg)}
+.ms-fold.ms-done .ms-sum{background:rgba(45,212,191,.10);border:1px solid rgba(45,212,191,.5);border-radius:12px;padding:10px 12px;margin-bottom:0}
+.ms-fold.ms-done[open] .ms-sum{margin-bottom:10px}
+.ms-ok{font-size:12px;font-weight:800;letter-spacing:.5px;color:#2DD4BF;white-space:nowrap}
+.ms-val{font-size:13px;font-weight:700;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ms-fold.ms-done .ms-chev{color:#2DD4BF}
