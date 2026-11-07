@@ -763,7 +763,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
   });
 
   const rankIcons=['gold','silver','bronze'];
-  el.innerHTML=(isWodBlock?podiumHtml(sorted,isTime,g):'')+`<div class="scores-list">
+  el.innerHTML=''+`<div class="scores-list">
     ${sorted.map((sc,i)=>{
       const isMe=sc.athlete_id===currentUser?.id;
       const setsDetail=sc.sets_data?JSON.parse(typeof sc.sets_data==='string'?sc.sets_data:JSON.stringify(sc.sets_data)):null;
