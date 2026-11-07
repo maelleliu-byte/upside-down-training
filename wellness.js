@@ -8176,6 +8176,8 @@ async function claimFreeAccess(programmeId){
   let _wdEntry = null;       // saisie du jour affiché
   let _wdDate = null;        // date de la saisie chargée
   let _wdOpen = false;       // carte dépliée ?
+  let _wdHold = false;       // laisse voir le dernier choix avant de replier
+  let _wdHoldTimer = null;
   let _wdSaveTimer = null;
   let _wdCoach = null;       // {name, phone} résolu une fois
   let _wdWake = null;        // état au réveil du jour affiché
@@ -8284,6 +8286,20 @@ async function claimFreeAccess(programmeId){
     return _wdCfg.fields.some(f => _wdVal(f.key) != null);
   }
 
+  // Suivi complet : état au réveil + tous les champs notés
+  function _wdComplete(){
+    if(!_wdWake) return false;
+    if(!_wdCfg) return true;
+    return _wdCfg.fields.every(f => _wdVal(f.key) != null);
+  }
+  // Après un choix : on laisse le temps de voir, puis on replie si tout est rentré
+  function _wdTouched(){
+    if(_wdOpen) return;
+    _wdHold = true;
+    clearTimeout(_wdHoldTimer);
+    _wdHoldTimer = setTimeout(function(){ _wdHold = false; _wdPaint(); }, 900);
+  }
+
   // Libellé lisible d'un état au réveil
   function _wdWakeLabel(k){
     const w = WD_WAKE.find(x => x[0] === k);
@@ -8339,8 +8355,7 @@ async function claimFreeAccess(programmeId){
     const wrap = document.getElementById('wd-card');
     if(!wrap || !_wdCfg) return;
 
-    const filled = _wdFilled();
-    const open = _wdOpen || !filled;
+    const open = _wdOpen || _wdHold || !_wdComplete();
 
     if(!open){
       // Replié : une ligne de résumé
@@ -8355,12 +8370,12 @@ async function claimFreeAccess(programmeId){
       const chips = parts.join('<span style="opacity:.3"> · </span>');
 
       wrap.innerHTML =
-        '<div class="wd-box wd-done">'+
+        '<div class="wd-box wd-done" id="wd-edit-btn" role="button">'+
           '<div class="wd-done-l">'+
-            '<div class="wd-done-t">✅ Suivi enregistré</div>'+
+            '<div class="wd-done-t">✓ Suivi rentré</div>'+
             '<div class="wd-done-c">'+chips+'</div>'+
           '</div>'+
-          '<button type="button" class="wd-edit" id="wd-edit-btn">Modifier</button>'+
+          '<span class="wd-chev">▾</span>'+
         '</div>';
       const b = document.getElementById('wd-edit-btn');
       if(b) b.onclick = function(){ _wdOpen = true; _wdPaint(); };
@@ -8389,7 +8404,9 @@ async function claimFreeAccess(programmeId){
       '<div class="wd-box">'+
         '<div class="wd-head">'+
           '<div class="wd-title">Comment tu te sens ?</div>'+
-          '<div class="wd-date">'+_wdEsc(_wdPrettyDate(_wdDate))+'</div>'+
+          (_wdComplete()
+            ? '<button type="button" class="wd-fold" id="wd-fold-btn">Replier ▴</button>'
+            : '<div class="wd-date">'+_wdEsc(_wdPrettyDate(_wdDate))+'</div>')+
         '</div>'+
         _wdWakeHTML()+
         _wdPeriodHTML()+
@@ -8402,6 +8419,7 @@ async function claimFreeAccess(programmeId){
       btn.onclick = function(){
         const k = btn.dataset.wake;
         _wdWake = (_wdWake === k) ? null : k;   // retaper le même état l'efface
+        _wdTouched();
         _wdPaint();
         _wdSaveWake();
       };
@@ -8419,6 +8437,7 @@ async function claimFreeAccess(programmeId){
         const key = btn.dataset.key;
         const v = parseInt(btn.dataset.v,10);
         const cur = _wdVal(key);
+        _wdTouched();
         _wdSet(key, cur === v ? null : v);   // retaper la même valeur l'efface
       };
     });
@@ -8430,6 +8449,8 @@ async function claimFreeAccess(programmeId){
 
     const send = document.getElementById('wd-send-btn');
     if(send) send.onclick = _wdSendToCoach;
+    const fold = document.getElementById('wd-fold-btn');
+    if(fold) fold.onclick = function(){ _wdOpen = false; _wdHold = false; _wdPaint(); };
   }
 
   function _wdSet(key, value){
@@ -8570,8 +8591,11 @@ async function claimFreeAccess(programmeId){
         'color:var(--text);font-family:inherit;font-size:13px;padding:9px;resize:none}'+
       '.wd-send{width:100%;margin-top:10px;background:transparent;border:1px solid var(--border2);'+
         'color:var(--text);border-radius:10px;padding:11px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}'+
-      '.wd-done{display:flex;align-items:center;justify-content:space-between;gap:12px}'+
-      '.wd-done-t{font-size:12px;font-weight:700;margin-bottom:3px}'+
+      '.wd-done{display:flex;align-items:center;justify-content:space-between;gap:12px;cursor:pointer;'+
+        'background:color-mix(in srgb,var(--accent) 10%,transparent);border-color:color-mix(in srgb,var(--accent) 50%,transparent);padding:11px 14px}'+
+      '.wd-done-t{font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--accent);margin-bottom:3px}'+
+      '.wd-chev{flex:none;font-size:12px;color:var(--accent)}'+
+      '.wd-fold{background:transparent;border:0;color:var(--accent);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;padding:0}'+
       '.wd-done-c{font-size:12px}'+
       '.wd-edit{flex:0 0 auto;background:transparent;border:1px solid var(--border2);color:var(--muted);'+
         'border-radius:8px;padding:7px 11px;font-size:11px;cursor:pointer;font-family:inherit}'+
