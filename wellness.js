@@ -9312,7 +9312,7 @@ async function claimFreeAccess(programmeId){
     const el=document.createElement('div');
     el.className='pc-ath';
     el.style.cssText='background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:14px';
-    el.innerHTML=`<div style="font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:6px">${todayLbl} · au programme</div>${note}${blocksHtml?blocksHtml.replace('<div style="margin-top:8px">','<div>'):''}`;
+    el.innerHTML=`<div style="font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:6px">Au programme</div>${note}${blocksHtml?blocksHtml.replace('<div style="margin-top:8px">','<div>'):''}`;
     const d=el.querySelector('details');
     if(d)d.addEventListener('toggle',()=>{const a=d.querySelector('summary span');if(a)a.textContent=d.open?'⌄':'›';});
     area.insertBefore(el,area.firstChild);

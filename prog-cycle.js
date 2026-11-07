@@ -72,7 +72,7 @@
       '.pg-none{font-size:12px;color:var(--muted)}',
       '.pg-recap{background:var(--card);border:1px solid var(--border);border-left-width:1px;padding:12px 14px}',
       ':root:not([data-theme="light"]) .pg-recap{background:#202020;border-color:#343434}',
-      '.pg-recap .lbl{font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}',
+      '.pg-recap .lbl{font-size:10.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text2);margin-bottom:6px}',
       '.cyc-phase{padding:0 20px 8px}',
       '.cyc-row{display:flex;align-items:baseline;gap:10px}',
       '.cyc-nm{font-family:"Bebas Neue",sans-serif;font-size:17px;letter-spacing:1.5px;line-height:1;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -164,7 +164,7 @@
 
     var el = document.createElement('div');
     el.className = 'pg-card pg-recap';
-    el.innerHTML = '<div class="lbl">' + esc(lbl) + ' · au programme</div>' + dayHtml;
+    el.innerHTML = '<div class="lbl">Au programme</div>' + dayHtml;
     area.insertBefore(el, area.firstChild);
   }
 
