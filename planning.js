@@ -171,11 +171,13 @@ async function buildSessionCard(s){
   } else if(isMulti){
     const count=s.score_count||scoreLabels.length||2;
     scoreInputHtml=`<div class="multi-score-inputs">
-      ${Array.from({length:count},(_,i)=>`
+      ${Array.from({length:count},(_,i)=>{
+        const pl=scoreLblParse(scoreLabels[i]||`Score ${i+1}`),ty=pl.type||s.score_type;
+        return `
         <div class="multi-score-row">
-          <div class="multi-score-lbl">${scoreLabels[i]||`Score ${i+1}`}</div>
-          <input class="multi-score-input" id="score-${i}-${s.id}" type="text" ${s.score_type==='time'?`inputmode="text" placeholder="2:00" pattern="\\d{1,2}:\\d{2}" onblur="checkTimeInput(this)" oninput="this.classList.remove('bad-time')"`:`placeholder="${getScorePlaceholder(s.score_type)}"`}>
-        </div>`).join('')}
+          <div class="multi-score-lbl">${pl.label}</div>
+          <input class="multi-score-input" id="score-${i}-${s.id}" data-stype="${ty}" type="text" ${ty==='time'?`inputmode="text" placeholder="2:00" pattern="\\d{1,2}:\\d{2}" onblur="checkTimeInput(this)" oninput="this.classList.remove('bad-time')"`:`placeholder="${getScorePlaceholder(ty)}${ty==='weight'?' kg':''}"`}>
+        </div>`;}).join('')}
     </div>`;
   } else if(s.score_type==='time'){
     // Temps : champs minutes + secondes séparés + option WOD non terminé → reps réalisées
@@ -609,6 +611,22 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     scoreValue=maxVal;
     scoreText=setValues.map(s=>`S${s.set}:${s.value}kg`).join(' / ');
     setsData=setValues;
+  } else if(isMulti&&scoreCount>0&&(()=>{const els=[...Array(scoreCount).keys()].map(i=>document.getElementById(`score-${i}-${sessionId}`));
+      return els.some(el=>el&&el.dataset.stype&&el.dataset.stype!==scoreType);})()){
+    // Multi-score à types mixtes (ex. ISABEL en temps + 1RM SNATCH en kg)
+    const parts=[];let first=null;
+    for(let i=0;i<scoreCount;i++){
+      const el=document.getElementById(`score-${i}-${sessionId}`);if(!el)continue;
+      const v=el.value.trim();if(!v)continue;
+      const ty=el.dataset.stype||scoreType;
+      const lbl=(el.closest('.multi-score-row')?.querySelector('.multi-score-lbl')?.textContent||`Score ${i+1}`).trim();
+      let shown=v,num=parseFloat(v.replace(',','.'))||0;
+      if(ty==='time'){const sec=parseTimeStrict(v);if(sec==null){checkTimeInput(el);showToast('⚠️ '+lbl+' : format minutes:secondes, ex. 4:32');return;}shown=fmtTimeSec(sec);num=sec;}
+      else if(ty==='weight')shown=v.replace(/\s*kg$/i,'')+' kg';
+      parts.push(`${lbl} ${shown}`);if(first==null)first=num;
+    }
+    if(!parts.length){showToast('⚠️ Entre au moins un score');return;}
+    scoreText=parts.join(' | ');scoreValue=first||0;
   } else if(isMulti&&scoreCount>0){
     const values=[];
     for(let i=0;i<scoreCount;i++){

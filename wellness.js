@@ -1,4 +1,6 @@
 // UTILS
+// « LABEL::type » → {label,type} : un score d'un multi-score peut avoir son propre type
+function scoreLblParse(raw){const m=String(raw==null?'':raw).match(/^(.*?)::(time|reps|rounds|weight|calories|distance|watt|text)$/);return m?{label:m[1].trim(),type:m[2]}:{label:String(raw==null?'':raw),type:''};}
 function getScorePlaceholder(type){return{time:'14:32',reps:'87',rounds:'12 + 5',weight:'85',calories:'42',watt:'250',distance:'2.45'}[type]||'—';}
 function extractYTId(url){const m=url.match(/(?:v=|youtu\.be\/|embed\/|shorts\/)([a-zA-Z0-9_-]{11})/);return m?m[1]:null;}
 function formatDate(iso){if(!iso)return'—';const d=new Date(iso+'T12:00:00');return`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}`;}

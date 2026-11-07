@@ -239,11 +239,32 @@ function renderScoreLabels(){
   const count=parseInt(document.getElementById('f-score-count')?.value)||2;
   const container=document.getElementById('score-labels-container');
   if(!container)return;
+  // garde ce qui est déjà saisi quand on change le nombre de scores
+  const keep=Array.from({length:20},(_,i)=>({l:document.getElementById(`f-score-label-${i}`)?.value,t:document.getElementById(`f-score-ltype-${i}`)?.value}));
+  const opts=[['','Type du bloc'],['time','Temps'],['reps','Reps'],['rounds','Rounds + reps'],['weight','Charge (kg)'],['calories','Calories'],['distance','Distance'],['watt','Watts'],['text','Texte']];
   container.innerHTML=Array.from({length:count},(_,i)=>`
     <div class="form-group" style="margin-bottom:8px">
-      <label class="form-label">Label score ${i+1}</label>
-      <input type="text" class="form-input score-label-input" data-idx="${i}" id="f-score-label-${i}" placeholder="Ex: Score ${i+1}">
+      <label class="form-label">Score ${i+1} · label et type</label>
+      <div style="display:flex;gap:8px">
+        <input type="text" class="form-input score-label-input" style="flex:1;min-width:0" data-idx="${i}" id="f-score-label-${i}" placeholder="Ex: Score ${i+1}">
+        <select class="form-select" style="width:44%;flex:none" id="f-score-ltype-${i}">${opts.map(([v,l])=>`<option value="${v}">${l}</option>`).join('')}</select>
+      </div>
     </div>`).join('');
+  keep.forEach((k,i)=>{const a=document.getElementById(`f-score-label-${i}`),b=document.getElementById(`f-score-ltype-${i}`);
+    if(a&&k.l!=null)a.value=k.l;if(b&&k.t!=null)b.value=k.t;});
+}
+// Un score peut avoir son propre type : stocké « LABEL::type » dans score_labels
+function _scoreLblOut(i){
+  const l=document.getElementById(`f-score-label-${i}`)?.value.trim()||`Score ${i+1}`;
+  const t=document.getElementById(`f-score-ltype-${i}`)?.value||'';
+  return t?`${l}::${t}`:l;
+}
+function _fillScoreLabels(labels){
+  (labels||[]).forEach((raw,idx)=>{
+    const p=typeof scoreLblParse==='function'?scoreLblParse(raw):{label:raw,type:''};
+    const a=document.getElementById(`f-score-label-${idx}`),b=document.getElementById(`f-score-ltype-${idx}`);
+    if(a)a.value=p.label;if(b)b.value=p.type||'';
+  });
 }
 
 let selectedSessionColor='#e8ff47';
@@ -311,7 +332,7 @@ function _collectSessionFormSnapshot(){
     score_labels:(()=>{
       if(typeof multiScoreEnabled==='undefined'||!multiScoreEnabled)return [];
       const c=parseInt(document.getElementById('f-score-count')?.value)||2;
-      return Array.from({length:c},(_,i)=>document.getElementById(`f-score-label-${i}`)?.value||`Score ${i+1}`);
+      return Array.from({length:c},(_,i)=>_scoreLblOut(i));
     })(),
     videos
   };
@@ -365,7 +386,7 @@ function applySessionTemplate(i){
     const sel=document.getElementById('f-score-count');
     if(sel)sel.value=t.score_count||2;
     if(typeof renderScoreLabels==='function')renderScoreLabels();
-    (t.score_labels||[]).forEach((lbl,idx)=>{const el=document.getElementById(`f-score-label-${idx}`);if(el)el.value=lbl;});
+    _fillScoreLabels(t.score_labels);
   } else {
     multiScoreEnabled=false;
     document.getElementById('multi-score-toggle')?.classList.remove('on');
@@ -822,9 +843,10 @@ async function editSession(id){
     multiScoreEnabled=true;
     document.getElementById('multi-score-toggle').classList.add('on');
     document.getElementById('multi-score-fields').style.display='block';
-    document.getElementById('f-score-label1').value=data.score_label1||'';
-    document.getElementById('f-score-label2').value=data.score_label2||'';
-    document.getElementById('f-score-note').value=data.score_note_label||'';
+    let _lbls=[];try{_lbls=data.score_labels?JSON.parse(data.score_labels):[data.score_label1,data.score_label2].filter(Boolean);}catch(e){_lbls=[];}
+    const _sel=document.getElementById('f-score-count');
+    if(_sel)_sel.value=String(data.score_count||_lbls.length||2);
+    renderScoreLabels();_fillScoreLabels(_lbls);
   }
   // Couleur
   if(data.color){
@@ -894,7 +916,7 @@ async function saveSession(){
   const scalingFoundation=document.getElementById('f-scaling-foundation').value.trim();
   const multiScore=multiScoreEnabled;
   const scoreCount=multiScore?parseInt(document.getElementById('f-score-count')?.value)||2:0;
-  const scoreLabels=multiScore?Array.from({length:scoreCount},(_,i)=>document.getElementById(`f-score-label-${i}`)?.value.trim()||`Score ${i+1}`):[];
+  const scoreLabels=multiScore?Array.from({length:scoreCount},(_,i)=>_scoreLblOut(i)):[];
   // Mode one-shot : on lit semaine/jour au lieu de date
   const prog=getProgById(progId);
   const oneshot=!personalAthleteId&&isOneshotProg(prog);
@@ -916,7 +938,7 @@ async function saveSession(){
     scaling_inter:scalingInter||null,scaling_scaled:scalingScaled||null,scaling_foundation:scalingFoundation||null,
     multi_score:multiScore,score_count:scoreCount||null,
     score_labels:scoreLabels.length?JSON.stringify(scoreLabels):null,
-    score_label1:scoreLabels[0]||null,score_label2:scoreLabels[1]||null,score_note_label:scoreLabels[scoreLabels.length-1]||null
+    score_label1:scoreLabels[0]?scoreLblParse(scoreLabels[0]).label:null,score_label2:scoreLabels[1]?scoreLblParse(scoreLabels[1]).label:null,score_note_label:scoreLabels.length?scoreLblParse(scoreLabels[scoreLabels.length-1]).label:null
   };
   // Réglages VBT (vbt-seance.js) : null si pas de VBT ou type sans VBT
   if(typeof window.vbtGetFormData==='function')payload.vbt=window.vbtGetFormData(type);
