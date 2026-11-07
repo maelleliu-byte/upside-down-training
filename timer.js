@@ -37,6 +37,11 @@
       var ph = []; for (var i = 1; i <= n; i++) { ph.push({ d: w, lab: 'ROUND ' + i + ' / ' + n, work: true }); if (r && i < n) ph.push({ d: r, lab: 'REPOS', rest: true }); }
       return { kind: 'int', label: n + ' × AMRAP ' + fmt(w) + ' / REST ' + fmt(r), short: n + ' × ' + fmt(w), phases: ph };
     });
+    // Séries avec repos : le chrono de repos part dès que l'athlète a fini sa série
+    add(new RegExp('(\\d+)\\s*(?:SETS?|S[EÉ]RIES?)\\s*[-–]?\\s*(?:REST|REPOS)\\s+' + T), function (m) {
+      var n = +m[1], r = sec(m[2]); if (!n || !r || n > 40) return null;
+      return { kind: 'rest', label: n + ' SETS · REST ' + fmt(r), short: n + ' SETS', n: n, rest: r };
+    });
     add(/E(\d)MOM\s+(\d{1,2})(?::(\d{2}))?/, function (m) {
       var k = +m[1], tot = +m[2] * 60 + (+m[3] || 0); var n = Math.floor(tot / (k * 60)); if (!n) return null;
       return { kind: 'int', label: 'E' + k + 'MOM ' + fmt(tot), short: 'E' + k + 'MOM ' + Math.round(tot / 60), phases: rep(n, k * 60, 'MINUTE', k) };
@@ -196,6 +201,7 @@
     var p = st.parts[i];
     st.pi = i; st.sp = p; st.body = p.html; st.running = false; st.acc = 0; st.t0 = 0; st.pre = 3; st.rounds = 0; st.done = false; st.lastBeep = null; st._rest = false;
     st.total = p.kind === 'int' ? p.phases.reduce(function (a, q) { return a + q.d; }, 0) : 0;
+    st.rs = { set: 1, phase: 'ready', t0: 0, rest: p.rest || 0 };
     shell(); draw();
     var ov = document.getElementById('tm-ov'); if (ov) ov.scrollTop = 0;
   }
@@ -209,7 +215,7 @@
 
   function shell() {
     var sp = st.sp, ov = document.getElementById('tm-ov');
-    var nPh = sp.kind === 'int' ? sp.phases.filter(function (p) { return !p.rest; }).length : 0;
+    var nPh = sp.kind === 'int' ? sp.phases.filter(function (p) { return !p.rest; }).length : sp.kind === 'rest' ? sp.n : 0;
     ov.innerHTML = '<div class="tm">' +
       '<div class="top"><button class="x" data-a="close" aria-label="Fermer">✕</button><div class="lab"><div class="k"></div><div class="t"></div></div><button class="x' + (st.sound ? '' : ' off') + '" data-a="snd" aria-label="Son">' + (st.sound ? '🔊' : '🔇') + '</button></div>' +
       (st.parts.length > 1 ? '<div class="pnav"><button data-a="prev"' + (st.pi ? '' : ' disabled') + '>‹</button><div class="pn"><b>PARTIE ' + (st.pi + 1) + ' / ' + st.parts.length + '</b><span></span></div><button data-a="next"' + (st.pi < st.parts.length - 1 ? '' : ' disabled') + '>›</button></div>' : '') +
@@ -233,6 +239,9 @@
       if (a === 'reset') return reset();
       if (a === 'skip') return skip();
       if (a === 'finish') return finish();
+      if (a === 'setdone') return restSetDone();
+      if (a === 'skiprest') return restNext();
+      if (a === 'plus15') { if (st.rs && st.rs.phase === 'rest') { st.rs.rest += 15; draw(); } return; }
       if (a === 'next' && st.pi < st.parts.length - 1) return setPart(st.pi + 1);
       if (a === 'prev' && st.pi > 0) return setPart(st.pi - 1);
     };
@@ -243,6 +252,20 @@
   function buttons() {
     var b = document.querySelector('#tm-ov .btns'), h = document.querySelector('#tm-ov .hint'); if (!b) return;
     var started = st.running || st.acc > 0 || st.pre < 3;
+    if (st.sp.kind === 'rest' && !st.done) {
+      var rs = st.rs, last = rs.set >= st.sp.n;
+      if (rs.phase === 'ready') {
+        b.innerHTML = '<button class="pri" data-a="play">▶ GO · SET 1</button>';
+        h.textContent = 'Appuie sur « Série finie » à la fin de chaque série : le repos démarre tout de suite.';
+      } else if (rs.phase === 'work') {
+        b.innerHTML = '<button data-a="reset" aria-label="Recommencer">↺</button><button class="pri" data-a="setdone">' + (last ? '✓ DERNIÈRE SÉRIE FINIE' : '✓ SÉRIE FINIE · REPOS') + '</button>';
+        h.textContent = 'Écran maintenu allumé pendant le timer';
+      } else {
+        b.innerHTML = '<button data-a="plus15">+15″</button><button class="pri" data-a="skiprest">⏭ GO SET ' + (rs.set + 1) + '</button>';
+        h.textContent = 'Bip à 3-2-1, puis le chrono de la série suivante démarre.';
+      }
+      return;
+    }
     if (st.done) {
       var hasNext = st.pi < st.parts.length - 1;
       b.innerHTML = '<button data-a="reset"' + (hasNext ? ' aria-label="Recommencer">↺' : '>↺ RECOMMENCER') + '</button>' + (hasNext ? '<button class="pri" data-a="next">PARTIE SUIVANTE ›</button>' : '');
@@ -257,14 +280,31 @@
 
   function toggle() {
     if (st.done) return;
+    if (st.sp.kind === 'rest') {
+      if (st.rs.phase === 'ready') { st.rs.phase = 'work'; st.rs.t0 = now(); st.running = true; lock(); beep(990, .4); loop(); buttons(); }
+      return;
+    }
     if (st.running) { st.acc = elapsed(); st.running = false; unlock(); }
     else { st.t0 = now(); st.running = true; lock(); loop(); }
     buttons();
   }
   function reset() {
+    if (st.sp.kind === 'rest') st.rs = { set: 1, phase: 'ready', t0: 0, rest: st.sp.rest };
     st.running = false; st.acc = 0; st.pre = 3; st.done = false; st.rounds = 0; st.lastBeep = null; unlock();
     if (raf) clearInterval(raf); raf = null;
     paintRounds(); buttons(); draw();
+  }
+  // ---- séries avec repos ----
+  function restSetDone() {
+    var rs = st.rs; if (!rs || rs.phase !== 'work') return;
+    if (rs.set >= st.sp.n) { st.done = true; st.running = false; unlock(); beep(880, .8); buttons(); draw(); return; }
+    rs.phase = 'rest'; rs.t0 = now(); rs.rest = st.sp.rest; st.lastBeep = null; beep(520, .4);
+    buttons(); draw();
+  }
+  function restNext() {
+    var rs = st.rs; if (!rs || rs.phase !== 'rest') return;
+    rs.set++; rs.phase = 'work'; rs.t0 = now(); st.lastBeep = null; beep(990, .4);
+    buttons(); draw();
   }
   function finish() { st.acc = elapsed(); st.running = false; st.done = true; unlock(); beep(880, .6); buttons(); draw(); }
   function skip() {
@@ -284,7 +324,19 @@
     var arc = ov.querySelector('.arc'), v = ov.querySelector('.v'), ph = ov.querySelector('.ph'), s = ov.querySelector('.s');
     var col = TEAL, p = 0, big = '0:00', top = '', sub = '', beepKey = null, curWork = -1;
 
-    if (!st.done && E < 3 && (st.running || st.acc > 0)) {
+    if (sp.kind === 'rest') {
+      var rs = st.rs, n2 = sp.n, tt = now() - rs.t0;
+      if (st.done) { top = '✓ TERMINÉ'; col = GREEN; p = 1; big = String(n2) + '/' + n2; sub = sp.label; curWork = 999; }
+      else if (rs.phase === 'ready') { top = 'PRÊT'; col = GREY; p = 1; big = fmt(sp.rest); sub = 'SET 1 / ' + n2 + ' · REPOS ' + fmt(sp.rest); curWork = 0; }
+      else if (rs.phase === 'work') { top = 'SET ' + rs.set + ' / ' + n2; col = TEAL; p = (tt % 60) / 60; big = fmt(Math.floor(tt)); sub = 'EN COURS'; curWork = rs.set - 1; st._rest = false; }
+      else {
+        var left = rs.rest - tt;
+        if (left <= 0) { restNext(); return; }
+        var rr = Math.ceil(left);
+        if (rr <= 3) { beepKey = 'r' + rs.set + ':' + rr; if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .15); } }
+        top = 'REPOS'; col = GREY; p = left / rs.rest; big = fmt(rr); sub = 'SET ' + (rs.set + 1) + ' / ' + n2 + ' ENSUITE'; curWork = rs.set; st._rest = true;
+      }
+    } else if (!st.done && E < 3 && (st.running || st.acc > 0)) {
       var n = Math.ceil(3 - E); big = String(n); top = 'PRÊT'; col = GREY; p = (3 - E) / 3; beepKey = 'pre' + n;
       if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .15); }
       sub = sp.kind === 'int' ? sp.phases[0].lab : '';
