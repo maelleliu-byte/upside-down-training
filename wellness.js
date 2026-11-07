@@ -84,6 +84,7 @@ async function openReadSession(id, source){
     body.innerHTML=buildSeparatorCard(data);
   } else {
     body.innerHTML=await buildSessionCard(data);
+    body.querySelectorAll('.tm-pill').forEach(function(x){x.remove();}); // timer : côté athlète uniquement
     if(readModalIsPerso&&data.athlete_id){
       try{await _readModalAppendRetour(body,data);}catch(e){console.warn('retour modale',e);}
     }

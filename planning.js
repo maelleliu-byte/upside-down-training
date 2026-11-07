@@ -214,7 +214,7 @@ async function buildSessionCard(s){
   return `<div class="session-card fade-up" id="sc-${s.id}" style="border-color:${cardColor}33">
     <div class="session-header" style="border-bottom-color:${cardColor}22">
       <span class="badge badge-${s.type}" style="background:${cardColor}18;color:${cardColor}">${TYPE_LABELS[s.type]||s.type}</span>
-      <span style="font-size:12px;color:var(--muted)">${formatDate(s.date)}</span>
+      <span style="display:flex;align-items:center;gap:10px">${typeof blockTimerPill==='function'?blockTimerPill(s):''}<span style="font-size:12px;color:var(--muted)">${formatDate(s.date)}</span></span>
     </div>
     <div class="session-body">
       <div class="session-title">${s.title}</div>

@@ -71,6 +71,7 @@
       '.pg-blk .ti{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:1px;line-height:1.1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
       '.pg-none{font-size:12px;color:var(--muted)}',
       '.pg-recap{background:var(--card);border:1px solid var(--border);border-left-width:1px;padding:12px 14px}',
+      ':root:not([data-theme="light"]) .pg-recap{background:#202020;border-color:#343434}',
       '.pg-recap .lbl{font-size:9.5px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:4px}',
       '.cyc-phase{padding:0 20px 8px}',
       '.cyc-row{display:flex;align-items:baseline;gap:10px}',
