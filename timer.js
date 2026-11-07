@@ -19,6 +19,11 @@
     var cands = [];
     function add(re, fn) { var m = t.match(re); if (m) { var r = fn(m); if (r) { r.pos = m.index; cands.push(r); } } }
 
+    add(new RegExp('(\\d+)\\s*SETS?\\s+EVERY\\s+' + T + '\\s*\\(\\s*' + T + '\\s*ON\\s*\\/\\s*' + T + '\\s*OFF'), function (m) {
+      var n = +m[1], d = sec(m[2]), on = sec(m[3]), off = sec(m[4]); if (!n || !d || !on || on + off !== d) return null;
+      var ph = []; for (var i = 1; i <= n; i++) { ph.push({ d: on, lab: 'SET ' + i + ' / ' + n, work: true }); if (off) ph.push({ d: off, lab: 'REPOS', rest: true }); }
+      return { kind: 'int', label: 'EVERY ' + fmt(d) + ' × ' + n + ' · ' + fmt(on) + ' ON', short: n + ' × ' + fmt(d), phases: ph };
+    });
     add(new RegExp('(\\d+)\\s*SETS?\\s+EVERY\\s+' + T), function (m) {
       var n = +m[1], d = sec(m[2]); if (!n || !d) return null;
       return { kind: 'int', label: 'EVERY ' + fmt(d) + ' × ' + n, short: n + ' × ' + fmt(d), phases: rep(n, d, 'SET') };
@@ -59,6 +64,36 @@
     cands.sort(function (a, b) { return a.pos - b.pos; });
     return cands[0];
   }
+
+  // Découpe un bloc en parties chronométrées, dans l'ordre d'écriture
+  function rawLines(content) {
+    return String(content || '').replace(/<br\s*\/?>/gi, '\n').replace(/<\/(p|div|li|h\d)>/gi, '\n').replace(/<[^>]+>/g, '')
+      .replace(/&nbsp;/g, ' ').replace(/&amp;/g, '&').split('\n');
+  }
+  function parseParts(content) {
+    var L = rawLines(content), out = [], section = '', sub = '', secIdx = 0, subIdx = -1, afterSep = true;
+    var isSep = function (s) { return /^\s*[_\-=]{3,}\s*$/.test(s); };
+    for (var i = 0; i < L.length; i++) {
+      var raw = L[i], s = raw.trim(); if (!s) continue;
+      if (isSep(s)) { afterSep = true; continue; }
+      var sp = /^\(/.test(s) ? null : parse(s);
+      if (sp) {
+        var start = subIdx >= 0 ? subIdx : (section ? secIdx : i);
+        sp.name = [section, sub].filter(Boolean).join(' · ');
+        sp.start = Math.min(start, i); out.push(sp);
+        sub = ''; subIdx = -1; afterSep = false; continue;
+      }
+      var short = s.length <= 40, num = /^\d+\s*[.)]\s+[A-ZÀ-Ü]/i.test(s);
+      if (short && num) { sub = s; subIdx = i; }
+      else if (afterSep && short) { section = s; secIdx = i; sub = ''; subIdx = -1; }
+      afterSep = false;
+    }
+    for (var k = 0; k < out.length; k++) {
+      var end = k + 1 < out.length ? out[k + 1].start : L.length;
+      out[k].raw = L.slice(out[k].start, end).filter(function (x) { return !isSep(x.trim()); }).join('\n').replace(/^\n+|\n+$/g, '').replace(/\n{3,}/g, '\n\n').replace(/\n/g, '<br>');
+    }
+    return out;
+  }
   function rep(n, d, word, k) {
     var a = []; for (var i = 1; i <= n; i++) a.push({ d: d, lab: word + ' ' + (k ? (i - 1) * k + 1 : i) + ' / ' + (k ? n * k : n), work: true });
     return a;
@@ -67,10 +102,11 @@
   // ---------- pastille dans l'en-tête du bloc ----------
   window.blockTimerPill = function (s) {
     try {
-      var sp = parse(s && s.content); if (!sp) return '';
+      var parts = parseParts(s && s.content); if (!parts.length) return '';
       css();
-      var html = ''; try { html = typeof renderContentWithCharges === 'function' ? renderContentWithCharges(s.content || '') : String(s.content || ''); } catch (e) { html = String(s.content || ''); }
-      specs[s.id] = { sp: sp, title: s.title || '', color: s.color || '#2dd4bf', html: html };
+      var html = function (raw) { try { return typeof renderContentWithCharges === 'function' ? renderContentWithCharges(raw) : raw; } catch (e) { return raw; } };
+      parts.forEach(function (p) { p.html = html(p.raw); });
+      specs[s.id] = { parts: parts, title: s.title || '' };
       return '<span class="tm-pill" role="button" onclick="event.stopPropagation();openBlockTimer(\'' + s.id + '\')"><i>▶</i> TIMER</span>';
     } catch (e) { return ''; }
   };
@@ -91,7 +127,7 @@
       '#tm-ov .lab{text-align:center;min-width:0}',
       '#tm-ov .lab .k{font-size:10px;letter-spacing:2px;font-weight:700;color:#777;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '#tm-ov .lab .t{font-family:"Bebas Neue",sans-serif;font-size:24px;letter-spacing:1.5px;line-height:1.1}',
-      '#tm-ov .ring{position:relative;width:min(280px,72vw);aspect-ratio:1;margin:24px 0 12px}',
+      '#tm-ov .ring{position:relative;width:min(270px,70vw);aspect-ratio:1;margin:18px 0 10px}',
       '#tm-ov .ring svg{width:100%;height:100%;transform:rotate(-90deg)}',
       '#tm-ov .ring circle{transition:stroke .3s,stroke-dashoffset .2s linear}',
       '#tm-ov .ring .c{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}',
@@ -112,6 +148,12 @@
       '#tm-ov .btns{display:flex;gap:10px;margin-top:auto;padding-top:18px;width:100%}',
       '#tm-ov .btns button{flex:1;height:58px;border-radius:14px;font-family:"Bebas Neue",sans-serif;font-size:22px;letter-spacing:2px;border:1px solid #333;background:#161616;color:#f0f0f0;cursor:pointer}',
       '#tm-ov .btns .pri{background:var(--tm-c);color:#000;border-color:var(--tm-c);flex:2}',
+      '#tm-ov .pnav{width:100%;display:flex;align-items:center;gap:8px;margin-top:14px;background:#161616;border:1px solid #252525;border-radius:14px;padding:6px}',
+      '#tm-ov .pnav button{width:40px;height:40px;flex:none;border-radius:10px;border:1px solid #333;background:#0b0b0b;color:#f0f0f0;font-size:22px;cursor:pointer}',
+      '#tm-ov .pnav button:disabled{opacity:.25}',
+      '#tm-ov .pnav .pn{flex:1;min-width:0;text-align:center}',
+      '#tm-ov .pnav .pn b{display:block;font-size:10px;letter-spacing:2px;color:var(--accent)}',
+      '#tm-ov .pnav .pn span{display:block;font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
       '#tm-ov .hint{font-size:11px;color:#777;margin-top:10px;text-align:center}'
     ].join('\n');
     document.head.appendChild(st);
@@ -138,19 +180,25 @@
   function now() { return Date.now() / 1000; }
   function elapsed() { return st.acc + (st.running ? now() - st.t0 : 0); }
 
-  window.openBlockTimer = function (id) {
+  window.openBlockTimer = function (id, idx) {
     var o = specs[id]; if (!o) return;
     css();
     try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) {}
-    var card = document.getElementById('sc-' + id);
-    var body = card && card.querySelector('.session-content');
-    st = { id: id, sp: o.sp, title: o.title, body: body ? body.innerHTML : (o.html || ''), running: false, acc: 0, t0: 0, pre: 3, rounds: 0, done: false, sound: true, lastBeep: null };
-    if (st.sp.kind === 'int') { st.total = st.sp.phases.reduce(function (a, p) { return a + p.d; }, 0); }
+    var snd = st ? st.sound : true;
+    st = { id: id, parts: o.parts, title: o.title, sound: snd };
     var ov = document.getElementById('tm-ov'); if (!ov) { ov = document.createElement('div'); ov.id = 'tm-ov'; document.body.appendChild(ov); }
     ov.style.display = 'flex';
     document.documentElement.style.overflow = 'hidden';
-    shell(); draw();
+    setPart(idx || 0);
   };
+  function setPart(i) {
+    if (raf) clearInterval(raf); raf = null; unlock();
+    var p = st.parts[i];
+    st.pi = i; st.sp = p; st.body = p.html; st.running = false; st.acc = 0; st.t0 = 0; st.pre = 3; st.rounds = 0; st.done = false; st.lastBeep = null; st._rest = false;
+    st.total = p.kind === 'int' ? p.phases.reduce(function (a, q) { return a + q.d; }, 0) : 0;
+    shell(); draw();
+    var ov = document.getElementById('tm-ov'); if (ov) ov.scrollTop = 0;
+  }
 
   function close() {
     if (raf) clearInterval(raf); raf = null; unlock();
@@ -163,15 +211,17 @@
     var sp = st.sp, ov = document.getElementById('tm-ov');
     var nPh = sp.kind === 'int' ? sp.phases.filter(function (p) { return !p.rest; }).length : 0;
     ov.innerHTML = '<div class="tm">' +
-      '<div class="top"><button class="x" data-a="close" aria-label="Fermer">✕</button><div class="lab"><div class="k"></div><div class="t"></div></div><button class="x" data-a="snd" aria-label="Son">🔊</button></div>' +
+      '<div class="top"><button class="x" data-a="close" aria-label="Fermer">✕</button><div class="lab"><div class="k"></div><div class="t"></div></div><button class="x' + (st.sound ? '' : ' off') + '" data-a="snd" aria-label="Son">' + (st.sound ? '🔊' : '🔇') + '</button></div>' +
+      (st.parts.length > 1 ? '<div class="pnav"><button data-a="prev"' + (st.pi ? '' : ' disabled') + '>‹</button><div class="pn"><b>PARTIE ' + (st.pi + 1) + ' / ' + st.parts.length + '</b><span></span></div><button data-a="next"' + (st.pi < st.parts.length - 1 ? '' : ' disabled') + '>›</button></div>' : '') +
       '<div class="ring"><svg viewBox="0 0 280 280"><circle cx="140" cy="140" r="' + R + '" stroke="#1f1f1f" stroke-width="12" fill="none"/><circle class="arc" cx="140" cy="140" r="' + R + '" stroke-width="12" fill="none" stroke-linecap="round" stroke-dasharray="' + C + '" stroke-dashoffset="' + C + '"/></svg>' +
       '<div class="c"><div class="ph"></div><div class="v">0:00</div><div class="s"></div></div></div>' +
       (nPh > 1 && nPh <= 40 ? '<div class="sets">' + new Array(nPh + 1).join('<i></i>') + '</div>' : '') +
       (sp.kind === 'down' ? '<div class="cnt"><button data-a="minus">−</button><div class="n"><span>0</span><small>ROUNDS</small></div><button class="p" data-a="plus">+</button></div>' : '') +
-      (st.body ? '<div class="nx"><div class="k">LE BLOC</div><div class="body">' + st.body + '</div></div>' : '') +
+      (st.body ? '<div class="nx"><div class="k">' + (st.parts.length > 1 ? 'CETTE PARTIE' : 'LE BLOC') + '</div><div class="body">' + st.body + '</div></div>' : '') +
       '<div class="btns"></div><div class="hint"></div></div>';
     ov.querySelector('.lab .k').textContent = st.title;
     ov.querySelector('.lab .t').textContent = sp.label;
+    var pn = ov.querySelector('.pnav .pn span'); if (pn) pn.textContent = sp.name || '';
     ov.onclick = function (e) {
       var b = e.target.closest('[data-a]'); if (!b || !st) return;
       var a = b.getAttribute('data-a');
@@ -183,6 +233,8 @@
       if (a === 'reset') return reset();
       if (a === 'skip') return skip();
       if (a === 'finish') return finish();
+      if (a === 'next' && st.pi < st.parts.length - 1) return setPart(st.pi + 1);
+      if (a === 'prev' && st.pi > 0) return setPart(st.pi - 1);
     };
     buttons();
   }
@@ -192,7 +244,8 @@
     var b = document.querySelector('#tm-ov .btns'), h = document.querySelector('#tm-ov .hint'); if (!b) return;
     var started = st.running || st.acc > 0 || st.pre < 3;
     if (st.done) {
-      b.innerHTML = '<button data-a="reset">↺ RECOMMENCER</button>';
+      var hasNext = st.pi < st.parts.length - 1;
+      b.innerHTML = '<button data-a="reset"' + (hasNext ? ' aria-label="Recommencer">↺' : '>↺ RECOMMENCER') + '</button>' + (hasNext ? '<button class="pri" data-a="next">PARTIE SUIVANTE ›</button>' : '');
       h.textContent = st.sp.kind === 'up' ? 'Le timer n’enregistre rien : saisis ton score dans « Mon score ».' : '';
       return;
     }
@@ -289,5 +342,5 @@
   document.addEventListener('keydown', function (e) { if (st && e.key === 'Escape') close(); });
   document.addEventListener('visibilitychange', function () { if (st && st.running && document.visibilityState === 'visible') lock(); });
 
-  window.__blockTimerParse = parse; // pour les tests
+  window.__blockTimerParse = parse; window.__blockTimerParts = parseParts; // pour les tests
 })();
