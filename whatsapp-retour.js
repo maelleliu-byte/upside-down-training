@@ -87,14 +87,18 @@ const PROFIL_BLOCK_ID = 'wr-profil-block';
 
 function profilBlockHTML(){
   return ''+
-    '<div class="wr-pf-head">📲 MON NUMÉRO WHATSAPP</div>'+
+    '<button type="button" class="pf-fold-head" id="wr-pf-toggle" aria-expanded="true">'+
+      '<span class="pf-ic">📲</span><span class="pf-t">Mon numéro WhatsApp</span>'+
+      '<span class="pf-sum" id="wr-pf-sum"><span class="pf-chip wr-todo">À renseigner</span></span><span class="pf-chev">›</span></button>'+
+    '<div class="pf-fold-body">'+
     '<div class="wr-pf-sub">Pour que ton coach puisse t\'envoyer ses retours de séance '+
       'sur WhatsApp. Visible uniquement par les coachs de ton studio. '+
       'Laisse vide pour le retirer.</div>'+
     '<input type="tel" inputmode="tel" class="wr-pf-input" id="wr-pf-phone" '+
       'placeholder="06 12 34 56 78" autocomplete="tel">'+
     '<button type="button" class="wr-pf-save" id="wr-pf-save">Enregistrer mon numéro</button>'+
-    '<div class="wr-pf-status" id="wr-pf-status"></div>';
+    '<div class="wr-pf-status" id="wr-pf-status"></div>'+
+    '</div>';
 }
 
 function ensureProfilBlock(){
@@ -103,7 +107,7 @@ function ensureProfilBlock(){
 
   const box = document.createElement('div');
   box.id = PROFIL_BLOCK_ID;
-  box.className = 'wr-pf-box';
+  box.className = 'pf-fold wr-pf-fold open';
   box.innerHTML = profilBlockHTML();
 
   /* On se place à l'intérieur du même parent que les sections existantes,
@@ -116,6 +120,18 @@ function ensureProfilBlock(){
   else page.appendChild(box);
 
   loadMyPhone();
+}
+
+/* En-tête repliable : ✓ Vérifié (vert) quand un numéro valide est enregistré, sinon « À renseigner ». */
+function setPhoneState(phone){
+  const box = document.getElementById(PROFIL_BLOCK_ID), sum = document.getElementById('wr-pf-sum');
+  if(!box || !sum) return;
+  const ok = phoneValid(phone||'');
+  sum.innerHTML = ok
+    ? '<span class="pf-chip wr-ok">✓ Vérifié</span>'
+    : '<span class="pf-chip wr-todo">À renseigner</span>';
+  box.classList.toggle('open', !ok);
+  const h = document.getElementById('wr-pf-toggle'); if(h) h.setAttribute('aria-expanded', String(!ok));
 }
 
 function pfStatus(msg, bad){
@@ -133,6 +149,7 @@ async function loadMyPhone(){
     const {data} = await s.from('coach_contacts')
       .select('whatsapp_phone').eq('user_id',u.id).maybeSingle();
     if(data && data.whatsapp_phone) inp.value = data.whatsapp_phone;
+    setPhoneState(data && data.whatsapp_phone);
   }catch(e){ console.warn('wr load phone',e); }
 }
 
@@ -152,6 +169,7 @@ async function saveMyPhone(){
     if(error){ pfStatus('Suppression refusée : '+error.message, true); return; }
     pfStatus('🗑 Numéro retiré');
     toast('🗑 Numéro retiré');
+    setPhoneState('');
     return;
   }
 
@@ -179,12 +197,19 @@ async function saveMyPhone(){
   inp.value = data[0].whatsapp_phone;
   pfStatus('✅ Numéro enregistré : '+data[0].whatsapp_phone);
   toast('✅ Numéro WhatsApp enregistré');
+  setPhoneState(data[0].whatsapp_phone);
 }
 
 /* Délégation : insensible au moment où le bloc est construit. */
 document.addEventListener('click', function(ev){
   const t = ev.target && ev.target.closest ? ev.target.closest('button') : null;
   if(!t) return;
+  if(t.id === 'wr-pf-toggle'){
+    ev.preventDefault();
+    const box = document.getElementById(PROFIL_BLOCK_ID);
+    if(box){ const o = !box.classList.contains('open'); box.classList.toggle('open', o); t.setAttribute('aria-expanded', String(o)); }
+    return;
+  }
   if(t.id === 'wr-pf-save'){
     ev.preventDefault();
     saveMyPhone().catch(e=>pfStatus('Erreur : '+(e.message||e), true));
@@ -303,6 +328,8 @@ function injectStyles(){
     '.wr-pf-box{margin:0 20px 16px;background:var(--card);border:1px solid var(--border);'+
       'border-radius:12px;padding:14px}'+
     '.wr-pf-head{font-family:"Bebas Neue",sans-serif;font-size:16px;letter-spacing:1.5px;margin-bottom:6px}'+
+    '.wr-pf-fold .pf-chip.wr-ok{color:#2ecc71;border-color:rgba(46,204,113,.5);background:rgba(46,204,113,.12);font-weight:700}'+
+    '.wr-pf-fold .pf-chip.wr-todo{color:var(--orange,#ff8c47);border-color:rgba(255,140,71,.5)}'+
     '.wr-pf-sub{font-size:12px;color:var(--muted);line-height:1.5;margin-bottom:12px}'+
     '.wr-pf-input{width:100%;background:var(--dark);border:1.5px solid var(--border2);'+
       'border-radius:10px;color:var(--text);font-family:inherit;font-size:14px;padding:10px;'+
