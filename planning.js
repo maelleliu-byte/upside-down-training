@@ -223,12 +223,12 @@ async function buildSessionCard(s){
       ${intHtml}${targetHtml}${tipsHtml}${videoHtml}
       <div style="margin-top:16px">
         <div class="score-title" style="margin-bottom:8px">📊 Mon score</div>
-        <div class="level-selector">
+${s.type==='wod'?`        <div class="level-selector">
           <button class="level-btn rx active" onclick="selectLevel('${s.id}','rx',this)">RX</button>
           <button class="level-btn inter" onclick="selectLevel('${s.id}','intermediate',this)">INTER</button>
           <button class="level-btn scaled" onclick="selectLevel('${s.id}','scaled',this)">SCALED</button>
           <button class="level-btn found" onclick="selectLevel('${s.id}','foundation',this)">FOND.</button>
-        </div>
+        </div>`:''}
         ${scoreInputHtml}
         <div class="score-done-at-row" style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted)">
           <label for="done-at-${s.id}" style="white-space:nowrap">Fait le</label>
@@ -714,7 +714,9 @@ async function renderScoresModal(sessionId, scoreType, sets){
     sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false}),
     sb.from('sessions').select('type').eq('id',sessionId).maybeSingle()
   ]);
-  const isWodBlock=((sessRes&&sessRes.data&&sessRes.data.type)||'')==='wod';
+  let _sType=(sessRes&&sessRes.data&&sessRes.data.type)||'';
+  if(!_sType){try{const r=await sb.from('personal_sessions').select('type').eq('id',sessionId).maybeSingle();_sType=(r&&r.data&&r.data.type)||'';}catch(e){}}
+  const isWodBlock=_sType==='wod';
   const data=scoresRes.data;
   const allNotes=notesRes.data||[];
 
@@ -750,7 +752,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
   // - tous les autres : DESC
   const isTime = scoreType==='time';
   const sorted=[...filtered].sort((a,b)=>{
-    if(levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
+    if(isWodBlock&&levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
     if(isTime){
       const aDnf=(a.score_value||0)<0, bDnf=(b.score_value||0)<0;
       if(aDnf!==bDnf)return aDnf?1:-1; // DNF en bas
@@ -784,7 +786,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
               <span class="score-name">${sc.profiles?.full_name||'Athlète'}${isMe?' 👈':''}</span>
-              <span class="level-badge lbadge-${sc.level}">${LEVEL_LABELS[sc.level]||sc.level}</span>
+              ${isWodBlock?`<span class="level-badge lbadge-${sc.level}">${LEVEL_LABELS[sc.level]||sc.level}</span>`:''}
             </div>
             ${setsHtml}
           </div>
