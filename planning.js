@@ -531,7 +531,7 @@ function getSelectedLevel(sessionId){
 }
 
 async function loadScores(sessionId,scoreType,sets){
-  const {data}=await sb.from('wod_scores').select('*,profiles(full_name)').eq('session_id',sessionId);
+  const {data}=await sb.from('wod_scores').select('*,profiles(full_name)').in('session_id',await _lbSessionIds(sessionId));
   const el=document.getElementById(`scores-${sessionId}`);
   if(!el)return;
   if(!data||data.length===0){el.innerHTML='<div style="font-size:12px;color:var(--muted);text-align:center;padding:8px">Sois le premier à scorer !</div>';return;}
@@ -753,11 +753,18 @@ function closeScoresModal(){
   currentScoresSession=null;
 }
 
+// Séances perso copiées depuis cette séance de prog : leurs scores comptent dans le classement
+async function _lbSessionIds(sessionId){
+  try{const{data}=await sb.rpc('linked_personal_session_ids',{p_session:sessionId});
+    return[sessionId,...((data||[]).map(r=>typeof r==='string'?r:(r.linked_personal_session_ids||r.id)).filter(Boolean))];}
+  catch(e){return[sessionId];}
+}
 async function renderScoresModal(sessionId, scoreType, sets){
   const el=document.getElementById('smodal-leaderboard');
   el.innerHTML='<div class="spinner"></div>';
+  const _ids=await _lbSessionIds(sessionId);
   const [scoresRes, notesRes, sessRes] = await Promise.all([
-    sb.from('wod_scores').select('*,profiles(full_name,gender,avatar_url)').eq('session_id',sessionId),
+    sb.from('wod_scores').select('*,profiles(full_name,gender,avatar_url)').in('session_id',_ids),
     sb.from('session_notes').select('*,profiles(full_name)').eq('session_id',sessionId).order('created_at',{ascending:false}),
     sb.from('sessions').select('type').eq('id',sessionId).maybeSingle()
   ]);
