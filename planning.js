@@ -445,11 +445,13 @@ function renderContentWithCharges(content,opts){
   // 3bis. Ligne de 10 « _ » ou plus → séparateur de bloc pleine largeur
   const SEP='\u0001';
   if(!(opts&&opts.keepSep)){
-    out=out.split('\n').map(l=>/^\s*_{10,}\s*$/.test(l.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' '))?SEP:l).join('\n');
+    out=out.split('\n').map(l=>{const t=l.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ');
+      return /^\s*_{10,}\s*$/.test(t)?SEP:/^\s*_{5,9}\s*$/.test(t)?'\u0002':l;}).join('\n');
   }
   // 4. \n → <br> (double saut = séparateur de bloc)
   out=out.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
   if(out.includes(SEP))out=out.replace(/(?:<br>)*\u0001(?:<br>)*/g,'<div class="blk-sep"></div>');
+  if(out.includes('\u0002'))out=out.replace(/(?:<br>)*\u0002(?:<br>)*/g,'<div class="blk-sep sm"></div>');
   return out;
 }
 

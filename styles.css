@@ -1241,3 +1241,5 @@ html[data-theme="light"] .cal-rich-full .cr-rest,:root[data-theme="light"] .cal-
 /* Séparateur de bloc (ligne de 10 « _ » ou bouton « ― Bloc ») */
 .blk-sep{height:1px;background:linear-gradient(90deg,transparent,#3a3a3a 8%,#3a3a3a 92%,transparent);margin:14px 0 12px}
 :root[data-theme="light"] .blk-sep{background:linear-gradient(90deg,transparent,#d4d4d4 8%,#d4d4d4 92%,transparent)}
+.blk-sep.sm{width:34%;background:linear-gradient(90deg,#3a3a3a,#3a3a3a 60%,transparent);margin:10px 0 9px}
+:root[data-theme="light"] .blk-sep.sm{background:linear-gradient(90deg,#d4d4d4,#d4d4d4 60%,transparent)}
