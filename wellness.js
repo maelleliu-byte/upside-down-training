@@ -6778,6 +6778,7 @@ async function claimFreeAccess(programmeId){
     h+='<input type="color" id="rich-color-picker-'+uid+'" class="rich-color-picker" value="#e8ff47" '
       +'oninput="richColor(this.value)" title="Couleur personnalisée">'
       +'<div class="rich-sep"></div>'
+      +'<button type="button" class="rich-btn" onclick="richInsertSep()" title="Séparateur de bloc" style="width:auto;padding:0 9px;font-size:12px;font-weight:700;color:#2dd4bf">― Bloc</button>'
       +'<button type="button" class="rich-btn" onclick="richCmd(\'removeFormat\')" '
       +'title="Effacer formatage" style="font-size:11px;color:var(--muted)">✕ fmt</button>'
       +'</div>';

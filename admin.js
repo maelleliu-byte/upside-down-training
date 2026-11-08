@@ -449,7 +449,7 @@ function _sanitizePlanningHtml(html){
 function formatPlanningContent(raw){
   if(!raw)return'';
   let html='';
-  try{html=renderContentWithCharges(raw);}catch(e){html=raw;}
+  try{html=renderContentWithCharges(raw,{keepSep:true});}catch(e){html=raw;}
   html=_sanitizePlanningHtml(html);
   const lines=html.split(/<br\s*\/?>/i);
   const txt=l=>stripHtml(l).replace(/ /g,' ').trim();
@@ -1406,6 +1406,11 @@ function _refocusActive(){
 function richColor(color){
   _refocusActive();
   document.execCommand('foreColor',false,color);
+}
+// Bouton « ― Bloc » : insère un séparateur de bloc (rendu en ligne pleine largeur)
+function richInsertSep(){
+  _refocusActive();
+  document.execCommand('insertHTML',false,'<br>__________<br><br>');
 }
 function richCmd(cmd){
   _refocusActive();

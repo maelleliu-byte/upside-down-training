@@ -364,7 +364,7 @@ function _stripHtmlForRegex(html){
   return tmp;
 }
 
-function renderContentWithCharges(content){
+function renderContentWithCharges(content,opts){
   // 3 syntaxes acceptées :
   //   80%|3RM|BACK SQUAT|   ← nouvelle avec format (préférée)
   //   80%|BACKSQUAT|        ← ancienne sans format (rétro-compat)
@@ -442,8 +442,14 @@ function renderContentWithCharges(content){
     return `@ ${pct}%`;
   });
 
+  // 3bis. Ligne de 10 « _ » ou plus → séparateur de bloc pleine largeur
+  const SEP='\u0001';
+  if(!(opts&&opts.keepSep)){
+    out=out.split('\n').map(l=>/^\s*_{10,}\s*$/.test(l.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' '))?SEP:l).join('\n');
+  }
   // 4. \n → <br> (double saut = séparateur de bloc)
   out=out.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  if(out.includes(SEP))out=out.replace(/(?:<br>)*\u0001(?:<br>)*/g,'<div class="blk-sep"></div>');
   return out;
 }
 

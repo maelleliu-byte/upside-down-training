@@ -1237,3 +1237,7 @@ html[data-theme="light"] .cal-rich-full .cr-rest,:root[data-theme="light"] .cal-
 .ms-ok{font-size:12px;font-weight:800;letter-spacing:.5px;color:var(--accent);white-space:nowrap}
 .ms-val{font-size:13px;font-weight:700;color:var(--text);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ms-fold.ms-done .ms-chev{color:var(--accent)}
+
+/* Séparateur de bloc (ligne de 10 « _ » ou bouton « ― Bloc ») */
+.blk-sep{height:1px;background:linear-gradient(90deg,transparent,#3a3a3a 8%,#3a3a3a 92%,transparent);margin:14px 0 12px}
+:root[data-theme="light"] .blk-sep{background:linear-gradient(90deg,transparent,#d4d4d4 8%,#d4d4d4 92%,transparent)}
