@@ -531,8 +531,9 @@
     return els.some(el=>el.type==='checkbox'?el.checked:String(el.value||el.innerText||'').trim()!=='');
   }
   async function scoreExists(sid){
-    const{data}=await sb.from('wod_scores').select('id').eq('session_id',sid).eq('athlete_id',uid()).maybeSingle();
-    return!!data;
+    const ids=typeof _lbSessionIds==='function'?await _lbSessionIds(sid):[sid];
+    const{data}=await sb.from('wod_scores').select('id').in('session_id',ids).eq('athlete_id',uid()).limit(1);
+    return!!(data&&data.length);
   }
   function wireInline(card,s,saved,hasScore){
     const wrap=card.querySelector(`.chg-inline[data-chg="${s.id}"]`);
@@ -707,7 +708,7 @@
         const txt=card.querySelector('.session-content')?.innerText||'';
         const mod=saved?saved.modality:defaultMod(s,txt);
         btn.insertAdjacentHTML('beforebegin',inlineHTML(s,saved,estimateMinutes(txt),mod));
-        wireInline(card,s,saved,scored.has(sid));
+        wireInline(card,s,saved,scored.has(sid)||!!card.querySelector('.ms-fold.ms-done'));
         continue;
       }
       // pas de formulaire de score : on garde le volet charge seul
