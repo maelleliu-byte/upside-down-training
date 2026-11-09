@@ -414,7 +414,11 @@ function scaleWod(texte,o){
       for(var i=0;i<ECHELLES.length;i++){
         var sub=marche(ECHELLES[i],voie,p.barreau);
         if(!sub)continue;
-        var poser=(function(x){return function(){return M1+x+M2;};})(sub);
+        /* La prog est écrite en capitales : la substitution suit le mouvement
+           qu'elle remplace, sinon la ligne part en minuscules au milieu. */
+        var poser=(function(x){return function(m){
+          return M1+((/[A-ZÀ-Þ]/.test(m)&&m===m.toUpperCase())?x.toUpperCase():x)+M2;
+        };})(sub);
         ECHELLES[i].re.lastIndex=0;
         l=safeSub(l,ECHELLES[i].re,poser);
         if(ECHELLES[i].re2){ECHELLES[i].re2.lastIndex=0;l=safeSub(l,ECHELLES[i].re2,poser);}
@@ -439,30 +443,25 @@ function scaleWod(texte,o){
 
 var STYLE_ID='udtk-style';
 var CSS=
-'.udtk{margin-top:14px;border-top:1px solid var(--border,rgba(255,255,255,.1));padding-top:12px}'+
-'.udtk-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}'+
-'.udtk-titre{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent,#2dd4bf)}'+
-/* Barre de boutons : tranches d\'âge puis niveaux. Un appui = un bloc. */
-'.udtk-pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}'+
+/* La barre de boutons se glisse DANS la carte, juste sous le WOD : un appui
+   repeint le bloc WOD lui-même, aucun bloc n'est ajouté en dessous. */
+'.udtk{margin-top:10px}'+
+'.udtk-pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center}'+
 '.udtk-pill{font:inherit;font-size:13px;font-weight:800;letter-spacing:.01em;padding:9px 13px;min-height:38px;border-radius:9px;border:1px solid var(--border,rgba(255,255,255,.18));background:var(--card2,rgba(255,255,255,.04));color:var(--text,#e6edf3);cursor:pointer;-webkit-tap-highlight-color:transparent}'+
 '.udtk-pill.on{background:var(--c,#2dd4bf);border-color:var(--c,#2dd4bf);color:#0b1512}'+
 '.udtk-pill.niv{color:var(--c,#2dd4bf);border-color:currentColor;text-transform:uppercase;font-size:12px;letter-spacing:.06em}'+
 '.udtk-pill.niv.on{color:#0b1512}'+
 '.udtk-pills-sep{flex:0 0 1px;align-self:stretch;min-height:28px;background:var(--border,rgba(255,255,255,.18));margin:0 3px}'+
-'.udtk-base{font-size:11.5px;color:var(--muted,#8b949e);margin:0;line-height:1.5}'+
-/* Le bloc de la séance porte déjà les scalings écrits à la main : dans la prog
-   Kids ils passent derrière les boutons, on masque les doublons. */
-'.session-card:has(+ .udtk) .scaling-block{display:none}'+
-'.udtk-voie{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted,#8b949e);margin-bottom:8px;flex-wrap:wrap}'+
-'.udtk-voie select{font:inherit;font-size:11px;padding:4px 7px;background:var(--card2,rgba(255,255,255,.05));color:var(--text,#e6edf3);border:1px solid var(--border,rgba(255,255,255,.18));border-radius:7px}'+
-'.udtk-bloc{background:var(--card2,rgba(255,255,255,.03));border:1px solid var(--border,rgba(255,255,255,.1));border-left:3px solid var(--accent,#2dd4bf);border-radius:8px;padding:10px 12px;min-width:0}'+
-'.udtk-bloc.officiel{border-left-color:var(--blue,#58a6ff)}'+
-'.udtk-bloc.modifie{border-left-color:var(--purple,#bc8cff)}'+
-'.udtk-bloc-head{display:flex;align-items:baseline;gap:8px;margin-bottom:2px;flex-wrap:wrap}'+
-'.udtk-age{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.02em}'+
+/* Le bloc WOD quand il affiche une variante : liseré et bandeau à la couleur. */
+'.udtk-on{border-left:3px solid var(--c,#2dd4bf);padding-left:11px}'+
+'.udtk-ban{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}'+
+'.udtk-age{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--c,#2dd4bf)}'+
 '.udtk-tag{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--purple,#bc8cff);border:1px solid currentColor;border-radius:4px;padding:1px 5px}'+
-'.udtk-meta{font-size:10px;color:var(--muted,#8b949e);font-variant-numeric:tabular-nums;margin-bottom:5px}'+
-'.udtk-wod{font-size:12px;line-height:1.65;word-break:break-word}'+
+'.udtk-meta{font-size:10px;color:var(--muted,#8b949e);font-variant-numeric:tabular-nums}'+
+/* Les scalings écrits à la main sont derrière les boutons : plus de doublon. */
+'.session-card:has(.udtk-pills) .scaling-block{display:none}'+
+'.udtk-voie{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted,#8b949e);margin-top:8px;flex-wrap:wrap}'+
+'.udtk-voie select{font:inherit;font-size:11px;padding:4px 7px;background:var(--card2,rgba(255,255,255,.05));color:var(--text,#e6edf3);border:1px solid var(--border,rgba(255,255,255,.18));border-radius:7px}'+
 '.udtk-load{font-weight:800}'+
 '.udtk-sub{background:rgba(45,212,191,.15);color:var(--accent,#2dd4bf);padding:0 3px;border-radius:3px;font-weight:700}'+
 '.udtk-note{font-size:10.5px;color:var(--muted,#8b949e);margin-top:7px;line-height:1.5}'+
@@ -545,20 +544,19 @@ function parId(liste,id){
   return null;
 }
 
+/* Contenu d'origine du bloc WOD, par séance : ce qu'on remet en 16-17 RX. */
+var ORIGINE={};
+
 /**
- * Construit le bloc Kids d'une séance : une barre de boutons (tranches d'âge
- * puis niveaux) et UN SEUL bloc, celui qu'on vient d'appuyer.
- * 16-17 en RX = le bloc de la séance lui-même : rien n'est réaffiché.
+ * Barre de boutons — tranches d'âge puis niveaux. Elle se glisse dans la carte,
+ * juste sous le bloc WOD. Aucun bloc n'est ajouté : c'est le WOD lui-même que
+ * l'appui repeint (voir contenuKids).
  */
-function blocKids(s,catId,nivId){
+function barreKids(s,catId,nivId){
   var niveau=parId(NIVEAUX,nivId)||NIVEAUX[0];
   var cat=parId(CATS,catId)||parId(CATS,CAT_BASE)||CATS[CATS.length-1];
-  if(!enTexte(s.content||'').trim())return '';
+  var i,pills='';
 
-  var admin=estAdmin(), i;
-
-  /* ---- barre de boutons ---- */
-  var pills='';
   for(i=CATS.length-1;i>=0;i--){
     pills+='<button type="button" class="udtk-pill age'+(CATS[i].id===cat.id?' on':'')+'"'+
       ' style="--c:var(--accent,#2dd4bf)" data-udtk-age="'+CATS[i].id+'" data-udtk-sid="'+s.id+'">'+
@@ -572,17 +570,22 @@ function blocKids(s,catId,nivId){
       NIVEAUX[i].court+'</button>';
   }
 
-  var tete='<div class="udtk" data-udtk-card="'+s.id+'" data-sel-cat="'+cat.id+'" data-sel-niv="'+niveau.id+'">'+
-    '<div class="udtk-head"><span class="udtk-titre">Kids &amp; Teens</span></div>'+
-    '<div class="udtk-pills">'+pills+'</div>';
+  return '<div class="udtk" data-udtk-card="'+s.id+'" data-sel-cat="'+cat.id+'" data-sel-niv="'+niveau.id+'">'+
+    '<div class="udtk-pills">'+pills+'</div></div>';
+}
 
-  /* ---- 16-17 RX : c'est le bloc du dessus, rien à réafficher ---- */
+/**
+ * Ce que doit afficher le bloc WOD pour une tranche d'âge et un niveau.
+ * 16-17 en RX : le contenu d'origine de la séance, inchangé.
+ */
+function contenuKids(s,catId,nivId){
+  var niveau=parId(NIVEAUX,nivId)||NIVEAUX[0];
+  var cat=parId(CATS,catId)||parId(CATS,CAT_BASE)||CATS[CATS.length-1];
+
   if(cat.id===CAT_BASE&&niveau.id===NIV_BASE){
-    return tete+'<p class="udtk-base">16-17 ans en RX = le bloc ci-dessus. '+
-      'Appuie sur une tranche d’âge ou sur un niveau.</p></div>';
+    return {html:ORIGINE[s.id]||'',coul:'',base:true};
   }
 
-  /* ---- le bloc demandé ---- */
   var perso=retouche(s,cat.id,niveau.id);
   var ecrit=(cat.id===CAT_BASE)?texteEcrit(s,niveau):'';
   var p=profil(cat.id,niveau.id);
@@ -598,14 +601,14 @@ function blocKids(s,catId,nivId){
   }else{
     var r=scaleWod(texteSource(s,niveau),{categorie:cat.id,niveau:niveau.id,
           intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
-    if(!r)return tete+'</div>';
+    if(!r)return {html:ORIGINE[s.id]||'',coul:'',base:true};
     corps=r.html;
     meta='coef '+r.k.toFixed(2)+' · barreau '+r.barreau+'/'+NB_BARREAUX+
          ' · box '+r.box[0]+'/'+r.box[1]+' cm';
   }
 
   var outils='';
-  if(admin){
+  if(estAdmin()){
     outils='<span class="udtk-actions">'+
       (perso!==null?'<button type="button" class="udtk-ico" title="Revenir au scaling automatique" data-udtk-reset="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">↺</button>':'')+
       '<button type="button" class="udtk-ico" title="Modifier" data-udtk-edit="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">✏️</button>'+
@@ -613,20 +616,19 @@ function blocKids(s,catId,nivId){
   }
 
   var titre=cat.nom+(niveau.id===NIV_BASE?'':' · '+niveau.nom);
-  var bloc='<div class="udtk-bloc'+(perso!==null?' modifie':'')+'" style="border-left-color:'+niveau.coul+'">'+
-      '<div class="udtk-bloc-head"><span class="udtk-age">'+titre+'</span>'+
-      (perso!==null?'<span class="udtk-tag">modifié</span>':'')+outils+'</div>'+
-      '<div class="udtk-meta">'+meta+'</div>'+
-      '<div class="udtk-wod">'+corps+'</div>'+
-      '<div class="udtk-note">'+
-        (cat.alerte?'<span class="udtk-alerte">⚠ '+cat.alerte+'</span>':'')+cat.note+
-      '</div>'+
-    '</div>';
+  var html='<div class="udtk-ban"><span class="udtk-age">'+titre+'</span>'+
+      (perso!==null?'<span class="udtk-tag">modifié</span>':'')+
+      '<span class="udtk-meta">'+meta+'</span>'+outils+'</div>'+
+    '<div class="udtk-wod">'+corps+'</div>'+
+    '<div class="udtk-note">'+
+      (cat.alerte?'<span class="udtk-alerte">⚠ '+cat.alerte+'</span>':'')+cat.note+
+    '</div>'+
+    voieLigne(s,estAdmin());
 
-  return tete+bloc+voieLigne(s,admin)+'</div>';
+  return {html:html,coul:niveau.coul,base:false};
 }
 
-/* Voie de progression — ligne discrète sous le bloc, réglable par l'admin. */
+/* Voie de progression — ligne discrète sous les boutons, réglable par l'admin. */
 function voieLigne(s,admin){
   var voie=voieDe(s), forcee=!!retouches(s)._voie;
   var vNom=(parId(VOIES,voie)||{}).nom||voie;
@@ -648,13 +650,39 @@ function selection(sid){
   return {cat:(h&&h.getAttribute('data-sel-cat'))||CAT_BASE,
           niv:(h&&h.getAttribute('data-sel-niv'))||NIV_BASE};
 }
+/* Repeint le bloc WOD et remet la barre de boutons à jour. */
 function rafraichir(sid,cat,niv){
   var s=CACHE[sid]; if(!s)return;
-  var hote=document.querySelector('[data-udtk-card="'+sid+'"]');
-  if(!hote)return;
+  var barre=document.querySelector('[data-udtk-card="'+sid+'"]');
+  var zone=document.querySelector('[data-udtk-zone="'+sid+'"]');
+  if(!barre||!zone)return;
+
+  var c=contenuKids(s,cat,niv);
+  zone.innerHTML=c.html;
+  if(c.base){
+    zone.classList.remove('udtk-on');
+    zone.style.removeProperty('--c');
+  }else{
+    zone.classList.add('udtk-on');
+    zone.style.setProperty('--c',c.coul);
+  }
+
   var neuf=document.createElement('div');
-  neuf.innerHTML=blocKids(s,cat,niv);
-  if(neuf.firstElementChild)hote.replaceWith(neuf.firstElementChild);
+  neuf.innerHTML=barreKids(s,cat,niv);
+  if(neuf.firstElementChild)barre.replaceWith(neuf.firstElementChild);
+}
+
+/* Glisse la barre de boutons dans la carte, juste sous le bloc WOD. */
+function injecterBarre(s,html){
+  var d=document.createElement('div');
+  d.innerHTML=html;
+  var zone=d.querySelector('.session-content');
+  if(!zone)return html;
+  ORIGINE[s.id]=zone.innerHTML;
+  zone.setAttribute('data-udtk-zone',s.id);
+  /* Au-dessus du WOD : les boutons ne bougent pas quand le contenu change. */
+  zone.insertAdjacentHTML('beforebegin',barreKids(s,CAT_BASE,NIV_BASE));
+  return d.innerHTML;
 }
 function toast(msg){
   try{if(typeof showToast==='function'){showToast(msg);return;}}catch(e){}
@@ -712,8 +740,10 @@ document.addEventListener('click',function(e){
         cat=crayon.getAttribute('data-udtk-cat'),
         niv=crayon.getAttribute('data-udtk-niv');
     var s=CACHE[sid]; if(!s)return;
-    var bloc=crayon.closest('.udtk-bloc'), zone=bloc.querySelector('.udtk-wod');
-    if(bloc.querySelector('.udtk-edit'))return;
+    var hote=crayon.closest('[data-udtk-zone]');
+    if(!hote)return;
+    var zone=hote.querySelector('.udtk-wod');
+    if(!zone||hote.querySelector('.udtk-edit'))return;
 
     var perso=retouche(s,cat,niv), txt=perso;
     if(txt===null){
@@ -793,8 +823,7 @@ if(!window.__patchBound_kidsScaling){
         if(concerne(s)){
           CACHE[s.id]=s;
           injecterStyle();
-          var bloc=blocKids(s,CAT_BASE,NIV_BASE);
-          if(bloc)html=html+bloc;
+          html=injecterBarre(s,html);
         }
       }catch(err){if(window.console)console.warn('[kids-scaling]',err);}
       return html;
@@ -1079,8 +1108,9 @@ if(typeof sb!=='undefined'&&sb&&sb.from){
   document.addEventListener('studio:ready',function(){chargerConfig();});
 }
 
-window.UDTKids={scaleWod:scaleWod,profil:profil,blocKids:blocKids,barreau:barreau,
-  injecterStyle:injecterStyle,
+window.UDTKids={scaleWod:scaleWod,profil:profil,barreau:barreau,
+  injecterStyle:injecterStyle,barreKids:barreKids,contenuKids:contenuKids,
+  injecterBarre:injecterBarre,ORIGINE:ORIGINE,CACHE:CACHE,rafraichir:rafraichir,
   chargerConfig:chargerConfig,sauverConfig:sauverConfig,panneauReglages:panneauReglages,
   CATS:CATS,NIVEAUX:NIVEAUX,RACKS:RACKS,ECHELLES:ECHELLES,GRILLE:GRILLE,VOIES:VOIES,
   VOIE_PAR_TYPE:VOIE_PAR_TYPE,REGIMES:REGIMES,PROGS:PROGS,USINE:USINE};
