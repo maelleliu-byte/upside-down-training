@@ -153,6 +153,16 @@
       '#tm-ov .btns{display:flex;gap:10px;margin-top:auto;padding-top:18px;width:100%}',
       '#tm-ov .btns button{flex:1;height:58px;border-radius:14px;font-family:"Bebas Neue",sans-serif;font-size:22px;letter-spacing:2px;border:1px solid #333;background:#161616;color:#f0f0f0;cursor:pointer}',
       '#tm-ov .btns .pri{background:var(--tm-c);color:#000;border-color:var(--tm-c);flex:2}',
+      '#tm-ov .btns{position:sticky;bottom:0;background:#0b0b0b;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));z-index:2;box-shadow:0 -14px 14px -6px #0b0b0b}',
+      '#tm-ov .tm.compact .ring{width:min(196px,50vw);margin:8px 0 4px}',
+      '#tm-ov .tm.compact .v{font-size:min(58px,15vw)}',
+      '#tm-ov .tm.compact .s{font-size:17px;margin-top:4px}',
+      '#tm-ov .tm.compact .sets{margin:2px 0 10px}',
+      '#tm-ov .nx .k{cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}',
+      '#tm-ov .nx .k::after{content:"▾";font-size:13px;color:#777;transition:transform .2s}',
+      '#tm-ov .nx.shut .k{border-bottom:0;margin-bottom:0;padding-bottom:0}',
+      '#tm-ov .nx.shut .k::after{transform:rotate(-90deg)}',
+      '#tm-ov .nx.shut .body{display:none}',
       '#tm-ov .pnav{width:100%;display:flex;align-items:center;gap:8px;margin-top:14px;background:#161616;border:1px solid #252525;border-radius:14px;padding:6px}',
       '#tm-ov .pnav button{width:40px;height:40px;flex:none;border-radius:10px;border:1px solid #333;background:#0b0b0b;color:#f0f0f0;font-size:22px;cursor:pointer}',
       '#tm-ov .pnav button:disabled{opacity:.25}',
@@ -235,7 +245,7 @@
       (nPh > 1 && nPh <= 40 ? '<div class="sets">' + new Array(nPh + 1).join('<i></i>') + '</div>' : '') +
       (sp.kind === 'down' ? '<div class="cnt"><button data-a="minus">−</button><div class="n"><span>0</span><small>ROUNDS</small></div><button class="p" data-a="plus">+</button></div>' : '') +
       '<div class="tm-sc"></div>' +
-      (st.body ? '<div class="nx"><div class="k">' + (st.parts.length > 1 ? 'CETTE PARTIE' : 'LE BLOC') + '</div><div class="body">' + st.body + '</div></div>' : '') +
+      (st.body ? '<div class="nx"><div class="k" data-a="nx">' + (st.parts.length > 1 ? 'CETTE PARTIE' : 'LE BLOC') + '</div><div class="body">' + st.body + '</div></div>' : '') +
       '<div class="btns"></div><div class="hint"></div></div>';
     ov.querySelector('.lab .k').textContent = st.title;
     ov.querySelector('.lab .t').textContent = sp.label;
@@ -244,6 +254,7 @@
       var b = e.target.closest('[data-a]'); if (!b || !st) return;
       var a = b.getAttribute('data-a');
       if (a === 'close') return close();
+      if (a === 'nx') { var nx = b.closest('.nx'); nx.classList.toggle('shut'); nx.dataset.user = '1'; return; }
       if (a === 'snd') { st.sound = !st.sound; b.textContent = st.sound ? '🔊' : '🔇'; b.classList.toggle('off', !st.sound); return; }
       if (a === 'plus') { st.rounds++; return paintRounds(); }
       if (a === 'minus') { st.rounds = Math.max(0, st.rounds - 1); return paintRounds(); }

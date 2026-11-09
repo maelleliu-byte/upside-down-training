@@ -41,8 +41,8 @@
       '#tm-ov .tms input.tms-in::placeholder{color:#555;font-weight:500}',
       '#tm-ov .tms-pm{display:flex;gap:6px}',
       '#tm-ov .tms-pm button{width:48px;height:48px;border-radius:10px;border:1px solid #333;background:#0b0b0b;color:#f0f0f0;font-size:22px;cursor:pointer}',
-      '#tm-ov .tms-hist{margin-top:12px;border-top:1px solid #262626;padding-top:6px;max-height:190px;overflow:auto}',
-      '#tm-ov .tms-hr{display:flex;align-items:center;gap:8px;font-size:13px;padding:6px 6px;margin:0 -6px;border-radius:8px;cursor:pointer;font-variant-numeric:tabular-nums}',
+      '#tm-ov .tms-hist{margin-top:10px;border-top:1px solid #262626;padding-top:4px;max-height:118px;overflow:auto}',
+      '#tm-ov .tms-hr{display:flex;align-items:center;gap:8px;font-size:13px;padding:4px 6px;margin:0 -6px;border-radius:8px;cursor:pointer;font-variant-numeric:tabular-nums}',
       '#tm-ov .tms-hr.cur{background:#1e1e1e}',
       '#tm-ov .tms-hr .tn{width:46px;flex:none;color:#888;font-size:11px;letter-spacing:1px}',
       '#tm-ov .tms-hr .tv{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
@@ -170,7 +170,7 @@
     var slots = slotsOf(c, info.sid), finals = finalsOf(c, info.sid), ch = chargeOf(c, info.sid);
     var btn = c.querySelector('.btn-score');
     var showFinal = info.done || (!slots.length && info.started && (info.kind === 'up' || info.kind === 'down'));
-    if (!slots.length && !showFinal) { box.innerHTML = ''; cur.key = ''; return; }
+    if (!slots.length && !showFinal) { box.innerHTML = ''; cur.key = ''; compact(box, false); return; }
     var k = cur.sel != null ? cur.sel : Math.min(info.slot, Math.max(0, slots.length - 1));
     if (slots.length && info.nSets && slots.length !== info.nSets && cur.sel == null) k = Math.min(slots.length - 1, Math.floor(info.slot * slots.length / info.nSets));
     var key = [info.sid, info.part, k, info.done ? 1 : 0, showFinal ? 1 : 0, slots.length].join('|');
@@ -197,10 +197,11 @@
       });
       h += '<div class="tms"><div class="tms-h">' +
         '<button class="tms-nav" data-tms="prev"' + (k ? '' : ' disabled') + '>‹</button>' +
-        '<div class="t">SET ' + (k + 1) + ' / ' + slots.length + (s.vbt ? ' · vitesses' : '') + '</div>' +
+        '<div class="t" data-tms="fold">SET ' + (k + 1) + ' / ' + slots.length + (s.vbt ? ' · vitesses' : '') + ' <span style="color:#666">' + (cur.fold ? '▸' : '▾') + '</span></div>' +
         '<span class="st' + (slotDone(s) ? ' ok' : '') + '">' + (slotDone(s) ? '✓ SAISI' : 'À SAISIR') + '</span>' +
         '<button class="tms-nav" data-tms="next"' + (k < slots.length - 1 ? '' : ' disabled') + '>›</button></div>';
       var single = s.fields.length === 1;
+      h += '<div class="tms-body"' + (cur.fold ? ' style="display:none"' : '') + '>';
       h += '<div class="tms-row">' + s.fields.map(function (f, fi) {
         var ph = prev && prev.fields[fi] ? show(prev.fields[fi].el.value) : '';
         if (!ph && f.kind !== 'm') ph = f.el.placeholder || '';
@@ -212,7 +213,7 @@
         (single && stepFor(s.fields[0].el, s.fields[0].kind) ? '<div class="tms-pm"><button data-tms="minus">−</button><button data-tms="plus">+</button></div>' : '') +
         '</div>';
       if (s.vbt) h += '<div class="tms-note">Charge pré-remplie avec la série d\'avant. Les vitesses partent dans ton Journal VBT à la validation.</div>';
-      h += '<div class="tms-hist"></div>';
+      h += '<div class="tms-hist"></div></div>';
       if (!showFinal) h += '</div>';
     }
     if (showFinal) {
@@ -235,6 +236,14 @@
     }
     box.innerHTML = h;
     paintHist(box, slots, k);
+    compact(box, !!h);
+  }
+  // Tout sur un écran : chrono plus compact, « LE BLOC » replié tant qu'on saisit
+  function compact(box, on) {
+    var tm = box.closest('.tm'); if (!tm) return;
+    tm.classList.toggle('compact', on);
+    var nx = tm.querySelector('.nx');
+    if (nx && !nx.dataset.user) nx.classList.toggle('shut', on);
   }
 
   function summary(slot) {
@@ -294,6 +303,7 @@
       t.parentElement.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === t); });
       return;
     }
+    if (a === 'fold') { cur.fold = !cur.fold; return render(cur.info, true); }
     if (a === 'prev' || a === 'next') { cur.sel = Math.max(0, Math.min(cur.slots.length - 1, cur.k + (a === 'next' ? 1 : -1))); return render(cur.info, true); }
     if (a === 'plus' || a === 'minus') {
       var f = cur.slots[cur.k].fields[0], step = stepFor(f.el, f.kind);
