@@ -448,18 +448,13 @@ var CSS=
 '.udtk{margin-top:10px}'+
 '.udtk-pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center}'+
 '.udtk-pill{font:inherit;font-size:13px;font-weight:800;letter-spacing:.01em;padding:9px 13px;min-height:38px;border-radius:9px;border:1px solid var(--border,rgba(255,255,255,.18));background:var(--card2,rgba(255,255,255,.04));color:var(--text,#e6edf3);cursor:pointer;-webkit-tap-highlight-color:transparent}'+
-'.udtk-pill.on{background:var(--c,#2dd4bf);border-color:var(--c,#2dd4bf);color:#0b1512}'+
-'.udtk-pill.niv{color:var(--c,#2dd4bf);border-color:currentColor;text-transform:uppercase;font-size:12px;letter-spacing:.06em}'+
-'.udtk-pill.niv.on{color:#0b1512}'+
-'.udtk-pills-sep{flex:0 0 1px;align-self:stretch;min-height:28px;background:var(--border,rgba(255,255,255,.18));margin:0 3px}'+
-/* Le bloc WOD quand il affiche une variante : liseré et bandeau à la couleur. */
-'.udtk-on{border-left:3px solid var(--c,#2dd4bf);padding-left:11px}'+
+'.udtk-pill.on{background:var(--accent,#2dd4bf);border-color:var(--accent,#2dd4bf);color:#0b1512}'+
+/* Le bloc WOD quand il affiche une tranche d\'âge : liseré + bandeau. */
+'.udtk-on{border-left:3px solid var(--accent,#2dd4bf);padding-left:11px}'+
 '.udtk-ban{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px}'+
-'.udtk-age{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--c,#2dd4bf)}'+
+'.udtk-age{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:var(--accent,#2dd4bf)}'+
 '.udtk-tag{font-size:9px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:var(--purple,#bc8cff);border:1px solid currentColor;border-radius:4px;padding:1px 5px}'+
 '.udtk-meta{font-size:10px;color:var(--muted,#8b949e);font-variant-numeric:tabular-nums}'+
-/* Les scalings écrits à la main sont derrière les boutons : plus de doublon. */
-'.session-card:has(.udtk-pills) .scaling-block{display:none}'+
 '.udtk-voie{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted,#8b949e);margin-top:8px;flex-wrap:wrap}'+
 '.udtk-voie select{font:inherit;font-size:11px;padding:4px 7px;background:var(--card2,rgba(255,255,255,.05));color:var(--text,#e6edf3);border:1px solid var(--border,rgba(255,255,255,.18));border-radius:7px}'+
 '.udtk-load{font-weight:800}'+
@@ -544,64 +539,52 @@ function parId(liste,id){
   return null;
 }
 
-/* Contenu d'origine du bloc WOD, par séance : ce qu'on remet en 16-17 RX. */
+/* Contenu d'origine de la carte, par séance : le WOD et chacun de ses blocs de
+   scaling, tels qu'ils sont écrits. C'est ce qu'on remet en 16-17. */
 var ORIGINE={};
 
+/* Classe du bloc de scaling dans la carte → niveau correspondant. */
+var BLOCS_SCALING=[
+  {cls:'scaling-block-inter',niv:'inter'},
+  {cls:'scaling-block-scaled',niv:'scaled'},
+  {cls:'scaling-block-found',niv:'fond'}
+];
+
 /**
- * Barre de boutons — tranches d'âge puis niveaux. Elle se glisse dans la carte,
- * juste sous le bloc WOD. Aucun bloc n'est ajouté : c'est le WOD lui-même que
- * l'appui repeint (voir contenuKids).
+ * Barre de boutons : uniquement les tranches d'âge. Elle se glisse dans la
+ * carte, entre le titre et le WOD. Un appui repeint le WOD ET ses blocs de
+ * scaling, qui restent en dessous comme sur n'importe quelle séance.
  */
-function barreKids(s,catId,nivId){
-  var niveau=parId(NIVEAUX,nivId)||NIVEAUX[0];
+function barreKids(s,catId){
   var cat=parId(CATS,catId)||parId(CATS,CAT_BASE)||CATS[CATS.length-1];
-  var i,pills='';
-
-  for(i=CATS.length-1;i>=0;i--){
+  var pills='';
+  for(var i=CATS.length-1;i>=0;i--){
     pills+='<button type="button" class="udtk-pill age'+(CATS[i].id===cat.id?' on':'')+'"'+
-      ' style="--c:var(--accent,#2dd4bf)" data-udtk-age="'+CATS[i].id+'" data-udtk-sid="'+s.id+'">'+
-      CATS[i].id+'</button>';
+      ' data-udtk-age="'+CATS[i].id+'" data-udtk-sid="'+s.id+'">'+CATS[i].id+'</button>';
   }
-  pills+='<span class="udtk-pills-sep"></span>';
-  for(i=0;i<NIVEAUX.length;i++){
-    if(NIVEAUX[i].id===NIV_BASE)continue;
-    pills+='<button type="button" class="udtk-pill niv'+(NIVEAUX[i].id===niveau.id?' on':'')+'"'+
-      ' style="--c:'+NIVEAUX[i].coul+'" data-udtk-nivbtn="'+NIVEAUX[i].id+'" data-udtk-sid="'+s.id+'">'+
-      NIVEAUX[i].court+'</button>';
-  }
-
-  return '<div class="udtk" data-udtk-card="'+s.id+'" data-sel-cat="'+cat.id+'" data-sel-niv="'+niveau.id+'">'+
+  return '<div class="udtk" data-udtk-card="'+s.id+'" data-sel-cat="'+cat.id+'">'+
     '<div class="udtk-pills">'+pills+'</div></div>';
 }
 
 /**
- * Ce que doit afficher le bloc WOD pour une tranche d'âge et un niveau.
- * 16-17 en RX : le contenu d'origine de la séance, inchangé.
+ * Ce que doit afficher le bloc WOD pour une tranche d'âge — en RX.
+ * 16-17 : le contenu d'origine de la séance, inchangé.
  */
-function contenuKids(s,catId,nivId){
-  var niveau=parId(NIVEAUX,nivId)||NIVEAUX[0];
+function contenuKids(s,catId){
   var cat=parId(CATS,catId)||parId(CATS,CAT_BASE)||CATS[CATS.length-1];
+  if(cat.id===CAT_BASE)return {html:(ORIGINE[s.id]||{}).wod||'',base:true};
 
-  if(cat.id===CAT_BASE&&niveau.id===NIV_BASE){
-    return {html:ORIGINE[s.id]||'',coul:'',base:true};
-  }
-
-  var perso=retouche(s,cat.id,niveau.id);
-  var ecrit=(cat.id===CAT_BASE)?texteEcrit(s,niveau):'';
-  var p=profil(cat.id,niveau.id);
+  var perso=retouche(s,cat.id,NIV_BASE);
   var corps,meta;
 
   if(perso!==null){
     corps=escapeHtml(perso).replace(/\n/g,'<br>');
+    var p=profil(cat.id,NIV_BASE);
     meta=p?('coef '+p.k.toFixed(2)+' · barreau '+p.barreau+'/'+NB_BARREAUX):'';
-  }else if(ecrit){
-    /* 16-17 : le scaling écrit à la main dans la séance, tel quel. */
-    corps=escapeHtml(ecrit).replace(/\n/g,'<br>');
-    meta='scaling écrit dans la séance';
   }else{
-    var r=scaleWod(texteSource(s,niveau),{categorie:cat.id,niveau:niveau.id,
+    var r=scaleWod(enTexte(s.content||''),{categorie:cat.id,niveau:NIV_BASE,
           intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
-    if(!r)return {html:ORIGINE[s.id]||'',coul:'',base:true};
+    if(!r)return {html:(ORIGINE[s.id]||{}).wod||'',base:true};
     corps=r.html;
     meta='coef '+r.k.toFixed(2)+' · barreau '+r.barreau+'/'+NB_BARREAUX+
          ' · box '+r.box[0]+'/'+r.box[1]+' cm';
@@ -610,13 +593,12 @@ function contenuKids(s,catId,nivId){
   var outils='';
   if(estAdmin()){
     outils='<span class="udtk-actions">'+
-      (perso!==null?'<button type="button" class="udtk-ico" title="Revenir au scaling automatique" data-udtk-reset="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">↺</button>':'')+
-      '<button type="button" class="udtk-ico" title="Modifier" data-udtk-edit="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">✏️</button>'+
+      (perso!==null?'<button type="button" class="udtk-ico" title="Revenir au scaling automatique" data-udtk-reset="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+NIV_BASE+'" data-udtk-sid="'+s.id+'">↺</button>':'')+
+      '<button type="button" class="udtk-ico" title="Modifier" data-udtk-edit="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+NIV_BASE+'" data-udtk-sid="'+s.id+'">✏️</button>'+
     '</span>';
   }
 
-  var titre=cat.nom+(niveau.id===NIV_BASE?'':' · '+niveau.nom);
-  var html='<div class="udtk-ban"><span class="udtk-age">'+titre+'</span>'+
+  var html='<div class="udtk-ban"><span class="udtk-age">'+cat.nom+'</span>'+
       (perso!==null?'<span class="udtk-tag">modifié</span>':'')+
       '<span class="udtk-meta">'+meta+'</span>'+outils+'</div>'+
     '<div class="udtk-wod">'+corps+'</div>'+
@@ -625,7 +607,24 @@ function contenuKids(s,catId,nivId){
     '</div>'+
     voieLigne(s,estAdmin());
 
-  return {html:html,coul:niveau.coul,base:false};
+  return {html:html,base:false};
+}
+
+/**
+ * Texte d'un bloc de scaling converti pour une tranche d'âge.
+ * Le texte est déjà allégé par la main de la coach : on ne lui applique que le
+ * coefficient d'âge, jamais en plus le coefficient du niveau.
+ */
+function scalingKids(s,catId,nivId){
+  var cat=parId(CATS,catId);
+  var niveau=parId(NIVEAUX,nivId);
+  if(!cat||!niveau)return null;
+  var ecrit=texteEcrit(s,niveau);
+  if(!ecrit)return null;
+  if(cat.id===CAT_BASE)return null;
+  var r=scaleWod(ecrit,{categorie:cat.id,niveau:NIV_BASE,
+        intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
+  return r?r.html:null;
 }
 
 /* Voie de progression — ligne discrète sous les boutons, réglable par l'admin. */
@@ -644,44 +643,60 @@ function voieLigne(s,admin){
 
 var CACHE={};
 
-/* Sélection courante lue dans le DOM (tranche d'âge + niveau). */
+/* Tranche d'âge affichée, lue dans le DOM. */
 function selection(sid){
   var h=document.querySelector('[data-udtk-card="'+sid+'"]');
-  return {cat:(h&&h.getAttribute('data-sel-cat'))||CAT_BASE,
-          niv:(h&&h.getAttribute('data-sel-niv'))||NIV_BASE};
+  return (h&&h.getAttribute('data-sel-cat'))||CAT_BASE;
 }
-/* Repeint le bloc WOD et remet la barre de boutons à jour. */
-function rafraichir(sid,cat,niv){
+
+/* Repeint le bloc WOD, ses blocs de scaling, et la barre de boutons. */
+function rafraichir(sid,catId){
   var s=CACHE[sid]; if(!s)return;
   var barre=document.querySelector('[data-udtk-card="'+sid+'"]');
   var zone=document.querySelector('[data-udtk-zone="'+sid+'"]');
   if(!barre||!zone)return;
+  var orig=ORIGINE[sid]||{sc:{}};
 
-  var c=contenuKids(s,cat,niv);
+  var c=contenuKids(s,catId);
   zone.innerHTML=c.html;
-  if(c.base){
-    zone.classList.remove('udtk-on');
-    zone.style.removeProperty('--c');
-  }else{
-    zone.classList.add('udtk-on');
-    zone.style.setProperty('--c',c.coul);
+  zone.classList.toggle('udtk-on',!c.base);
+
+  /* Les blocs de scaling suivent la même tranche d'âge. */
+  for(var i=0;i<BLOCS_SCALING.length;i++){
+    var nivId=BLOCS_SCALING[i].niv;
+    var el=document.querySelector('[data-udtk-sc="'+sid+'-'+nivId+'"]');
+    if(!el)continue;
+    var neufTexte=c.base?null:scalingKids(s,catId,nivId);
+    el.innerHTML=(neufTexte!=null)?neufTexte:((orig.sc||{})[nivId]||el.innerHTML);
   }
 
   var neuf=document.createElement('div');
-  neuf.innerHTML=barreKids(s,cat,niv);
+  neuf.innerHTML=barreKids(s,catId);
   if(neuf.firstElementChild)barre.replaceWith(neuf.firstElementChild);
 }
 
-/* Glisse la barre de boutons dans la carte, juste sous le bloc WOD. */
+/* Glisse la barre de boutons dans la carte, juste au-dessus du bloc WOD. */
 function injecterBarre(s,html){
   var d=document.createElement('div');
   d.innerHTML=html;
   var zone=d.querySelector('.session-content');
   if(!zone)return html;
-  ORIGINE[s.id]=zone.innerHTML;
+
+  var memo={wod:zone.innerHTML,sc:{}};
   zone.setAttribute('data-udtk-zone',s.id);
+
+  /* On repère les blocs de scaling de la carte pour pouvoir les convertir
+     eux aussi, et savoir quoi y remettre en 16-17. */
+  for(var i=0;i<BLOCS_SCALING.length;i++){
+    var t=d.querySelector('.'+BLOCS_SCALING[i].cls+' .scaling-text');
+    if(!t)continue;
+    memo.sc[BLOCS_SCALING[i].niv]=t.innerHTML;
+    t.setAttribute('data-udtk-sc',s.id+'-'+BLOCS_SCALING[i].niv);
+  }
+  ORIGINE[s.id]=memo;
+
   /* Au-dessus du WOD : les boutons ne bougent pas quand le contenu change. */
-  zone.insertAdjacentHTML('beforebegin',barreKids(s,CAT_BASE,NIV_BASE));
+  zone.insertAdjacentHTML('beforebegin',barreKids(s,CAT_BASE));
   return d.innerHTML;
 }
 function toast(msg){
@@ -705,9 +720,9 @@ document.addEventListener('change',function(e){
   if(!sel)return;
   var sid=sel.getAttribute('data-udtk-sid'), s=CACHE[sid];
   if(!s)return;
-  var sl=selection(sid);
+  var cat=selection(sid);
   enregistrerVoie(s,sel.value||null)
-    .then(function(){rafraichir(sid,sl.cat,sl.niv);})
+    .then(function(){rafraichir(sid,cat);})
     .catch(function(err){toast('❌ Changement de voie impossible');if(window.console)console.error('[kids-scaling]',err);});
 },true);
 
@@ -718,18 +733,7 @@ document.addEventListener('click',function(e){
   var bAge=e.target.closest('[data-udtk-age]');
   if(bAge){
     e.preventDefault(); e.stopPropagation();
-    var sidA=bAge.getAttribute('data-udtk-sid');
-    rafraichir(sidA,bAge.getAttribute('data-udtk-age'),selection(sidA).niv);
-    return;
-  }
-
-  var bNiv=e.target.closest('[data-udtk-nivbtn]');
-  if(bNiv){
-    e.preventDefault(); e.stopPropagation();
-    var sidN=bNiv.getAttribute('data-udtk-sid'), vise=bNiv.getAttribute('data-udtk-nivbtn');
-    var slN=selection(sidN);
-    /* Deuxième appui sur le même niveau : retour au RX. */
-    rafraichir(sidN,slN.cat,slN.niv===vise?NIV_BASE:vise);
+    rafraichir(bAge.getAttribute('data-udtk-sid'),bAge.getAttribute('data-udtk-age'));
     return;
   }
 
@@ -747,16 +751,9 @@ document.addEventListener('click',function(e){
 
     var perso=retouche(s,cat,niv), txt=perso;
     if(txt===null){
-      var niveau=parId(NIVEAUX,niv)||NIVEAUX[0];
-      /* On part du texte réellement affiché : l'écrit à la main s'il existe. */
-      var dejaEcrit=(cat===CAT_BASE)?texteEcrit(s,niveau):'';
-      if(dejaEcrit){
-        txt=dejaEcrit;
-      }else{
-        var gen=scaleWod(texteSource(s,niveau),{categorie:cat,niveau:niv,
-              intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
-        txt=gen?gen.texte:'';
-      }
+      var gen=scaleWod(enTexte(s.content||''),{categorie:cat,niveau:niv,
+            intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
+      txt=gen?gen.texte:'';
     }
     var ta=document.createElement('textarea');
     ta.className='udtk-edit'; ta.value=txt; ta.spellcheck=false;
@@ -778,7 +775,7 @@ document.addEventListener('click',function(e){
     var s2=CACHE[ta2.dataset.sid]; if(!s2)return;
     save.disabled=true; save.textContent='…';
     enregistrerRetouche(s2,ta2.dataset.cat,ta2.dataset.niv,ta2.value)
-      .then(function(){toast('✅ Scaling enregistré');rafraichir(ta2.dataset.sid,ta2.dataset.cat,ta2.dataset.niv);})
+      .then(function(){toast('✅ Scaling enregistré');rafraichir(ta2.dataset.sid,ta2.dataset.cat);})
       .catch(function(err){
         save.disabled=false; save.textContent='Enregistrer';
         toast('❌ Enregistrement impossible');
@@ -791,7 +788,7 @@ document.addEventListener('click',function(e){
   if(cancel){
     e.preventDefault(); e.stopPropagation();
     var ta3=cancel.closest('.udtk-wod').querySelector('.udtk-edit');
-    rafraichir(ta3.dataset.sid,ta3.dataset.cat,ta3.dataset.niv);
+    rafraichir(ta3.dataset.sid,ta3.dataset.cat);
     return;
   }
 
@@ -803,7 +800,7 @@ document.addEventListener('click',function(e){
         niv4=reset.getAttribute('data-udtk-niv');
     var s4=CACHE[sid4]; if(!s4)return;
     enregistrerRetouche(s4,cat4,niv4,null)
-      .then(function(){toast('↺ Scaling automatique rétabli');rafraichir(sid4,cat4,niv4);})
+      .then(function(){toast('↺ Scaling automatique rétabli');rafraichir(sid4,cat4);})
       .catch(function(err){toast('❌ Réinitialisation impossible');if(window.console)console.error('[kids-scaling]',err);});
     return;
   }
@@ -874,8 +871,7 @@ async function chargerConfig(){
   var vus=document.querySelectorAll('[data-udtk-card]');
   for(var i=0;i<vus.length;i++){
     var sid=vus[i].getAttribute('data-udtk-card');
-    var sl=selection(sid);
-    rafraichir(sid,sl.cat,sl.niv);
+    rafraichir(sid,selection(sid));
   }
 }
 
@@ -1110,7 +1106,8 @@ if(typeof sb!=='undefined'&&sb&&sb.from){
 
 window.UDTKids={scaleWod:scaleWod,profil:profil,barreau:barreau,
   injecterStyle:injecterStyle,barreKids:barreKids,contenuKids:contenuKids,
-  injecterBarre:injecterBarre,ORIGINE:ORIGINE,CACHE:CACHE,rafraichir:rafraichir,
+  injecterBarre:injecterBarre,scalingKids:scalingKids,
+  ORIGINE:ORIGINE,CACHE:CACHE,rafraichir:rafraichir,
   chargerConfig:chargerConfig,sauverConfig:sauverConfig,panneauReglages:panneauReglages,
   CATS:CATS,NIVEAUX:NIVEAUX,RACKS:RACKS,ECHELLES:ECHELLES,GRILLE:GRILLE,VOIES:VOIES,
   VOIE_PAR_TYPE:VOIE_PAR_TYPE,REGIMES:REGIMES,PROGS:PROGS,USINE:USINE};
