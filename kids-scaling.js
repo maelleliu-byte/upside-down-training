@@ -55,25 +55,33 @@ var CATS = [
 var JEUNES = ['6-7','8-9','10-11','12-13'];
 
 /* Niveaux. Le shift ne touche plus la gymnastique (gérée par la grille),
-   seulement la box et la cible wall ball. */
+   seulement la box et la cible wall ball.
+   `coul` reprend exactement le code couleur du bloc normal de la séance :
+   intermédiaire en rouge, scaled en bleu, fondation en violet. */
 var NIVEAUX = [
-  {id:'rx',nom:'RX',k:1,shift:0,source:'content',
+  {id:'rx',nom:'RX',court:'RX',k:1,shift:0,source:'content',coul:'var(--accent,#2dd4bf)',
    legende:"Coefficient plein de la catégorie."},
-  {id:'inter',nom:'Inter',k:0.85,shift:0,source:'scaling_inter',
+  {id:'inter',nom:'Intermédiaire',court:'Inter',k:0.85,shift:0,source:'scaling_inter',coul:'var(--red,#f85149)',
    legende:"Charges allégées de 15 %, un barreau en dessous sur les mouvements."},
-  {id:'scaled',nom:'Scaled',k:0.65,shift:1,source:'scaling_scaled',
-   legende:"Charges allégées de 35 %, box et cible descendues d'un cran."}
+  {id:'scaled',nom:'Scaled',court:'Scaled',k:0.65,shift:1,source:'scaling_scaled',coul:'var(--blue,#58a6ff)',
+   legende:"Charges allégées de 35 %, box et cible descendues d'un cran."},
+  {id:'fond',nom:'Fondation',court:'Fond.',k:0.50,shift:2,source:'scaling_foundation',coul:'var(--purple,#bc8cff)',
+   legende:"Charges allégées de 50 %, deux barreaux en dessous : découverte du mouvement."}
 ];
+/* Niveau de référence : le bloc de la séance tel qu'il est écrit. */
+var NIV_BASE='rx';
+/* Tranche de référence : identique au RX adulte, donc au bloc affiché au-dessus. */
+var CAT_BASE='16-17';
 
 /* GRILLE âge × niveau → barreau de l'échelle (1 = le plus facile, 6 = mouvement adulte).
    C'est ici que l'âge et le niveau se rejoignent pour choisir le mouvement. */
 var GRILLE = {
-  '6-7':   {rx:2, inter:1, scaled:1},
-  '8-9':   {rx:3, inter:2, scaled:1},
-  '10-11': {rx:4, inter:3, scaled:2},
-  '12-13': {rx:5, inter:4, scaled:3},
-  '14-15': {rx:6, inter:5, scaled:4},
-  '16-17': {rx:6, inter:5, scaled:4}
+  '6-7':   {rx:2, inter:1, scaled:1, fond:1},
+  '8-9':   {rx:3, inter:2, scaled:1, fond:1},
+  '10-11': {rx:4, inter:3, scaled:2, fond:1},
+  '12-13': {rx:5, inter:4, scaled:3, fond:2},
+  '14-15': {rx:6, inter:5, scaled:4, fond:3},
+  '16-17': {rx:6, inter:5, scaled:4, fond:3}
 };
 var NB_BARREAUX = 6;
 
@@ -434,14 +442,19 @@ var CSS=
 '.udtk{margin-top:14px;border-top:1px solid var(--border,rgba(255,255,255,.1));padding-top:12px}'+
 '.udtk-head{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}'+
 '.udtk-titre{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent,#2dd4bf)}'+
-'.udtk-tabs{display:flex;margin-left:auto;border:1px solid var(--border,rgba(255,255,255,.18));border-radius:8px;overflow:hidden}'+
-'.udtk-tabs button{font:inherit;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;background:transparent;color:var(--muted,#8b949e);border:0;border-right:1px solid var(--border,rgba(255,255,255,.18));cursor:pointer}'+
-'.udtk-tabs button:last-child{border-right:0}'+
-'.udtk-tabs button.on{background:var(--accent,#2dd4bf);color:#0b1512}'+
+/* Barre de boutons : tranches d\'âge puis niveaux. Un appui = un bloc. */
+'.udtk-pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}'+
+'.udtk-pill{font:inherit;font-size:13px;font-weight:800;letter-spacing:.01em;padding:9px 13px;min-height:38px;border-radius:9px;border:1px solid var(--border,rgba(255,255,255,.18));background:var(--card2,rgba(255,255,255,.04));color:var(--text,#e6edf3);cursor:pointer;-webkit-tap-highlight-color:transparent}'+
+'.udtk-pill.on{background:var(--c,#2dd4bf);border-color:var(--c,#2dd4bf);color:#0b1512}'+
+'.udtk-pill.niv{color:var(--c,#2dd4bf);border-color:currentColor;text-transform:uppercase;font-size:12px;letter-spacing:.06em}'+
+'.udtk-pill.niv.on{color:#0b1512}'+
+'.udtk-pills-sep{flex:0 0 1px;align-self:stretch;min-height:28px;background:var(--border,rgba(255,255,255,.18));margin:0 3px}'+
+'.udtk-base{font-size:11.5px;color:var(--muted,#8b949e);margin:0;line-height:1.5}'+
+/* Le bloc de la séance porte déjà les scalings écrits à la main : dans la prog
+   Kids ils passent derrière les boutons, on masque les doublons. */
+'.session-card:has(+ .udtk) .scaling-block{display:none}'+
 '.udtk-voie{display:flex;align-items:center;gap:6px;font-size:11px;color:var(--muted,#8b949e);margin-bottom:8px;flex-wrap:wrap}'+
 '.udtk-voie select{font:inherit;font-size:11px;padding:4px 7px;background:var(--card2,rgba(255,255,255,.05));color:var(--text,#e6edf3);border:1px solid var(--border,rgba(255,255,255,.18));border-radius:7px}'+
-'.udtk-legende{font-size:11px;color:var(--muted,#8b949e);margin:0 0 10px}'+
-'.udtk-grid{display:grid;gap:8px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}'+
 '.udtk-bloc{background:var(--card2,rgba(255,255,255,.03));border:1px solid var(--border,rgba(255,255,255,.1));border-left:3px solid var(--accent,#2dd4bf);border-radius:8px;padding:10px 12px;min-width:0}'+
 '.udtk-bloc.officiel{border-left-color:var(--blue,#58a6ff)}'+
 '.udtk-bloc.modifie{border-left-color:var(--purple,#bc8cff)}'+
@@ -521,80 +534,126 @@ function enregistrerVoie(s,voieId){
   });
 }
 
-/* Construit le bloc Kids pour une séance. */
-function blocKids(s,niveauId){
-  var niveau=null;
-  for(var i=0;i<NIVEAUX.length;i++){if(NIVEAUX[i].id===niveauId)niveau=NIVEAUX[i];}
-  if(!niveau)niveau=NIVEAUX[0];
+/* Texte écrit à la main dans la séance pour un niveau donné, s'il existe. */
+function texteEcrit(s,niveau){
+  if(!niveau||niveau.source==='content')return '';
+  return enTexte(s[niveau.source]||'').trim();
+}
 
-  var brutTexte=texteSource(s,niveau);
-  if(!brutTexte.trim())return '';
+function parId(liste,id){
+  for(var i=0;i<liste.length;i++){if(liste[i].id===id)return liste[i];}
+  return null;
+}
 
-  var regime=REGIMES[s.type]||'auto';
-  var voie=voieDe(s);
-  var forcee=!!retouches(s)._voie;
-  var admin=estAdmin();
+/**
+ * Construit le bloc Kids d'une séance : une barre de boutons (tranches d'âge
+ * puis niveaux) et UN SEUL bloc, celui qu'on vient d'appuyer.
+ * 16-17 en RX = le bloc de la séance lui-même : rien n'est réaffiché.
+ */
+function blocKids(s,catId,nivId){
+  var niveau=parId(NIVEAUX,nivId)||NIVEAUX[0];
+  var cat=parId(CATS,catId)||parId(CATS,CAT_BASE)||CATS[CATS.length-1];
+  if(!enTexte(s.content||'').trim())return '';
 
-  var tabs='';
-  for(var t=0;t<NIVEAUX.length;t++){
-    var n=NIVEAUX[t];
-    tabs+='<button type="button" class="'+(n.id===niveau.id?'on':'')+
-          '" data-udtk-niveau="'+n.id+'" data-udtk-sid="'+s.id+'">'+n.nom+'</button>';
+  var admin=estAdmin(), i;
+
+  /* ---- barre de boutons ---- */
+  var pills='';
+  for(i=CATS.length-1;i>=0;i--){
+    pills+='<button type="button" class="udtk-pill age'+(CATS[i].id===cat.id?' on':'')+'"'+
+      ' style="--c:var(--accent,#2dd4bf)" data-udtk-age="'+CATS[i].id+'" data-udtk-sid="'+s.id+'">'+
+      CATS[i].id+'</button>';
+  }
+  pills+='<span class="udtk-pills-sep"></span>';
+  for(i=0;i<NIVEAUX.length;i++){
+    if(NIVEAUX[i].id===NIV_BASE)continue;
+    pills+='<button type="button" class="udtk-pill niv'+(NIVEAUX[i].id===niveau.id?' on':'')+'"'+
+      ' style="--c:'+NIVEAUX[i].coul+'" data-udtk-nivbtn="'+NIVEAUX[i].id+'" data-udtk-sid="'+s.id+'">'+
+      NIVEAUX[i].court+'</button>';
   }
 
-  var voieHtml='';
-  var vNom=(VOIES.filter(function(v){return v.id===voie;})[0]||{}).nom||voie;
-  if(admin){
-    var opts='<option value=""'+(forcee?'':' selected')+'>Auto — '+vNom+'</option>';
-    for(var w=0;w<VOIES.length;w++){
-      opts+='<option value="'+VOIES[w].id+'"'+(forcee&&VOIES[w].id===voie?' selected':'')+'>'+VOIES[w].nom+'</option>';
-    }
-    voieHtml='<div class="udtk-voie"><span>Voie de progression</span>'+
-      '<select data-udtk-voie="1" data-udtk-sid="'+s.id+'">'+opts+'</select>'+
-      '<span>· régime '+regime+'</span></div>';
+  var tete='<div class="udtk" data-udtk-card="'+s.id+'" data-sel-cat="'+cat.id+'" data-sel-niv="'+niveau.id+'">'+
+    '<div class="udtk-head"><span class="udtk-titre">Kids &amp; Teens</span></div>'+
+    '<div class="udtk-pills">'+pills+'</div>';
+
+  /* ---- 16-17 RX : c'est le bloc du dessus, rien à réafficher ---- */
+  if(cat.id===CAT_BASE&&niveau.id===NIV_BASE){
+    return tete+'<p class="udtk-base">16-17 ans en RX = le bloc ci-dessus. '+
+      'Appuie sur une tranche d’âge ou sur un niveau.</p></div>';
+  }
+
+  /* ---- le bloc demandé ---- */
+  var perso=retouche(s,cat.id,niveau.id);
+  var ecrit=(cat.id===CAT_BASE)?texteEcrit(s,niveau):'';
+  var p=profil(cat.id,niveau.id);
+  var corps,meta;
+
+  if(perso!==null){
+    corps=escapeHtml(perso).replace(/\n/g,'<br>');
+    meta=p?('coef '+p.k.toFixed(2)+' · barreau '+p.barreau+'/'+NB_BARREAUX):'';
+  }else if(ecrit){
+    /* 16-17 : le scaling écrit à la main dans la séance, tel quel. */
+    corps=escapeHtml(ecrit).replace(/\n/g,'<br>');
+    meta='scaling écrit dans la séance';
   }else{
-    voieHtml='<div class="udtk-voie"><span>Voie '+vNom.toLowerCase()+'</span></div>';
+    var r=scaleWod(texteSource(s,niveau),{categorie:cat.id,niveau:niveau.id,
+          intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
+    if(!r)return tete+'</div>';
+    corps=r.html;
+    meta='coef '+r.k.toFixed(2)+' · barreau '+r.barreau+'/'+NB_BARREAUX+
+         ' · box '+r.box[0]+'/'+r.box[1]+' cm';
   }
 
-  var g='';
-  for(var c=CATS.length-1;c>=0;c--){
-    var r=scaleWod(brutTexte,{categorie:CATS[c].id,niveau:niveau.id,intensite:regime,voie:voie});
-    if(!r)continue;
-    var cat=r.categorie;
-    var perso=retouche(s,cat.id,niveau.id);
-    var corps=(perso!==null)?escapeHtml(perso).replace(/\n/g,'<br>'):r.html;
-    var outils='';
-    if(admin){
-      outils='<span class="udtk-actions">'+
-        (perso!==null?'<button type="button" class="udtk-ico" title="Revenir au scaling automatique" data-udtk-reset="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">↺</button>':'')+
-        '<button type="button" class="udtk-ico" title="Modifier" data-udtk-edit="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">✏️</button>'+
-      '</span>';
-    }
-    g+='<div class="udtk-bloc'+(cat.officiel?' officiel':'')+(perso!==null?' modifie':'')+'">'+
-         '<div class="udtk-bloc-head"><span class="udtk-age">'+cat.nom+'</span>'+
-         (perso!==null?'<span class="udtk-tag">modifié</span>':'')+outils+'</div>'+
-         '<div class="udtk-meta">coef '+r.k.toFixed(2)+' · barreau '+r.barreau+'/'+NB_BARREAUX+' · box '+r.box[0]+'/'+r.box[1]+' cm</div>'+
-         '<div class="udtk-wod">'+corps+'</div>'+
-         '<div class="udtk-note">'+cat.note+'</div>'+
-       '</div>';
+  var outils='';
+  if(admin){
+    outils='<span class="udtk-actions">'+
+      (perso!==null?'<button type="button" class="udtk-ico" title="Revenir au scaling automatique" data-udtk-reset="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">↺</button>':'')+
+      '<button type="button" class="udtk-ico" title="Modifier" data-udtk-edit="1" data-udtk-cat="'+cat.id+'" data-udtk-niv="'+niveau.id+'" data-udtk-sid="'+s.id+'">✏️</button>'+
+    '</span>';
   }
 
-  return '<div class="udtk" data-udtk-card="'+s.id+'">'+
-    '<div class="udtk-head"><span class="udtk-titre">Kids &amp; Teens</span>'+
-      '<div class="udtk-tabs">'+tabs+'</div></div>'+
-    voieHtml+
-    '<p class="udtk-legende">'+niveau.legende+'</p>'+
-    '<div class="udtk-grid">'+g+'</div></div>';
+  var titre=cat.nom+(niveau.id===NIV_BASE?'':' · '+niveau.nom);
+  var bloc='<div class="udtk-bloc'+(perso!==null?' modifie':'')+'" style="border-left-color:'+niveau.coul+'">'+
+      '<div class="udtk-bloc-head"><span class="udtk-age">'+titre+'</span>'+
+      (perso!==null?'<span class="udtk-tag">modifié</span>':'')+outils+'</div>'+
+      '<div class="udtk-meta">'+meta+'</div>'+
+      '<div class="udtk-wod">'+corps+'</div>'+
+      '<div class="udtk-note">'+
+        (cat.alerte?'<span class="udtk-alerte">⚠ '+cat.alerte+'</span>':'')+cat.note+
+      '</div>'+
+    '</div>';
+
+  return tete+bloc+voieLigne(s,admin)+'</div>';
+}
+
+/* Voie de progression — ligne discrète sous le bloc, réglable par l'admin. */
+function voieLigne(s,admin){
+  var voie=voieDe(s), forcee=!!retouches(s)._voie;
+  var vNom=(parId(VOIES,voie)||{}).nom||voie;
+  if(!admin)return '<div class="udtk-voie"><span>Voie '+vNom.toLowerCase()+'</span></div>';
+  var opts='<option value=""'+(forcee?'':' selected')+'>Auto — '+vNom+'</option>';
+  for(var w=0;w<VOIES.length;w++){
+    opts+='<option value="'+VOIES[w].id+'"'+(forcee&&VOIES[w].id===voie?' selected':'')+'>'+VOIES[w].nom+'</option>';
+  }
+  return '<div class="udtk-voie"><span>Voie de progression</span>'+
+    '<select data-udtk-voie="1" data-udtk-sid="'+s.id+'">'+opts+'</select>'+
+    '<span>· régime '+(REGIMES[s.type]||'auto')+'</span></div>';
 }
 
 var CACHE={};
 
-function rafraichir(sid,niv){
+/* Sélection courante lue dans le DOM (tranche d'âge + niveau). */
+function selection(sid){
+  var h=document.querySelector('[data-udtk-card="'+sid+'"]');
+  return {cat:(h&&h.getAttribute('data-sel-cat'))||CAT_BASE,
+          niv:(h&&h.getAttribute('data-sel-niv'))||NIV_BASE};
+}
+function rafraichir(sid,cat,niv){
   var s=CACHE[sid]; if(!s)return;
   var hote=document.querySelector('[data-udtk-card="'+sid+'"]');
   if(!hote)return;
   var neuf=document.createElement('div');
-  neuf.innerHTML=blocKids(s,niv);
+  neuf.innerHTML=blocKids(s,cat,niv);
   if(neuf.firstElementChild)hote.replaceWith(neuf.firstElementChild);
 }
 function toast(msg){
@@ -618,11 +677,9 @@ document.addEventListener('change',function(e){
   if(!sel)return;
   var sid=sel.getAttribute('data-udtk-sid'), s=CACHE[sid];
   if(!s)return;
-  var bloc=sel.closest('.udtk');
-  var on=bloc?bloc.querySelector('.udtk-tabs button.on'):null;
-  var niv=on?on.getAttribute('data-udtk-niveau'):'rx';
+  var sl=selection(sid);
   enregistrerVoie(s,sel.value||null)
-    .then(function(){rafraichir(sid,niv);})
+    .then(function(){rafraichir(sid,sl.cat,sl.niv);})
     .catch(function(err){toast('❌ Changement de voie impossible');if(window.console)console.error('[kids-scaling]',err);});
 },true);
 
@@ -630,10 +687,21 @@ document.addEventListener('change',function(e){
 document.addEventListener('click',function(e){
   if(!e.target.closest)return;
 
-  var tab=e.target.closest('[data-udtk-niveau]');
-  if(tab){
+  var bAge=e.target.closest('[data-udtk-age]');
+  if(bAge){
     e.preventDefault(); e.stopPropagation();
-    rafraichir(tab.getAttribute('data-udtk-sid'),tab.getAttribute('data-udtk-niveau'));
+    var sidA=bAge.getAttribute('data-udtk-sid');
+    rafraichir(sidA,bAge.getAttribute('data-udtk-age'),selection(sidA).niv);
+    return;
+  }
+
+  var bNiv=e.target.closest('[data-udtk-nivbtn]');
+  if(bNiv){
+    e.preventDefault(); e.stopPropagation();
+    var sidN=bNiv.getAttribute('data-udtk-sid'), vise=bNiv.getAttribute('data-udtk-nivbtn');
+    var slN=selection(sidN);
+    /* Deuxième appui sur le même niveau : retour au RX. */
+    rafraichir(sidN,slN.cat,slN.niv===vise?NIV_BASE:vise);
     return;
   }
 
@@ -649,11 +717,16 @@ document.addEventListener('click',function(e){
 
     var perso=retouche(s,cat,niv), txt=perso;
     if(txt===null){
-      var niveau=null;
-      for(var i=0;i<NIVEAUX.length;i++){if(NIVEAUX[i].id===niv)niveau=NIVEAUX[i];}
-      var src=texteSource(s,niveau);
-      var gen=scaleWod(src,{categorie:cat,niveau:niv,intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
-      txt=gen?gen.texte:'';
+      var niveau=parId(NIVEAUX,niv)||NIVEAUX[0];
+      /* On part du texte réellement affiché : l'écrit à la main s'il existe. */
+      var dejaEcrit=(cat===CAT_BASE)?texteEcrit(s,niveau):'';
+      if(dejaEcrit){
+        txt=dejaEcrit;
+      }else{
+        var gen=scaleWod(texteSource(s,niveau),{categorie:cat,niveau:niv,
+              intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
+        txt=gen?gen.texte:'';
+      }
     }
     var ta=document.createElement('textarea');
     ta.className='udtk-edit'; ta.value=txt; ta.spellcheck=false;
@@ -675,7 +748,7 @@ document.addEventListener('click',function(e){
     var s2=CACHE[ta2.dataset.sid]; if(!s2)return;
     save.disabled=true; save.textContent='…';
     enregistrerRetouche(s2,ta2.dataset.cat,ta2.dataset.niv,ta2.value)
-      .then(function(){toast('✅ Scaling enregistré');rafraichir(ta2.dataset.sid,ta2.dataset.niv);})
+      .then(function(){toast('✅ Scaling enregistré');rafraichir(ta2.dataset.sid,ta2.dataset.cat,ta2.dataset.niv);})
       .catch(function(err){
         save.disabled=false; save.textContent='Enregistrer';
         toast('❌ Enregistrement impossible');
@@ -688,7 +761,7 @@ document.addEventListener('click',function(e){
   if(cancel){
     e.preventDefault(); e.stopPropagation();
     var ta3=cancel.closest('.udtk-wod').querySelector('.udtk-edit');
-    rafraichir(ta3.dataset.sid,ta3.dataset.niv);
+    rafraichir(ta3.dataset.sid,ta3.dataset.cat,ta3.dataset.niv);
     return;
   }
 
@@ -700,7 +773,7 @@ document.addEventListener('click',function(e){
         niv4=reset.getAttribute('data-udtk-niv');
     var s4=CACHE[sid4]; if(!s4)return;
     enregistrerRetouche(s4,cat4,niv4,null)
-      .then(function(){toast('↺ Scaling automatique rétabli');rafraichir(sid4,niv4);})
+      .then(function(){toast('↺ Scaling automatique rétabli');rafraichir(sid4,cat4,niv4);})
       .catch(function(err){toast('❌ Réinitialisation impossible');if(window.console)console.error('[kids-scaling]',err);});
     return;
   }
@@ -720,7 +793,7 @@ if(!window.__patchBound_kidsScaling){
         if(concerne(s)){
           CACHE[s.id]=s;
           injecterStyle();
-          var bloc=blocKids(s,'rx');
+          var bloc=blocKids(s,CAT_BASE,NIV_BASE);
           if(bloc)html=html+bloc;
         }
       }catch(err){if(window.console)console.warn('[kids-scaling]',err);}
@@ -772,8 +845,8 @@ async function chargerConfig(){
   var vus=document.querySelectorAll('[data-udtk-card]');
   for(var i=0;i<vus.length;i++){
     var sid=vus[i].getAttribute('data-udtk-card');
-    var on=vus[i].querySelector('.udtk-tabs button.on');
-    rafraichir(sid,on?on.getAttribute('data-udtk-niveau'):'rx');
+    var sl=selection(sid);
+    rafraichir(sid,sl.cat,sl.niv);
   }
 }
 
@@ -1007,6 +1080,7 @@ if(typeof sb!=='undefined'&&sb&&sb.from){
 }
 
 window.UDTKids={scaleWod:scaleWod,profil:profil,blocKids:blocKids,barreau:barreau,
+  injecterStyle:injecterStyle,
   chargerConfig:chargerConfig,sauverConfig:sauverConfig,panneauReglages:panneauReglages,
   CATS:CATS,NIVEAUX:NIVEAUX,RACKS:RACKS,ECHELLES:ECHELLES,GRILLE:GRILLE,VOIES:VOIES,
   VOIE_PAR_TYPE:VOIE_PAR_TYPE,REGIMES:REGIMES,PROGS:PROGS,USINE:USINE};
