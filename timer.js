@@ -158,6 +158,9 @@
       '#tm-ov .tm.compact .v{font-size:min(58px,15vw)}',
       '#tm-ov .tm.compact .s{font-size:17px;margin-top:4px}',
       '#tm-ov .tm.compact .sets{margin:2px 0 10px}',
+      '#tm-ov .cdc{display:inline-flex;gap:6px;margin-left:6px;vertical-align:middle}',
+      '#tm-ov .cdc button{height:26px;padding:0 10px;border-radius:999px;border:1px solid #333;background:#121212;color:#999;font-size:12px;font-weight:700;cursor:pointer}',
+      '#tm-ov .cdc button.on{border-color:var(--tm-c);color:var(--tm-c)}',
       '#tm-ov .nx .k{cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none}',
       '#tm-ov .nx .k::after{content:"▾";font-size:13px;color:#777;transition:transform .2s}',
       '#tm-ov .nx.shut .k{border-bottom:0;margin-bottom:0;padding-bottom:0}',
@@ -197,6 +200,12 @@
       });
     } catch (e) {}
   }
+  // Décompte avant le départ : 3 s ou 10 s (mémorisé sur le téléphone)
+  function cdPref() { try { return +localStorage.getItem('tm_cd') === 10 ? 10 : 3; } catch (e) { return 3; } }
+  function cdChips() {
+    return 'Décompte avant le départ : <span class="cdc">' + [3, 10].map(function (n) {
+      return '<button data-a="cd' + n + '" class="' + (st.cd === n ? 'on' : '') + '">' + n + ' s</button>'; }).join('') + '</span>';
+  }
   function buzz(p) { try { if (st && st.sound && navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
   // Alerte 10 s avant la reprise d'une série de travail : double bip + vibration
   function alert10() { beep(880, .16); beep(880, .16, .24); buzz([140, 90, 140]); }
@@ -211,7 +220,7 @@
     css();
     try { ac = ac || new (window.AudioContext || window.webkitAudioContext)(); if (ac.state === 'suspended') ac.resume(); } catch (e) {}
     var snd = st ? st.sound : true;
-    st = { id: id, parts: o.parts, title: o.title, sound: snd };
+    st = { id: id, parts: o.parts, title: o.title, sound: snd, cd: cdPref() };
     var ov = document.getElementById('tm-ov'); if (!ov) { ov = document.createElement('div'); ov.id = 'tm-ov'; document.body.appendChild(ov); }
     ov.style.display = 'flex';
     document.documentElement.style.overflow = 'hidden';
@@ -255,6 +264,7 @@
       var a = b.getAttribute('data-a');
       if (a === 'close') return close();
       if (a === 'nx') { var nx = b.closest('.nx'); nx.classList.toggle('shut'); nx.dataset.user = '1'; return; }
+      if (a === 'cd3' || a === 'cd10') { st.cd = a === 'cd10' ? 10 : 3; try { localStorage.setItem('tm_cd', st.cd); } catch (e) {} buttons(); draw(); return; }
       if (a === 'snd') { st.sound = !st.sound; b.textContent = st.sound ? '🔊' : '🔇'; b.classList.toggle('off', !st.sound); return; }
       if (a === 'plus') { st.rounds++; return paintRounds(); }
       if (a === 'minus') { st.rounds = Math.max(0, st.rounds - 1); return paintRounds(); }
@@ -279,6 +289,9 @@
       var rs = st.rs, last = rs.set >= st.sp.n;
       if (rs.phase === 'ready') {
         b.innerHTML = '<button class="pri" data-a="play">▶ GO · SET 1</button>';
+        h.innerHTML = cdChips();
+      } else if (rs.phase === 'pre') {
+        b.innerHTML = '<button data-a="reset" aria-label="Recommencer">↺</button><button class="pri" disabled style="opacity:.5">DÉPART…</button>';
         h.textContent = 'Appuie sur « Série finie » à la fin de chaque série : le repos démarre tout de suite.';
       } else if (rs.phase === 'work') {
         b.innerHTML = '<button data-a="reset" aria-label="Recommencer">↺</button><button class="pri" data-a="setdone">' + (last ? '✓ DERNIÈRE SÉRIE FINIE' : '✓ SÉRIE FINIE · REPOS') + '</button>';
@@ -298,13 +311,13 @@
     var play = st.running ? '❚❚ PAUSE' : (started ? '▶ REPRENDRE' : '▶ GO');
     var third = st.sp.kind === 'int' ? '<button data-a="skip" aria-label="Suivant">⏭</button>' : (st.sp.kind === 'up' ? '<button data-a="finish">✓ FINI</button>' : '');
     b.innerHTML = '<button data-a="reset" aria-label="Recommencer">↺</button><button class="pri" data-a="play">' + play + '</button>' + third;
-    h.textContent = started ? 'Écran maintenu allumé pendant le timer' : 'Décompte 3-2-1 avant le départ';
+    if (started) h.textContent = 'Écran maintenu allumé pendant le timer'; else h.innerHTML = cdChips();
   }
 
   function toggle() {
     if (st.done) return;
     if (st.sp.kind === 'rest') {
-      if (st.rs.phase === 'ready') { st.rs.phase = 'work'; st.rs.t0 = now(); st.running = true; lock(); beep(990, .4); loop(); buttons(); }
+      if (st.rs.phase === 'ready') { st.rs.phase = 'pre'; st.rs.t0 = now(); st.running = true; lock(); loop(); buttons(); }
       return;
     }
     if (st.running) { st.acc = elapsed(); st.running = false; unlock(); }
@@ -331,7 +344,7 @@
   }
   function finish() { st.acc = elapsed(); st.running = false; st.done = true; unlock(); beep(880, .6); buttons(); draw(); }
   function skip() {
-    var e = elapsed() - 3, acc = 0, ph = st.sp.phases;
+    var e = elapsed() - st.cd, acc = 0, ph = st.sp.phases;
     if (e < 0) { st.acc += -e + 0.001; if (st.running) { st.acc = elapsed(); st.t0 = now(); } return draw(); }
     for (var i = 0; i < ph.length; i++) { acc += ph[i].d; if (e < acc) { st.acc += acc - e + 0.001; if (st.running) { st.acc = elapsed(); st.t0 = now(); } break; } }
     draw();
@@ -343,7 +356,7 @@
   function draw() {
     if (!st) return;
     var ov = document.getElementById('tm-ov'); if (!ov) return;
-    var sp = st.sp, E = elapsed(), e = E - 3;
+    var sp = st.sp, E = elapsed(), e = E - st.cd, CD = st.cd;
     var arc = ov.querySelector('.arc'), v = ov.querySelector('.v'), ph = ov.querySelector('.ph'), s = ov.querySelector('.s');
     var col = TEAL, p = 0, big = '0:00', top = '', sub = '', beepKey = null, curWork = -1;
 
@@ -351,6 +364,13 @@
       var rs = st.rs, n2 = sp.n, tt = now() - rs.t0;
       if (st.done) { top = '✓ TERMINÉ'; col = GREEN; p = 1; big = String(n2) + '/' + n2; sub = sp.label; curWork = 999; }
       else if (rs.phase === 'ready') { top = 'PRÊT'; col = GREY; p = 1; big = fmt(sp.rest); sub = 'SET 1 / ' + n2 + ' · REPOS ' + fmt(sp.rest); curWork = 0; }
+      else if (rs.phase === 'pre') {
+        var lp = st.cd - tt;
+        if (lp <= 0) { rs.phase = 'work'; rs.t0 = now(); beep(990, .45); buzz(300); buttons(); return draw(); }
+        var np = Math.ceil(lp); beepKey = 'pre' + np;
+        if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; if (np <= 3 || np === st.cd) beep(660, .2); }
+        top = 'PRÊT'; col = GREY; p = lp / st.cd; big = String(np); sub = 'SET 1 / ' + n2; curWork = 0;
+      }
       else if (rs.phase === 'work') { top = 'SET ' + rs.set + ' / ' + n2; col = TEAL; p = (tt % 60) / 60; big = fmt(Math.floor(tt)); sub = 'EN COURS'; curWork = rs.set - 1; st._rest = false; }
       else {
         var left = rs.rest - tt;
@@ -361,9 +381,9 @@
         if (ten && st.ten !== 'r' + rs.set) { st.ten = 'r' + rs.set; alert10(); }
         top = ten ? 'REPRISE DANS' : 'REPOS'; col = ten ? ORANGE : GREY; p = left / rs.rest; big = fmt(rr); sub = 'SET ' + (rs.set + 1) + ' / ' + n2 + ' ENSUITE'; curWork = rs.set; st._rest = true;
       }
-    } else if (!st.done && E < 3 && (st.running || st.acc > 0)) {
-      var n = Math.ceil(3 - E); big = String(n); top = 'PRÊT'; col = GREY; p = (3 - E) / 3; beepKey = 'pre' + n;
-      if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .2); }
+    } else if (!st.done && E < CD && (st.running || st.acc > 0)) {
+      var n = Math.ceil(CD - E); big = String(n); top = 'PRÊT'; col = GREY; p = (CD - E) / CD; beepKey = 'pre' + n;
+      if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; if (n <= 3 || n === CD) beep(660, .2); }
       sub = sp.kind === 'int' ? sp.phases[0].lab : '';
     } else if (!st.running && st.acc === 0 && !st.done) {
       top = 'PRÊT'; col = GREY; p = 1;
@@ -402,8 +422,8 @@
       }
     } else {
       var cap = sp.cap, t = Math.max(0, e);
-      if (cap && t >= cap && !st.done) { st.done = true; st.running = false; st.acc = 3 + cap; unlock(); beep(880, .8); buttons(); t = cap; }
-      if (st.done) { t = Math.min(Math.max(0, st.acc - 3), cap || 1e9); top = cap && t >= cap ? 'CAP ATTEINT' : '✓ TERMINÉ'; col = cap && t >= cap ? ORANGE : GREEN; }
+      if (cap && t >= cap && !st.done) { st.done = true; st.running = false; st.acc = st.cd + cap; unlock(); beep(880, .8); buttons(); t = cap; }
+      if (st.done) { t = Math.min(Math.max(0, st.acc - st.cd), cap || 1e9); top = cap && t >= cap ? 'CAP ATTEINT' : '✓ TERMINÉ'; col = cap && t >= cap ? ORANGE : GREEN; }
       else { top = 'EN COURS'; if (e < 0.25 && st.lastBeep !== 'go') { st.lastBeep = 'go'; beep(990, .4); } }
       big = fmt(Math.floor(t)); p = cap ? Math.min(1, t / cap) : (t % 60) / 60; sub = cap ? 'CAP ' + fmt(cap) : '';
     }
@@ -425,7 +445,7 @@
       var slot = sp.kind === 'rest' ? (st.rs ? st.rs.set - 1 : 0) : sp.kind === 'int' ? (curWork === 999 ? nS - 1 : (st._rest ? Math.max(0, curWork - 1) : Math.max(0, curWork))) : 0;
       try {
         window.tmScoreHook({ sid: st.id, kind: sp.kind, nSets: nS, slot: slot, done: !!st.done, started: !!st.t1,
-          minutes: st.t1 ? (now() - st.t1) / 60 : 0, secs: sp.kind === 'up' ? Math.max(0, Math.min(elapsed() - 3, sp.cap || 1e9)) : null,
+          minutes: st.t1 ? (now() - st.t1) / 60 : 0, secs: sp.kind === 'up' ? Math.max(0, Math.min(elapsed() - st.cd, sp.cap || 1e9)) : null,
           rounds: st.rounds, part: st.pi, el: ov.querySelector('.tm-sc') });
       } catch (err) { console.error('[timer-saisie]', err); }
     }
