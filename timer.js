@@ -199,7 +199,7 @@
   function setPart(i) {
     if (raf) clearInterval(raf); raf = null; unlock();
     var p = st.parts[i];
-    st.pi = i; st.sp = p; st.body = p.html; st.running = false; st.acc = 0; st.t0 = 0; st.pre = 3; st.rounds = 0; st.done = false; st.lastBeep = null; st._rest = false;
+    st.t1 = 0; st.pi = i; st.sp = p; st.body = p.html; st.running = false; st.acc = 0; st.t0 = 0; st.pre = 3; st.rounds = 0; st.done = false; st.lastBeep = null; st._rest = false;
     st.total = p.kind === 'int' ? p.phases.reduce(function (a, q) { return a + q.d; }, 0) : 0;
     st.rs = { set: 1, phase: 'ready', t0: 0, rest: p.rest || 0 };
     shell(); draw();
@@ -223,6 +223,7 @@
       '<div class="c"><div class="ph"></div><div class="v">0:00</div><div class="s"></div></div></div>' +
       (nPh > 1 && nPh <= 40 ? '<div class="sets">' + new Array(nPh + 1).join('<i></i>') + '</div>' : '') +
       (sp.kind === 'down' ? '<div class="cnt"><button data-a="minus">−</button><div class="n"><span>0</span><small>ROUNDS</small></div><button class="p" data-a="plus">+</button></div>' : '') +
+      '<div class="tm-sc"></div>' +
       (st.body ? '<div class="nx"><div class="k">' + (st.parts.length > 1 ? 'CETTE PARTIE' : 'LE BLOC') + '</div><div class="body">' + st.body + '</div></div>' : '') +
       '<div class="btns"></div><div class="hint"></div></div>';
     ov.querySelector('.lab .k').textContent = st.title;
@@ -269,7 +270,7 @@
     if (st.done) {
       var hasNext = st.pi < st.parts.length - 1;
       b.innerHTML = '<button data-a="reset"' + (hasNext ? ' aria-label="Recommencer">↺' : '>↺ RECOMMENCER') + '</button>' + (hasNext ? '<button class="pri" data-a="next">PARTIE SUIVANTE ›</button>' : '');
-      h.textContent = st.sp.kind === 'up' ? 'Le timer n’enregistre rien : saisis ton score dans « Mon score ».' : '';
+      h.textContent = st.sp.kind === 'up' ? 'Ton temps est pré-rempli : vérifie-le puis « Valider le bloc ».' : '';
       return;
     }
     var play = st.running ? '❚❚ PAUSE' : (started ? '▶ REPRENDRE' : '▶ GO');
@@ -389,10 +390,22 @@
       for (var k = 0; k < bars.length; k++) bars[k].className = k < curWork ? 'on' : (k === curWork && !st._rest ? 'cur' : '');
       if (curWork === 999) for (k = 0; k < bars.length; k++) bars[k].className = 'on';
     }
+    // Saisie des scores dans le timer (timer-saisie.js)
+    if (!st.t1 && (st.running || (st.rs && st.rs.phase !== 'ready'))) st.t1 = now();
+    if (window.tmScoreHook) {
+      var nS = sp.kind === 'int' ? sp.phases.filter(function (q) { return !q.rest; }).length : sp.kind === 'rest' ? sp.n : 0;
+      var slot = sp.kind === 'rest' ? (st.rs ? st.rs.set - 1 : 0) : sp.kind === 'int' ? (curWork === 999 ? nS - 1 : (st._rest ? Math.max(0, curWork - 1) : Math.max(0, curWork))) : 0;
+      try {
+        window.tmScoreHook({ sid: st.id, kind: sp.kind, nSets: nS, slot: slot, done: !!st.done, started: !!st.t1,
+          minutes: st.t1 ? (now() - st.t1) / 60 : 0, secs: sp.kind === 'up' ? Math.max(0, Math.min(elapsed() - 3, sp.cap || 1e9)) : null,
+          rounds: st.rounds, part: st.pi, el: ov.querySelector('.tm-sc') });
+      } catch (err) { console.error('[timer-saisie]', err); }
+    }
   }
 
   document.addEventListener('keydown', function (e) { if (st && e.key === 'Escape') close(); });
   document.addEventListener('visibilitychange', function () { if (st && st.running && document.visibilityState === 'visible') lock(); });
 
+  window.__blockTimerClose = function () { close(); };
   window.__blockTimerParse = parse; window.__blockTimerParts = parseParts; // pour les tests
 })();
