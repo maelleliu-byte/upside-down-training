@@ -443,11 +443,14 @@ function scaleWod(texte,o){
 
 var STYLE_ID='udtk-style';
 var CSS=
-/* La barre de boutons se glisse DANS la carte, juste sous le WOD : un appui
-   repeint le bloc WOD lui-même, aucun bloc n'est ajouté en dessous. */
-'.udtk{margin-top:10px}'+
-'.udtk-pills{display:flex;flex-wrap:wrap;gap:6px;align-items:center}'+
-'.udtk-pill{font:inherit;font-size:13px;font-weight:800;letter-spacing:.01em;padding:9px 13px;min-height:38px;border-radius:9px;border:1px solid var(--border,rgba(255,255,255,.18));background:var(--card2,rgba(255,255,255,.04));color:var(--text,#e6edf3);cursor:pointer;-webkit-tap-highlight-color:transparent}'+
+/* La barre de boutons vit dans l'en-tête de la carte, sur la ligne du badge,
+   du timer et de la date : elle ne mange pas la place du WOD. Elle défile
+   horizontalement quand l'écran est trop étroit. */
+'.udtk{flex:1 1 auto;min-width:0;margin:0 10px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}'+
+'.udtk::-webkit-scrollbar{display:none}'+
+'.session-header:has(.udtk)>span:last-child{white-space:nowrap;flex:0 0 auto}'+
+'.udtk-pills{display:flex;flex-wrap:nowrap;gap:5px;align-items:center;width:max-content}'+
+'.udtk-pill{font:inherit;font-size:11px;font-weight:800;letter-spacing:.01em;padding:6px 10px;border-radius:7px;border:1px solid var(--border,rgba(255,255,255,.18));background:var(--card2,rgba(255,255,255,.04));color:var(--text,#e6edf3);cursor:pointer;white-space:nowrap;-webkit-tap-highlight-color:transparent}'+
 '.udtk-pill.on{background:var(--accent,#2dd4bf);border-color:var(--accent,#2dd4bf);color:#0b1512}'+
 /* Le bloc WOD quand il affiche une tranche d\'âge : liseré + bandeau. */
 '.udtk-on{border-left:3px solid var(--accent,#2dd4bf);padding-left:11px}'+
@@ -695,8 +698,12 @@ function injecterBarre(s,html){
   }
   ORIGINE[s.id]=memo;
 
-  /* Au-dessus du WOD : les boutons ne bougent pas quand le contenu change. */
-  zone.insertAdjacentHTML('beforebegin',barreKids(s,CAT_BASE));
+  /* Dans l'en-tête, après le badge de type : les boutons ne prennent aucune
+     ligne au WOD et restent au même endroit quoi qu'affiche la carte. */
+  var hdr=d.querySelector('.session-header'), badge=hdr&&hdr.querySelector('.badge');
+  if(badge)badge.insertAdjacentHTML('afterend',barreKids(s,CAT_BASE));
+  else if(hdr)hdr.insertAdjacentHTML('afterbegin',barreKids(s,CAT_BASE));
+  else zone.insertAdjacentHTML('beforebegin',barreKids(s,CAT_BASE));
   return d.innerHTML;
 }
 function toast(msg){
