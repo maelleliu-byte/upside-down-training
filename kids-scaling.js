@@ -73,17 +73,20 @@ var NIV_BASE='rx';
 /* Tranche de référence : identique au RX adulte, donc au bloc affiché au-dessus. */
 var CAT_BASE='16-17';
 
-/* GRILLE âge × niveau → barreau de l'échelle (1 = le plus facile, 6 = mouvement adulte).
-   C'est ici que l'âge et le niveau se rejoignent pour choisir le mouvement. */
+/* GRILLE âge × niveau → barreau de l'échelle. Un barreau par niveau :
+   1 = Fondation, 2 = Scaled, 3 = Intermédiaire, 4 = mouvement adulte (RX).
+   C'est ici que l'âge et le niveau se rejoignent pour choisir le mouvement :
+   à 16-17 chaque niveau prend son barreau, et plus l'âge descend plus toute
+   la ligne descend avec lui. */
 var GRILLE = {
-  '6-7':   {rx:2, inter:1, scaled:1, fond:1},
-  '8-9':   {rx:3, inter:2, scaled:1, fond:1},
-  '10-11': {rx:4, inter:3, scaled:2, fond:1},
-  '12-13': {rx:5, inter:4, scaled:3, fond:2},
-  '14-15': {rx:6, inter:5, scaled:4, fond:3},
-  '16-17': {rx:6, inter:5, scaled:4, fond:3}
+  '6-7':   {rx:1, inter:1, scaled:1, fond:1},
+  '8-9':   {rx:2, inter:1, scaled:1, fond:1},
+  '10-11': {rx:2, inter:2, scaled:1, fond:1},
+  '12-13': {rx:3, inter:2, scaled:2, fond:1},
+  '14-15': {rx:4, inter:3, scaled:2, fond:1},
+  '16-17': {rx:4, inter:3, scaled:2, fond:1}
 };
-var NB_BARREAUX = 6;
+var NB_BARREAUX = 4;
 
 /* Les trois voies de progression. */
 var VOIES = [
@@ -119,72 +122,70 @@ var RACKS = {
 /* ÉCHELLES. Pour chaque mouvement et chaque voie, 6 barreaux du plus facile
    au plus dur. Un barreau vide = mouvement d'origine conservé. */
 var ECHELLES = [
-{id:'ring-mu',nom:'Ring muscle-up',re:/\b(ring muscle[- ]ups?|muscle[- ]ups? anneaux)\b/gi,v:{
-  technique:['ring rows inclinées + push-ups genoux','ring rows + push-ups','transitions assises aux anneaux','ring rows en false grip','low ring muscle-ups',''],
-  volume:['ring rows inclinées + push-ups genoux','ring rows + push-ups sur box','pull-ups sautées + dips sur box','pull-ups + dips sur box','chest-to-bar + dips anneaux',''],
-  force:['ring rows + push-ups','ring rows lestées + dips sur box','pull-ups strictes + dips strictes','chest-to-bar strictes + dips anneaux','muscle-ups stricts assistés','']}},
-{id:'bar-mu',nom:'Bar muscle-up',re:/\b(bar muscle[- ]ups?|muscle[- ]ups?)\b/gi,v:{
-  technique:['ring rows inclinées','ring rows','kip swings','pull-ups poitrine haute','transitions sur box',''],
-  volume:['ring rows inclinées','ring rows','pull-ups sautées','pull-ups','chest-to-bar',''],
-  force:['ring rows','pull-ups strictes','chest-to-bar strictes','pull-ups strictes lestées','bar muscle-ups stricts assistés','']}},
-{id:'c2b',nom:'Chest-to-bar',re:/\b(chest[- ]to[- ]bar(?: pull[- ]ups?)?|c2b)\b/gi,v:{
-  technique:['ring rows inclinées','ring rows','pull-ups strictes assistées','pull-ups strictes','chest-to-bar assistées',''],
-  volume:['ring rows inclinées','ring rows','pull-ups sautées','pull-ups','chest-to-bar assistées',''],
-  force:['ring rows','ring rows lestées','pull-ups négatives 5 s','pull-ups strictes','chest-to-bar strictes','']}},
-{id:'pull-up',nom:'Pull-up / traction',re:/\b(strict pull[- ]ups?|pull[- ]ups?|tractions?)\b/gi,v:{
-  technique:['ring rows inclinées','ring rows','pull-ups négatives 3 s','pull-ups strictes à l\'élastique','pull-ups strictes',''],
-  volume:['ring rows inclinées','ring rows','pull-ups sautées','pull-ups à l\'élastique','pull-ups',''],
-  force:['ring rows','ring rows lestées','pull-ups négatives 5 s','pull-ups strictes','pull-ups strictes lestées','']}},
-{id:'ttb',nom:'Toes-to-bar',re:/\b(toes[- ]to[- ]bar|ttb)\b/gi,v:{
-  technique:['hollow holds 10 s','hollow rocks','knee raises contrôlées','kip swings + knee raises','toes-to-bar strictes',''],
-  volume:['hollow holds 10 s','knee raises suspendues','knees-to-elbow','toes-to-bar alternées','toes-to-bar',''],
-  force:['hollow holds 20 s','knee raises strictes','knees-to-elbow strictes','toes-to-bar strictes','toes-to-bar strictes lestées','']}},
-{id:'hspu',nom:'Handstand push-up',re:/\b(strict handstand push[- ]ups?|handstand push[- ]ups?|hspu)\b/gi,v:{
-  technique:['push-ups au mur','push-ups inclinés','ATR au mur 20 s','pike push-ups sur box','HSPU négatifs',''],
-  volume:['push-ups au mur','push-ups inclinés','push-ups','pike push-ups au sol','pike push-ups sur box',''],
-  force:['push-ups inclinés','push-ups','pike push-ups sur box','HSPU négatifs 5 s','HSPU stricts assistés','']}},
-{id:'hs-walk',nom:'Handstand walk',re:/\b(handstand walks?|marche en ATR)\b/gi,v:{
-  technique:['brouette 10 m','bear crawl 10 m','wall walks','ATR au mur 30 s','shoulder taps en ATR',''],
-  volume:['brouette 10 m','bear crawl 10 m','wall walks','ATR au mur 20 s','handstand walk assisté',''],
-  force:['bear crawl lesté','wall walks','ATR au mur 30 s','shoulder taps en ATR','handstand walk court','']}},
-{id:'wall-walk',nom:'Wall walk',re:/\b(wall walks?)\b/gi,v:{
-  technique:['bear crawl 10 m','planche pieds surélevés','wall walks 1/2','wall walks 3/4','wall walks + hold 10 s',''],
-  volume:['bear crawl 10 m','bear crawl 15 m','wall walks 1/2','wall walks 3/4','wall walks',''],
-  force:['planche lestée','wall walks 1/2','wall walks','wall walks + hold 10 s','wall walks lestés','']}},
-{id:'rope-legless',nom:'Corde sans jambes',re:/\b(legless rope climbs?)\b/gi,v:{
-  technique:['rope pulls assis','prises de jambes au sol','montées 1/2 corde avec jambes','montées avec jambes','montées sans jambes 1/2',''],
-  volume:['rope pulls assis','montées 1/2 corde avec jambes','montées avec jambes','montées sans jambes 1/2','montées sans jambes',''],
-  force:['rope pulls assis lestés','montées avec jambes','montées sans jambes 1/2','montées sans jambes','montées sans jambes lestées','']}},
-{id:'rope',nom:'Montée de corde',re:/\b(rope climbs?|montées? de corde)\b/gi,v:{
-  technique:['suspensions corde 10 s','rope pulls assis','prises de jambes au sol','montées 1/2 corde avec jambes','montées avec jambes',''],
-  volume:['suspensions corde 10 s','rope pulls assis','rope pulls assis vers debout','montées 1/2 corde','montées avec jambes',''],
-  force:['suspensions corde 20 s','rope pulls assis lestés','montées avec jambes','montées sans jambes 1/2','montées sans jambes','']}},
-/* `re2` est sensible à la casse : l'abréviation DU ne doit pas attraper
-   le mot français « du » dans une consigne. */
-{id:'du',nom:'Double-unders',re:/\bdouble[- ]unders?\b/gi,re2:/\bDU\b/g,v:{
-  technique:['sauts à la corde réguliers','penguin jumps','single-double alternés','double-unders par 5','double-unders',''],
-  volume:['single unders ×2','single unders ×2','single-double alternés','double-unders par 5','double-unders',''],
-  force:['sauts à la corde lestés','single unders ×2','single-double alternés','double-unders','double-unders à la corde lourde','']}},
-{id:'ghd',nom:'GHD sit-up',re:/\b(ghd sit[- ]ups?)\b/gi,v:{
-  technique:['hollow holds','hollow rocks','sit-ups ancrés','GHD amplitude réduite','GHD contrôlés',''],
-  volume:['hollow holds','hollow rocks','sit-ups','sit-ups ancrés','GHD amplitude réduite',''],
-  force:['hollow holds lestés','sit-ups lestés','GHD amplitude réduite','GHD complets','GHD lestés','']}},
-{id:'pistol',nom:'Pistol',re:/\b(pistols?|squats? sur une jambe)\b/gi,v:{
-  technique:['squats au poids de corps','squats sur box','split squats','pistols sur box haute','pistols à l\'élastique',''],
-  volume:['squats au poids de corps','squats sur box','split squats','pistols sur box','pistols alternés',''],
-  force:['split squats','split squats bulgares lestés','pistols sur box','pistols','pistols lestés','']}},
-{id:'dips',nom:'Dips',re:/\b(ring dips?|dips anneaux|dips?)\b/gi,v:{
-  technique:['push-ups genoux','push-ups','dips sur box','dips négatifs','dips aux anneaux assistés',''],
-  volume:['push-ups genoux','push-ups','dips sur box','dips aux barres','dips aux anneaux assistés',''],
-  force:['push-ups','dips sur box','dips aux barres','dips aux anneaux','dips lestés','']}},
-{id:'box-jump',nom:'Box jump',re:/\b(box jumps?(?: overs?)?)\b/gi,v:{
-  technique:['step-ups sur box','sauts pieds joints au sol','box jumps bas réception contrôlée','box jumps','box jump overs',''],
-  volume:['step-ups sur box','step-ups rapides','box jumps bas','box jumps','box jump overs',''],
-  force:['step-ups lestés','step-ups sautés','box jumps bas','box jumps','box jumps lestés','']}},
-{id:'kb-swing',nom:'Kettlebell swing',re:/\b(kettlebell swings?|kb swings?)\b/gi,v:{
-  technique:['hip hinge au bâton','deadlifts KB','KB swings russes','KB swings américains 3/4','KB swings américains',''],
-  volume:['deadlifts KB','KB swings russes','KB swings russes rapides','KB swings américains 3/4','KB swings américains',''],
-  force:['deadlifts KB lourds','KB swings russes lourds','KB swings américains','KB swings lourds','KB swings lourds','']}}
+{id:"ring-mu",nom:"Ring muscle-up",re:/\b(ring muscle[- ]ups?|muscle[- ]ups? anneaux)\b/gi,v:{
+  technique:["ring rows inclinées + push-ups genoux","transitions assises aux anneaux","low ring muscle-ups",''],
+  volume   :["ring rows inclinées + push-ups genoux","pull-ups sautées + dips sur box","chest-to-bar + dips anneaux",''],
+  force    :["ring rows + push-ups","pull-ups strictes + dips strictes","muscle-ups stricts assistés",'']}},
+{id:"bar-mu",nom:"Bar muscle-up",re:/\b(bar muscle[- ]ups?|muscle[- ]ups?)\b/gi,v:{
+  technique:["ring rows inclinées","kip swings","transitions sur box",''],
+  volume   :["ring rows inclinées","pull-ups sautées","chest-to-bar",''],
+  force    :["ring rows","chest-to-bar strictes","bar muscle-ups stricts assistés",'']}},
+{id:"c2b",nom:"Chest-to-bar",re:/\b(chest[- ]to[- ]bar(?: pull[- ]ups?)?|c2b)\b/gi,v:{
+  technique:["ring rows inclinées","pull-ups strictes assistées","chest-to-bar assistées",''],
+  volume   :["ring rows inclinées","pull-ups sautées","chest-to-bar assistées",''],
+  force    :["ring rows","pull-ups négatives 5 s","chest-to-bar strictes",'']}},
+{id:"pull-up",nom:"Pull-up / traction",re:/\b(strict pull[- ]ups?|pull[- ]ups?|tractions?)\b/gi,v:{
+  technique:["ring rows inclinées","pull-ups négatives 3 s","pull-ups strictes",''],
+  volume   :["ring rows inclinées","pull-ups sautées","pull-ups",''],
+  force    :["ring rows","pull-ups négatives 5 s","pull-ups strictes",'']}},
+{id:"ttb",nom:"Toes-to-bar",re:/\b(toes[- ]to[- ]bar|ttb)\b/gi,v:{
+  technique:["hollow holds 10 s","knee raises contrôlées","toes-to-bar strictes",''],
+  volume   :["hollow holds 10 s","knees-to-elbow","toes-to-bar",''],
+  force    :["hollow holds 20 s","knees-to-elbow strictes","toes-to-bar strictes",'']}},
+{id:"hspu",nom:"Handstand push-up",re:/\b(strict handstand push[- ]ups?|handstand push[- ]ups?|hspu)\b/gi,v:{
+  technique:["push-ups au mur","ATR au mur 20 s","HSPU négatifs",''],
+  volume   :["push-ups au mur","push-ups","pike push-ups sur box",''],
+  force    :["push-ups inclinés","pike push-ups sur box","HSPU stricts assistés",'']}},
+{id:"hs-walk",nom:"Handstand walk",re:/\b(handstand walks?|marche en ATR)\b/gi,v:{
+  technique:["brouette 10 m","wall walks","shoulder taps en ATR",''],
+  volume   :["brouette 10 m","wall walks","handstand walk assisté",''],
+  force    :["bear crawl lesté","ATR au mur 30 s","handstand walk court",'']}},
+{id:"wall-walk",nom:"Wall walk",re:/\b(wall walks?)\b/gi,v:{
+  technique:["bear crawl 10 m","wall walks 1/2","wall walks + hold 10 s",''],
+  volume   :["bear crawl 10 m","wall walks 1/2","wall walks",''],
+  force    :["planche lestée","wall walks 1/2","wall walks",'']}},
+{id:"rope-legless",nom:"Corde sans jambes",re:/\b(legless rope climbs?)\b/gi,v:{
+  technique:["rope pulls assis","montées 1/2 corde avec jambes","montées sans jambes 1/2",''],
+  volume   :["rope pulls assis","montées avec jambes","montées sans jambes",''],
+  force    :["rope pulls assis lestés","montées sans jambes 1/2","montées sans jambes",'']}},
+{id:"rope",nom:"Montée de corde",re:/\b(rope climbs?|montées? de corde)\b/gi,v:{
+  technique:["suspensions corde 10 s","prises de jambes au sol","montées avec jambes",''],
+  volume   :["suspensions corde 10 s","rope pulls assis vers debout","montées avec jambes",''],
+  force    :["suspensions corde 20 s","rope pulls assis lestés","montées avec jambes",'']}},
+{id:"du",nom:"Double-unders",re:/\bdouble[- ]unders?\b/gi,re2:/\bDU\b/g,v:{
+  technique:["sauts à la corde réguliers","single-double alternés","double-unders",''],
+  volume   :["single unders ×2","single-double alternés","double-unders",''],
+  force    :["sauts à la corde lestés","single-double alternés","double-unders",'']}},
+{id:"ghd",nom:"GHD sit-up",re:/\b(ghd sit[- ]ups?)\b/gi,v:{
+  technique:["hollow holds","sit-ups ancrés","GHD contrôlés",''],
+  volume   :["hollow holds","sit-ups","GHD amplitude réduite",''],
+  force    :["hollow holds lestés","GHD amplitude réduite","GHD complets",'']}},
+{id:"pistol",nom:"Pistol",re:/\b(pistols?|squats? sur une jambe)\b/gi,v:{
+  technique:["squats au poids de corps","split squats","pistols à l'élastique",''],
+  volume   :["squats au poids de corps","split squats","pistols alternés",''],
+  force    :["split squats","pistols sur box","pistols",'']}},
+{id:"dips",nom:"Dips",re:/\b(ring dips?|dips anneaux|dips?)\b/gi,v:{
+  technique:["push-ups genoux","dips sur box","dips aux anneaux assistés",''],
+  volume   :["push-ups genoux","dips sur box","dips aux anneaux assistés",''],
+  force    :["push-ups","dips aux barres","dips aux anneaux",'']}},
+{id:"box-jump",nom:"Box jump",re:/\b(box jumps?(?: overs?)?)\b/gi,v:{
+  technique:["step-ups sur box","box jumps bas réception contrôlée","box jumps",''],
+  volume   :["step-ups sur box","box jumps bas","box jumps",''],
+  force    :["step-ups lestés","box jumps bas","box jumps",'']}},
+{id:"kb-swing",nom:"Kettlebell swing",re:/\b(kettlebell swings?|kb swings?)\b/gi,v:{
+  technique:["hip hinge au bâton","KB swings russes","KB swings américains",''],
+  volume   :["deadlifts KB","KB swings russes rapides","KB swings américains",''],
+  force    :["deadlifts KB lourds","KB swings russes lourds","KB swings américains",'']}}
 ];
 
 /* Une paire "40/30" sans unité n'est lue comme une charge que sur une ligne
@@ -844,6 +845,28 @@ if(!window.__patchBound_kidsScaling){
 
 /* ================= RÉGLAGES (table kids_scaling_config) ================= */
 
+/* Les réglages enregistrés avant le passage à 4 barreaux en comptaient 6.
+   On les ramène sur la nouvelle échelle plutôt que de les jeter. */
+var MAP_6_VERS_4=[1,1,2,3,3,4];
+function barreauLegacy(v){
+  v=parseInt(v,10);
+  if(!(v>=1))return NB_BARREAUX;
+  if(v<=NB_BARREAUX)return v;
+  return MAP_6_VERS_4[v-1]||NB_BARREAUX;
+}
+function echelleLegacy(tab){
+  if(!tab||!tab.length)return tab;
+  if(tab.length<=NB_BARREAUX)return tab.slice(0,NB_BARREAUX);
+  return [tab[0],tab[2],tab[4],tab[5]];
+}
+
+/* Nom du niveau qui correspond à un barreau : 1 = le plus bas. */
+function nomBarreau(b){
+  if(NIVEAUX.length!==NB_BARREAUX)return '';
+  var n=NIVEAUX[NIVEAUX.length-b];
+  return n?n.nom:'';
+}
+
 function appliquerConfig(cfg){
   if(!cfg||typeof cfg!=='object')return;
   var i;
@@ -862,11 +885,21 @@ function appliquerConfig(cfg){
     if(Object.prototype.hasOwnProperty.call(cfg.voies,t2))VOIE_PAR_TYPE[t2]=cfg.voies[t2];
   }
   if(cfg.grille)for(var a in cfg.grille){
-    if(Object.prototype.hasOwnProperty.call(cfg.grille,a))GRILLE[a]=cfg.grille[a];
+    if(!Object.prototype.hasOwnProperty.call(cfg.grille,a))continue;
+    var ligne=cfg.grille[a], propre={};
+    for(var nn in ligne){
+      if(Object.prototype.hasOwnProperty.call(ligne,nn))propre[nn]=barreauLegacy(ligne[nn]);
+    }
+    GRILLE[a]=propre;
   }
   if(cfg.echelles)for(i=0;i<ECHELLES.length;i++){
     var e=cfg.echelles[ECHELLES[i].id];
-    if(e&&typeof e==='object')ECHELLES[i].v=e;
+    if(!e||typeof e!=='object')continue;
+    var v2={};
+    for(var vv in e){
+      if(Object.prototype.hasOwnProperty.call(e,vv))v2[vv]=echelleLegacy(e[vv]);
+    }
+    ECHELLES[i].v=v2;
   }
 }
 
@@ -926,7 +959,7 @@ function styleReglages(){
    '.udtkc-voie-h{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;color:var(--accent);margin:10px 0 2px}'+
    '.udtkc-voie-d{font-size:11px;color:var(--muted);margin:0 0 7px;line-height:1.45}'+
    '.udtkc-bl{display:flex;align-items:center;gap:8px;margin-bottom:5px}'+
-   '.udtkc-bl span{flex:0 0 68px;font-size:11px;color:var(--muted);font-weight:700}'+
+   '.udtkc-bl span{flex:0 0 92px;font-size:10.5px;line-height:1.3;color:var(--muted);font-weight:700}'+
    '.udtkc-bl input{flex:1;min-width:0;font:inherit;font-size:12px;padding:6px 8px;background:var(--card2);color:var(--text);border:1px solid var(--border2);border-radius:8px}'+
    '.udtkc-bar{position:sticky;bottom:0;display:flex;gap:8px;padding:12px 0;background:linear-gradient(transparent,var(--dark) 30%)}'+
    '.udtkc-save{flex:1;font:inherit;font-size:13px;font-weight:800;padding:12px;border:0;border-radius:10px;background:var(--accent);color:#0b1512;cursor:pointer}'+
@@ -989,7 +1022,8 @@ function panneauReglages(){
   h+='</div>';
 
   h+='<div class="udtkc-sec"><div class="udtkc-h">Mouvement — grille âge × niveau</div>'+
-     '<p class="udtkc-p">Quel barreau de l\'échelle prend chaque bloc. 1 = le plus facile, '+NB_BARREAUX+' = mouvement adulte inchangé.</p>'+
+     '<p class="udtkc-p">Quel barreau de l\'échelle prend chaque bloc. 1 = le plus facile, '+NB_BARREAUX+' = mouvement adulte inchangé. '+
+     'Il y a autant de barreaux que de niveaux : les deux sections se lisent l\'une avec l\'autre.</p>'+
      '<table class="udtkc-grille"><tr><th>Tranche</th>';
   for(i=0;i<NIVEAUX.length;i++)h+='<th>'+NIVEAUX[i].nom+'</th>';
   h+='</tr>';
@@ -1005,7 +1039,9 @@ function panneauReglages(){
   h+='</table></div>';
 
   h+='<div class="udtkc-sec"><div class="udtkc-h">Mouvement — échelles de progression</div>'+
-     '<p class="udtkc-p">Six barreaux par voie, du plus facile au plus dur. Un barreau vide conserve le mouvement d\'origine.</p>';
+     '<p class="udtkc-p">Un barreau par niveau, du plus facile au plus dur : '+
+     (function(){var l=[];for(var z=1;z<=NB_BARREAUX;z++)l.push(z+' = '+(nomBarreau(z)||'—'));return l.join(', ');})()+
+     '. Le dernier barreau laissé vide conserve le mouvement d\'origine.</p>';
   for(i=0;i<ECHELLES.length;i++){
     var ech=ECHELLES[i], corps='';
     for(w=0;w<VOIES.length;w++){
@@ -1013,7 +1049,8 @@ function panneauReglages(){
       corps+='<div class="udtkc-voie-h">'+VOIES[w].nom+'</div>';
       for(var b2=0;b2<NB_BARREAUX;b2++){
         var val=String(tab[b2]||'').replace(/"/g,'&quot;');
-        corps+='<label class="udtkc-bl"><span>Barreau '+(b2+1)+'</span>'+
+        var nomN=nomBarreau(b2+1);
+        corps+='<label class="udtkc-bl"><span>Barreau '+(b2+1)+(nomN?'<br>'+nomN:'')+'</span>'+
           '<input type="text" data-udtkc-ech="'+ech.id+'" data-udtkc-ev="'+vid+'" data-udtkc-eb="'+b2+'" value="'+val+'" placeholder="'+
           (b2+1===NB_BARREAUX?'mouvement adulte inchangé':'—')+'"></label>';
       }
