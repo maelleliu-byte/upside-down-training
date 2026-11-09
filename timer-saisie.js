@@ -74,6 +74,7 @@
     if (kind === 'kg') return 2.5;
     var t = el.dataset && el.dataset.stype;
     if (t === 'weight') return 2.5;
+    if (t === 'distance') { var x = num(el.value) || num(el.placeholder); return x != null && x < 20 ? 0.05 : 1; }
     if (t === 'time' || t === 'text') return 0;
     return 1;
   }
@@ -95,7 +96,42 @@
     if (out.length) return out;
     i = 0;
     while ((el = document.getElementById('set-' + sid + '-' + i))) { out.push({ fields: [{ el: el, kind: 'kg', label: 'Charge (kg)' }] }); i++; }
+    if (out.length) return out;
+    return virtualSlots(sid);
+  }
+  /* Score unique (distance, charge, reps…) mais bloc en séries : saisie série par série
+     dans le timer, et le score de la carte reçoit le meilleur (distance, charge, watts)
+     ou le total (reps, calories). */
+  var AGG = { distance: 'max', weight: 'max', watt: 'max', reps: 'sum', calories: 'sum' };
+  cur.virt = {};
+  function virtualSlots(sid) {
+    var n = cur.info && cur.info.nSets, real = document.getElementById('score-input-' + sid);
+    if (!n || n < 2 || !real || real.type === 'hidden' || real.tagName === 'TEXTAREA') return [];
+    var c = card(sid), ty = (c && c.dataset.stype) || real.dataset.stype || guessType(real);
+    if (!AGG[ty]) return [];
+    var arr = cur.virt[sid] = cur.virt[sid] || [];
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      arr[i] = arr[i] || fakeEl(ty);
+      out.push({ fields: [{ el: arr[i], kind: 'm', label: (ty === 'distance' ? 'Distance' : ty === 'weight' ? 'Charge (kg)' : ty === 'reps' ? 'Reps' : ty === 'calories' ? 'Calories' : 'Watts') }], virt: { real: real, ty: ty, arr: arr } });
+    }
     return out;
+  }
+  function guessType(real) {
+    var ph = String(real.placeholder || '');
+    var map = { distance: /m\b|2\.45/, weight: /kg/, reps: /rep/i, calories: /cal/i, watt: /w\b|watt/i };
+    for (var k in map) if (map[k].test(ph)) return k;
+    return '';
+  }
+  function fakeEl(ty) {
+    return { value: '', placeholder: '', dataset: { stype: ty }, className: '', fake: true,
+      getAttribute: function () { return null; }, dispatchEvent: function () {}, closest: function () { return null; } };
+  }
+  function syncVirt(slot) {
+    if (!slot || !slot.virt) return;
+    var v = slot.virt, nums = v.arr.map(function (x) { return num(x.value); }).filter(function (x) { return x != null; });
+    var agg = !nums.length ? '' : AGG[v.ty] === 'max' ? Math.max.apply(null, nums) : nums.reduce(function (a, b) { return a + b; }, 0);
+    setVal(v.real, agg === '' ? '' : String(Math.round(agg * 100) / 100));
   }
   /* Champs de score « globaux » (temps, rounds, reps, texte…) */
   function finalsOf(c, sid) {
@@ -237,7 +273,7 @@
     var t = e.target; if (!t.closest || !t.closest('#tm-ov .tms')) return;
     var box = t.closest('.tm-sc');
     if (t.dataset.fi != null && cur.slots) {
-      var f = cur.slots[cur.k].fields[+t.dataset.fi]; setVal(f.el, t.value); t.classList.toggle('fill', !!t.value);
+      var f = cur.slots[cur.k].fields[+t.dataset.fi]; setVal(f.el, t.value); syncVirt(cur.slots[cur.k]); t.classList.toggle('fill', !!t.value);
       var stEl = box.querySelector('.tms-h .st'); if (stEl) { var d = slotDone(cur.slots[cur.k]); stEl.textContent = d ? '✓ SAISI' : 'À SAISIR'; stEl.classList.toggle('ok', d); }
       paintHist(box, cur.slots, cur.k);
     } else if (t.dataset.fin != null && cur.finals) {
@@ -263,8 +299,9 @@
       var f = cur.slots[cur.k].fields[0], step = stepFor(f.el, f.kind);
       var inp = document.querySelector('#tm-ov .tms-in[data-fi="0"]');
       var base = num(f.el.value); if (base == null) base = num(inp && inp.placeholder); if (base == null) base = 0;
+      if (f.el.dataset && f.el.dataset.stype === 'distance') step = base < 20 ? 0.05 : 1;
       var v = Math.max(0, Math.round((base + (a === 'plus' ? step : -step)) * 100) / 100);
-      setVal(f.el, String(v)); if (inp) { inp.value = v; inp.classList.add('fill'); }
+      setVal(f.el, String(v)); syncVirt(cur.slots[cur.k]); if (inp) { inp.value = v; inp.classList.add('fill'); }
       var box = t.closest('.tm-sc'); paintHist(box, cur.slots, cur.k);
       var stEl = box.querySelector('.tms-h .st'); if (stEl) { var d = slotDone(cur.slots[cur.k]); stEl.textContent = d ? '✓ SAISI' : 'À SAISIR'; stEl.classList.toggle('ok', d); }
       return;

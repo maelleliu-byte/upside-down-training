@@ -197,7 +197,7 @@ async function buildSessionCard(s){
         <div class="rounds-field"><div class="rounds-lbl">Reps</div><input class="score-input" id="reps-${s.id}" type="number" inputmode="numeric" placeholder="5"></div>
       </div>`;
   } else {
-    scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>`;
+    scoreInputHtml=`<div class="score-input-row"><input class="score-input" id="score-input-${s.id}" data-stype="${s.score_type||''}" type="text" placeholder="${getScorePlaceholder(s.score_type)}"></div>`;
   }
 
   // Couleur de la séance
