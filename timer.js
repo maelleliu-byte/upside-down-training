@@ -169,16 +169,27 @@
   var R = 126, C = 2 * Math.PI * R;
   var TEAL = '#2DD4BF', ORANGE = '#ff8c47', GREY = '#5b6470', GREEN = '#2ecc71';
 
-  function beep(f, d) {
+  // Bip plus marqué : onde carrée + harmonique, compresseur, volume fort
+  function beep(f, d, at) {
     if (!st || !st.sound) return;
     try {
       ac = ac || new (window.AudioContext || window.webkitAudioContext)();
-      var o = ac.createOscillator(), g = ac.createGain();
-      o.frequency.value = f; o.type = 'sine'; o.connect(g); g.connect(ac.destination);
-      var t0 = ac.currentTime; g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(.5, t0 + .01); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
-      o.start(t0); o.stop(t0 + d + .02);
+      if (ac.state === 'suspended') ac.resume();
+      var t0 = ac.currentTime + (at || 0);
+      var comp = ac.createDynamicsCompressor(); comp.threshold.value = -12; comp.ratio.value = 8; comp.connect(ac.destination);
+      var g = ac.createGain(); g.connect(comp);
+      g.gain.setValueAtTime(.0001, t0); g.gain.exponentialRampToValueAtTime(1, t0 + .008);
+      g.gain.setValueAtTime(1, t0 + Math.max(.02, d - .05)); g.gain.exponentialRampToValueAtTime(.0001, t0 + d);
+      [[f, 'square', .55], [f * 2, 'sine', .45]].forEach(function (x) {
+        var o = ac.createOscillator(), og = ac.createGain();
+        o.type = x[1]; o.frequency.value = x[0]; og.gain.value = x[2];
+        o.connect(og); og.connect(g); o.start(t0); o.stop(t0 + d + .02);
+      });
     } catch (e) {}
   }
+  function buzz(p) { try { if (st && st.sound && navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
+  // Alerte 10 s avant la reprise d'une série de travail : double bip + vibration
+  function alert10() { beep(880, .16); beep(880, .16, .24); buzz([140, 90, 140]); }
   function lock() { try { if (navigator.wakeLock && !wl) navigator.wakeLock.request('screen').then(function (w) { wl = w; }).catch(function () {}); } catch (e) {} }
   function unlock() { try { if (wl) wl.release(); } catch (e) {} wl = null; }
 
@@ -304,7 +315,7 @@
   }
   function restNext() {
     var rs = st.rs; if (!rs || rs.phase !== 'rest') return;
-    rs.set++; rs.phase = 'work'; rs.t0 = now(); st.lastBeep = null; beep(990, .4);
+    rs.set++; rs.phase = 'work'; rs.t0 = now(); st.lastBeep = null; beep(990, .45); buzz(300);
     buttons(); draw();
   }
   function finish() { st.acc = elapsed(); st.running = false; st.done = true; unlock(); beep(880, .6); buttons(); draw(); }
@@ -334,12 +345,14 @@
         var left = rs.rest - tt;
         if (left <= 0) { restNext(); return; }
         var rr = Math.ceil(left);
-        if (rr <= 3) { beepKey = 'r' + rs.set + ':' + rr; if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .15); } }
-        top = 'REPOS'; col = GREY; p = left / rs.rest; big = fmt(rr); sub = 'SET ' + (rs.set + 1) + ' / ' + n2 + ' ENSUITE'; curWork = rs.set; st._rest = true;
+        if (rr <= 3) { beepKey = 'r' + rs.set + ':' + rr; if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .2); } }
+        var ten = left <= 10 && rs.rest > 12;
+        if (ten && st.ten !== 'r' + rs.set) { st.ten = 'r' + rs.set; alert10(); }
+        top = ten ? 'REPRISE DANS' : 'REPOS'; col = ten ? ORANGE : GREY; p = left / rs.rest; big = fmt(rr); sub = 'SET ' + (rs.set + 1) + ' / ' + n2 + ' ENSUITE'; curWork = rs.set; st._rest = true;
       }
     } else if (!st.done && E < 3 && (st.running || st.acc > 0)) {
       var n = Math.ceil(3 - E); big = String(n); top = 'PRÊT'; col = GREY; p = (3 - E) / 3; beepKey = 'pre' + n;
-      if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .15); }
+      if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .2); }
       sub = sp.kind === 'int' ? sp.phases[0].lab : '';
     } else if (!st.running && st.acc === 0 && !st.done) {
       top = 'PRÊT'; col = GREY; p = 1;
@@ -358,9 +371,13 @@
         big = fmt(Math.ceil(rem)); p = rem / cur.d;
         top = cur.rest ? 'REPOS' : (cur.hot ? 'EFFORT' : 'EN COURS');
         sub = cur.rest ? (sp.phases[i + 1] ? sp.phases[i + 1].lab + ' ENSUITE' : '') : cur.lab;
-        var r = Math.ceil(rem);
-        if (r <= 3 && r >= 1) { beepKey = i + ':' + r; if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .15); } }
-        if (rem > cur.d - 0.25 && st.lastBeep !== 'go' + i) { st.lastBeep = 'go' + i; beep(cur.rest ? 520 : 990, .4); }
+        var r = Math.ceil(rem), nxt = sp.phases[i + 1];
+        if (nxt && !nxt.rest && cur.d > 12 && rem <= 10 && rem > 3) {
+          if (st.ten !== 'i' + i) { st.ten = 'i' + i; alert10(); }
+          if (cur.rest) { col = ORANGE; top = 'REPRISE DANS'; }
+        }
+        if (r <= 3 && r >= 1) { beepKey = i + ':' + r; if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .2); } }
+        if (rem > cur.d - 0.25 && st.lastBeep !== 'go' + i) { st.lastBeep = 'go' + i; beep(cur.rest ? 520 : 990, .45); if (!cur.rest) buzz(300); }
       }
     } else if (sp.kind === 'down') {
       var left = sp.dur - e;
@@ -369,7 +386,7 @@
         big = '0:00'; top = '✓ TERMINÉ'; col = GREEN; p = 0; sub = 'SUR ' + fmt(sp.dur);
       } else {
         big = fmt(Math.ceil(left)); top = 'TEMPS RESTANT'; p = left / sp.dur; sub = 'SUR ' + fmt(sp.dur);
-        if (left <= 3) { beepKey = 'd' + Math.ceil(left); if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .15); } }
+        if (left <= 3) { beepKey = 'd' + Math.ceil(left); if (st.lastBeep !== beepKey) { st.lastBeep = beepKey; beep(660, .2); } }
         if (e < 0.25 && st.lastBeep !== 'go') { st.lastBeep = 'go'; beep(990, .4); }
       }
     } else {
