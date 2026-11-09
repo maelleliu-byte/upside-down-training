@@ -238,12 +238,10 @@
     paintHist(box, slots, k);
     compact(box, !!h);
   }
-  // Tout sur un écran : chrono plus compact, « LE BLOC » replié tant qu'on saisit
+  // Tout sur un écran : chrono plus compact pendant la saisie (« LE BLOC » reste ouvert, repliable par l'athlète)
   function compact(box, on) {
     var tm = box.closest('.tm'); if (!tm) return;
     tm.classList.toggle('compact', on);
-    var nx = tm.querySelector('.nx');
-    if (nx && !nx.dataset.user) nx.classList.toggle('shut', on);
   }
 
   function summary(slot) {
