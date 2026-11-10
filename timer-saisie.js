@@ -92,7 +92,15 @@
       return out.filter(Boolean);
     }
     var i = 0, el;
-    while ((el = document.getElementById('score-' + i + '-' + sid))) { out.push({ fields: [{ el: el, kind: 'm', label: lbl(el) }] }); i++; }
+    while ((el = document.getElementById('score-' + i + '-' + sid))) {
+      var part = el.dataset && el.dataset.part;
+      out.push({ part: part, fields: [{ el: el, kind: 'm', label: part != null ? 'Charge (kg)' : lbl(el) }] }); i++;
+    }
+    // Bloc en charge découpé en parties : seulement les cases de la partie en cours du timer
+    if (out.length && out[0].part != null) {
+      var cp = String((cur.info && cur.info.part) || 0);
+      return out.filter(function (o) { return o.part === cp; });
+    }
     if (out.length) return out;
     i = 0;
     while ((el = document.getElementById('set-' + sid + '-' + i))) { out.push({ fields: [{ el: el, kind: 'kg', label: 'Charge (kg)' }] }); i++; }
@@ -109,11 +117,12 @@
     if (!n || n < 2 || !real || real.type === 'hidden' || real.tagName === 'TEXTAREA') return [];
     var c = card(sid), ty = (c && c.dataset.stype) || real.dataset.stype || guessType(real);
     if (!AGG[ty]) return [];
-    var arr = cur.virt[sid] = cur.virt[sid] || [];
+    var vk = sid + '|' + ((cur.info && cur.info.part) || 0);   // une liste de séries par partie du bloc
+    var arr = cur.virt[vk] = cur.virt[vk] || [];
     var out = [];
     for (var i = 0; i < n; i++) {
       arr[i] = arr[i] || fakeEl(ty);
-      out.push({ fields: [{ el: arr[i], kind: 'm', label: (ty === 'distance' ? 'Distance' : ty === 'weight' ? 'Charge (kg)' : ty === 'reps' ? 'Reps' : ty === 'calories' ? 'Calories' : 'Watts') }], virt: { real: real, ty: ty, arr: arr } });
+      out.push({ fields: [{ el: arr[i], kind: 'm', label: (ty === 'distance' ? 'Distance' : ty === 'weight' ? 'Charge (kg)' : ty === 'reps' ? 'Reps' : ty === 'calories' ? 'Calories' : 'Watts') }], virt: { real: real, ty: ty, arr: arr, sid: sid } });
     }
     return out;
   }
@@ -129,7 +138,12 @@
   }
   function syncVirt(slot) {
     if (!slot || !slot.virt) return;
-    var v = slot.virt, nums = v.arr.map(function (x) { return num(x.value); }).filter(function (x) { return x != null; });
+    var v = slot.virt, nums = [];
+    // le score du bloc agrège toutes les parties (meilleure charge ou total), pas seulement celle en cours
+    Object.keys(cur.virt).forEach(function (key) {
+      if (key.indexOf(v.sid + '|') !== 0) return;
+      cur.virt[key].forEach(function (x) { var n = num(x.value); if (n != null) nums.push(n); });
+    });
     var agg = !nums.length ? '' : AGG[v.ty] === 'max' ? Math.max.apply(null, nums) : nums.reduce(function (a, b) { return a + b; }, 0);
     setVal(v.real, agg === '' ? '' : String(Math.round(agg * 100) / 100));
   }

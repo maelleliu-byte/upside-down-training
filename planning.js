@@ -161,6 +161,9 @@ async function buildSessionCard(s){
   const isText=s.score_type==='text';
   const scoreLabels=s.score_labels?JSON.parse(s.score_labels):(s.score_label1?[s.score_label1,s.score_label2].filter(Boolean):[]);
 
+  // Bloc en charge découpé en parties (ex. WEIGHTLIFTING) : un score par partie
+  const autoParts=(!isText&&!isStrength&&!isMulti&&s.score_type==='weight')?weightPartSlots(s.content):null;
+
   // Score input
   let scoreInputHtml='';
   if(isText){
@@ -168,6 +171,13 @@ async function buildSessionCard(s){
   } else if(isStrength){
     const setsArr=Array.from({length:s.sets},(_,i)=>`<div class="set-row"><div class="set-label">Série ${i+1}</div><input class="set-input" id="set-${s.id}-${i}" type="number" step="0.5" min="0" placeholder="kg"></div>`).join('');
     scoreInputHtml=`<div class="sets-inputs">${setsArr}</div>`;
+  } else if(autoParts){
+    let idx=0;
+    scoreInputHtml=`<div class="multi-score-inputs" data-autoparts="1">${autoParts.map((p,pi)=>{
+      const ins=Array.from({length:p.n},(_,j)=>{const i=idx++;
+        return `<div class="multi-score-row" style="flex:1;min-width:52px;flex-direction:column;align-items:stretch;gap:3px">${p.n>1?`<div class="multi-score-lbl" style="min-width:0;font-size:10px;text-align:center">S${j+1}</div>`:''}<input class="multi-score-input" id="score-${i}-${s.id}" data-stype="weight" data-part="${pi}" data-set="${j}" data-plbl="${escapeHtml(p.label)}" type="text" inputmode="decimal" placeholder="kg" style="padding:9px 4px"></div>`;}).join('');
+      return `<div><div class="multi-score-lbl" style="margin-bottom:4px">${escapeHtml(p.label)}${p.n>1?' · '+p.n+' séries':''}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${ins}</div></div>`;
+    }).join('')}</div>`;
   } else if(isMulti){
     const count=s.score_count||scoreLabels.length||2;
     scoreInputHtml=`<div class="multi-score-inputs">
@@ -602,6 +612,24 @@ function checkTimeInput(el){const v=el.value.trim();el.classList.toggle('bad-tim
 (function(){if(document.getElementById('time-strict-css'))return;const st=document.createElement('style');st.id='time-strict-css';
   st.textContent='.multi-score-input.bad-time{border-color:var(--red)!important;box-shadow:0 0 0 2px rgba(255,68,68,.25)}';document.head.appendChild(st);})();
 
+/* Bloc en charge à plusieurs parties (lu comme le timer) :
+   un seul % dans la partie → une charge ; montée en charge (plusieurs %, From…to, à) → une charge par série */
+function weightPartSlots(content){
+  if(typeof window.__blockTimerParts!=='function')return null;
+  let parts;try{parts=window.__blockTimerParts(content)||[];}catch(e){return null;}
+  if(!parts.length)return null;
+  const out=parts.map((p,pi)=>{
+    const nSets=p.kind==='int'?(p.phases||[]).filter(q=>!q.rest).length:p.kind==='rest'?(p.n||1):1;
+    const txt=String(p.raw||'').replace(/<[^>]+>/g,' ').replace(/add\s+\d+(?:[.,]\d+)?\s*%[^\s]*/gi,' ');
+    const pcts=new Set((txt.match(/\d+(?:[.,]\d+)?\s*%/g)||[]).map(x=>parseFloat(x.replace(',','.'))));
+    const ramp=pcts.size>=2||/\bfrom\b[\s\S]*\bto\b/i.test(txt);
+    let label=String(p.name||'').split(' · ').pop().replace(/^\d+\s*[.)]\s*/,'').trim();
+    if(!label)label='PARTIE '+(pi+1);
+    return {label,n:ramp?Math.max(1,nSets):1,ramp};
+  });
+  if(out.length<2&&out[0].n<2)return null;
+  return out;
+}
 async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,scoreCount){
   // Un seul score par athlète sur une même séance (prog + copies perso)
   try{
@@ -614,7 +642,22 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
   let scoreText='',scoreValue=0,setsData=null;
   const level=getSelectedLevel(sessionId);
 
-  if(isText){
+  const apBox=document.querySelector(`#sc-${sessionId} [data-autoparts]`);
+  if(apBox){
+    // Un score par partie : charge unique, ou une charge par série si montée en charge
+    const groups={},order=[],sd=[];let best=0;
+    apBox.querySelectorAll('input[data-part]').forEach(el=>{
+      const raw=String(el.value||'').trim().replace(/\s*kg$/i,'');if(!raw)return;
+      const n=parseFloat(raw.replace(',','.'));if(isNaN(n))return;
+      const p=el.dataset.part;
+      if(!groups[p]){groups[p]={lbl:el.dataset.plbl||('Partie '+(+p+1)),vals:[]};order.push(p);}
+      groups[p].vals.push(n);best=Math.max(best,n);
+      sd.push({part:+p+1,label:groups[p].lbl,set:+el.dataset.set+1,value:n});
+    });
+    if(!order.length){showToast('⚠️ Entre au moins une charge');return;}
+    scoreText=order.map(p=>`${groups[p].lbl} ${groups[p].vals.join('/')} kg`).join(' | ');
+    scoreValue=best;setsData=sd;
+  } else if(isText){
     const input=document.getElementById(`score-input-${sessionId}`);
     scoreText=input?.value?.trim()||input?.innerText?.trim()||'';
     if(!scoreText){showToast('⚠️ Entre ton retour');return;}
