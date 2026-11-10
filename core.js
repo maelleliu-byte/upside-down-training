@@ -131,7 +131,7 @@ window.onload=async()=>{
   const {data:{session}}=await sb.auth.getSession();
   if(session){
     currentUser=session.user;
-    await loadProfile();
+    if(!await loadProfile())return; // profil illisible → écran de connexion
     const redirecting=await _redirectToProfileStudio();
     if(!redirecting)await initApp();
   }
@@ -200,7 +200,7 @@ async function doAuth(){
   }
   if(res.error){errEl.textContent=res.error.message;return;}
   currentUser=res.data.user;
-  await loadProfile();
+  if(!await loadProfile())return;
   const redirecting=await _redirectToProfileStudio();
   if(!redirecting)await initApp();
 }
@@ -254,7 +254,7 @@ async function doSetNewPassword(){
   const {data:{session}}=await sb.auth.getSession();
   if(!session){location.reload();return;}
   currentUser=session.user;
-  await loadProfile();
+  if(!await loadProfile())return;
   const redirecting=await _redirectToProfileStudio();
   if(!redirecting)await initApp();
 }
@@ -266,10 +266,43 @@ sb.auth.onAuthStateChange((event)=>{
 });
 
 async function doLogout(){await sb.auth.signOut();currentUser=null;currentProfile=null;location.reload();}
+// Charge le profil courant. Renvoie true si le profil est lisible, false sinon.
+// IMPORTANT : ne jamais laisser currentProfile à null/undefined tout en entrant
+// dans l'appli. Un JWT expiré (PWA restée ouverte des semaines sur tablette)
+// fait partir ce select en 401 : currentProfile tombe à null, et un ADMIN se
+// retrouve avec l'interface d'un athlète — pas d'onglet Admin, programmes
+// verrouillés, redirection vers l'espace perso. Cas Oscar / HORUS PROGRM.
 async function loadProfile(){
-  const {data}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  let {data,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).single();
+  if(error||!data){
+    // 1re tentative de sauvetage : rafraîchir la session puis retenter.
+    console.warn('[loadProfile] 1er essai KO — refresh session',error?.message||'');
+    const {data:rs}=await sb.auth.refreshSession();
+    if(rs?.session?.user){
+      currentUser=rs.session.user;
+      ({data,error}=await sb.from('profiles').select('*').eq('id',currentUser.id).single());
+    }
+  }
+  if(error||!data){
+    // Profil toujours illisible : on refuse d'entrer dans l'appli en mode
+    // dégradé. Session purgée + retour à l'écran de connexion avec un message.
+    console.error('[loadProfile] profil illisible — session purgée',error?.message||'');
+    currentProfile=null;window.currentProfile=null;
+    try{await sb.auth.signOut();}catch(e){}
+    currentUser=null;
+    const splash=document.getElementById('splash-screen');
+    if(splash)splash.style.display='none';
+    const main=document.getElementById('main-app');
+    if(main)main.style.display='none';
+    const auth=document.getElementById('auth-screen');
+    if(auth)auth.classList.remove('hidden');
+    const errEl=document.getElementById('auth-error');
+    if(errEl)errEl.textContent='Session expirée — reconnecte-toi.';
+    return false;
+  }
   currentProfile=data;
   window.currentProfile=data; // exposé pour index.html et autres scripts
+  return true;
 }
 
 // Helper global — retourne le studio_id du profil courant (null pour Upside Down)
