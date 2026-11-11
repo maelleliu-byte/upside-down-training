@@ -185,7 +185,7 @@ async function buildSessionCard(s){
       <div class="multi-score-row">
         <div class="multi-score-lbl" style="min-width:58px">${ivl.word} ${i+1}</div>
         <input class="multi-score-input" id="score-${i}-${s.id}" data-stype="${ivl.stype}" type="text" inputmode="decimal" placeholder="${ivl.unit}">
-        <select class="multi-score-input" id="rpe-${i}-${s.id}" data-stype="rpe" aria-label="RPE" style="flex:0 0 84px;padding:9px 4px"><option value="">RPE</option>${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}">RPE ${n}</option>`).join('')}</select>
+        <select class="multi-score-input" id="rpe-${i}-${s.id}" data-stype="rpe" aria-label="RPE" style="flex:0 0 84px;padding:9px 4px"><option value="">RPE</option>${Array.from({length:19},(_,k)=>1+k/2).map(n=>`<option value="${n}">RPE ${String(n).replace('.',',')}</option>`).join('')}</select>
       </div>`).join('')}</div>`;
   } else if(isMulti){
     const count=s.score_count||scoreLabels.length||2;
@@ -682,11 +682,11 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     const n=+ivBox.dataset.intervals||0,unit=ivBox.dataset.unit||'',sd=[],txt=[];
     for(let i=0;i<n;i++){
       const raw=String(document.getElementById(`score-${i}-${sessionId}`)?.value||'').trim().replace(/\s*(w|m|cal|km\/h)$/i,'');
-      const rpe=parseInt(document.getElementById(`rpe-${i}-${sessionId}`)?.value)||null;
+      const rpe=parseFloat(document.getElementById(`rpe-${i}-${sessionId}`)?.value)||null;
       const v=raw?parseFloat(raw.replace(',','.')):null;
       if((v==null||isNaN(v))&&!rpe)continue;
       sd.push({set:i+1,value:(v==null||isNaN(v))?null:v,rpe});
-      txt.push(`${(v==null||isNaN(v))?'–':v+' '+unit}${rpe?' · RPE '+rpe:''}`);
+      txt.push(`${(v==null||isNaN(v))?'–':v+' '+unit}${rpe?' · RPE '+String(rpe).replace('.',','):''}`);
     }
     if(!sd.length){showToast('⚠️ Entre au moins un intervalle');return;}
     const vals=sd.map(x=>x.value).filter(x=>x!=null);

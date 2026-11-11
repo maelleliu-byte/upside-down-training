@@ -296,7 +296,10 @@
     var t = e.target; if (!t.closest || !t.closest('#tm-ov .tms')) return;
     var box = t.closest('.tm-sc');
     if (t.dataset.fi != null && cur.slots) {
-      var f = cur.slots[cur.k].fields[+t.dataset.fi]; setVal(f.el, t.value); syncVirt(cur.slots[cur.k]); t.classList.toggle('fill', !!t.value);
+      var f = cur.slots[cur.k].fields[+t.dataset.fi];
+      // RPE (menu 1 à 10 par 0,5) : 7,5 → 7.5, valeur gardée seulement si elle existe dans le menu
+      if (f.el.tagName === 'SELECT') { var rv = String(t.value).trim().replace(',', '.'); rv = rv === '' ? '' : String(parseFloat(rv)); if (rv === '' || f.el.querySelector('option[value="' + rv + '"]')) setVal(f.el, rv); }
+      else setVal(f.el, t.value); syncVirt(cur.slots[cur.k]); t.classList.toggle('fill', !!t.value);
       var stEl = box.querySelector('.tms-h .st'); if (stEl) { var d = slotDone(cur.slots[cur.k]); stEl.textContent = d ? '✓ SAISI' : 'À SAISIR'; stEl.classList.toggle('ok', d); }
       paintHist(box, cur.slots, cur.k);
     } else if (t.dataset.fin != null && cur.finals) {
