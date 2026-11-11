@@ -145,7 +145,7 @@ async function buildSessionCard(s){
   let intHtml='';
   if(intensity){const pct=intensity*10;const col=intensity<=4?'var(--blue)':intensity<=7?'var(--accent)':'var(--red)';intHtml=`<div class="intensity-bar"><div class="int-row"><span class="int-label">Intensité</span><span class="int-val" style="color:${col}">${intensity}/10</span></div><div class="int-track"><div class="int-fill" style="width:${pct}%;background:${col}"></div></div></div>`;}
   const targetHtml=s.target?`<div class="info-block"><div class="info-block-title"><span>🎯</span> Target</div><div class="info-block-text">${s.target}</div></div>`:'';
-  const tipsHtml=s.tips?`<div class="info-block"><div class="info-block-title"><span>💡</span> Coaching Tips</div><div class="info-block-text">${s.tips}</div></div>`:'';
+  const tipsHtml=typeof tipsWithRpeHtml==='function'?tipsWithRpeHtml(s):(s.tips?`<div class="info-block"><div class="info-block-title"><span>💡</span> Coaching Tips</div><div class="info-block-text">${s.tips}</div></div>`:'');
 
   // Scaling par niveau
   const scalingHtml=[
