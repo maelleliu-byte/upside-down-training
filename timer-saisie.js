@@ -93,8 +93,10 @@
     }
     var i = 0, el;
     while ((el = document.getElementById('score-' + i + '-' + sid))) {
-      var part = el.dataset && el.dataset.part;
-      out.push({ part: part, fields: [{ el: el, kind: 'm', label: part != null ? 'Charge (kg)' : lbl(el) }] }); i++;
+      var part = el.dataset && el.dataset.part, rpeEl = document.getElementById('rpe-' + i + '-' + sid);
+      var fs = [{ el: el, kind: 'm', label: part != null ? 'Charge (kg)' : rpeEl ? (el.placeholder || 'Valeur') : lbl(el) }];
+      if (rpeEl) fs.push({ el: rpeEl, kind: 'm', label: 'RPE' });   // intervalles ENGINE / RUN : valeur + RPE sur la même ligne
+      out.push({ part: part, fields: fs }); i++;
     }
     // Bloc en charge découpé en parties : seulement les cases de la partie en cours du timer
     if (out.length && out[0].part != null) {
@@ -152,7 +154,7 @@
     var z = zoneOf(c); if (!z) return [];
     return Array.prototype.filter.call(z.querySelectorAll('input,textarea'), function (el) {
       if (!el.id || el.id.indexOf(sid) < 0) return false;
-      if (/^done-at-|^set-|^score-\d+-/.test(el.id)) return false;
+      if (/^done-at-|^set-|^score-\d+-|^rpe-\d+-/.test(el.id)) return false;
       if (el.type === 'hidden' || el.type === 'checkbox' || el.type === 'date') return false;
       if (el.closest('.chg-inline') || el.closest('.vbx') || el.closest('.efx')) return false;
       for (var p = el.parentElement; p && p !== z.parentElement; p = p.parentElement) if (p.style && p.style.display === 'none') return false;

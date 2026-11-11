@@ -163,6 +163,8 @@ async function buildSessionCard(s){
 
   // Bloc en charge découpé en parties (ex. WEIGHTLIFTING) : un score par partie
   const autoParts=(!isText&&!isStrength&&!isMulti&&s.score_type==='weight')?weightPartSlots(s.content):null;
+  // Bloc ENGINE / RUN en intervalles (ex. 3x 8:00) : une ligne par intervalle, valeur + RPE
+  const ivl=(!isText&&!isStrength&&!isMulti&&!autoParts)?intervalScoring(s):null;
 
   // Score input
   let scoreInputHtml='';
@@ -178,6 +180,13 @@ async function buildSessionCard(s){
         return `<div class="multi-score-row" style="flex:1;min-width:52px;flex-direction:column;align-items:stretch;gap:3px">${p.n>1?`<div class="multi-score-lbl" style="min-width:0;font-size:10px;text-align:center">S${j+1}</div>`:''}<input class="multi-score-input" id="score-${i}-${s.id}" data-stype="weight" data-part="${pi}" data-set="${j}" data-plbl="${escapeHtml(p.label)}" type="text" inputmode="decimal" placeholder="kg" style="padding:9px 4px"></div>`;}).join('');
       return `<div><div class="multi-score-lbl" style="margin-bottom:4px">${escapeHtml(p.label)}${p.n>1?' · '+p.n+' séries':''}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${ins}</div></div>`;
     }).join('')}</div>`;
+  } else if(ivl){
+    scoreInputHtml=`<div class="multi-score-inputs" data-intervals="${ivl.n}" data-unit="${ivl.unit}">${Array.from({length:ivl.n},(_,i)=>`
+      <div class="multi-score-row">
+        <div class="multi-score-lbl" style="min-width:58px">${ivl.word} ${i+1}</div>
+        <input class="multi-score-input" id="score-${i}-${s.id}" data-stype="${ivl.stype}" type="text" inputmode="decimal" placeholder="${ivl.unit}">
+        <select class="multi-score-input" id="rpe-${i}-${s.id}" data-stype="rpe" aria-label="RPE" style="flex:0 0 84px;padding:9px 4px"><option value="">RPE</option>${[1,2,3,4,5,6,7,8,9,10].map(n=>`<option value="${n}">RPE ${n}</option>`).join('')}</select>
+      </div>`).join('')}</div>`;
   } else if(isMulti){
     const count=s.score_count||scoreLabels.length||2;
     scoreInputHtml=`<div class="multi-score-inputs">
@@ -612,6 +621,30 @@ function checkTimeInput(el){const v=el.value.trim();el.classList.toggle('bad-tim
 (function(){if(document.getElementById('time-strict-css'))return;const st=document.createElement('style');st.id='time-strict-css';
   st.textContent='.multi-score-input.bad-time{border-color:var(--red)!important;box-shadow:0 0 0 2px rgba(255,68,68,.25)}';document.head.appendChild(st);})();
 
+/* Bloc ENGINE / RUN en intervalles : nombre d'intervalles (ex. 3x 8:00, 2 SETS 12:00, 4x 800m)
+   et unité du score (W si la séance est en watts). Une ligne par intervalle avec la valeur + le RPE. */
+function intervalScoring(s){
+  if(!s||!/^(engine|run)$/i.test(s.type||'')||s.ef||s.vbt)return null;
+  const st=s.score_type||'';
+  const txt=String(s.content||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(div|p|li)>/gi,'\n').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ');
+  const usesW=st==='watt'||/\d\s*W\b/.test(txt)||/PUISSANCE CRITIQUE/i.test(txt);
+  let unit,stype,word='INT';
+  if(usesW&&st!=='distance'&&st!=='calories'){unit='W';stype='watt';}
+  else if(st==='distance'){unit='m';stype='distance';}
+  else if(st==='calories'){unit='cal';stype='calories';}
+  else if(st==='watt'){unit='W';stype='watt';}
+  else if(String(s.type).toLowerCase()==='run'&&st&&!/^(time|rounds|text|reps)$/.test(st)){unit='km/h';stype='speed';}
+  else return null;
+  let best=null;
+  const re=/(\d+)\s*(?:SETS?|S[EÉ]RIES?|x)\s*(\d{1,2}):(\d{2})|(\d+)\s*x\s*(\d+)\s*m\b/gi;let m;
+  while((m=re.exec(txt))){
+    const n=+(m[1]||m[4]),w=m[1]?(+m[2]*60+ +m[3]):(+m[5]/4);
+    if(n<2||n>12)continue;
+    if(!best||n*w>best.n*best.w)best={n,w};
+  }
+  if(!best)return null;
+  return {n:best.n,unit,stype,word};
+}
 /* Bloc en charge à plusieurs parties (lu comme le timer) :
    un seul % dans la partie → une charge ; montée en charge (plusieurs %, From…to, à) → une charge par série */
 function weightPartSlots(content){
@@ -642,8 +675,25 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
   let scoreText='',scoreValue=0,setsData=null;
   const level=getSelectedLevel(sessionId);
 
+  const ivBox=document.querySelector(`#sc-${sessionId} [data-intervals]`);
   const apBox=document.querySelector(`#sc-${sessionId} [data-autoparts]`);
-  if(apBox){
+  if(ivBox){
+    // Une ligne par intervalle : valeur (W, m, cal, km/h) + RPE
+    const n=+ivBox.dataset.intervals||0,unit=ivBox.dataset.unit||'',sd=[],txt=[];
+    for(let i=0;i<n;i++){
+      const raw=String(document.getElementById(`score-${i}-${sessionId}`)?.value||'').trim().replace(/\s*(w|m|cal|km\/h)$/i,'');
+      const rpe=parseInt(document.getElementById(`rpe-${i}-${sessionId}`)?.value)||null;
+      const v=raw?parseFloat(raw.replace(',','.')):null;
+      if((v==null||isNaN(v))&&!rpe)continue;
+      sd.push({set:i+1,value:(v==null||isNaN(v))?null:v,rpe});
+      txt.push(`${(v==null||isNaN(v))?'–':v+' '+unit}${rpe?' · RPE '+rpe:''}`);
+    }
+    if(!sd.length){showToast('⚠️ Entre au moins un intervalle');return;}
+    const vals=sd.map(x=>x.value).filter(x=>x!=null);
+    // moyenne pour la puissance / la vitesse, total pour distance et calories
+    scoreValue=!vals.length?0:(/^(m|cal)$/.test(unit)?vals.reduce((a,b)=>a+b,0):Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10);
+    scoreText=txt.join(' | ');setsData=sd;
+  } else if(apBox){
     // Un score par partie : charge unique, ou une charge par série si montée en charge
     const groups={},order=[],sd=[];let best=0;
     apBox.querySelectorAll('input[data-part]').forEach(el=>{
