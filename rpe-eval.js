@@ -15,15 +15,15 @@
       '.rpe-ev[open]>summary .ch{transform:rotate(180deg)}',
       '.rpe-ev .rb{margin-top:12px}',
       '.rpe-ev .bb{font-family:"Bebas Neue",sans-serif;letter-spacing:1px}',
-      '.rpe-ev .lv{display:flex;gap:3px;margin:8px 0 10px}',
-      '.rpe-ev .lv div{border-radius:6px;text-align:center;padding:4px 0;font-size:14px;color:#fff}',
-      '.rpe-ev .bars{display:flex;gap:3px;align-items:flex-end;height:130px}',
-      '.rpe-ev .bar{border-radius:5px 5px 0 0;color:#fff;text-align:center;padding-top:4px;font-size:10px;line-height:1.2;font-weight:700}',
+      '.rpe-ev .g{position:relative;height:244px;margin-top:6px}',
+      '.rpe-ev .g>*{position:absolute;box-sizing:border-box}',
+      '.rpe-ev .lvl{top:16px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;color:#fff}',
+      '.rpe-ev .bar{bottom:78px;border-radius:5px 5px 0 0;color:#fff;text-align:center;padding-top:4px;font-size:10px;line-height:1.2;font-weight:700;overflow:hidden}',
       '.rpe-ev .bar b{display:block;font-family:"Bebas Neue",sans-serif;font-size:15px;font-weight:400;letter-spacing:1px}',
-      '.rpe-ev .sep{border-left:1.5px dashed var(--text2)}',
-      '.rpe-ev .nm{display:flex;gap:3px;font-size:10px;color:var(--text2);text-align:center;margin-top:4px;line-height:1.2}',
-      '.rpe-ev .dm{display:flex;gap:3px;margin-top:10px}',
-      '.rpe-ev .dm div{flex:1;border-radius:6px;padding:5px 2px;text-align:center;font-size:10px;line-height:1.3;font-weight:700;border:1px solid}',
+      '.rpe-ev .nm{top:169px;transform:translateX(-50%);font-size:10px;color:var(--text2);text-align:center;line-height:1.2;white-space:nowrap}',
+      '.rpe-ev .dom{top:198px;height:44px;border-radius:6px;border:1px solid;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:10px;line-height:1.3;font-weight:700;text-align:center}',
+      '.rpe-ev .sl1,.rpe-ev .sl2{top:12px;bottom:4px;width:0;border-left:1.5px dashed var(--text2);z-index:2}',
+      '.rpe-ev .slt{top:0;transform:translateX(-50%);font-size:9px;font-style:italic;font-weight:700;color:var(--text2);white-space:nowrap}',
       '.rpe-ev .st{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}',
       '.rpe-ev .sc{height:8px;border-radius:4px;background:linear-gradient(90deg,#8fc9de,#a6d3a8,#f2d896,#e8b48a,#d99a8f)}',
       '.rpe-ev .sl{display:flex;justify-content:space-between;font-size:10px;color:var(--text2);margin-top:5px}',
@@ -40,22 +40,29 @@
   function body() {
     return '<div class="rb">' +
       '<div class="bb" style="font-size:20px">CALIBRE TON <span style="color:var(--accent)">RPE</span></div>' +
-      '<div class="lv"><div class="bb" style="flex:2;background:#3fa35b">FACILE</div><div class="bb" style="flex:2.4;background:#d8872a">SOUTENU</div><div class="bb" style="flex:3.4;background:#c0392b">DIFFICILE</div></div>' +
-      '<div class="bars">' +
-        '<div class="bar" style="flex:1;height:30%;background:#2e6da4"><b>Z1</b>1</div>' +
-        '<div class="bar" style="flex:1;height:39%;background:#3fa35b;margin-right:2px"><b>Z2</b>2-3</div>' +
-        '<div class="bar sep" style="flex:1.7;height:48%;background:#e3b23c"><b>Z3</b>4-6</div>' +
-        '<div class="bar" style="flex:.7;height:57%;background:#d8872a;margin-right:2px"><b>Z4</b>6-7</div>' +
-        '<div class="bar sep" style="flex:1.7;height:66%;background:#c0392b"><b>Z5</b>8-10</div>' +
-        '<div class="bar" style="flex:1;height:78%;background:#6c3483"><b>Z6</b>9-10</div>' +
-        '<div class="bar" style="flex:1;height:88%;background:#b03a8a"><b>Z7</b>%</div>' +
+      '<div class="g">' +
+        '<div class="slt" style="left:25.5%">Seuil #1</div><div class="slt" style="left:55.3%">Seuil #2</div>' +
+        '<div class="lvl bb" style="left:0;width:25.2%;background:#3fa35b">FACILE</div>' +
+        '<div class="lvl bb" style="left:25.8%;width:29.2%;background:#d8872a">SOUTENU</div>' +
+        '<div class="lvl bb" style="left:55.6%;width:44.4%;background:#c0392b">DIFFICILE</div>' +
+        '<div class="bar" style="left:0;width:11.8%;height:41px;background:#2e6da4"><b>Z1</b>1</div>' +
+        '<div class="bar" style="left:12.8%;width:12.2%;height:54px;background:#3fa35b"><b>Z2</b>2-3</div>' +
+        '<div class="bar" style="left:26.1%;width:21.1%;height:65px;background:#e3b23c"><b>Z3</b>4-6</div>' +
+        '<div class="bar" style="left:48.2%;width:6.6%;height:77px;background:#d8872a"><b>Z4</b>6-7</div>' +
+        '<div class="bar" style="left:55.8%;width:21.4%;height:90px;background:#c0392b"><b>Z5</b>8-10</div>' +
+        '<div class="bar" style="left:78.2%;width:9.6%;height:100px;background:#6c3483"><b>Z6</b>9-10</div>' +
+        '<div class="bar" style="left:88.6%;width:11.4%;height:112px;background:#b03a8a"><b>Z7</b>%</div>' +
+        '<div class="nm" style="left:5.9%">Récup</div><div class="nm" style="left:18.9%">EF</div><div class="nm" style="left:36.6%">Tempo</div><div class="nm" style="left:51.5%">Seuil</div><div class="nm" style="left:66.5%">VO2max</div><div class="nm" style="left:83%">Sprint<br>long</div><div class="nm" style="left:94.3%">Sprint<br>court</div>' +
+        '<div class="dom" style="left:0;width:25%;border-color:#3fa35b;color:#3fa35b">Basse<br>RPE 1-3</div>' +
+        '<div class="dom" style="left:26.2%;width:26.1%;border-color:#d8872a;color:#d8872a">Moyenne<br>RPE 4-7</div>' +
+        '<div class="dom" style="left:53.6%;width:23.4%;border-color:#c0392b;color:#e0584a">Haute<br>RPE 8-10</div>' +
+        '<div class="dom" style="left:78.2%;width:21.8%;border-color:#b03a8a;color:#c8509f">Très haute<br>RPE 9-10+</div>' +
+        '<div class="sl1" style="left:25.5%"></div><div class="sl2" style="left:55.3%"></div>' +
       '</div>' +
-      '<div class="nm"><span style="flex:1">Récup</span><span style="flex:1">EF</span><span style="flex:1.7">Tempo</span><span style="flex:.7">Seuil</span><span style="flex:1.7">VO2max</span><span style="flex:1">Sprint L</span><span style="flex:1">Sprint C</span></div>' +
-      '<div class="dm"><div style="border-color:#3fa35b;color:#3fa35b">Basse<br>RPE 1-3</div><div style="border-color:#d8872a;color:#d8872a">Moyenne<br>RPE 4-7</div><div style="border-color:#c0392b;color:#e0584a">Haute<br>RPE 8-10</div><div style="border-color:#b03a8a;color:#c8509f">Très haute<br>9-10+</div></div>' +
       '<div class="st">Essoufflement</div><div class="sc"></div>' +
       '<div class="sl"><span>0 Repos</span><span>3 Léger</span><span>5 Modéré</span><span>7 Important</span><span>10</span></div>' +
       '<div class="st">Douleur musculaire</div><div class="sc"></div>' +
-      '<div class="sl"><span>0 Repos</span><span>3 Brûlure</span><span>5 Modérée</span><span>7 Importante</span><span>10</span></div>' +
+      '<div class="sl"><span>0 Repos</span><span>3 Légère</span><span>5 Modérée</span><span>7 Importante</span><span>10</span></div>' +
       '<button type="button" class="full" onclick="event.stopPropagation();openRpeInfographic()">🖼 Voir l\'infographie complète</button>' +
     '</div>';
   }
