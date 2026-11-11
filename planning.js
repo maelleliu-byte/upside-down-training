@@ -227,7 +227,7 @@ async function buildSessionCard(s){
   let myScore=null,myScoreElsewhere=false;
   try{
     const _ids=await _lbSessionIds(s.id);
-    const {data:_rows}=await sb.from('wod_scores').select('athlete_id,session_id,score_text,score_value,level').in('session_id',_ids);
+    const {data:_rows}=await sb.from('wod_scores').select('athlete_id,session_id,score_text,score_value,level,sets_data').in('session_id',_ids);
     const _u=_dedupeByAthlete(_rows||[],s.id);
     scoreCount=_u.length;
     if(currentUser?.id){const m=_u.find(r=>r.athlete_id===currentUser.id);if(m){myScore=m;myScoreElsewhere=m.session_id!==s.id;}}
@@ -264,6 +264,7 @@ ${s.type==='wod'?`        <div class="level-selector">
         <button class="btn-score" style="width:100%;margin-top:6px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'}" onclick="submitScore('${s.id}','${s.score_type||'reps'}',${!!isStrength},${s.sets||0},${!!isMulti},${isText?'true':'false'},${s.score_count||0})">✓ Valider</button>`}
         </div>
       </details>
+      <div id="ivr-${s.id}">${myScore&&typeof ivRecapHtml==='function'?ivRecapHtml(myScore.sets_data):''}</div>
       <button class="btn-open-scores" onclick="openScoresModal('${s.id}','${s.score_type||'reps'}',${s.sets||0})">
         🏆 Voir le classement${scoreCountBadge}
       </button>
@@ -283,6 +284,7 @@ function markMyScoreDone(sessionId,payload){
   const isWod=!!d.querySelector('.level-selector');
   d.querySelector('.ms-sum').innerHTML=myScoreSummary({score_text:payload.score_text,score_value:payload.score_value,level:payload.level},isWod);
   d.classList.add('ms-done');d.open=false;
+  const rb=document.getElementById('ivr-'+sessionId);if(rb&&typeof ivRecapHtml==='function')rb.innerHTML=ivRecapHtml(payload.sets_data);
 }
 
 function buildSeparatorCard(s){
@@ -568,7 +570,8 @@ async function loadScores(sessionId,scoreType,sets){
   el.innerHTML=sorted.map((sc,i)=>{
     const isMe=sc.athlete_id===currentUser?.id;
     const setsDetail=sc.sets_data?JSON.parse(typeof sc.sets_data==='string'?sc.sets_data:JSON.stringify(sc.sets_data)):null;
-    const setsHtml=setsDetail?`<div class="score-sets-detail">${setsDetail.map(s=>`S${s.set}: ${s.value}kg`).join(' · ')}</div>`:'';
+    const ivHtml=setsDetail&&typeof ivRecapHtml==='function'?ivRecapHtml(setsDetail,{noTitle:true}):'';
+    const setsHtml=!setsDetail?'':ivHtml?ivHtml:setsDetail.some(x=>x&&x.part)?'':`<div class="score-sets-detail">${setsDetail.map(s=>`S${s.set}: ${s.value}kg`).join(' · ')}</div>`;
     return `<div class="score-row" style="${isMe?'border:1px solid rgba(232,255,71,.2)':''}" id="sr-${sc.id}">
       <div class="score-rank ${rankIcons[i]||''}">${i+1}</div>
       <div style="flex:1">
@@ -685,7 +688,7 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
       const rpe=parseFloat(document.getElementById(`rpe-${i}-${sessionId}`)?.value)||null;
       const v=raw?parseFloat(raw.replace(',','.')):null;
       if((v==null||isNaN(v))&&!rpe)continue;
-      sd.push({set:i+1,value:(v==null||isNaN(v))?null:v,rpe});
+      sd.push({set:i+1,value:(v==null||isNaN(v))?null:v,rpe,unit});
       txt.push(`${(v==null||isNaN(v))?'–':v+' '+unit}${rpe?' · RPE '+String(rpe).replace('.',','):''}`);
     }
     if(!sd.length){showToast('⚠️ Entre au moins un intervalle');return;}
