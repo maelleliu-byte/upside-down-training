@@ -25,7 +25,7 @@
 
   // Onglets de la boîte à outils (ordre d'affichage)
   var CATS = [
-    { id: 'force', label: 'Force continuum' },
+    { id: 'force', label: 'Strength continuum' },
     { id: 'endurance', label: 'Endurance' },
     { id: 'kids', label: 'Prog kids' }
   ];
