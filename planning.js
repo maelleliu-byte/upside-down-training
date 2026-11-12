@@ -233,8 +233,8 @@ async function buildSessionCard(s){
     if(currentUser?.id){const m=_u.find(r=>r.athlete_id===currentUser.id);if(m){myScore=m;myScoreElsewhere=m.session_id!==s.id;}}
   }catch(e){}
   const scoreCountBadge=scoreCount>0
-    ? `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;margin-left:8px;border-radius:11px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'};font-size:12px;font-weight:700;line-height:1">${scoreCount}</span>`
-    : `<span style="margin-left:8px;font-size:12px;color:var(--muted);font-weight:500">· 0 score</span>`;
+    ? `<span class="lb-cnt" data-n="${scoreCount}" data-c="${cardColor}" style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;margin-left:8px;border-radius:11px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'};font-size:12px;font-weight:700;line-height:1">${scoreCount}</span>`
+    : `<span class="lb-cnt" data-n="0" data-c="${cardColor}" style="margin-left:8px;font-size:12px;color:var(--muted);font-weight:500">· 0 score</span>`;
 
   return `<div class="session-card fade-up" id="sc-${s.id}" style="border-color:${cardColor}33">
     <div class="session-header" style="border-bottom-color:${cardColor}22">
@@ -282,8 +282,18 @@ function myScoreSummary(sc,isWod){
 function markMyScoreDone(sessionId,payload){
   const d=document.getElementById('ms-'+sessionId);if(!d)return;
   const isWod=!!d.querySelector('.level-selector');
+  // premier score de l'athlète sur ce bloc : le compteur du classement prend +1 tout de suite
+  if(!d.classList.contains('ms-done')){
+    const cnt=document.querySelector('#sc-'+sessionId+' .btn-open-scores .lb-cnt');
+    if(cnt){
+      const n=(parseInt(cnt.dataset.n,10)||0)+1,c=cnt.dataset.c||'var(--accent)';
+      cnt.dataset.n=n;cnt.textContent=n;
+      cnt.style.cssText='display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;margin-left:8px;border-radius:11px;background:'+c+';color:'+(typeof isLightColor==='function'&&isLightColor(c)?'#000':'#fff')+';font-size:12px;font-weight:700;line-height:1';
+    }
+  }
   d.querySelector('.ms-sum').innerHTML=myScoreSummary({score_text:payload.score_text,score_value:payload.score_value,level:payload.level},isWod);
   d.classList.add('ms-done');d.open=false;
+  if(typeof window.chgPaintBand==='function')window.chgPaintBand(sessionId);
   const rb=document.getElementById('ivr-'+sessionId);if(rb&&typeof ivRecapHtml==='function')rb.innerHTML=ivRecapHtml(payload.sets_data);
 }
 

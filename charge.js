@@ -516,6 +516,20 @@
     if(hasCharge)return['todo','Score manquant'];
     return['todo','À valider'];
   }
+  /* Charge affichée sur le bandeau « ✓ Score rentré » replié */
+  const bandUA={};
+  function paintBand(sid){
+    const sum=document.querySelector('#ms-'+CSS.escape(sid)+'.ms-done .ms-sum');
+    if(!sum)return;
+    let el=sum.querySelector('.ms-ua');
+    const t=bandUA[sid];
+    if(!t){if(el)el.remove();return;}
+    if(!el){el=document.createElement('span');el.className='ms-ua';
+      el.style.cssText='flex:none;font-size:12px;font-weight:700;color:var(--accent);white-space:nowrap';
+      const chev=sum.querySelector('.ms-chev');sum.insertBefore(el,chev);}
+    el.textContent=t;
+  }
+  window.chgPaintBand=paintBand;
   function setPill(card,s,hasScore,hasCharge){
     const head=card.querySelector('.session-header');if(!head)return;
     let p=head.querySelector('.chg-pill');
@@ -545,6 +559,8 @@
       rpe:saved?saved.rpe:0,min:saved?saved.minutes:0,
       counts:saved?saved.counts:(TYPEMAP[s.type]||['CF',true])[1]};
     const state={score:hasScore,charge:!!saved};
+    if(saved)bandUA[s.id]=saved.counts?`· ${fmt((saved.rpe||0)*(saved.minutes||0))} UA`:'· hors charge';
+    paintBand(s.id);
     const uaEl=wrap.querySelector('[data-ua]');
     const recalc=()=>{uaEl.textContent=fmt(st.counts&&st.rpe&&st.min?st.rpe*st.min:0);};
     const tog=wrap.querySelector('[data-itog]'),ib=wrap.querySelector('.chg-ibody'),iv=wrap.querySelector('[data-ival]');
@@ -612,12 +628,14 @@
           st.id=await saveBlock(row,st.id);chargeOk=true;state.charge=true;
           iv.className='chg-ival'+(st.counts?'':' off');
           iv.textContent=(st.counts?`${fmt(st.rpe*st.min)} UA`:'hors charge')+' ✓';
+          bandUA[s.id]=st.counts?`· ${fmt(st.rpe*st.min)} UA`:'· hors charge';
           setOpen(false);
           refreshDayTotal();
         }
       }catch(err){console.error('[charge] valider bloc',err);toast('❌ Erreur à l\'enregistrement, réessaie');}
       btn.disabled=false;btn.textContent=lbl;
       setPill(card,s,state.score,state.charge);
+      paintBand(s.id);
       if(wantScore&&!scoreOk)return; // submitScore a déjà affiché son message
       const opt=SCORE_OPTIONAL.has(s.type);
       if(state.score&&state.charge)toast('✅ Bloc validé : score + charge');
