@@ -22,6 +22,8 @@
   var EF_VERSION = '2026-10-25b';
   // Idem pour pc.html (profil puissance / vitesse critique)
   var PC_VERSION = '2026-11-05f';
+  // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
+  var LV_VERSION = '2026-11-12a';
 
   // Onglets de la boîte à outils (ordre d'affichage)
   var CATS = [
@@ -31,6 +33,15 @@
   ];
 
   var TOOLS = [
+    {
+      id: 'lvtest',
+      cat: 'force',
+      emoji: '🎯',
+      title: 'Profil charge-vitesse · Test',
+      sub: 'Protocole standardisé par athlète (RM all time, 8 paliers) : profil de référence, zones VBT et suivi des re-tests datés.',
+      url: '/lv-test.html?v=' + LV_VERSION,
+      tall: true
+    },
     {
       id: 'echo',
       cat: 'endurance',
