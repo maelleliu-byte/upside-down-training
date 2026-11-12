@@ -21,7 +21,7 @@
   // Idem pour ef.html (profil endurance fondamentale)
   var EF_VERSION = '2026-10-25b';
   // Idem pour pc.html (profil puissance / vitesse critique)
-  var PC_VERSION = '2026-11-05f';
+  var PC_VERSION = '2026-11-12a';
   // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
   var LV_VERSION = '2026-11-12a';
 
@@ -81,7 +81,7 @@
       cat: 'endurance',
       emoji: '📈',
       title: 'Profil PC / VC',
-      sub: 'Puissance critique (Row, Ski, Bike Erg, Assault, Echo) et vitesse critique (course) depuis les tests 3′ et 12′ : W′, profil énergétique, zones et formules Séance+.',
+      sub: 'Protocole standardisé par athlète (test 3′ puis 12′ sur deux jours) : PC / VC de référence, W′, profil énergétique, zones, formules Séance+ et suivi des re-tests.',
       url: '/pc.html?v=' + PC_VERSION,
       tall: true
     }
