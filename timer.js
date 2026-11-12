@@ -209,8 +209,34 @@
   function buzz(p) { try { if (st && st.sound && navigator.vibrate) navigator.vibrate(p); } catch (e) {} }
   // Alerte 10 s avant la reprise d'une série de travail : double bip + vibration
   function alert10() { beep(880, .16); beep(880, .16, .24); buzz([140, 90, 140]); }
-  function lock() { try { if (navigator.wakeLock && !wl) navigator.wakeLock.request('screen').then(function (w) { wl = w; }).catch(function () {}); } catch (e) {} }
-  function unlock() { try { if (wl) wl.release(); } catch (e) {} wl = null; }
+  // Écran maintenu allumé tant que le timer est ouvert (en pause comme en marche).
+  // 1) Wake Lock API quand elle existe ; 2) en secours (iPhone en mode app),
+  // une mini vidéo muette en boucle, qui empêche la mise en veille.
+  var NS_SRC = 'data:video/mp4;base64,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YV9tZT0xIHRyZWxsaXM9MCA4eDhkY3Q9MCBjcW09MCBkZWFkem9uZT0yMSwxMSBmYXN0X3Bza2lwPTEgY2hyb21hX3FwX29mZnNldD0wIHRocmVhZHM9MSBsb29rYWhlYWRfdGhyZWFkcz0xIHNsaWNlZF90aHJlYWRzPTAgbnI9MCBkZWNpbWF0ZT0xIGludGVybGFjZWQ9MCBibHVyYXlfY29tcGF0PTAgY29uc3RyYWluZWRfaW50cmE9MCBiZnJhbWVzPTAgd2VpZ2h0cD0wIGtleWludD0yNTAga2V5aW50X21pbj0xIHNjZW5lY3V0PTQwIGludHJhX3JlZnJlc2g9MCByY19sb29rYWhlYWQ9MTAgcmM9Y3JmIG1idHJlZT0xIGNyZj0yMy4wIHFjb21wPTAuNjAgcXBtaW49MCBxcG1heD02OSBxcHN0ZXA9NCBpcF9yYXRpbz0xLjQwIGFxPTE6MS4wMACAAAAADmWIhAW///8PRQABT3+AARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBwEYIAcAAAAFQZogFfUBGCAHARggBwEYIAcBGCAHARggBwEYIAcBGCAHARggBw==';
+  var nsv = null;
+  function keepAwake() {
+    try {
+      if (navigator.wakeLock && !wl) navigator.wakeLock.request('screen').then(function (w) {
+        wl = w; try { w.addEventListener('release', function () { wl = null; }); } catch (e) {}
+      }).catch(function () { wl = null; });
+    } catch (e) {}
+    try {
+      if (!nsv) {
+        nsv = document.createElement('video');
+        nsv.setAttribute('playsinline', ''); nsv.setAttribute('webkit-playsinline', ''); nsv.setAttribute('muted', '');
+        nsv.muted = true; nsv.loop = true; nsv.preload = 'auto'; nsv.src = NS_SRC;
+        nsv.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0.01;pointer-events:none;z-index:-1';
+        document.body.appendChild(nsv);
+      }
+      var p = nsv.play(); if (p && p.catch) p.catch(function () {});
+    } catch (e) {}
+  }
+  function releaseAwake() {
+    try { if (wl) wl.release(); } catch (e) {} wl = null;
+    try { if (nsv) nsv.pause(); } catch (e) {}
+  }
+  function lock() { keepAwake(); }
+  function unlock() { /* l'écran reste allumé jusqu'à la fermeture du timer */ }
 
   function now() { return Date.now() / 1000; }
   function elapsed() { return st.acc + (st.running ? now() - st.t0 : 0); }
@@ -224,6 +250,7 @@
     var ov = document.getElementById('tm-ov'); if (!ov) { ov = document.createElement('div'); ov.id = 'tm-ov'; document.body.appendChild(ov); }
     ov.style.display = 'flex';
     document.documentElement.style.overflow = 'hidden';
+    keepAwake();
     setPart(idx || 0);
   };
   function setPart(i) {
@@ -237,7 +264,7 @@
   }
 
   function close() {
-    if (raf) clearInterval(raf); raf = null; unlock();
+    if (raf) clearInterval(raf); raf = null; releaseAwake();
     var ov = document.getElementById('tm-ov'); if (ov) { ov.style.display = 'none'; ov.innerHTML = ''; }
     document.documentElement.style.overflow = '';
     st = null;
@@ -452,7 +479,7 @@
   }
 
   document.addEventListener('keydown', function (e) { if (st && e.key === 'Escape') close(); });
-  document.addEventListener('visibilitychange', function () { if (st && st.running && document.visibilityState === 'visible') lock(); });
+  document.addEventListener('visibilitychange', function () { if (st && document.visibilityState === 'visible') { keepAwake(); if (st.running) draw(); } });
 
   window.__blockTimerClose = function () { close(); };
   window.__blockTimerParse = parse; window.__blockTimerParts = parseParts; // pour les tests
