@@ -530,7 +530,7 @@ function liveFit(p){
   if(p.err)return `<div class="banner">${esc(p.err)}</div>`;
   return `<div class="banner">${m.run?"VC":"PC"} : <b>${valTxtM(p.cp,m)}</b>${subTxt(p.cp)?" ("+subTxt(p.cp)+")":""} · ${m.run?"D′ "+Math.round(p.wp)+" m":"W′ "+fr(p.wp/1000,1)+" kJ"} · ratio 12′/3′ ${fr(p.ratio,0)} %</div>`;
 }
-function srcProfile(){const ref=reference();if(ref)return ref;const d=draft();return d.err?null:Object.assign(d,{preview:true})}
+function srcProfile(){const ref=reference();if(ref)return ref;const pr=prModel();if(pr)return Object.assign({},pr,{fromPr:true,date:pr.b12.date>pr.b3.date?pr.b12.date:pr.b3.date});const d=draft();return d.err?null:Object.assign(d,{preview:true})}
 function viewProfil(){
   const m=mod(),src=srcProfile(),pr=prModel();
   let h=`${title("Résultat","Profil <span class=\"ac\">"+RC()+"</span> · "+esc(m.label))}`;
@@ -542,18 +542,19 @@ function viewProfil(){
     return h;
   }
   const e=energy(src.ratio);
-  h+=src.preview?`<div class="banner warn">Aperçu du test en cours : <b>pas encore enregistré</b>.</div>`:`<p class="lede">Profil de référence : test standardisé du ${esc(dateFR(src.row.date3))} (3′) et du ${esc(dateFR(src.row.date12))} (12′).</p>`;
+  h+=src.fromPr?`<div class="banner warn">Pas encore de test standardisé : calculs à partir des tests saisis dans les PR (3′ du ${esc(dateFR(src.b3.date))}, 12′ du ${esc(dateFR(src.b12.date))}).</div>`:src.preview?`<div class="banner warn">Aperçu du test en cours : <b>pas encore enregistré</b>.</div>`:`<p class="lede">Profil de référence : test standardisé du ${esc(dateFR(src.row.date3))} (3′) et du ${esc(dateFR(src.row.date12))} (12′).</p>`;
   h+=`<div class="kpis" style="margin-top:12px">
     <div class="card kpi main"><div><span>${m.run?"Vitesse critique":"Puissance critique"}</span><b>${m.run?fr(src.cp,1):Math.round(src.cp)} <small style="font-size:16px">${unitOf(m)}</small></b></div>${subTxt(src.cp)?`<div class="r"><b>${subTxt(src.cp)}</b><span>${m.run?"allure":"au 500 m"}</span></div>`:""}</div>
     <div class="card kpi"><b>${m.run?Math.round(src.wp)+" m":fr(src.wp/1000,1)+" kJ"}</b><span>${m.run?"D′":"W′"} (réserve)</span></div>
     <div class="card kpi"><b>${fr(src.ratio,0)} %</b><span>Ratio 12′ / 3′</span></div>
     <div class="card kpi"><b style="font-size:16px">${esc(e.label)}</b><span>Profil énergétique</span></div>
   </div>
-  <div class="card" style="margin-top:12px">${curve([Object.assign({c:"var(--accent)",pts:true},src)].concat(pr&&store.showPr!==false?[Object.assign({c:"var(--muted)",w:1.6,dash:"5 4"},pr)]:[]))}
-    <div class="legend"><span><i style="background:var(--accent)"></i>Test standardisé</span>${pr?`<span><i style="background:var(--muted)"></i>Tests en séance (PR)</span>`:""}<span><i style="background:var(--text)"></i>Points 3′ et 12′</span></div></div>
+  <div class="card" style="margin-top:12px">${curve([Object.assign({c:"var(--accent)",pts:true},src)].concat(pr&&!src.fromPr?[Object.assign({c:"var(--muted)",w:1.6,dash:"5 4"},pr)]:[]))}
+    <div class="legend"><span><i style="background:var(--accent)"></i>${src.fromPr?"Tests saisis dans les PR":"Test standardisé"}</span>${pr&&!src.fromPr?`<span><i style="background:var(--muted)"></i>Tests en séance (PR)</span>`:""}<span><i style="background:var(--text)"></i>Points 3′ et 12′</span></div></div>
   <div class="card" style="margin-top:12px"><div class="eprof">${["++","+","","+","++"].map((s,i)=>`<span class="${i===e.i?"on":""}"><b>${i<2?"P":i>2?"E":"I"}${s}</b><small>${i===0?"&lt;"+e.t[0]:i===4?"&gt;"+e.t[3]:e.t[i-1]+"–"+e.t[i]}</small></span>`).join("")}</div>
   <p class="hint" style="margin:8px 0 0"><b>${esc(e.label)}</b> : ${esc(e.tip)} Seuils ${store.gender==="female"?"femme":"homme"}.</p></div>`;
-  if(pr)h+=secondaryHTML(pr,src);
+  if(pr&&!src.fromPr)h+=secondaryHTML(pr,src);
+  if(src.fromPr)h+=`<button class="btn full" style="margin-top:12px" data-act="tab" data-tab="proto">Faire le test standardisé</button>`;
   h+=sustainHTML(src);
   h+=`<button class="btn primary full" style="margin-top:14px" data-act="tab" data-tab="zones">Voir les zones →</button>`;
   return h;
@@ -583,9 +584,9 @@ function sustainHTML(p){
 function viewZones(){
   const m=mod(),src=srcProfile();
   let h=`${title("Zones d'intensité","Zones <span class=\"ac\">"+RC()+"</span> · "+esc(m.label))}<div style="margin-top:12px">${modChips()}</div>`;
-  if(!src)return h+`<div class="empty">Fais le test standardisé pour obtenir les zones de cette modalité.</div>`;
+  if(!src)return h+`<div class="empty">Ni test standardisé, ni tests 3′ / 12′ dans les PR pour cette modalité.</div>`;
   const p=src;
-  h+=`<p class="lede">${src.preview?"Test en cours (non enregistré).":"Calculées sur le test standardisé du "+esc(dateFR(src.date))+"."} % de la ${RC()}.</p>`;
+  h+=`<p class="lede">${src.fromPr?"Pas de test standardisé : calculées sur les tests 3′ / 12′ saisis dans les PR.":src.preview?"Test en cours (non enregistré).":"Calculées sur le test standardisé du "+esc(dateFR(src.date))+"."} % de la ${RC()}.</p>`;
   const f=m.run?"VITESSE CRITIQUE":"PUISSANCE CRITIQUE";
   const fx=pc=>`${pc}%|${f}|${m.tok}|`;
   h+=`<div class="card zl">
@@ -595,13 +596,13 @@ function viewZones(){
       const fo=hi?fx(z.lo)+" / "+fx(z.hi):fx(z.lo);
       return `<div class="zr"><div class="zh"><b class="zn z${z.z.slice(1)}">${z.z}</b><span class="znm">${esc(z.n)}${z.custom?' <span class="cust">validée EF</span>':""}</span><span class="zp">${z.hi?z.lo+"–"+z.hi:"&gt; "+z.lo} %</span></div>
         <div class="zv"><b>${v}</b>${sp?`<span>${sp}</span>`:""}</div>
-        <div class="pct">${esc(z.dom)} · ${esc(z.dur)}</div>
+        <div class="pct">Domaine ${esc(z.dom.toLowerCase())} · ${esc(z.dur)}</div>
         <button class="fx" data-copy="${esc(fo)}" title="Copier la formule">${esc(fo)}</button></div>`}).join("")}
     <p class="hint" style="margin:10px 0 0">Touche une formule pour la copier, puis colle-la dans Séance+ : l'app calcule la cible de chaque athlète à partir de sa ${RC()} de référence (dernier test standardisé). Au-delà de la Z5, on travaille sur la réserve ${m.run?"D′":"W′"}.</p></div>`;
   // calibrage EF (inchangé)
   {const rows=efRows(m,p.cp),pr=proposal(rows),o=ovFor(m.k),R=RC();
    const def=(m.run?ZONES:ZONES_ERG).find(z=>z.z==="Z2").hi;
-   h+=`<div class="sec"><h2>Calibrage EF</h2><span>dérive cardiaque</span></div><div class="card">`;
+   h+=`<p class="hint" style="margin:10px 0 0">Domaines d'intensité : <b>modéré</b> (sous le 1er seuil, état stable), <b>lourd</b> (entre le 1er seuil et la ${RC()}, lactate stable mais élevé), <b>sévère</b> (au-dessus de la ${RC()}, pas d'état stable, effort limité par la réserve ${m.run?"D′":"W′"}).</p><div class="sec"><h2>Calibrage EF</h2><span>dérive cardiaque</span></div><div class="card">`;
    if(o)h+=`<div class="okban">Z2 validée jusqu'à <b>${fr(+o.z2_hi,0)} % de la ${R}</b>${o.n?` sur ${o.n} séance${o.n>1?"s":""}`:""} · ${esc(o.by||"coach")}, ${esc(dateFR(String(o.at).slice(0,10)))}</div>`;
    if(!rows.length)h+=`<p class="hint" style="margin:0">Aucune séance d'endurance fondamentale ${m.run?"en course":"sur cette machine"} avec FC et ${m.run?"vitesse ou allure":"watts ou allure /500m"}. Active « 🫀 Suivi endurance fondamentale » dans Séance+ : les séances arrivent ici.</p>`;
    else{
