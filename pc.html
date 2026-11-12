@@ -437,7 +437,7 @@ function header(){return `<div class="brand"><span class="mark">${LOGO}<span>UPS
 
 /* ---------- protocole standardisé (2 jours séparés) ---------- */
 const CONDS=["Même machine et mêmes réglages (damper / drag factor, selle)","Même créneau horaire (±1 h)","48 h sans séance intense avant chaque test","Même échauffement standard UDT","Hydratation et repas identiques","Course : même parcours ou même piste, même chaussure"];
-const WARMUP=["8′ progressif Z1 → Z2","3 × 15″ accélération / 45″ facile","3′ facile, puis départ du test"];
+const WARMUP=["5′ facile","5′ progressif jusqu'à un rythme soutenu","5 × 20″ très soutenu / 40″ facile","3′ de repos, puis départ du test"];
 const unitOf=m=>m.run?"km/h":"W";
 const target=()=>store.viewId||store.uid;
 function today(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
