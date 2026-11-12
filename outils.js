@@ -23,9 +23,17 @@
   // Idem pour pc.html (profil puissance / vitesse critique)
   var PC_VERSION = '2026-11-05f';
 
+  // Onglets de la boîte à outils (ordre d'affichage)
+  var CATS = [
+    { id: 'force', label: 'Force continuum' },
+    { id: 'endurance', label: 'Endurance' },
+    { id: 'kids', label: 'Prog kids' }
+  ];
+
   var TOOLS = [
     {
       id: 'echo',
+      cat: 'endurance',
       emoji: '🚴',
       title: 'Assault ↔ Echo Bike',
       sub: 'Équivalences cadence, watts et calories entre les deux vélos.',
@@ -33,6 +41,7 @@
     },
     {
       id: 'erg',
+      cat: 'endurance',
       emoji: '🚣',
       title: 'Calculateur Erg',
       sub: 'Conversions et splits sur les machines Concept2.',
@@ -40,6 +49,7 @@
     },
     {
       id: 'vbt',
+      cat: 'force',
       emoji: '⚡',
       title: 'Journal VBT',
       sub: 'Séances au capteur de vitesse, profil charge-vitesse et zones. Enregistré sur ton compte UDT.',
@@ -48,6 +58,7 @@
     },
     {
       id: 'ef',
+      cat: 'endurance',
       emoji: '🫀',
       title: 'Profil EF',
       sub: 'Endurance fondamentale : dérive de la FC, FC moyenne et efficience par athlète. Lecture seule, coach référent.',
@@ -56,6 +67,7 @@
     },
     {
       id: 'pc',
+      cat: 'endurance',
       emoji: '📈',
       title: 'Profil PC / VC',
       sub: 'Puissance critique (Row, Ski, Bike Erg, Assault, Echo) et vitesse critique (course) depuis les tests 3′ et 12′ : W′, profil énergétique, zones et formules Séance+.',
@@ -65,6 +77,8 @@
   ];
 
   var _openTool = null;   // outil actuellement ouvert (objet de TOOLS)
+  var _cat = 'force';     // onglet actif
+  try { var _sc = localStorage.getItem('udt_outils_cat'); if (_sc && CATS.some(function (c) { return c.id === _sc; })) _cat = _sc; } catch (e) {}
 
   // ---------- utilitaires ----------
 
@@ -89,13 +103,24 @@
     var panel = _byId('admin-outils-panel');
     if (!panel) return;
 
+    var list = TOOLS.filter(function (t) { return t.cat === _cat; });
+    // La grille « .ot-grid » n'existe que dans l'onglet Prog kids :
+    // kids-scaling.js y ajoute sa carte « Scaling Kids & Teens ».
+    var gridCls = _cat === 'kids' ? 'ot-grid' : 'ot-list';
+
     panel.innerHTML =
       '<div class="ot-head">' +
         '<div class="ot-title">Outils coach</div>' +
         '<div class="ot-sub">Les calculateurs Upside Down, directement dans l\'admin.</div>' +
       '</div>' +
-      '<div class="ot-grid">' +
-        TOOLS.map(function (t) {
+      '<div class="ot-tabs" role="tablist">' +
+        CATS.map(function (c) {
+          return '<button class="ot-tab' + (c.id === _cat ? ' active' : '') + '" role="tab" data-cat="' + _esc(c.id) + '">' +
+            _esc(c.label) + '</button>';
+        }).join('') +
+      '</div>' +
+      '<div class="' + gridCls + '">' +
+        list.map(function (t) {
           return '' +
             '<button class="ot-card" data-tool="' + _esc(t.id) + '">' +
               '<span class="ot-card-ic">' + _esc(t.emoji) + '</span>' +
@@ -106,7 +131,16 @@
               '<span class="ot-card-go">›</span>' +
             '</button>';
         }).join('') +
-      '</div>';
+      '</div>' +
+      '<div class="ot-empty">Aucun outil dans cet onglet pour l\'instant.</div>';
+
+    panel.querySelectorAll('.ot-tab').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        _cat = tab.dataset.cat;
+        try { localStorage.setItem('udt_outils_cat', _cat); } catch (e) {}
+        _renderGrid();
+      });
+    });
 
     panel.querySelectorAll('.ot-card').forEach(function (card) {
       card.addEventListener('click', function () {
@@ -166,7 +200,17 @@
       '.ot-head{margin-bottom:14px}',
       '.ot-title{font-family:"Bebas Neue",sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px}',
       '.ot-sub{font-size:12px;color:var(--muted)}',
-      '.ot-grid{display:flex;flex-direction:column;gap:10px}',
+      '.ot-grid,.ot-list{display:flex;flex-direction:column;gap:10px}',
+      '.ot-empty{display:none;font-size:12px;color:var(--muted);text-align:center;padding:24px 10px;',
+      'border:1px dashed var(--border2);border-radius:14px}',
+      '.ot-grid:empty+.ot-empty,.ot-list:empty+.ot-empty{display:block}',
+      '.ot-tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;scrollbar-width:none}',
+      '.ot-tabs::-webkit-scrollbar{display:none}',
+      '.ot-tab{flex:1 0 auto;background:var(--card);border:1px solid var(--border);color:var(--muted);',
+      'border-radius:10px;padding:9px 12px;font-family:"Bebas Neue",sans-serif;font-size:15px;letter-spacing:1.5px;',
+      'cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s,background .15s}',
+      '.ot-tab:hover{border-color:var(--accent)}',
+      '.ot-tab.active{border-color:var(--accent);color:var(--accent);background:var(--card2)}',
       '.ot-card{display:flex;align-items:center;gap:12px;width:100%;text-align:left;',
       'background:var(--card);border:1px solid var(--border);border-radius:14px;padding:14px;',
       'color:var(--text);font-family:inherit;cursor:pointer;transition:border-color .15s,background .15s}',
