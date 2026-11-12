@@ -377,11 +377,11 @@ function setSync(s,msg){store.sync=s;store.syncMsg=msg||"";const el=document.get
 function syncHTML(){const m={ok:["ok","Synchronisé"],err:["err",store.syncMsg||"Erreur"],none:["err",store.syncMsg||"Non connecté à UDT"],wait:["","Chargement…"]}[store.sync]||["",""];
   return `<span class="sync" id="sync"><span class="dot ${m[0]}"></span>${esc(m[1])}</span>`}
 function whoHTML(){
-  if(!store.athletes.length)return "";
+  if(!store.athletes.length&&!store.viewId)return "";
   const cur=store.viewId||"";
   return `<div class="who"><label class="f" for="who">Athlète testé</label><select id="who" data-who="1">
     <option value="">Moi</option>
-    <optgroup label="Mes athlètes">${store.athletes.map(x=>`<option value="${x.id}" ${x.id===cur?"selected":""}>${esc(x.name)}</option>`).join("")}</optgroup></select></div>`;
+    ${cur&&!store.athletes.some(x=>x.id===cur)?`<option value="${esc(cur)}" selected>Athlète ouvert depuis son espace</option>`:""}<optgroup label="Mes athlètes">${store.athletes.map(x=>`<option value="${x.id}" ${x.id===cur?"selected":""}>${esc(x.name)}</option>`).join("")}</optgroup></select></div>`;
 }
 
 /* ---------- calculs ---------- */
@@ -648,7 +648,7 @@ async function connect(){
     store.sb=sb;store.uid=session.user.id;
     await loadAthletes();
     const qa=new URLSearchParams(location.search).get("athlete");
-    if(qa&&qa!==store.uid&&store.athletes.some(a=>a.id===qa))store.viewId=qa;
+    if(qa&&qa!==store.uid)store.viewId=qa;
     await load();
   }catch(e){setSync("err");render()}
 }
