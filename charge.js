@@ -519,7 +519,8 @@
   /* Charge affichée sur le bandeau « ✓ Score rentré » replié */
   const bandUA={};
   function paintBand(sid){
-    const sum=document.querySelector('#ms-'+CSS.escape(sid)+'.ms-done .ms-sum');
+    const fold=document.getElementById('ms-'+sid);
+    const sum=fold&&fold.classList.contains('ms-done')?fold.querySelector('.ms-sum'):null;
     if(!sum)return;
     let el=sum.querySelector('.ms-ua');
     const t=bandUA[sid];
