@@ -25,7 +25,7 @@
   // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
   var LV_VERSION = '2026-11-12b';
   // Idem pour lactate.html (profilage lactate · profilage RPE, protocole 41)
-  var ENDU_VERSION = '2026-11-12a';
+  var ENDU_VERSION = '2026-11-12b';
 
   // Onglets de la boîte à outils (ordre d'affichage)
   var CATS = [
