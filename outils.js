@@ -24,6 +24,8 @@
   var PC_VERSION = '2026-11-12d';
   // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
   var LV_VERSION = '2026-11-12b';
+  // Idem pour lactate.html (profilage lactate · profilage RPE, protocole 41)
+  var ENDU_VERSION = '2026-11-12a';
 
   // Onglets de la boîte à outils (ordre d'affichage)
   var CATS = [
@@ -83,6 +85,24 @@
       title: 'Profil PC / VC',
       sub: 'Protocole standardisé par athlète (test 3′ puis 12′ sur deux jours) : PC / VC de référence, W′, profil énergétique, zones, formules Séance+ et suivi des re-tests.',
       url: '/pc.html?v=' + PC_VERSION,
+      tall: true
+    },
+    {
+      id: 'lactate',
+      cat: 'endurance',
+      emoji: '🩸',
+      title: 'Profilage lactate',
+      sub: 'Protocole 41 (paliers 4′/1′) : lactate, FC et RPE par palier, import du fichier FC, seuils S1 / S2 (Bsln+0,5 · ModDmax) validés façon ExPhysLab, zones et suivi des re-tests.',
+      url: '/lactate.html?v=' + ENDU_VERSION,
+      tall: true
+    },
+    {
+      id: 'rpe',
+      cat: 'endurance',
+      emoji: '🫁',
+      title: 'Profilage RPE',
+      sub: 'Version simplifiée du protocole 41 sans lactate : FC et RPE (jambes, cardio, respi), S1 au passage 3→4, S2 au passage 7→8, zones et suivi.',
+      url: '/lactate.html?mode=rpe&v=' + ENDU_VERSION,
       tall: true
     }
   ];
