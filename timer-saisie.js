@@ -53,6 +53,9 @@
       '#tm-ov .tms-rpe{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;margin-top:4px}',
       '#tm-ov .tms-rpe button{height:38px;border-radius:8px;border:1px solid #333;background:#0b0b0b;color:#f0f0f0;font-weight:700;font-size:13px;cursor:pointer;padding:0}',
       '#tm-ov .tms-rpe button.on{background:' + TEAL + ';border-color:' + TEAL + ';color:#04201c}',
+      '#tm-ov .tms-mods{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}',
+      '#tm-ov .tms-mods button{height:32px;padding:0 10px;border-radius:8px;border:1px solid #333;background:#0b0b0b;color:#bbb;font-weight:700;font-size:12px;cursor:pointer;font-family:inherit}',
+      '#tm-ov .tms-mods button.on{background:' + TEAL + ';border-color:' + TEAL + ';color:#04201c}',
       '#tm-ov .tms-go{width:100%;height:52px;margin-top:12px;border-radius:12px;border:0;background:' + TEAL + ';color:#04201c;font-weight:800;font-size:15px;letter-spacing:1px;cursor:pointer;font-family:inherit}',
       '#tm-ov .tms-note{font-size:11px;color:#777;margin-top:8px;line-height:1.45}',
       '#tm-ov .tms-done{font-size:13px;color:#2ecc71;font-weight:700;text-align:center;margin-top:10px}'
@@ -163,7 +166,7 @@
   }
   function chargeOf(c, sid) {
     var w = c.querySelector('.chg-inline[data-chg="' + sid + '"]');
-    return w ? { w: w, min: w.querySelector('[data-min]'), rpe: w.querySelectorAll('[data-rpe]') } : null;
+    return w ? { w: w, min: w.querySelector('[data-min]'), rpe: w.querySelectorAll('[data-rpe]'), mods: w.querySelectorAll('[data-mod]') } : null;
   }
   function rpeVal(ch) {
     var v = 0; if (!ch) return 0;
@@ -243,7 +246,11 @@
       if (ch) {
         var rp = rpeVal(ch);
         h += '<div class="tms-h" style="margin-top:12px"><div class="t">MA CHARGE</div></div>' +
-          '<div class="tms-row"><div class="tms-f"><small>Temps de séance (min)</small><input class="tms-in' + (ch.min && ch.min.value ? ' fill' : '') + '" data-chmin inputmode="numeric" value="' + show(ch.min && ch.min.value) + '" placeholder="min"></div></div>' +
+          (ch.mods && ch.mods.length ? '<div class="tms-f"><small>Modalité · pré-réglée, modifiable</small></div><div class="tms-mods">' +
+            Array.prototype.map.call(ch.mods, function (b) {
+              return '<button data-tms-mod="' + b.dataset.mod + '" class="' + (b.getAttribute('aria-pressed') === 'true' ? 'on' : '') + '">' + b.textContent + '</button>';
+            }).join('') + '</div>' : '') +
+          '<div class="tms-row" style="margin-top:10px"><div class="tms-f"><small>Temps de séance (min)</small><input class="tms-in' + (ch.min && ch.min.value ? ' fill' : '') + '" data-chmin inputmode="numeric" value="' + show(ch.min && ch.min.value) + '" placeholder="min"></div></div>' +
           '<div class="tms-f" style="margin-top:10px"><small>RPE du bloc</small></div><div class="tms-rpe">' +
           [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return '<button data-tms-rpe="' + n + '" class="' + (n === rp ? 'on' : '') + '">' + n + '</button>'; }).join('') + '</div>';
       }
@@ -310,10 +317,16 @@
   }, true);
 
   document.addEventListener('click', function (e) {
-    var t = e.target.closest && e.target.closest('#tm-ov [data-tms],#tm-ov [data-tms-go],#tm-ov [data-tms-rpe]'); if (!t || !cur.info) return;
+    var t = e.target.closest && e.target.closest('#tm-ov [data-tms],#tm-ov [data-tms-go],#tm-ov [data-tms-rpe],#tm-ov [data-tms-mod]'); if (!t || !cur.info) return;
     e.stopPropagation();
     var a = t.getAttribute('data-tms');
     if (t.hasAttribute('data-tms-go')) { cur.sel = +t.getAttribute('data-tms-go'); return render(cur.info, true); }
+    if (t.hasAttribute('data-tms-mod')) {
+      var m = t.getAttribute('data-tms-mod');
+      if (cur.ch) { var mb = cur.ch.w.querySelector('[data-mod="' + m + '"]'); if (mb) mb.click(); }
+      t.parentElement.querySelectorAll('button').forEach(function (x) { x.classList.toggle('on', x === t); });
+      return;
+    }
     if (t.hasAttribute('data-tms-rpe')) {
       var n = +t.getAttribute('data-tms-rpe');
       if (cur.ch) { var b = cur.ch.w.querySelector('[data-rpe="' + n + '"]'); if (b) b.click(); }

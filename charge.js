@@ -474,10 +474,15 @@
   /* Modalité par défaut : type de bloc, avec le vélo séparé de l'ergo sur l'engine */
   function defaultMod(s,txt){
     const[def]=TYPEMAP[s.type]||['CF',true];
+    const t=String(txt||'').toUpperCase(), ti=String(s.title||'').toUpperCase();
     if(s.type==='engine'){
-      const t=String(txt||'').toUpperCase();
       if(/\bBIKE/.test(t)&&!/\b(ROW|SKI|RUN|RAMEUR)\b/.test(t))return'BIKE';
     }
+    // Sauts / pliométrie (skill, warm-up…) : c'est de la force, pas de la gym
+    if(s.type!=='engine'&&s.type!=='run'&&s.type!=='wod'&&
+       (/\b(JUMPS?|SAUTS?|PLIO|PLYO)\b/.test(ti)||
+        (s.type==='skill'&&/\b(BOX JUMP|BROAD JUMP|TRIPLE BROAD|HURDLE HOP|CMJ|DEPTH JUMP|DROP JUMP|SQUAT JUMP|POGO|BOUND)/.test(t))))
+      return'STR';
     return def;
   }
   function inlineHTML(s,saved,est,mod){
