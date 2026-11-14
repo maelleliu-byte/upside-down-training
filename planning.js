@@ -482,6 +482,8 @@ function renderContentWithCharges(content,opts){
   }
   // 4. \n → <br> (double saut = séparateur de bloc)
   out=out.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
+  // 4bis. « allure EF / tempo / seuil… » → plage personnelle de l'athlète (zones-seance.js)
+  try{if(window.udtAllure)out=window.udtAllure.apply(out);}catch(e){}
   if(out.includes(SEP))out=out.replace(/(?:<br>)*\u0001(?:<br>)*/g,'<div class="blk-sep"></div>');
   if(out.includes('\u0002'))out=out.replace(/(?:<br>)*\u0002(?:<br>)*/g,'<div class="blk-sep sm"></div>');
   return out;
@@ -1340,6 +1342,7 @@ async function loadMyPRs(){
   const {data}=await sb.from('athlete_prs').select('*').eq('athlete_id',currentUser.id).order('recorded_at',{ascending:false});
   myPRs={};
   (data||[]).forEach(pr=>{if(!myPRs[pr.movement_id])myPRs[pr.movement_id]=[];myPRs[pr.movement_id].push(pr);});
+  if(window.udtAllure)await window.udtAllure.load();
   if(document.getElementById('page-pr')?.classList.contains('active'))renderAll();
 }
 function filterCat(cat,btn){

@@ -490,6 +490,56 @@ function liveFit(d){
   if(!d.f)return `<div class="banner">Entre au moins 3 vitesses pour calculer le profil.</div>`;
   return `<div class="banner">1RM estimé : <b>${kg(d.e1)} kg</b> (${Math.round(d.e1/d.rm*100)} % du RM all time) · R² ${fr(d.f.r2,3)}</div>`;
 }
+function oriCard(title,verdict,why,prio,sessions,note){
+  return `<div class="card" style="margin-top:12px;border-color:var(--accent)">
+    <div class="eyebrow">Orientation d'entraînement</div>
+    <h2 style="margin:2px 0 6px">${title}</h2>
+    <p style="margin:0 0 8px;font-size:14px"><b>${verdict}</b></p>
+    <p class="hint" style="margin:0 0 10px">${why}</p>
+    <div style="font:700 12px var(--sg);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px">Priorités</div>
+    <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.5">${prio.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <div style="font:700 12px var(--sg);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px">Exemples de séances</div>
+    <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.5">${sessions.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <p class="hint" style="margin:10px 0 0">${note}</p></div>`;
+}
+
+/* Orientation selon le profil : dynamisme en léger (Vmoy prédite à 30 % du RM)
+   et expression en lourd (1RM estimé / RM all time). Repères indicatifs par mouvement. */
+const DYN={bsq:[1.10,1.30],fsq:[1.05,1.25],bench:[1.10,1.30],ohp:[1.10,1.30],dl:[0.95,1.15]};
+function orientLV(src){
+  if(!src||!src.f||!src.rm)return "";
+  const k=store.mv,lim=DYN[k]||DYN.bsq,v30=src.f.a+src.f.b*src.rm*0.3,pct=src.e1/src.rm*100;
+  const dyn=v30>=lim[1]?2:v30>=lim[0]?1:0, heavy=pct>=97?2:pct>=92?1:0;
+  const at=v=>kg(L(src.f,v))+" kg";
+  const ld=x=>kg(src.rm*x/100)+" kg";
+  let title,verdict,why,prio,sess;
+  if(dyn===0&&heavy>=1){
+    title="Profil force : solide en lourd, peu dynamique";
+    verdict=`Barre lente en léger (${fr(v30,2)} m/s à 30 %) mais l'athlète exprime son RM en lourd (1RM estimé ${Math.round(pct)} % du RM).`;
+    why="Il sait « pousser » des charges lourdes à vitesse basse, mais n'accélère pas assez les charges légères : la partie droite du continuum (vitesse-force, vitesse) est sous-développée.";
+    prio=["Priorité au dynamisme : vitesse-force et vitesse max, 2 séances par semaine","Sauts, pliométrie, lancers et accélération compensatrice (élastiques, chaînes)","Garder une séance de force maximale par semaine pour ne rien perdre"];
+    sess=[`Jump squat ou trap bar jump : 4–5 × 3 à ${ld(20)}–${ld(30)}, au-dessus de 1,30 m/s`,`Dynamic Effort : 8–10 × 2 à ${at(1.0)}–${at(0.75)} (0,75–1,00 m/s) + élastiques, perte de vitesse < 10 %`,"CMJ, box jumps, lancers médecine-ball : 3–5 × 3–5, récupération complète"];
+  }else if(dyn===2&&heavy===0){
+    title="Profil vitesse : dynamique, plafonne en lourd";
+    verdict=`Barre rapide en léger (${fr(v30,2)} m/s à 30 %) mais 1RM estimé à ${Math.round(pct)} % du RM all time.`;
+    why="L'athlète accélère bien mais perd vite en vitesse quand la charge monte : la force maximale et la force-vitesse limitent.";
+    prio=["Priorité à la gauche du continuum : force maximale et force-vitesse","Volume de travail lourd sous 0,75 m/s, avec intention maximale","Excentriques et pauses pour la solidité en bas du mouvement"];
+    sess=[`Max Effort : monter jusqu'à 1–3 reps sous 0,50 m/s (≥ ${at(0.5)})`,`Force-vitesse : 4–5 × 3–5 à ${at(0.75)}–${at(0.5)} (0,50–0,75 m/s), perte de vitesse < 20 %`,"Tempo / pause : 4 × 3 avec 2″ de pause en bas, à 70–75 %"];
+  }else if(dyn===0&&heavy===0){
+    title="Base de force à construire";
+    verdict=`Barre lente en léger (${fr(v30,2)} m/s à 30 %) et 1RM estimé à ${Math.round(pct)} % du RM all time.`;
+    why="Ni la vitesse ni l'expression en lourd ne ressortent : on construit d'abord une base de force et de technique, avec une intention de vitesse sur chaque rep.";
+    prio=["Force-vitesse en volume modéré, technique propre","Introduire sauts et pliométrie à faible volume","Re-tester après 6 semaines avant de spécialiser"];
+    sess=[`Force-vitesse : 5 × 3 à ${at(0.75)}–${at(0.6)}, intention maximale`,`Dynamic Effort : 6 × 3 à ${at(1.0)}–${at(0.8)}`,"Sauts : 3 × 5 CMJ + 3 × 3 box jumps"];
+  }else{
+    title="Profil équilibré sur le continuum";
+    verdict=`${fr(v30,2)} m/s à 30 % et 1RM estimé à ${Math.round(pct)} % du RM all time.`;
+    why="Pas de point faible net entre le lourd et le léger : on périodise le continuum, un bloc par qualité dominante.";
+    prio=["Bloc force maximale, puis bloc puissance / vitesse (4–6 semaines chacun)","Une séance Max Effort et une séance Dynamic Effort par semaine (méthode conjuguée)","Re-tester à la fin de chaque bloc pour suivre la droite"];
+    sess=[`Max Effort : 1–3 reps sous 0,50 m/s (≥ ${at(0.5)})`,`Puissance max : 6–8 × 2–3 à ${at(1.0)}–${at(0.75)}`,"Vitesse : sauts et lancers en début de séance"];
+  }
+  return oriCard(title,verdict,why,prio,sess,`Repères indicatifs : vitesse à 30 % du RM comparée à ${fr(lim[0],2)}–${fr(lim[1],2)} m/s pour ce mouvement, et 1RM estimé comparé au RM all time (une forme du jour basse fait aussi baisser ce rapport). Les charges sont tirées de la droite de l'athlète.`);
+}
 function viewProfil(){
   const ref=reference(),d=draft();
   const src=ref||(d.f?Object.assign({},d,{preview:true}):null);
@@ -514,6 +564,7 @@ function viewProfil(){
     <div class="legend"><span><i style="background:var(--text)"></i>Test standardisé</span>${store.showSess&&sp.length?`<span><i style="background:var(--muted);opacity:.6"></i>Séances (90 j)</span>`:""}<span><i style="background:var(--bad)"></i>${src.pv?"Vitesse du PR":"VMT"} ${fr(src.mvt,2)} m/s</span></div>
     ${sp.length?`<label class="toggle"><input type="checkbox" data-f="sess" ${store.showSess?"checked":""}> Afficher les séries des séances en fond (${sp.length})</label>`:""}
   </div>
+  ${orientLV(src)}
   <p class="hint" style="margin-top:10px">Pente : ${fr(src.f.b*100,2).replace("-","−")} m/s par 100 kg. Les séries des séances sont affichées pour lire la forme du jour : elles ne modifient pas le profil de référence.</p>
   <button class="btn primary full" style="margin-top:14px" data-act="tab" data-tab="zones">Voir les zones →</button>`;
   return h;

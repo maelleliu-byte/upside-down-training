@@ -787,6 +787,47 @@ function viewProfil(){
   return h;
 }
 function expText(s){const R=s.R,d=s.d;const rows=["step\tlength\tintensity\tlactate\theart_rate","0\t0\t0\t"+(R.la0!=null&&isFinite(R.la0)?R.la0:"")+"\t"];R.pts.forEach(p=>rows.push((p.i+1)+"\t4\t"+p.w+"\t"+p.la+"\t"+(isFinite(p.fc)?Math.round(p.fc):"")));return rows.join("\n")}
+function oriCard(title,verdict,why,prio,sessions,note){
+  return `<div class="card" style="margin-top:12px;border-color:var(--accent)">
+    <div class="eyebrow">Orientation d'entraînement</div>
+    <h2 style="margin:2px 0 6px">${title}</h2>
+    <p style="margin:0 0 8px;font-size:14px"><b>${verdict}</b></p>
+    <p class="hint" style="margin:0 0 10px">${why}</p>
+    <div style="font:700 12px var(--sg);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px">Priorités</div>
+    <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.5">${prio.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <div style="font:700 12px var(--sg);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px">Exemples de séances</div>
+    <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.5">${sessions.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <p class="hint" style="margin:10px 0 0">${note}</p></div>`;
+}
+
+/* Orientation selon la forme de la courbe : rapport S1/S2 = largeur du domaine « élevé » */
+function orientHTML(R){
+  if(!R.thrOk)return "";
+  const r=R.s1/R.s2*100,s1=W0(R.s1),s2=W0(R.s2),f1=isFinite(R.fc1)?" · FC < "+Math.round(R.fc1):"";
+  const z2=`${W0(R.b[0])}–${s1} W${f1}`;
+  const base=LAC&&R.plat==="non"?" Pas de plateau de lactate : la lactatémie monte dès les premiers paliers, signe d'une base aérobie à construire.":"";
+  let title,verdict,why,prio,sess;
+  if(r>=80&&!base){
+    title="Base aérobie solide, marge réduite";
+    verdict=`Courbe plate longtemps puis montée rapide : S1 à ${fr(r,0)} % de S2.`;
+    why="L'athlète tient beaucoup d'intensité sans accumuler (grosse endurance fondamentale), mais le domaine élevé entre S1 et S2 est étroit : au-delà de S2 la fatigue arrive vite.";
+    prio=["Relever S2 et la tolérance au-dessus : 1 séance seuil + 1 séance VO₂max par semaine",`Garder la Z2 (${z2}) autour de 70 % du volume pour conserver la base`,"Le tempo (Z3) n'est pas la priorité : il est déjà « facile » pour ce profil"];
+    sess=[`Seuil : 3–4 × 8–12′ à ${W0(R.s2*.95)}–${s2} W, RPE 6–7, récup 3′`,`VO₂max : 5 × 3′ à ${W0(R.s2*1.08)}–${W0(R.s2*1.12)} W, RPE 8–9, récup 3′`,`Endurance : 45–75′ allure EF`];
+  }else if(r>=70&&!base){
+    title="Profil équilibré";
+    verdict=`S1 à ${fr(r,0)} % de S2 : base et tolérance en bon rapport.`;
+    why="Ni la base aérobie ni la capacité au-dessus du seuil ne limitent nettement. On progresse en déplaçant toute la courbe vers la droite.";
+    prio=[`Répartition polarisée ~80 / 20 : la majorité du volume en Z2 (${z2})`,"1 séance seuil et 1 séance VO₂max par semaine, en alternant les blocs","Allonger progressivement la durée des blocs au seuil"];
+    sess=[`Endurance : 60–90′ allure EF`,`Tempo / seuil : 2 × 15–20′ à ${W0(R.s1)}–${W0(R.s2*.95)} W, RPE 4–6`,`VO₂max : 6 × 2′ à ${W0(R.s2*1.1)} W, RPE 8–9`];
+  }else{
+    title="Base aérobie à développer";
+    verdict=`Courbe qui monte tôt mais longtemps : S1 à ${fr(r,0)} % de S2.${base}`;
+    why="L'athlète tient haut grâce à sa puissance et à sa tolérance, mais il sort tôt du domaine modéré : le moteur aérobie limite la récupération et la tenue sur les efforts longs.";
+    prio=[`Plus de temps en basse intensité : 75–80 % du volume en Z2 (${z2}), RPE 2–3`,"Sorties longues continues de 45 à 90′ strictement sous S1","Limiter le tempo et garder une seule séance intense courte par semaine pour entretenir"];
+    sess=[`Endurance : 2–3 × 45–90′ allure EF par semaine`,`Endurance + : 3 × 15′ en haut de Z2 (${W0(R.s1*.95)}–${s1} W)`,`Entretien : 6–8 × 1′ à ${W0(R.s2*1.05)} W, récup 2′`];
+  }
+  return oriCard(title,verdict,why,prio,sess,`${esc(R.limiter)} Repères indicatifs : re-tester après 6 à 8 semaines, on attend une montée de S1 (base) ou de S2 (seuil) selon l'orientation choisie.`);
+}
 function viewZones(){
   const s=source(),R=s.R,m=mod();
   let h=`${title("Le continuum","Zones <span class=\"ac\">d'entraînement</span> · "+esc(m.label))}<div style="margin-top:12px">${modChips()}</div><div style="height:12px"></div>`;
@@ -798,6 +839,7 @@ function viewZones(){
   h+=`<div class="card" style="margin-top:12px"><h3 style="font-weight:700">${LAC?"Lactate":"RPE"} &amp; FC selon la puissance</h3>${chartLinear(R)}</div>`;
   const doms=[["Modéré","< "+W0(R.s1)+" W",LAC?"Lactate stable, proche du repos":"RPE ≤ 3, conversation possible","var(--z4)"],["Élevé",W0(R.s1)+"–"+W0(R.s2)+" W",LAC?"Lactate plus haut mais stable":"RPE 4 à 7, soutenu mais stable","var(--z2)"],["Sévère","> "+W0(R.s2)+" W",LAC?"Accumulation, vers la VO₂max":"RPE ≥ 8, durée limitée","var(--z1)"]];
   h+=`<div class="doms" style="margin-top:12px">${doms.map(x=>`<div style="--c:${x[3]}"><b>${x[0]}</b><span>${x[1]}</span><small>${x[2]}</small></div>`).join("")}</div>`;
+  h+=orientHTML(R);
   const b=R.b;
   h+=`<div class="card" style="margin-top:12px">${ZD.map((z,i)=>{
     const lo=[null,b[0],b[1],b[2],b[4],b[5]][i],hi=[b[0],b[1],b[2],b[4],b[5],null][i];

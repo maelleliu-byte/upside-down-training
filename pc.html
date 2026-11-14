@@ -551,6 +551,49 @@ function pcExport(){
     file:"zones-"+(m.run?"vc":"pc")+"-"+m.label+(athleteName()?"-"+athleteName():"")};
 }
 function srcProfile(){const ref=reference();if(ref)return ref;const pr=prModel();if(pr)return Object.assign({},pr,{fromPr:true,date:pr.b12.date>pr.b3.date?pr.b12.date:pr.b3.date});const d=draft();return d.err?null:Object.assign(d,{preview:true})}
+function oriCard(title,verdict,why,prio,sessions,note){
+  return `<div class="card" style="margin-top:12px;border-color:var(--accent)">
+    <div class="eyebrow">Orientation d'entraînement</div>
+    <h2 style="margin:2px 0 6px">${title}</h2>
+    <p style="margin:0 0 8px;font-size:14px"><b>${verdict}</b></p>
+    <p class="hint" style="margin:0 0 10px">${why}</p>
+    <div style="font:700 12px var(--sg);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:10px 0 6px">Priorités</div>
+    <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.5">${prio.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <div style="font:700 12px var(--sg);letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px">Exemples de séances</div>
+    <ul style="margin:0;padding-left:18px;font-size:13.5px;line-height:1.5">${sessions.map(x=>`<li>${x}</li>`).join("")}</ul>
+    <p class="hint" style="margin:10px 0 0">${note}</p></div>`;
+}
+
+/* Orientation selon le profil énergétique (ratio 12′/3′) et la taille de la réserve W′ / D′ */
+function orientPC(p){
+  const m=mod(),e=energy(p.ratio),R=RC(),u=unitOf(m);
+  const at=pc=>m.run?fr(p.cp*pc/100,1)+" km/h":Math.round(p.cp*pc/100)+" W";
+  const big=m.run?p.wp>250:p.wp>20000,small=m.run?p.wp<120:p.wp<10000;
+  const res=m.run?Math.round(p.wp)+" m":fr(p.wp/1000,1)+" kJ";
+  let title,verdict,why,prio,sess;
+  if(e.i<=1){
+    title="Profil puissant : priorité à la "+R;
+    verdict=`${esc(e.label)} · ratio 12′/3′ ${fr(p.ratio,0)} % · réserve ${m.run?"D′":"W′"} ${res}.`;
+    why=`L'athlète produit beaucoup sur 3′ grâce à sa réserve, mais sa ${R} est basse par rapport à ce potentiel : il s'use vite dès que l'effort dure.`;
+    prio=[`Monter la ${R} : volume en Z2 et blocs longs proches de la ${R}`,`Travail tempo / seuil : 2 × 20′ à ${at(88)}–${at(95)}, puis 4 × 10′ à ${at(95)}–${at(100)}`,`La réserve s'entretient avec une séance courte par semaine, pas plus`];
+    sess=[`Endurance : 45–75′ allure EF`,`Seuil : 4 × 10′ à ${at(95)}–${at(100)}, RPE 6–7, récup 2′`,`Entretien ${m.run?"D′":"W′"} : 8 × 30″ très vite, récup 2′`];
+  }else if(e.i>=3){
+    title="Profil endurant : développer la réserve";
+    verdict=`${esc(e.label)} · ratio 12′/3′ ${fr(p.ratio,0)} % · réserve ${m.run?"D′":"W′"} ${res}.`;
+    why=`La ${R} est haute par rapport au 3′ : l'athlète tient longtemps mais manque de « carburant » au-dessus de la ${R} pour les attaques, les fins de course et les efforts courts.`;
+    prio=[`Travail au-dessus de la ${R} (domaine sévère) : 1 à 2 séances par semaine`,"Intervalles courts et VO₂max, sprints, et force-vitesse en salle","Garder la Z2 pour ne pas perdre la base"];
+    sess=[`VO₂max : 5 × 3′ à ${at(105)}–${at(110)}, récup 3′`,`Capacité : 8–10 × 1′ à ${at(120)}, récup 2′`,`30/30 : 2 × 10 × 30″ à ${at(115)} / 30″ facile`];
+  }else{
+    title="Profil intermédiaire";
+    verdict=`${esc(e.label)} · ratio 12′/3′ ${fr(p.ratio,0)} % · réserve ${m.run?"D′":"W′"} ${res}.`;
+    why=`${R} et réserve sont en bon rapport : on alterne les blocs pour faire monter l'ensemble de la courbe.`;
+    prio=["Bloc de 4–6 semaines orienté seuil, puis bloc orienté VO₂max",`Z2 majoritaire (environ 75 % du volume)`,"Re-tester à la fin de chaque bloc"];
+    sess=[`Endurance : 60′ allure EF`,`Seuil : 3 × 12′ à ${at(95)}–${at(100)}`,`VO₂max : 6 × 2′ à ${at(110)}`];
+  }
+  if(big)prio.push(`Grosse réserve (${res}) : souvent un athlète lourd ou très puissant. Soigner le pacing (départs trop rapides) et le travail de ${R}.`);
+  if(small)prio.push(`Petite réserve (${res}) : peu de marge au-dessus de la ${R}, à développer par des efforts de 30″ à 2′.`);
+  return oriCard(title,verdict,why,prio,sess,`Repères indicatifs à adapter au niveau et au calendrier. Dans Séance+, écris « allure EF », « allure tempo », « allure seuil »… : l'app affiche la plage de chaque athlète.`);
+}
 function viewProfil(){
   const m=mod(),src=srcProfile(),pr=prModel();
   let h=`${title("Résultat","Profil <span class=\"ac\">"+RC()+"</span> · "+esc(m.label))}`;
@@ -573,6 +616,7 @@ function viewProfil(){
     <div class="legend"><span><i style="background:var(--accent)"></i>${src.fromPr?"Tests saisis dans les PR":"Test standardisé"}</span>${pr&&!src.fromPr?`<span><i style="background:var(--muted)"></i>Tests en séance (PR)</span>`:""}<span><i style="background:var(--text)"></i>Points 3′ et 12′</span></div></div>
   <div class="card" style="margin-top:12px"><div class="eprof">${["++","+","","+","++"].map((s,i)=>`<span class="${i===e.i?"on":""}"><b>${i<2?"P":i>2?"E":"I"}${s}</b><small>${i===0?"&lt;"+e.t[0]:i===4?"&gt;"+e.t[3]:e.t[i-1]+"–"+e.t[i]}</small></span>`).join("")}</div>
   <p class="hint" style="margin:8px 0 0"><b>${esc(e.label)}</b> : ${esc(e.tip)} Seuils ${store.gender==="female"?"femme":"homme"}.</p></div>`;
+  h+=orientPC(src);
   if(pr&&!src.fromPr)h+=secondaryHTML(pr,src);
   if(src.fromPr)h+=`<button class="btn full" style="margin-top:12px" data-act="tab" data-tab="proto">Faire le test standardisé</button>`;
   h+=sustainHTML(src);
