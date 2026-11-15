@@ -246,7 +246,7 @@ details[open]>summary{color:var(--text)}
 .zr .fx{margin-top:6px;white-space:normal;word-break:normal;overflow-wrap:break-word}
 .chips button.nodata{opacity:.5}
 .zn{display:inline-block;font:700 12px var(--sg);padding:2px 6px;border-radius:5px;margin-right:4px;color:#fff}
-.zn.z5{background:#C24A3D}.zn.z4{background:#D98A2B}.zn.z3{background:#C9A93A}.zn.z2{background:#1E8F55}.zn.z1{background:#3F7FBF}
+.zn.z5{background:#E5483B}.zn.z4{background:#F58A1F}.zn.z3{background:#E8C21C;color:#1d1a05}.zn.z2{background:#22B35E}.zn.z1{background:#3B8FEA}
 .fx{font:500 11px ui-monospace,monospace;padding:5px 7px;border:1px dashed var(--line);border-radius:6px;color:var(--text);white-space:nowrap;text-align:left}
 .fx.ok{border-color:var(--accent);color:var(--accent)}
 .link{color:var(--accent);text-decoration:underline;font-size:13px}
@@ -261,9 +261,9 @@ details[open]>summary{color:var(--text)}
 </style>
 <style>
 /* ---------- Profil PC / VC · test standardisé (même charte que lv-test.html) ---------- */
-:root{--z1:#C24A3D;--z2:#D98A2B;--z3:#0B9488;--z4:#5FA8A0;--z5:#7D8A86;--mus:#8E6FC9}
-:root[data-theme="dark"]{--z1:#E0705F;--z2:#E3A04A;--z3:#34BFAF;--z4:#9FCFC7;--z5:#F6F4E8;--mus:#B9A2F0}
-@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--z1:#E0705F;--z2:#E3A04A;--z3:#34BFAF;--z4:#9FCFC7;--z5:#F6F4E8;--mus:#B9A2F0}}
+:root{--z1:#C24A3D;--z2:#D98A2B;--z3:#0B9488;--z4:#5FA8A0;--z5:#7D8A86;--mus:#8E6FC9;--hi:#0B9488}
+:root[data-theme="dark"]{--z1:#FF7A66;--z2:#FFB547;--z3:#34BFAF;--z4:#9FCFC7;--z5:#F6F4E8;--mus:#C4A8FF;--hi:#2DD4BF}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--z1:#FF7A66;--z2:#FFB547;--z3:#34BFAF;--z4:#9FCFC7;--z5:#F6F4E8;--mus:#C4A8FF;--hi:#2DD4BF}}
 nav.tabs .in{grid-template-columns:repeat(6,1fr)}
 nav.tabs button{font-size:11px;letter-spacing:-.01em}
 .eyebrow{font:700 11px var(--sg);letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
@@ -418,7 +418,7 @@ const MODE=new URLSearchParams(location.search).get("mode")==="rpe"?"rpe":"lacta
 const LAC=MODE==="lactate";
 const MODS=[{k:"bike",label:"Bike Erg"},{k:"row",label:"Row"},{k:"ski",label:"Ski Erg"},{k:"assault",label:"Assault"},{k:"echo",label:"Echo"},{k:"velo",label:"Vélo"}];
 const E12=()=>Array.from({length:12},()=>"");
-const ZC=["#3F7FBF","#1E8F55","#C9A93A","#D98A2B","#C24A3D","#8E6FC9"];
+const ZC=["#3B8FEA","#22B35E","#E8C21C","#F58A1F","#E5483B","#9B6CF0"];
 const ZD=[
   ["Z1","Récupération active","Apport d’O₂ aux muscles, récupération"],
   ["Z2","Endurance fondamentale","Densité mitochondriale et capillaire"],
@@ -599,7 +599,7 @@ function chartProfil(s){
   const fy=h=>(Y0-(h-fLo)/Math.max(1,fHi-fLo)*(Y0-Y1)).toFixed(1);
   let g="";
   if(R.thrOk){const a=+sx(R.s1),b=+sx(R.s2);
-    g+=`<rect x="${X0}" y="${Y1}" width="${Math.max(0,a-X0)}" height="${Y0-Y1}" fill="${ZC[1]}" opacity=".08"/><rect x="${a}" y="${Y1}" width="${Math.max(0,b-a)}" height="${Y0-Y1}" fill="${ZC[3]}" opacity=".10"/><rect x="${b}" y="${Y1}" width="${Math.max(0,X1-b)}" height="${Y0-Y1}" fill="${ZC[4]}" opacity=".10"/>`}
+    g+=`<rect x="${X0}" y="${Y1}" width="${Math.max(0,a-X0)}" height="${Y0-Y1}" fill="${ZC[1]}" opacity=".16"/><rect x="${a}" y="${Y1}" width="${Math.max(0,b-a)}" height="${Y0-Y1}" fill="${ZC[3]}" opacity=".18"/><rect x="${b}" y="${Y1}" width="${Math.max(0,X1-b)}" height="${Y0-Y1}" fill="${ZC[4]}" opacity=".18"/>`}
   const yst=LAC?(ymax>8?4:2):2;
   for(let v=0;v<=ymax;v+=yst)g+=`<line x1="${X0}" x2="${X1}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)" opacity=".6"/><text x="${X0-6}" y="${+sy(v)+3}" text-anchor="end" font-size="10" fill="var(--muted)">${v}</text>`;
   ticks(xmin,xmax,4).forEach(w=>{g+=`<text x="${sx(w)}" y="236" text-anchor="middle" font-size="10" fill="var(--muted)">${Math.round(w)}</text>`});
@@ -611,17 +611,17 @@ function chartProfil(s){
     g+=`<line x1="${X0}" x2="${X1}" y1="${sy(bl)}" y2="${sy(bl)}" stroke="var(--z2)" stroke-dasharray="2 4"/><text x="${X1-4}" y="${+sy(bl)-4}" text-anchor="end" font-size="10" fill="var(--z2)">${R.plat==="oui"?"plateau +0,5 = "+fr(bl,1):"repère 1,5 mmol/L"}</text>`;
     if(R.startI>=0){const a=P[R.startI].w,b=P[P.length-1].w;g+=`<line x1="${sx(a)}" y1="${sy(R.poly(a))}" x2="${sx(b)}" y2="${sy(R.poly(b))}" stroke="var(--text)" stroke-dasharray="4 4" opacity=".45"/>`}
     let c="";for(let k=0;k<=60;k++){const w=P[0].w+(P[P.length-1].w-P[0].w)*k/60;c+=(c?" ":"")+sx(w)+","+sy(R.poly(w))}
-    g+=`<polyline points="${c}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
+    g+=`<polyline points="${c}" fill="none" stroke="var(--hi)" stroke-width="3" stroke-linejoin="round"/>`;
     P.forEach(p=>{g+=`<circle cx="${sx(p.w)}" cy="${sy(p.la)}" r="4.5" fill="var(--text)"/>`});
   }else{
     [3.5,7.5].forEach((v,i)=>{g+=`<line x1="${X0}" x2="${X1}" y1="${sy(v)}" y2="${sy(v)}" stroke="${i?"var(--z1)":"var(--z2)"}" stroke-dasharray="2 4"/>`});
-    [["rj","var(--mus)",""],["rc","var(--text)","5 4"],["rr","var(--z4)","2 3"]].forEach(([k,c,da])=>{const q=P.filter(p=>isFinite(p[k]));if(q.length)g+=`<polyline points="${q.map(p=>sx(p.w)+","+sy(p[k])).join(" ")}" fill="none" stroke="${c}" stroke-width="1.5" ${da?`stroke-dasharray="${da}"`:""} opacity=".85"/>`});
-    g+=`<polyline points="${P.map(p=>sx(p.w)+","+sy(p.rpe)).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linejoin="round"/>`;
-    P.forEach(p=>{g+=`<circle cx="${sx(p.w)}" cy="${sy(p.rpe)}" r="4" fill="var(--accent)"/>`});
+    [["rj","var(--mus)",""],["rc","var(--text)","5 4"],["rr","var(--z4)","2 3"]].forEach(([k,c,da])=>{const q=P.filter(p=>isFinite(p[k]));if(q.length)g+=`<polyline points="${q.map(p=>sx(p.w)+","+sy(p[k])).join(" ")}" fill="none" stroke="${c}" stroke-width="2" ${da?`stroke-dasharray="${da}"`:""} stroke-linejoin="round"/>`});
+    g+=`<polyline points="${P.map(p=>sx(p.w)+","+sy(p.rpe)).join(" ")}" fill="none" stroke="var(--hi)" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>`;
+    P.forEach(p=>{g+=`<circle cx="${sx(p.w)}" cy="${sy(p.rpe)}" r="4.6" fill="var(--hi)" stroke="var(--panel)" stroke-width="1.5"/>`});
   }
-  if(R.thrOk){[[R.s1,"var(--z2)","S1 ","end"],[R.s2,"var(--z1)"," S2","start"]].forEach(([v,c,t,an])=>{g+=`<line x1="${sx(v)}" x2="${sx(v)}" y1="${Y1}" y2="${Y0}" stroke="${c}" stroke-width="1.4" stroke-dasharray="4 3"/><text x="${sx(v)}" y="${Y1+10}" text-anchor="${an}" font-size="10" font-weight="600" fill="${c}">${t}</text>`})}
+  if(R.thrOk){[[R.s1,"var(--z2)","S1 ","end"],[R.s2,"var(--z1)"," S2","start"]].forEach(([v,c,t,an])=>{g+=`<line x1="${sx(v)}" x2="${sx(v)}" y1="${Y1}" y2="${Y0}" stroke="${c}" stroke-width="2" stroke-dasharray="5 3"/><text x="${sx(v)}" y="${Y1+10}" text-anchor="${an}" font-size="11" font-weight="700" fill="${c}">${t}</text>`})}
   const leg=LAC?`<span><i style="background:var(--accent)"></i>Lactate (courbe ajustée)</span><span><i style="background:var(--z2)"></i>S1</span><span><i style="background:var(--z1)"></i>S2</span><span>pointillés = ModDmax · FC</span>`
-    :`<span><i style="background:var(--accent)"></i>RPE moyen</span><span><i style="background:var(--mus)"></i>Musculaire</span><span><i style="background:var(--text)"></i>Cardio</span><span><i style="background:var(--z4)"></i>Respi</span><span>FC = pointillés</span>`;
+    :`<span><i style="background:var(--hi)"></i>RPE moyen</span><span><i style="background:var(--mus)"></i>Musculaire</span><span><i style="background:var(--text)"></i>Cardio</span><span><i style="background:var(--z4)"></i>Respi</span><span>FC = pointillés</span>`;
   return `<svg class="chart" viewBox="0 0 ${Wd} 250" role="img" aria-label="${LAC?"Courbe de lactate":"RPE"} selon la puissance, seuil 1 ${W0(R.s1)} W, seuil 2 ${W0(R.s2)} W" font-family="Inter, sans-serif">${g}</svg><div class="legend">${leg}</div>`;
 }
 function chartRpe(R){
@@ -645,9 +645,9 @@ function chartTimeline(s){
   const hv=ser.map(p=>p[1]),hLo=hv.length?Math.floor((Math.min(...hv)-5)/20)*20:60,hHi=hv.length?Math.ceil((Math.max(...hv)+5)/20)*20:200;
   const hy=h=>(Y0-(h-hLo)/Math.max(1,hHi-hLo)*(Y0-Y1)).toFixed(1);
   let g="";[.25,.5,.75,1].forEach(f=>{const y=(Y0-f*(Y0-Y1)).toFixed(1);g+=`<line x1="${X0}" x2="${X1}" y1="${y}" y2="${y}" stroke="var(--line)" opacity=".6"/>`});
-  R.watts.slice(0,nP).forEach((w,i)=>{g+=`<rect x="${tx(i*5)}" y="${wy(w)}" width="${(tx(4)-tx(0)).toFixed(1)}" height="${(Y0-wy(w)).toFixed(1)}" rx="2" fill="${ZC[R.zoneOf(w)]}" opacity=".85"/>`});
+  R.watts.slice(0,nP).forEach((w,i)=>{g+=`<rect x="${tx(i*5)}" y="${wy(w)}" width="${(tx(4)-tx(0)).toFixed(1)}" height="${(Y0-wy(w)).toFixed(1)}" rx="3" fill="${ZC[R.zoneOf(w)]}"/><text x="${(+tx(i*5)+(tx(4)-tx(0))/2).toFixed(1)}" y="${(+wy(w)-4).toFixed(1)}" text-anchor="middle" font-size="9" font-weight="700" fill="var(--text)">${w}</text>`});
   g+=`<line x1="${X0}" x2="${X1}" y1="${Y0}" y2="${Y0}" stroke="var(--line)"/>`;
-  if(ser.length)g+=`<polyline points="${ser.map(p=>tx(p[0])+","+hy(p[1])).join(" ")}" fill="none" stroke="var(--text)" stroke-width="1.8" stroke-linejoin="round"/>`;
+  if(ser.length)g+=`<polyline points="${ser.map(p=>tx(p[0])+","+hy(p[1])).join(" ")}" fill="none" stroke="var(--panel)" stroke-width="4.2" stroke-linejoin="round" opacity=".85"/><polyline points="${ser.map(p=>tx(p[0])+","+hy(p[1])).join(" ")}" fill="none" stroke="var(--text)" stroke-width="2.2" stroke-linejoin="round"/>`;
   [0,.5,1].forEach(f=>{const y=(Y0-f*(Y0-Y1));g+=`<text x="${X0-5}" y="${y+3}" text-anchor="end" font-size="10" fill="var(--muted)">${Math.round(f*wTop)}</text><text x="${X1+5}" y="${y+3}" font-size="10" fill="var(--muted)">${Math.round(hLo+f*(hHi-hLo))}</text>`});
   const st=Tm>40?10:5;for(let m=0;m<=Tm;m+=st)g+=`<text x="${tx(m)}" y="214" text-anchor="middle" font-size="10" fill="var(--muted)">${m}</text>`;
   g+=`<text x="${X0}" y="12" font-size="10" fill="var(--muted)">watts</text><text x="${X1}" y="12" text-anchor="end" font-size="10" fill="var(--muted)">bpm</text><text x="${X1}" y="230" text-anchor="end" font-size="10" fill="var(--muted)">temps (min)</text>`;
@@ -662,13 +662,13 @@ function chartLinear(R){
   const fv=R.fcPts.map(p=>p.fc),fLo=fv.length?Math.floor((Math.min(...fv)-5)/20)*20:60,fHi=fv.length?Math.ceil((Math.max(...fv)+5)/20)*20:200;
   const fy=h=>(Y0-(h-fLo)/Math.max(1,fHi-fLo)*(Y0-Y1)).toFixed(1);
   let g="";
-  if(R.thrOk){const e=[xmin,R.b[0],R.b[1],R.b[2],R.b[4],R.b[5],xmax];ZC.forEach((c,k)=>{const a=+lx(Math.max(xmin,e[k])),b=+lx(Math.min(xmax,e[k+1]));g+=`<rect x="${a}" y="${Y1}" width="${Math.max(0,b-a).toFixed(1)}" height="${Y0-Y1}" fill="${c}" opacity=".13"/>`})}
+  if(R.thrOk){const e=[xmin,R.b[0],R.b[1],R.b[2],R.b[4],R.b[5],xmax];ZC.forEach((c,k)=>{const a=+lx(Math.max(xmin,e[k])),b=+lx(Math.min(xmax,e[k+1]));g+=`<rect x="${a}" y="${Y1}" width="${Math.max(0,b-a).toFixed(1)}" height="${Y0-Y1}" fill="${c}" opacity=".22"/>`})}
   g+=`<line x1="${X0}" x2="${X1}" y1="${Y0}" y2="${Y0}" stroke="var(--line)"/>`;
   if(fv.length)g+=`<polyline points="${R.fcPts.map(p=>lx(p.w)+","+fy(p.fc)).join(" ")}" fill="none" stroke="var(--text)" stroke-width="1.6" stroke-dasharray="5 4"/>`;
   const key=LAC?"la":"rpe";
-  g+=`<polyline points="${P.map(p=>lx(p.w)+","+ly(p[key])).join(" ")}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linejoin="round"/>`;
-  P.forEach(p=>{g+=`<circle cx="${lx(p.w)}" cy="${ly(p[key])}" r="3.5" fill="var(--accent)"/>`});
-  if(R.thrOk)[[R.s1,"var(--z2)","S1 ","end"],[R.s2,"var(--z1)"," S2","start"]].forEach(([v,c,t,an])=>{g+=`<line x1="${lx(v)}" x2="${lx(v)}" y1="${Y1}" y2="${Y0}" stroke="${c}" stroke-width="1.4" stroke-dasharray="4 3"/><text x="${lx(v)}" y="${Y1-4}" text-anchor="${an}" font-size="10" font-weight="600" fill="${c}">${t}</text>`});
+  g+=`<polyline points="${P.map(p=>lx(p.w)+","+ly(p[key])).join(" ")}" fill="none" stroke="var(--hi)" stroke-width="3" stroke-linejoin="round"/>`;
+  P.forEach(p=>{g+=`<circle cx="${lx(p.w)}" cy="${ly(p[key])}" r="4" fill="var(--hi)" stroke="var(--panel)" stroke-width="1.5"/>`});
+  if(R.thrOk)[[R.s1,"var(--z2)","S1 ","end"],[R.s2,"var(--z1)"," S2","start"]].forEach(([v,c,t,an])=>{g+=`<line x1="${lx(v)}" x2="${lx(v)}" y1="${Y1}" y2="${Y0}" stroke="${c}" stroke-width="2" stroke-dasharray="5 3"/><text x="${lx(v)}" y="${Y1-4}" text-anchor="${an}" font-size="11" font-weight="700" fill="${c}">${t}</text>`});
   const yst=LAC?(ymax>8?4:2):2;for(let v=0;v<=ymax;v+=yst)g+=`<text x="${X0-5}" y="${+ly(v)+3}" text-anchor="end" font-size="10" fill="var(--accent)">${v}</text>`;
   if(fv.length)[0,.5,1].forEach(f=>{const h=fLo+f*(fHi-fLo);g+=`<text x="${X1+5}" y="${+fy(h)+3}" font-size="10" fill="var(--muted)">${Math.round(h)}</text>`});
   ticks(xmin,xmax,4).forEach(w=>{g+=`<text x="${lx(w)}" y="214" text-anchor="middle" font-size="10" fill="var(--muted)">${Math.round(w)}</text>`});
