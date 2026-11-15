@@ -264,8 +264,8 @@ details[open]>summary{color:var(--text)}
 :root{--z1:#C24A3D;--z2:#D98A2B;--z3:#0B9488;--z4:#5FA8A0;--z5:#7D8A86}
 :root[data-theme="dark"]{--z1:#E0705F;--z2:#E3A04A;--z3:#34BFAF;--z4:#9FCFC7;--z5:#F6F4E8}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--z1:#E0705F;--z2:#E3A04A;--z3:#34BFAF;--z4:#9FCFC7;--z5:#F6F4E8}}
-nav.tabs .in{grid-template-columns:repeat(5,1fr)}
-nav.tabs button{font-size:12px}
+nav.tabs .in{grid-template-columns:repeat(6,1fr)}
+nav.tabs button{font-size:11px;letter-spacing:-.01em}
 .eyebrow{font:700 11px var(--sg);letter-spacing:.22em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
 .chips button{min-height:38px;padding:0 14px;border-radius:19px;border:1px solid var(--line);color:var(--muted);font:500 13px var(--sg)}
@@ -375,6 +375,7 @@ textarea.exp{font:400 12px ui-monospace,monospace;min-height:140px}
   <button data-act="tab" data-tab="profil">Profil</button>
   <button data-act="tab" data-tab="zones">Zones</button>
   <button data-act="tab" data-tab="suivi">Suivi</button>
+  <button data-act="tab" data-tab="orient">Orientation</button>
 </div></nav>
 <script>
 (function(){
@@ -783,10 +784,28 @@ function viewProfil(){
       <p class="hint" style="margin:8px 0 0">En couleur : les paliers autour des seuils retenus. Ajuste les interprétations si un palier ne colle pas.</p>
       <p style="margin:10px 0 0;padding-top:10px;border-top:1px solid var(--line);font-size:13.5px">${esc(R.limiter)}</p></div>`;
   }
+  if(R.thrOk)h+=oriSummary(orientHTML(R));
   h+=`<button class="btn primary full" style="margin-top:14px" data-act="tab" data-tab="zones">Voir les zones →</button>`;
   return h;
 }
 function expText(s){const R=s.R,d=s.d;const rows=["step\tlength\tintensity\tlactate\theart_rate","0\t0\t0\t"+(R.la0!=null&&isFinite(R.la0)?R.la0:"")+"\t"];R.pts.forEach(p=>rows.push((p.i+1)+"\t4\t"+p.w+"\t"+p.la+"\t"+(isFinite(p.fc)?Math.round(p.fc):"")));return rows.join("\n")}
+
+/* Résumé dans le Profil + onglet Orientation (dernier onglet) */
+function oriSummary(o){
+  if(!o)return "";
+  return `<div class="card" style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;gap:12px">
+    <div style="min-width:0"><div class="eyebrow" style="margin-bottom:2px">Orientation</div><b style="font:700 16px var(--sg)">${o.tag}</b>
+    <div class="hint" style="margin-top:2px">Voir l'orientation pour la programmation des entraînements.</div></div>
+    <button class="btn primary sm" data-act="tab" data-tab="orient" style="flex:0 0 auto">Voir →</button></div>`;
+}
+function oriFull(o){return o?oriCard(o.title,o.verdict,o.why,o.prio,o.sess,o.note):""}
+function allureHelp(run){
+  const rows=[["allure récup","Z1","1–2"],["allure EF","Z2","2–3"],["allure tempo","Z3","4–5"],["allure seuil","Z4","6–7"],["allure VO2","Z5","8–9"]];
+  return `<div class="sec"><h2>Dans Séance+</h2><span>plages automatiques</span></div>
+  <div class="card"><p class="hint" style="margin:0 0 8px">Écris « allure … » sur une ligne de séance (ex. « 3 × 10′ allure tempo ${run?"Run":"Row"} ») : chaque athlète voit sa plage personnelle, son RPE et sa FC.</p>
+  <div class="steps"><div class="h" style="grid-template-columns:1fr 50px 60px"><span>Tu écris</span><span>Zone</span><span style="text-align:right">RPE</span></div>
+  ${rows.map(r=>`<div class="r" style="grid-template-columns:1fr 50px 60px"><span>${r[0]}</span><span class="p">${r[1]}</span><span style="text-align:right">${r[2]}</span></div>`).join("")}</div></div>`;
+}
 function oriCard(title,verdict,why,prio,sessions,note){
   return `<div class="card" style="margin-top:12px;border-color:var(--accent)">
     <div class="eyebrow">Orientation d'entraînement</div>
@@ -802,7 +821,7 @@ function oriCard(title,verdict,why,prio,sessions,note){
 
 /* Orientation selon la forme de la courbe : rapport S1/S2 = largeur du domaine « élevé » */
 function orientHTML(R){
-  if(!R.thrOk)return "";
+  if(!R.thrOk)return null;
   const r=R.s1/R.s2*100,s1=W0(R.s1),s2=W0(R.s2),f1=isFinite(R.fc1)?" · FC < "+Math.round(R.fc1):"";
   const z2=`${W0(R.b[0])}–${s1} W${f1}`;
   const base=LAC&&R.plat==="non"?" Pas de plateau de lactate : la lactatémie monte dès les premiers paliers, signe d'une base aérobie à construire.":"";
@@ -826,7 +845,7 @@ function orientHTML(R){
     prio=[`Plus de temps en basse intensité : 75–80 % du volume en Z2 (${z2}), RPE 2–3`,"Sorties longues continues de 45 à 90′ strictement sous S1","Limiter le tempo et garder une seule séance intense courte par semaine pour entretenir"];
     sess=[`Endurance : 2–3 × 45–90′ allure EF par semaine`,`Endurance + : 3 × 15′ en haut de Z2 (${W0(R.s1*.95)}–${s1} W)`,`Entretien : 6–8 × 1′ à ${W0(R.s2*1.05)} W, récup 2′`];
   }
-  return oriCard(title,verdict,why,prio,sess,`${esc(R.limiter)} Repères indicatifs : re-tester après 6 à 8 semaines, on attend une montée de S1 (base) ou de S2 (seuil) selon l'orientation choisie.`);
+  return {tag:title,title,verdict,why,prio,sess,note:`${esc(R.limiter)} Repères indicatifs : re-tester après 6 à 8 semaines, on attend une montée de S1 (base) ou de S2 (seuil) selon l'orientation choisie.`};
 }
 function viewZones(){
   const s=source(),R=s.R,m=mod();
@@ -839,7 +858,6 @@ function viewZones(){
   h+=`<div class="card" style="margin-top:12px"><h3 style="font-weight:700">${LAC?"Lactate":"RPE"} &amp; FC selon la puissance</h3>${chartLinear(R)}</div>`;
   const doms=[["Modéré","< "+W0(R.s1)+" W",LAC?"Lactate stable, proche du repos":"RPE ≤ 3, conversation possible","var(--z4)"],["Élevé",W0(R.s1)+"–"+W0(R.s2)+" W",LAC?"Lactate plus haut mais stable":"RPE 4 à 7, soutenu mais stable","var(--z2)"],["Sévère","> "+W0(R.s2)+" W",LAC?"Accumulation, vers la VO₂max":"RPE ≥ 8, durée limitée","var(--z1)"]];
   h+=`<div class="doms" style="margin-top:12px">${doms.map(x=>`<div style="--c:${x[3]}"><b>${x[0]}</b><span>${x[1]}</span><small>${x[2]}</small></div>`).join("")}</div>`;
-  h+=orientHTML(R);
   const b=R.b;
   h+=`<div class="card" style="margin-top:12px">${ZD.map((z,i)=>{
     const lo=[null,b[0],b[1],b[2],b[4],b[5]][i],hi=[b[0],b[1],b[2],b[4],b[5],null][i];
@@ -869,6 +887,12 @@ function zonesExport(){
     head:["Zone","Puissance","FC"],rows,
     note:(LAC?"Seuils : S1 = Bsln+0,5 (plateau), S2 = ModDmax, interprétés puis validés ExPhysLab.":"Seuils : S1 = passage RPE 3→4, S2 = passage RPE 7→8, ajustés selon les paliers.")+" Bornes : Z1 < 65 % de S1 · Z2 jusqu'à S1 · Z3 jusqu'à 90 % de S2 · Z4 jusqu'à 105 % de S2 · Z5 jusqu'à 150 % de S2.",
     file:"zones-"+MODE+"-"+m.label+(athleteName()?"-"+athleteName():"")};
+}
+function viewOrient(){
+  const s=source(),R=s.R,m=mod();
+  let h=`${title("Programmation","Orientation des <span class=\"ac\">entraînements</span>")}<div style="margin-top:12px">${modChips()}</div><div style="height:12px"></div>`;
+  if(!R.thrOk)return h+`<div class="empty">Complète d'abord le test (et les deux seuils) pour obtenir l'orientation.</div>`;
+  return h+srcBanner(s)+`<p class="lede" style="margin-top:-6px">S1 ${W0(R.s1)} W · S2 ${W0(R.s2)} W</p>`+oriFull(orientHTML(R))+allureHelp(false);
 }
 function viewSuivi(){
   const m=mod(),list=testsOf(m.k);
@@ -906,7 +930,7 @@ function render(){
   const y=window.scrollY;
   document.querySelectorAll("nav.tabs button").forEach(b=>{if(b.dataset.tab===store.tab)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
   if(store.sync==="none"){app.innerHTML=header()+`<div class="empty">${esc(store.syncMsg||"Connecte-toi à l’app UDT.")}</div>`;return}
-  const v={proto:viewProto,test:viewTest,profil:viewProfil,zones:viewZones,suivi:viewSuivi}[store.tab]||viewProto;
+  const v={proto:viewProto,test:viewTest,profil:viewProfil,zones:viewZones,suivi:viewSuivi,orient:viewOrient}[store.tab]||viewProto;
   app.innerHTML=header()+v();
   window.scrollTo(0,y);
 }
