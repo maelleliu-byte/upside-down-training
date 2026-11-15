@@ -14,7 +14,10 @@
    } */
 (function () {
   "use strict";
-  var C = { bg: "#FBFAF7", ink: "#0D3B33", teal: "#0B9488", muted: "#5C6F6A", line: "#E3E6E1", card: "#FFFFFF" };
+  var LIGHT = { bg: "#FBFAF7", ink: "#0D3B33", teal: "#0B9488", muted: "#5C6F6A", line: "#E3E6E1", card: "#FFFFFF", hero: "#0D3B33", heroLab: "#9FE3D8", heroTxt: "#FFFFFF" };
+  // Fiche plein teal (charte Upside Down Training) : data.theme = "teal"
+  var TEAL = { bg: "#0B9488", ink: "#FFFFFF", teal: "#FFFFFF", muted: "rgba(255,255,255,.78)", line: "rgba(255,255,255,.22)", card: "rgba(3,52,46,.30)", hero: "#05453E", heroLab: "#9FE3D8", heroTxt: "#FFFFFF" };
+  var C = LIGHT;
 
   function slug(s) {
     return String(s || "zones").normalize("NFD").replace(/[̀-ͯ]/g, "")
@@ -50,7 +53,13 @@
       ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align || "left"; ctx.fillText(s, x, yy);
     }
     // en-tête
-    txt("UPSIDE DOWN TRAINING", P, y, "700 22px " + SG, C.teal); y += 56;
+    if (d.logo && typeof Path2D !== "undefined") {
+      if (!measureOnly) {
+        ctx.save(); ctx.translate(P - 8, y - 50); ctx.scale(1.6, 1.6);
+        ctx.fillStyle = C.teal; ctx.fill(new Path2D(d.logo), "evenodd"); ctx.restore();
+      }
+      txt("UPSIDE DOWN TRAINING", P + 72, y, "700 24px " + SG, C.teal); y += 60;
+    } else { txt("UPSIDE DOWN TRAINING", P, y, "700 22px " + SG, C.teal); y += 56; }
     txt(d.kind || "Zones d'entraînement", P, y, "700 46px " + SG, C.ink); y += 46;
     txt(d.title || "", P, y, "700 34px " + SG, C.teal); y += 40;
     var meta = [d.athlete, d.date ? "Test du " + d.date : "Test en cours (non enregistré)"].filter(Boolean).join("  ·  ");
@@ -63,13 +72,13 @@
       refs.forEach(function (r, i) {
         var x = P + i * (bw + gap);
         if (!measureOnly) {
-          ctx.fillStyle = i === 0 ? C.ink : C.card; roundRect(ctx, x, y, bw, bh, 18); ctx.fill();
+          ctx.fillStyle = i === 0 ? C.hero : C.card; roundRect(ctx, x, y, bw, bh, 18); ctx.fill();
           if (i) { ctx.strokeStyle = C.line; ctx.lineWidth = 2; ctx.stroke(); }
         }
-        txt(String(r[0]).toUpperCase(), x + 22, y + 38, "700 17px " + SG, i === 0 ? "#9FE3D8" : C.muted);
+        txt(String(r[0]).toUpperCase(), x + 22, y + 38, "700 17px " + SG, i === 0 ? C.heroLab : C.muted);
         var fs = 38; ctx.font = "700 " + fs + "px " + SG;
         while (fs > 20 && ctx.measureText(String(r[1])).width > bw - 44) { fs -= 2; ctx.font = "700 " + fs + "px " + SG; }
-        txt(String(r[1]), x + 22, y + 86, "700 " + fs + "px " + SG, i === 0 ? "#FFFFFF" : C.ink);
+        txt(String(r[1]), x + 22, y + 86, "700 " + fs + "px " + SG, i === 0 ? C.heroTxt : C.ink);
       });
       y += bh + 34;
     }
@@ -112,10 +121,12 @@
   function png(d) {
     var W = 1080, c = document.createElement("canvas"), ctx = c.getContext("2d");
     var go = function () {
+      C = d.theme === "teal" ? TEAL : LIGHT;
       c.width = W; c.height = 10; var H = draw(d, ctx, W, true);
       c.width = W; c.height = Math.ceil(H);
       ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, c.height);
       draw(d, ctx, W, false);
+      C = LIGHT;
       c.toBlob(function (b) { if (b) deliver(b, slug(d.file || d.title) + ".png"); }, "image/png");
     };
     (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go);
