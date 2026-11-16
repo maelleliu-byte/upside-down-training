@@ -21,7 +21,7 @@
   // Idem pour ef.html (profil endurance fondamentale)
   var EF_VERSION = '2026-10-25b';
   // Idem pour pc.html (profil puissance / vitesse critique)
-  var PC_VERSION = '2026-11-15a';
+  var PC_VERSION = '2026-11-16a';
   // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
   var LV_VERSION = '2026-11-15a';
   // Idem pour lactate.html (profilage lactate · profilage RPE, protocole 41)
@@ -115,7 +115,7 @@
   var _recapAth = '';        // '' = moi, sinon id de l'athlète choisi dans le menu
   var _recapPerso = null;    // athlète ouvert depuis son espace perso (vue coach)
   var _athList = null;       // cache ef_my_athletes
-  var ENDU_MODS = { bike: 'Bike Erg', row: 'Row', ski: 'Ski Erg', assault: 'Assault', echo: 'Echo', velo: 'Vélo' };
+  var ENDU_MODS = { bike: 'Bike Erg', row: 'Row', ski: 'Ski Erg', assault: 'Assault', echo: 'Echo', velo: 'Vélo', run: 'Course' };
 
   function _sb() { try { return typeof sb !== 'undefined' ? sb : null; } catch (e) { return null; } }
   function _me() { try { return typeof currentUser !== 'undefined' && currentUser ? currentUser.id : null; } catch (e) { return null; } }
@@ -150,35 +150,64 @@
     }
     var id = _recapTarget();
     if (!id) { body.innerHTML = '<div class="ot-rc-empty">Connecte-toi pour voir les profils.</div>'; return; }
-    var r;
+    var r, c;
     try {
-      r = await cli.from('endurance_tests').select('id,kind,modality,test_date,created_at,s1,s2,fc1,fc2')
-        .eq('athlete_id', id).order('test_date', { ascending: false }).order('created_at', { ascending: false });
-    } catch (e) { r = { error: e }; }
+      var res = await Promise.all([
+        cli.from('endurance_tests').select('id,kind,modality,test_date,created_at,s1,s2,fc1,fc2')
+          .eq('athlete_id', id).order('test_date', { ascending: false }).order('created_at', { ascending: false }),
+        cli.from('cp_tests').select('id,modality,date3,date12,created_at,cp')
+          .eq('athlete_id', id).order('created_at', { ascending: false })
+      ]);
+      r = res[0]; c = res[1];
+    } catch (e) { r = { error: e }; c = {}; }
     if (id !== _recapTarget()) return;
     body = _byId('ot-rc-body');
     if (!body) return;
-    if (r.error) { body.innerHTML = '<div class="ot-rc-empty">Lecture impossible.</div>'; return; }
-    var last = {}, order = [];
-    (r.data || []).forEach(function (t) { if (!last[t.modality]) { last[t.modality] = t; order.push(t.modality); } });
-    if (!order.length) {
-      body.innerHTML = '<div class="ot-rc-empty">Aucun test enregistré. Lance un profilage lactate ou RPE ci-dessous.</div>';
+    if (r.error && (!c || c.error)) { body.innerHTML = '<div class="ot-rc-empty">Lecture impossible.</div>'; return; }
+
+    // une entrée par modalité : dernier seuil (lactate / RPE) + dernière PC / VC
+    var by = {};
+    function slot(m) { return by[m] || (by[m] = { m: m, th: null, pc: null, d: '' }); }
+    ((r && r.data) || []).forEach(function (t) {
+      var x = slot(t.modality);
+      if (!x.th) { x.th = t; if ((t.test_date || '') > x.d) x.d = t.test_date || ''; }
+    });
+    var cps = ((c && c.data) || []).map(function (t) { t._d = t.date12 || t.date3 || String(t.created_at || '').slice(0, 10); return t; })
+      .sort(function (a, b) { return a._d < b._d ? 1 : a._d > b._d ? -1 : 0; });
+    cps.forEach(function (t) {
+      var x = slot(t.modality);
+      if (!x.pc) { x.pc = t; if (t._d > x.d) x.d = t._d; }
+    });
+    var list = Object.keys(by).map(function (k) { return by[k]; })
+      .sort(function (a, b) { return a.d < b.d ? 1 : a.d > b.d ? -1 : 0; });
+
+    if (!list.length) {
+      body.innerHTML = '<div class="ot-rc-empty">Aucun test enregistré. Lance un profilage ci-dessous.</div>';
       return;
     }
-    body.innerHTML = order.map(function (m) {
-      var t = last[m];
-      var bpm = function (v) { return v ? ' <span class="ot-rc-bpm">· ' + v + ' bpm</span>' : ''; };
-      var s2 = t.s2 != null ? '<b>' + t.s2 + ' W</b>' + bpm(t.fc2) : '<span class="ot-rc-na">non atteint</span>';
-      return '<button class="ot-rc-row" data-kind="' + _esc(t.kind) + '" data-mod="' + _esc(m) + '">' +
-        '<span class="ot-rc-mod"><span class="ot-rc-mn">' + _esc(ENDU_MODS[m] || m) + '</span>' +
-          '<span class="ot-rc-meta">' + _dFR(t.test_date) + ' <span class="ot-rc-tag ' + (t.kind === 'rpe' ? 'rpe' : 'lac') + '">' +
-          (t.kind === 'rpe' ? 'RPE' : 'Lactate') + '</span></span></span>' +
-        '<span class="ot-rc-th">S1 <b>' + t.s1 + ' W</b>' + bpm(t.fc1) + '<br>S2 ' + s2 + '</span>' +
-        '<span class="ot-card-go">›</span>' +
-      '</button>';
-    }).join('') + '<div class="ot-rc-hint">Touche une ligne : profil et zones de ce test.</div>';
-    body.querySelectorAll('.ot-rc-row').forEach(function (b) {
-      b.addEventListener('click', function () { _openEndu(b.dataset.kind, { mod: b.dataset.mod, tab: 'profil' }); });
+    function bpm(v) { return v ? ' <span class="ot-rc-bpm">· ' + v + ' bpm</span>' : ''; }
+    body.innerHTML = list.map(function (x) {
+      var run = x.m === 'run';
+      var right = '';
+      if (x.th) {
+        var t = x.th;
+        right += '<button class="ot-rc-val" data-open="' + (t.kind === 'rpe' ? 'rpe' : 'lactate') + '" data-mod="' + _esc(x.m) + '">' +
+          '<span class="ot-rc-tag ' + (t.kind === 'rpe' ? 'rpe' : 'lac') + '">' + (t.kind === 'rpe' ? 'RPE' : 'Lactate') + '</span> ' +
+          'S1 <b>' + t.s1 + ' W</b>' + bpm(t.fc1) + ' · S2 ' +
+          (t.s2 != null ? '<b>' + t.s2 + ' W</b>' + bpm(t.fc2) : '<span class="ot-rc-na">non atteint</span>') +
+          ' <span class="ot-rc-d">' + _dFR(t.test_date) + '</span></button>';
+      }
+      if (x.pc) {
+        var v = run ? String(Number(x.pc.cp).toFixed(1)).replace('.', ',') + ' km/h' : Math.round(x.pc.cp) + ' W';
+        right += '<button class="ot-rc-val" data-open="pc" data-mod="' + _esc(x.m) + '">' +
+          '<span class="ot-rc-tag pc">' + (run ? 'VC' : 'PC') + '</span> <b>' + v + '</b>' +
+          ' <span class="ot-rc-d">' + _dFR(x.pc._d) + '</span></button>';
+      }
+      return '<div class="ot-rc-row"><span class="ot-rc-mn">' + _esc(ENDU_MODS[x.m] || x.m) + '</span>' +
+        '<span class="ot-rc-vals">' + right + '</span></div>';
+    }).join('') + '<div class="ot-rc-hint">Touche un résultat pour ouvrir son profil et ses zones.</div>';
+    body.querySelectorAll('.ot-rc-val').forEach(function (b) {
+      b.addEventListener('click', function () { _openEndu(b.dataset.open, { mod: b.dataset.mod, tab: 'profil' }); });
     });
   }
 
@@ -191,7 +220,7 @@
 
   /* Ouvre lactate.html (kind lactate | rpe) sur l'athlète du récap. */
   function _openEndu(kind, opt) {
-    var base = TOOLS.find(function (x) { return x.id === (kind === 'rpe' ? 'rpe' : 'lactate'); });
+    var base = TOOLS.find(function (x) { return x.id === (kind === 'rpe' ? 'rpe' : kind === 'pc' ? 'pc' : 'lactate'); });
     if (base) _openFor(base, opt);
   }
 
@@ -237,7 +266,7 @@
     // kids-scaling.js y ajoute sa carte « Scaling Kids & Teens ».
     var gridCls = _cat === 'kids' ? 'ot-grid' : 'ot-list';
 
-    if (_recapPerso) list = TOOLS.filter(function (t) { return t.id === 'lactate' || t.id === 'rpe'; });
+    if (_recapPerso) list = TOOLS.filter(function (t) { return t.id === 'lactate' || t.id === 'rpe' || t.id === 'pc'; });
     var top = _recapPerso
       ? '<div class="ot-bar">' +
           '<button class="ot-back" id="ot-back-perso">‹ Espace perso</button>' +
@@ -387,17 +416,19 @@
       '.ot-rc-ti{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:1.5px}',
       '.ot-rc-who{max-width:55%;background:var(--card2);border:1px solid var(--border2);color:var(--text);',
       'border-radius:9px;padding:6px 8px;font-family:inherit;font-size:12px}',
-      '.ot-rc-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;',
-      'border-top:1px solid var(--border);padding:10px 0;color:var(--text);font-family:inherit;cursor:pointer}',
+      '.ot-rc-row{display:flex;flex-direction:column;gap:4px;border-top:1px solid var(--border);padding:10px 0}',
+      '.ot-rc-vals{display:flex;flex-direction:column;gap:4px}',
+      '.ot-rc-val{display:block;width:100%;text-align:left;background:var(--card2);border:1px solid var(--border2);',
+      'border-radius:9px;padding:7px 10px;color:var(--muted);font-family:inherit;font-size:12px;line-height:1.5;cursor:pointer}',
+      '.ot-rc-val:hover{border-color:var(--accent)}',
+      '.ot-rc-val b{color:var(--text);font-size:13px}',
+      '.ot-rc-d{float:right;font-size:11px;color:var(--muted)}',
+      '.ot-rc-tag.pc{background:rgba(245,138,31,.18);color:#f5a04f}',
       '#ot-rc-body .ot-rc-row:first-child{border-top:0}',
-      '.ot-rc-mod{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}',
       '.ot-rc-mn{font-size:14px;font-weight:700}',
-      '.ot-rc-meta{font-size:11px;color:var(--muted)}',
-      '.ot-rc-tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;margin-left:4px}',
+      '.ot-rc-tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;margin-right:2px}',
       '.ot-rc-tag.lac{background:rgba(45,212,191,.16);color:#2dd4bf}',
       '.ot-rc-tag.rpe{background:rgba(155,108,240,.18);color:#b9a0f5}',
-      '.ot-rc-th{flex:0 0 auto;text-align:right;font-size:12px;line-height:1.55;color:var(--muted)}',
-      '.ot-rc-th b{color:var(--text);font-size:13px}',
       '.ot-rc-bpm{font-size:11px}',
       '.ot-rc-na{color:var(--muted);font-style:italic}',
       '.ot-rc-empty,.ot-rc-hint{font-size:12px;color:var(--muted);padding:8px 0 2px}',
