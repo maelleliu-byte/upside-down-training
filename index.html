@@ -789,9 +789,8 @@
               <button id="perso-view-month" onclick="persoSetView('month')">Mois</button>
             </div>
             <button class="perso-suivi-btn" id="perso-suivi-btn" onclick="openSuiviAthlete()" title="Suivi individuel de l'athlète (onglet Charge)">📊 Suivi</button>
-            <button class="perso-suivi-btn" onclick="openOutilAthlete('lvtest')" title="Strength continuum : profil charge-vitesse de l'athlète (test standardisé), zones VBT et re-tests">🎯 Profilage charge-vitesse</button>
+            <button class="perso-suivi-btn" onclick="openProfilsForce()" title="Force : dernier profil charge-vitesse par mouvement et dernières séances du journal VBT">🏋️ Profils force</button>
             <button class="perso-suivi-btn" onclick="openProfilsEndurance()" title="Endurance : derniers seuils lactate / RPE et PC / VC par modalité, seuils, zones et nouveaux tests">🫀 Profils endurance</button>
-            <button class="perso-suivi-btn" onclick="openOutilAthlete('vbt')" title="Journal VBT de l'athlète (séances au capteur)">⚡ Journal VBT</button>
           </div>
           <div class="perso-week-nav">
             <button class="arrow-btn" onclick="persoNav(-1)">‹</button>
@@ -2903,7 +2902,7 @@ function _injectAdminBadgesTab() {
   else adminPage.appendChild(panel);
 }
 </script>
-<script src="outils.js?v=20261116b"></script>
+<script src="outils.js?v=20261116c"></script>
 <script src="vbt-seance.js?v=20261025b"></script>
 <script src="vbt-saisie.js?v=20261105a"></script>
 <script src="ef-seance.js?v=20261025c"></script>

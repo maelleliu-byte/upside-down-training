@@ -17,13 +17,13 @@
   // ---------- catalogue des outils ----------
 
   // À changer à chaque mise à jour de vbt.html : force le rechargement (cache navigateur)
-  var VBT_VERSION = '2026-11-05a';
+  var VBT_VERSION = '2026-11-16a';
   // Idem pour ef.html (profil endurance fondamentale)
   var EF_VERSION = '2026-10-25b';
   // Idem pour pc.html (profil puissance / vitesse critique)
   var PC_VERSION = '2026-11-16a';
   // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
-  var LV_VERSION = '2026-11-15a';
+  var LV_VERSION = '2026-11-16a';
   // Idem pour lactate.html (profilage lactate · profilage RPE, protocole 41)
   var ENDU_VERSION = '20261116a';
 
@@ -119,6 +119,8 @@
 
   function _sb() { try { return typeof sb !== 'undefined' ? sb : null; } catch (e) { return null; } }
   function _me() { try { return typeof currentUser !== 'undefined' && currentUser ? currentUser.id : null; } catch (e) { return null; } }
+  function _recapKind() { return _recapPerso ? _recapPerso.kind : (_cat === 'force' ? 'force' : 'endu'); }
+  var LV_MOVES = { bsq: 'Back Squat', fsq: 'Front Squat', bench: 'Bench Press', dl: 'Deadlift', ohp: 'Shoulder Press' };
   function _recapTarget() { return _recapPerso ? _recapPerso.id : (_recapAth || _me()); }
   function _dFR(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso; }
 
@@ -150,6 +152,7 @@
     }
     var id = _recapTarget();
     if (!id) { body.innerHTML = '<div class="ot-rc-empty">Connecte-toi pour voir les profils.</div>'; return; }
+    if (_recapKind() === 'force') return _fillForce(cli, id);
     var r, c;
     try {
       var res = await Promise.all([
@@ -211,6 +214,65 @@
     });
   }
 
+  async function _fillForce(cli, id) {
+    var r, j;
+    try {
+      var res = await Promise.all([
+        cli.from('lv_tests').select('id,movement,test_date,created_at,rm,e1rm')
+          .eq('athlete_id', id).order('test_date', { ascending: false }).order('created_at', { ascending: false }),
+        cli.from('vbt_journal').select('doc_key,data').eq('user_id', id)
+      ]);
+      r = res[0]; j = res[1];
+    } catch (e) { r = { error: e }; j = {}; }
+    if (id !== _recapTarget()) return;
+    var body = _byId('ot-rc-body');
+    if (!body) return;
+    if (r.error && (!j || j.error)) { body.innerHTML = '<div class="ot-rc-empty">Lecture impossible.</div>'; return; }
+
+    // charge-vitesse : dernier test par mouvement
+    var last = {}, order = [];
+    ((r && r.data) || []).forEach(function (t) { if (!last[t.movement]) { last[t.movement] = t; order.push(t.movement); } });
+    // journal VBT : séances terminées, plus récentes d'abord
+    var names = {}, sess = [];
+    ((j && j.data) || []).forEach(function (x) {
+      if (x.doc_key === 'settings' && x.data && Array.isArray(x.data.moves)) x.data.moves.forEach(function (m) { names[m.id] = m.name; });
+      else if (String(x.doc_key).indexOf('s-') === 0 && x.data) sess.push(x.data);
+    });
+    var done = sess.filter(function (s) { return s.status === 'done'; })
+      .sort(function (a, b) { return (b.date || '').localeCompare(a.date || ''); });
+
+    if (!order.length && !done.length) {
+      body.innerHTML = '<div class="ot-rc-empty">Aucun test ni séance VBT enregistré. Lance un outil ci-dessous.</div>';
+      return;
+    }
+    var kg = function (v) { return v != null && v > 0 ? (Math.round(v * 2) / 2).toString().replace('.', ',') + ' kg' : '–'; };
+    var h = '';
+    order.forEach(function (k) {
+      var t = last[k];
+      h += '<div class="ot-rc-row"><span class="ot-rc-mn">' + _esc(LV_MOVES[k] || k) + '</span><span class="ot-rc-vals">' +
+        '<button class="ot-rc-val" data-open="lvtest" data-mv="' + _esc(k) + '"><span class="ot-rc-tag lac">Charge-vitesse</span> ' +
+        '1RM <b>' + kg(t.rm) + '</b> · e1RM <b>' + kg(t.e1rm) + '</b> <span class="ot-rc-d">' + _dFR(t.test_date) + '</span></button>' +
+        '</span></div>';
+    });
+    if (done.length) {
+      var top3 = done.slice(0, 3).map(function (s) {
+        var mv = [];
+        (s.blocks || []).forEach(function (b) { var n = names[b.mv] || b.mv; if (n && mv.indexOf(n) < 0) mv.push(n); });
+        var lab = s.title || mv.join(' · ') || 'Séance';
+        return '<button class="ot-rc-val" data-open="vbt"><span class="ot-rc-tag rpe">VBT</span> <b>' + _esc(lab) + '</b>' +
+          ' <span class="ot-rc-d">' + _dFR(s.date) + '</span></button>';
+      }).join('');
+      h += '<div class="ot-rc-row"><span class="ot-rc-mn">Journal VBT <span class="ot-rc-bpm">· ' + done.length + ' séance' + (done.length > 1 ? 's' : '') + '</span></span>' +
+        '<span class="ot-rc-vals">' + top3 + '</span></div>';
+    }
+    body.innerHTML = h + '<div class="ot-rc-hint">Touche un résultat pour ouvrir le profil ou le journal.</div>';
+    body.querySelectorAll('.ot-rc-val').forEach(function (b) {
+      b.addEventListener('click', function () {
+        _openEndu(b.dataset.open, b.dataset.mv ? { mv: b.dataset.mv, tab: 'profil' } : null);
+      });
+    });
+  }
+
   function _bindWho() {
     var w = _byId('ot-rc-who');
     if (!w || w.__b) return;
@@ -220,7 +282,8 @@
 
   /* Ouvre lactate.html (kind lactate | rpe) sur l'athlète du récap. */
   function _openEndu(kind, opt) {
-    var base = TOOLS.find(function (x) { return x.id === (kind === 'rpe' ? 'rpe' : kind === 'pc' ? 'pc' : 'lactate'); });
+    var id = ['rpe', 'pc', 'lvtest', 'vbt'].indexOf(kind) > -1 ? kind : 'lactate';
+    var base = TOOLS.find(function (x) { return x.id === id; });
     if (base) _openFor(base, opt);
   }
 
@@ -229,8 +292,9 @@
     for (k in base) t[k] = base[k];
     var q = [];
     var ath = _recapPerso ? _recapPerso.id : _recapAth;
-    if (ath && base.cat === 'endurance') q.push('athlete=' + encodeURIComponent(ath));
+    if (ath && (base.cat === 'endurance' || base.cat === 'force')) q.push('athlete=' + encodeURIComponent(ath));
     if (opt && opt.mod) q.push('mod=' + encodeURIComponent(opt.mod));
+    if (opt && opt.mv) q.push('mv=' + encodeURIComponent(opt.mv));
     if (opt && opt.tab) q.push('tab=' + encodeURIComponent(opt.tab));
     if (q.length) t.url = base.url + (base.url.indexOf('?') > -1 ? '&' : '?') + q.join('&');
     if (_recapPerso) { t.title = base.title + ' · ' + _recapPerso.name; t.fromRecap = true; }
@@ -266,11 +330,13 @@
     // kids-scaling.js y ajoute sa carte « Scaling Kids & Teens ».
     var gridCls = _cat === 'kids' ? 'ot-grid' : 'ot-list';
 
-    if (_recapPerso) list = TOOLS.filter(function (t) { return t.id === 'lactate' || t.id === 'rpe' || t.id === 'pc'; });
+    if (_recapPerso) list = TOOLS.filter(function (t) {
+      return _recapPerso.kind === 'force' ? (t.id === 'lvtest' || t.id === 'vbt') : (t.id === 'lactate' || t.id === 'rpe' || t.id === 'pc');
+    });
     var top = _recapPerso
       ? '<div class="ot-bar">' +
           '<button class="ot-back" id="ot-back-perso">‹ Espace perso</button>' +
-          '<div class="ot-bar-ti">🫀 Profils endurance · ' + _esc(_recapPerso.name) + '</div>' +
+          '<div class="ot-bar-ti">' + (_recapPerso.kind === 'force' ? '🏋️ Profils force · ' : '🫀 Profils endurance · ') + _esc(_recapPerso.name) + '</div>' +
         '</div>'
       : '<div class="ot-head">' +
           '<div class="ot-title">Outils coach</div>' +
@@ -282,11 +348,11 @@
               _esc(c.label) + '</button>';
           }).join('') +
         '</div>';
-    var showRecap = _recapPerso || _cat === 'endurance';
+    var showRecap = _recapPerso || _cat === 'endurance' || _cat === 'force';
 
     panel.innerHTML =
       top +
-      (showRecap ? _recapShell() + '<div class="ot-rc-sec">' + (_recapPerso ? 'Nouveau test' : 'Outils de test') + '</div>' : '') +
+      (showRecap ? _recapShell() + '<div class="ot-rc-sec">' + (_recapPerso && _recapPerso.kind === 'endu' ? 'Nouveau test' : 'Outils') + '</div>' : '') +
       '<div class="' + gridCls + '">' +
         list.map(function (t) {
           return '' +
@@ -314,7 +380,7 @@
       card.addEventListener('click', function () {
         var t = TOOLS.find(function (x) { return x.id === card.dataset.tool; });
         if (!t) return;
-        if (_recapPerso || (_recapAth && t.cat === 'endurance')) _openFor(t);
+        if (_recapPerso || (_recapAth && (t.cat === 'endurance' || t.cat === 'force'))) _openFor(t);
         else { _openTool = t; _renderTool(t); }
       });
     });
@@ -497,8 +563,8 @@
     try { btn.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
   };
 
-  /* Bouton « Profils endurance » de l'espace perso (vue coach). */
-  window.openProfilsEndurance = function () {
+  /* Boutons « Profils endurance » / « Profils force » de l'espace perso (vue coach). */
+  function _openProfils(kind) {
     var ath = window.currentPersoAthlete || (typeof currentPersoAthlete !== 'undefined' ? currentPersoAthlete : null);
     if (!ath || !ath.id) return;
     _inject();
@@ -510,13 +576,15 @@
     var panel = _byId('admin-outils');
     if (panel) panel.classList.add('active');
     _injectStyles();
-    _recapPerso = { id: ath.id, name: ath.full_name || ath.email || 'Athlète' };
+    _recapPerso = { id: ath.id, name: ath.full_name || ath.email || 'Athlète', kind: kind };
     _openTool = null;
     _renderGrid();
     try { btn.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
     var p = _byId('page-admin');
     if (p) p.scrollTop = 0;
-  };
+  }
+  window.openProfilsEndurance = function () { _openProfils('endu'); };
+  window.openProfilsForce = function () { _openProfils('force'); };
 
   function _activate(btn) {
     if (_openTool && (_openTool.fromPerso || _openTool.fromRecap)) _openTool = null;
