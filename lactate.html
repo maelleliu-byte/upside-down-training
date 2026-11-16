@@ -1029,6 +1029,9 @@ async function connect(){
     await loadAthletes();
     const qa=new URLSearchParams(location.search).get("athlete");
     if(qa&&qa!==store.uid)store.viewId=qa;
+    const qs=new URLSearchParams(location.search),qm=qs.get("mod"),qt=qs.get("tab");
+    if(qm&&MODS.some(m=>m.k===qm)){store.mod=qm;store.touched=true}
+    if(qt&&["proto","test","profil","zones","suivi","orient"].includes(qt))store.tab=qt;
     await load();
   }catch(e){setSync("err");render()}
 }

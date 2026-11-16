@@ -25,7 +25,7 @@
   // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
   var LV_VERSION = '2026-11-15a';
   // Idem pour lactate.html (profilage lactate · profilage RPE, protocole 41)
-  var ENDU_VERSION = '20261115b';
+  var ENDU_VERSION = '20261116a';
 
   // Onglets de la boîte à outils (ordre d'affichage)
   var CATS = [
@@ -111,6 +111,104 @@
   var _cat = 'force';     // onglet actif
   try { var _sc = localStorage.getItem('udt_outils_cat'); if (_sc && CATS.some(function (c) { return c.id === _sc; })) _cat = _sc; } catch (e) {}
 
+  // ---------- récap « Profils endurance » (dernier test par modalité) ----------
+  var _recapAth = '';        // '' = moi, sinon id de l'athlète choisi dans le menu
+  var _recapPerso = null;    // athlète ouvert depuis son espace perso (vue coach)
+  var _athList = null;       // cache ef_my_athletes
+  var ENDU_MODS = { bike: 'Bike Erg', row: 'Row', ski: 'Ski Erg', assault: 'Assault', echo: 'Echo', velo: 'Vélo' };
+
+  function _sb() { try { return typeof sb !== 'undefined' ? sb : null; } catch (e) { return null; } }
+  function _me() { try { return typeof currentUser !== 'undefined' && currentUser ? currentUser.id : null; } catch (e) { return null; } }
+  function _recapTarget() { return _recapPerso ? _recapPerso.id : (_recapAth || _me()); }
+  function _dFR(iso) { if (!iso) return ''; var p = String(iso).slice(0, 10).split('-'); return p.length === 3 ? p[2] + '/' + p[1] + '/' + p[0] : iso; }
+
+  function _recapShell() {
+    var who = '';
+    if (!_recapPerso) {
+      who = '<select class="ot-rc-who" id="ot-rc-who"><option value="">Moi</option>' +
+        (_athList || []).map(function (a) {
+          return '<option value="' + _esc(a.id) + '"' + (a.id === _recapAth ? ' selected' : '') + '>' + _esc(a.name) + '</option>';
+        }).join('') + '</select>';
+    }
+    return '<div class="ot-rc">' +
+      '<div class="ot-rc-head"><div class="ot-rc-ti">' + (_recapPerso ? 'Derniers profils' : 'Mes profils') + '</div>' + who + '</div>' +
+      '<div id="ot-rc-body"><div class="ot-rc-empty">Chargement…</div></div>' +
+    '</div>';
+  }
+
+  async function _fillRecap() {
+    var body = _byId('ot-rc-body');
+    var cli = _sb();
+    if (!body) return;
+    if (!cli) { body.innerHTML = '<div class="ot-rc-empty">Connexion indisponible.</div>'; return; }
+    if (!_recapPerso && _athList === null) {
+      try { var ra = await cli.rpc('ef_my_athletes'); _athList = (ra.data || []).sort(function (a, b) { return String(a.name).localeCompare(b.name, 'fr'); }); }
+      catch (e) { _athList = []; }
+      var w = _byId('ot-rc-who');
+      if (w && _athList.length) w.outerHTML = _recapShell().match(/<select[\s\S]*<\/select>/)[0];
+      _bindWho();
+    }
+    var id = _recapTarget();
+    if (!id) { body.innerHTML = '<div class="ot-rc-empty">Connecte-toi pour voir les profils.</div>'; return; }
+    var r;
+    try {
+      r = await cli.from('endurance_tests').select('id,kind,modality,test_date,created_at,s1,s2,fc1,fc2')
+        .eq('athlete_id', id).order('test_date', { ascending: false }).order('created_at', { ascending: false });
+    } catch (e) { r = { error: e }; }
+    if (id !== _recapTarget()) return;
+    body = _byId('ot-rc-body');
+    if (!body) return;
+    if (r.error) { body.innerHTML = '<div class="ot-rc-empty">Lecture impossible.</div>'; return; }
+    var last = {}, order = [];
+    (r.data || []).forEach(function (t) { if (!last[t.modality]) { last[t.modality] = t; order.push(t.modality); } });
+    if (!order.length) {
+      body.innerHTML = '<div class="ot-rc-empty">Aucun test enregistré. Lance un profilage lactate ou RPE ci-dessous.</div>';
+      return;
+    }
+    body.innerHTML = order.map(function (m) {
+      var t = last[m];
+      var bpm = function (v) { return v ? ' <span class="ot-rc-bpm">· ' + v + ' bpm</span>' : ''; };
+      var s2 = t.s2 != null ? '<b>' + t.s2 + ' W</b>' + bpm(t.fc2) : '<span class="ot-rc-na">non atteint</span>';
+      return '<button class="ot-rc-row" data-kind="' + _esc(t.kind) + '" data-mod="' + _esc(m) + '">' +
+        '<span class="ot-rc-mod"><span class="ot-rc-mn">' + _esc(ENDU_MODS[m] || m) + '</span>' +
+          '<span class="ot-rc-meta">' + _dFR(t.test_date) + ' <span class="ot-rc-tag ' + (t.kind === 'rpe' ? 'rpe' : 'lac') + '">' +
+          (t.kind === 'rpe' ? 'RPE' : 'Lactate') + '</span></span></span>' +
+        '<span class="ot-rc-th">S1 <b>' + t.s1 + ' W</b>' + bpm(t.fc1) + '<br>S2 ' + s2 + '</span>' +
+        '<span class="ot-card-go">›</span>' +
+      '</button>';
+    }).join('') + '<div class="ot-rc-hint">Touche une ligne : profil et zones de ce test.</div>';
+    body.querySelectorAll('.ot-rc-row').forEach(function (b) {
+      b.addEventListener('click', function () { _openEndu(b.dataset.kind, { mod: b.dataset.mod, tab: 'profil' }); });
+    });
+  }
+
+  function _bindWho() {
+    var w = _byId('ot-rc-who');
+    if (!w || w.__b) return;
+    w.__b = true;
+    w.addEventListener('change', function () { _recapAth = w.value; _fillRecap(); });
+  }
+
+  /* Ouvre lactate.html (kind lactate | rpe) sur l'athlète du récap. */
+  function _openEndu(kind, opt) {
+    var base = TOOLS.find(function (x) { return x.id === (kind === 'rpe' ? 'rpe' : 'lactate'); });
+    if (base) _openFor(base, opt);
+  }
+
+  function _openFor(base, opt) {
+    var t = {}, k;
+    for (k in base) t[k] = base[k];
+    var q = [];
+    var ath = _recapPerso ? _recapPerso.id : _recapAth;
+    if (ath && base.cat === 'endurance') q.push('athlete=' + encodeURIComponent(ath));
+    if (opt && opt.mod) q.push('mod=' + encodeURIComponent(opt.mod));
+    if (opt && opt.tab) q.push('tab=' + encodeURIComponent(opt.tab));
+    if (q.length) t.url = base.url + (base.url.indexOf('?') > -1 ? '&' : '?') + q.join('&');
+    if (_recapPerso) { t.title = base.title + ' · ' + _recapPerso.name; t.fromRecap = true; }
+    _openTool = t;
+    _renderTool(t);
+  }
+
   // ---------- utilitaires ----------
 
   function _esc(s) {
@@ -139,17 +237,27 @@
     // kids-scaling.js y ajoute sa carte « Scaling Kids & Teens ».
     var gridCls = _cat === 'kids' ? 'ot-grid' : 'ot-list';
 
+    if (_recapPerso) list = TOOLS.filter(function (t) { return t.id === 'lactate' || t.id === 'rpe'; });
+    var top = _recapPerso
+      ? '<div class="ot-bar">' +
+          '<button class="ot-back" id="ot-back-perso">‹ Espace perso</button>' +
+          '<div class="ot-bar-ti">🫀 Profils endurance · ' + _esc(_recapPerso.name) + '</div>' +
+        '</div>'
+      : '<div class="ot-head">' +
+          '<div class="ot-title">Outils coach</div>' +
+          '<div class="ot-sub">Les calculateurs Upside Down, directement dans l\'admin.</div>' +
+        '</div>' +
+        '<div class="ot-tabs" role="tablist">' +
+          CATS.map(function (c) {
+            return '<button class="ot-tab' + (c.id === _cat ? ' active' : '') + '" role="tab" data-cat="' + _esc(c.id) + '">' +
+              _esc(c.label) + '</button>';
+          }).join('') +
+        '</div>';
+    var showRecap = _recapPerso || _cat === 'endurance';
+
     panel.innerHTML =
-      '<div class="ot-head">' +
-        '<div class="ot-title">Outils coach</div>' +
-        '<div class="ot-sub">Les calculateurs Upside Down, directement dans l\'admin.</div>' +
-      '</div>' +
-      '<div class="ot-tabs" role="tablist">' +
-        CATS.map(function (c) {
-          return '<button class="ot-tab' + (c.id === _cat ? ' active' : '') + '" role="tab" data-cat="' + _esc(c.id) + '">' +
-            _esc(c.label) + '</button>';
-        }).join('') +
-      '</div>' +
+      top +
+      (showRecap ? _recapShell() + '<div class="ot-rc-sec">' + (_recapPerso ? 'Nouveau test' : 'Outils de test') + '</div>' : '') +
       '<div class="' + gridCls + '">' +
         list.map(function (t) {
           return '' +
@@ -176,9 +284,15 @@
     panel.querySelectorAll('.ot-card').forEach(function (card) {
       card.addEventListener('click', function () {
         var t = TOOLS.find(function (x) { return x.id === card.dataset.tool; });
-        if (t) { _openTool = t; _renderTool(t); }
+        if (!t) return;
+        if (_recapPerso || (_recapAth && t.cat === 'endurance')) _openFor(t);
+        else { _openTool = t; _renderTool(t); }
       });
     });
+
+    var bp = _byId('ot-back-perso');
+    if (bp) bp.addEventListener('click', function () { _recapPerso = null; _openTool = null; _renderGrid(); _backToPerso(); });
+    if (showRecap) { _bindWho(); _fillRecap(); }
   }
 
   function _renderTool(t) {
@@ -187,7 +301,7 @@
 
     panel.innerHTML =
       '<div class="ot-bar">' +
-        '<button class="ot-back" id="ot-back-btn">' + (t.fromPerso ? '‹ Espace perso' : '‹ Outils') + '</button>' +
+        '<button class="ot-back" id="ot-back-btn">' + (t.fromPerso ? '‹ Espace perso' : t.fromRecap ? '‹ Profils' : '‹ Outils') + '</button>' +
         '<div class="ot-bar-ti">' + _esc(t.emoji) + ' ' + _esc(t.title) + '</div>' +
         '<a class="ot-ext" href="' + _esc(t.url) + '" target="_blank" rel="noopener" ' +
            'title="Ouvrir dans un nouvel onglet">↗</a>' +
@@ -267,7 +381,27 @@
       '.ot-frame-load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;',
       'background:var(--dark);z-index:2}',
       '.ot-foot{font-size:11px;color:var(--muted);margin-top:10px;text-align:center;line-height:1.5}',
-      '.ot-foot a{color:var(--accent);text-decoration:none}'
+      '.ot-foot a{color:var(--accent);text-decoration:none}',
+      '.ot-rc{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:12px 14px;margin-bottom:14px}',
+      '.ot-rc-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:4px}',
+      '.ot-rc-ti{font-family:"Bebas Neue",sans-serif;font-size:18px;letter-spacing:1.5px}',
+      '.ot-rc-who{max-width:55%;background:var(--card2);border:1px solid var(--border2);color:var(--text);',
+      'border-radius:9px;padding:6px 8px;font-family:inherit;font-size:12px}',
+      '.ot-rc-row{display:flex;align-items:center;gap:10px;width:100%;text-align:left;background:none;border:0;',
+      'border-top:1px solid var(--border);padding:10px 0;color:var(--text);font-family:inherit;cursor:pointer}',
+      '#ot-rc-body .ot-rc-row:first-child{border-top:0}',
+      '.ot-rc-mod{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}',
+      '.ot-rc-mn{font-size:14px;font-weight:700}',
+      '.ot-rc-meta{font-size:11px;color:var(--muted)}',
+      '.ot-rc-tag{display:inline-block;font-size:10px;font-weight:700;padding:1px 6px;border-radius:6px;margin-left:4px}',
+      '.ot-rc-tag.lac{background:rgba(45,212,191,.16);color:#2dd4bf}',
+      '.ot-rc-tag.rpe{background:rgba(155,108,240,.18);color:#b9a0f5}',
+      '.ot-rc-th{flex:0 0 auto;text-align:right;font-size:12px;line-height:1.55;color:var(--muted)}',
+      '.ot-rc-th b{color:var(--text);font-size:13px}',
+      '.ot-rc-bpm{font-size:11px}',
+      '.ot-rc-na{color:var(--muted);font-style:italic}',
+      '.ot-rc-empty,.ot-rc-hint{font-size:12px;color:var(--muted);padding:8px 0 2px}',
+      '.ot-rc-sec{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 8px}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -332,8 +466,30 @@
     try { btn.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
   };
 
+  /* Bouton « Profils endurance » de l'espace perso (vue coach). */
+  window.openProfilsEndurance = function () {
+    var ath = window.currentPersoAthlete || (typeof currentPersoAthlete !== 'undefined' ? currentPersoAthlete : null);
+    if (!ath || !ath.id) return;
+    _inject();
+    var btn = _byId('admin-outils-tab-btn');
+    if (!btn) return;
+    document.querySelectorAll('.admin-tab-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.querySelectorAll('.admin-panel').forEach(function (p) { p.classList.remove('active'); });
+    btn.classList.add('active');
+    var panel = _byId('admin-outils');
+    if (panel) panel.classList.add('active');
+    _injectStyles();
+    _recapPerso = { id: ath.id, name: ath.full_name || ath.email || 'Athlète' };
+    _openTool = null;
+    _renderGrid();
+    try { btn.scrollIntoView({ block: 'nearest', inline: 'center' }); } catch (e) {}
+    var p = _byId('page-admin');
+    if (p) p.scrollTop = 0;
+  };
+
   function _activate(btn) {
-    if (_openTool && _openTool.fromPerso) _openTool = null;
+    if (_openTool && (_openTool.fromPerso || _openTool.fromRecap)) _openTool = null;
+    _recapPerso = null;
     document.querySelectorAll('.admin-tab-btn').forEach(function (b) { b.classList.remove('active'); });
     document.querySelectorAll('.admin-panel').forEach(function (p) { p.classList.remove('active'); });
     btn.classList.add('active');
