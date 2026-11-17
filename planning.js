@@ -227,7 +227,7 @@ async function buildSessionCard(s){
   let myScore=null,myScoreElsewhere=false;
   try{
     const _ids=await _lbSessionIds(s.id);
-    const {data:_rows}=await sb.from('wod_scores').select('athlete_id,session_id,score_text,score_value,level,sets_data').in('session_id',_ids);
+    const {data:_rows}=await sb.from('wod_scores').select('athlete_id,session_id,score_text,score_value,level,sets_data,done_at').in('session_id',_ids);
     const _u=_dedupeByAthlete(_rows||[],s.id);
     scoreCount=_u.length;
     if(currentUser?.id){const m=_u.find(r=>r.athlete_id===currentUser.id);if(m){myScore=m;myScoreElsewhere=m.session_id!==s.id;}}
@@ -236,6 +236,8 @@ async function buildSessionCard(s){
     ? `<span class="lb-cnt" data-n="${scoreCount}" data-c="${cardColor}" style="display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;margin-left:8px;border-radius:11px;background:${cardColor};color:${isLightColor(cardColor)?'#000':'#fff'};font-size:12px;font-weight:700;line-height:1">${scoreCount}</span>`
     : `<span class="lb-cnt" data-n="0" data-c="${cardColor}" style="margin-left:8px;font-size:12px;color:var(--muted);font-weight:500">· 0 score</span>`;
 
+  // Score déjà rentré : on pré-remplit la saisie avec les valeurs existantes (modifier sans tout retaper)
+  if(myScore&&!myScoreElsewhere)schedulePrefillMyScore(s.id,myScore);
   return `<div class="session-card fade-up" id="sc-${s.id}" style="border-color:${cardColor}33">
     <div class="session-header" style="border-bottom-color:${cardColor}22">
       <span class="badge badge-${s.type}" style="background:${cardColor}18;color:${cardColor}">${TYPE_LABELS[s.type]||s.type}</span>
@@ -295,6 +297,81 @@ function markMyScoreDone(sessionId,payload){
   d.classList.add('ms-done');d.open=false;
   if(typeof window.chgPaintBand==='function')window.chgPaintBand(sessionId);
   const rb=document.getElementById('ivr-'+sessionId);if(rb&&typeof ivRecapHtml==='function')rb.innerHTML=ivRecapHtml(payload.sets_data);
+}
+
+/* Pré-remplissage de « Mon score » avec le score déjà enregistré.
+   Appelé après l'insertion de la carte dans la page (la carte est construite en texte HTML). */
+function schedulePrefillMyScore(sessionId,sc){
+  let tries=0;
+  const run=()=>{
+    if(document.getElementById('sc-'+sessionId)){try{prefillMyScore(sessionId,sc);}catch(e){console.warn('prefill score',e);}return;}
+    if(++tries<20)setTimeout(run,50);
+  };
+  setTimeout(run,0);
+}
+function prefillMyScore(sessionId,sc){
+  const card=document.getElementById('sc-'+sessionId);if(!card||!sc)return;
+  const box=card.querySelector('.ms-body');if(!box||box.dataset.prefilled)return;
+  box.dataset.prefilled='1';
+  let sd=sc.sets_data;
+  if(typeof sd==='string'){try{sd=JSON.parse(sd);}catch(e){sd=null;}}
+  if(!Array.isArray(sd))sd=null;
+  const txt=String(sc.score_text||'');
+  const set=(el,v)=>{if(el&&v!=null&&v!=='')el.value=String(v);};
+  const num=v=>v==null?'':String(v).replace(/\.0+$/,'');
+  // Niveau (WOD)
+  if(sc.level){
+    const cls={rx:'rx',intermediate:'inter',scaled:'scaled',foundation:'found'}[sc.level];
+    const btn=cls&&card.querySelector('.level-btn.'+cls);
+    if(btn){card.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
+  }
+  // Date « fait le »
+  if(sc.done_at)set(document.getElementById('done-at-'+sessionId),String(sc.done_at).slice(0,10));
+
+  const ivBox=card.querySelector('[data-intervals]');
+  const apBox=card.querySelector('[data-autoparts]');
+  if(ivBox){
+    if(sd)sd.forEach(r=>{
+      const i=(+r.set||0)-1;if(i<0)return;
+      set(document.getElementById(`score-${i}-${sessionId}`),r.value==null?'':num(r.value));
+      const rs=document.getElementById(`rpe-${i}-${sessionId}`);
+      if(rs&&r.rpe!=null){const v=String(r.rpe);if([...rs.options].some(o=>o.value===v))rs.value=v;}
+    });
+    return;
+  }
+  if(apBox){
+    if(sd)sd.forEach(r=>set(apBox.querySelector(`input[data-part="${(+r.part||1)-1}"][data-set="${(+r.set||1)-1}"]`),num(r.value)));
+    return;
+  }
+  const ta=card.querySelector(`textarea#score-input-${sessionId}`);
+  if(ta){ta.value=txt;return;}
+  if(card.querySelector(`#set-${sessionId}-0`)){
+    if(sd)sd.forEach(r=>{if(r.value)set(document.getElementById(`set-${sessionId}-${(+r.set||1)-1}`),num(r.value));});
+    return;
+  }
+  const multi=card.querySelectorAll('.ms-body .multi-score-input[id^="score-"]');
+  if(multi.length){
+    const parts=txt.split(' | ');
+    multi.forEach((el,i)=>{
+      let v=parts[i];if(v==null)return;
+      const lbl=(el.closest('.multi-score-row')?.querySelector('.multi-score-lbl')?.textContent||'').trim();
+      if(lbl&&v.startsWith(lbl+' '))v=v.slice(lbl.length+1);
+      set(el,v.replace(/\s*kg$/i,'').trim());
+    });
+    return;
+  }
+  const tm=document.getElementById('time-min-'+sessionId);
+  if(tm){
+    const dnf=txt.match(/^DNF\s*·\s*(\d+)/);
+    if(dnf){const cb=document.getElementById('dnf-'+sessionId);if(cb){cb.checked=true;if(typeof onDnfToggle==='function')onDnfToggle(sessionId);}
+      set(document.getElementById('dnf-reps-'+sessionId),dnf[1]);return;}
+    const m=txt.match(/^(\d+):(\d{2})$/);
+    if(m){set(tm,+m[1]);set(document.getElementById('time-sec-'+sessionId),+m[2]);}
+    return;
+  }
+  const rd=document.getElementById('rounds-'+sessionId);
+  if(rd){const m=txt.match(/^(\d+)\s*\+\s*(\d+)$/);if(m){set(rd,m[1]);set(document.getElementById('reps-'+sessionId),m[2]);}return;}
+  set(document.getElementById('score-input-'+sessionId),txt);
 }
 
 function buildSeparatorCard(s){
@@ -685,8 +762,12 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
   try{
     const _ids=(await _lbSessionIds(sessionId)).filter(x=>x!==sessionId);
     if(_ids.length&&currentUser?.id){
+      // Modification d'un score déjà rentré sur ce bloc : autorisée (la copie liée suit automatiquement)
+      const{data:_mine}=await sb.from('wod_scores').select('id').eq('athlete_id',currentUser.id).eq('session_id',sessionId).limit(1);
+      if(!(_mine&&_mine.length)){
       const{data:_o}=await sb.from('wod_scores').select('id').eq('athlete_id',currentUser.id).in('session_id',_ids).limit(1);
       if(_o&&_o.length){showToast('⚠️ Score déjà rentré sur la même séance ailleurs');return;}
+      }
     }
   }catch(e){}
   let scoreText='',scoreValue=0,setsData=null;
