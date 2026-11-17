@@ -457,7 +457,7 @@ function formatPlanningContent(raw){
   lines.forEach(line=>{
     const t=txt(line);
     if(!t){const tags=line.replace(/[^<>]*(<[^>]*>)?/g,'$1');if(tags)out.push({blk:true,tag:true,h:tags});out.push({blk:true,h:'<span class="cr-gap"></span>'});return;}
-    if(/^_{3,}$/.test(t)){out.push({blk:true,h:'<span class="cr-sep"></span>'});return;}
+    if(/^_{3,}$/.test(t)||/^(?:\.\s*){5,}$/.test(t)){out.push({blk:true,h:'<span class="cr-sep"></span>'});return;}
     const part=t.match(/^-{2,}\s*(.+?)\s*-{2,}$/);
     if(part){out.push({blk:true,h:`<span class="cr-part">${escapeHtml(part[1])}</span>`});return;}
     if(/^direct into$/i.test(t)){out.push({blk:false,h:'<span class="cr-di">↓ Direct into</span>'});return;}

@@ -478,7 +478,7 @@ function renderContentWithCharges(content,opts){
   const SEP='\u0001';
   if(!(opts&&opts.keepSep)){
     out=out.split('\n').map(l=>{const t=l.replace(/<[^>]+>/g,'').replace(/&nbsp;/g,' ');
-      return /^\s*_{10,}\s*$/.test(t)?SEP:/^\s*_{5,9}\s*$/.test(t)?'\u0002':l;}).join('\n');
+      return /^\s*_{10,}\s*$/.test(t)?SEP:/^\s*_{5,9}\s*$/.test(t)?'\u0002':/^\s*(?:\.\s*){5,}$/.test(t)?'\u0003':l;}).join('\n');
   }
   // 4. \n → <br> (double saut = séparateur de bloc)
   out=out.replace(/\n\n/g,'<br><br>').replace(/\n/g,'<br>');
@@ -486,6 +486,8 @@ function renderContentWithCharges(content,opts){
   try{if(window.udtAllure)out=window.udtAllure.apply(out);}catch(e){}
   if(out.includes(SEP))out=out.replace(/(?:<br>)*\u0001(?:<br>)*/g,'<div class="blk-sep"></div>');
   if(out.includes('\u0002'))out=out.replace(/(?:<br>)*\u0002(?:<br>)*/g,'<div class="blk-sep sm"></div>');
+  // ligne de 5 points ou plus → séparateur en pointillés (ex. séance / adaptations)
+  if(out.includes('\u0003'))out=out.replace(/(?:<br>)*\u0003(?:<br>)*/g,'<div class="blk-sep dot"></div>');
   return out;
 }
 
