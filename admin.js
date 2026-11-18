@@ -241,7 +241,7 @@ function renderScoreLabels(){
   if(!container)return;
   // garde ce qui est déjà saisi quand on change le nombre de scores
   const keep=Array.from({length:20},(_,i)=>({l:document.getElementById(`f-score-label-${i}`)?.value,t:document.getElementById(`f-score-ltype-${i}`)?.value}));
-  const opts=[['','Type du bloc'],['time','Temps'],['reps','Reps'],['rounds','Rounds + reps'],['weight','Charge (kg)'],['calories','Calories'],['distance','Distance'],['watt','Watts'],['text','Texte']];
+  const opts=[['','Type du bloc'],['time','Temps'],['reps','Reps'],['rounds','Rounds + reps'],['weight','Charge (kg)'],['calories','Calories'],['distance','Distance'],['watt','Watts'],['pace','Allure (min/km)'],['text','Texte']];
   container.innerHTML=Array.from({length:count},(_,i)=>`
     <div class="form-group" style="margin-bottom:8px">
       <label class="form-label">Score ${i+1} · label et type</label>
@@ -275,6 +275,9 @@ function selectSessionColor(color,el){
 }
 
 // ===== TEMPLATES DE SÉANCE (localStorage par coach) =====
+// Séances types intégrées à l'app (non modifiables, toujours disponibles)
+var BUILTIN_SESSION_TEMPLATES=[{"name": "TEST PUISSANCE CRITIQUE (ERGO)", "type": "engine", "title": "TEST PUISSANCE CRITIQUE ROW", "content": "<b><i><font color=\"#2dd4bf\">TEST PUISSANCE CRITIQUE</font></i></b><br>Objectif : déterminer vos zones d'intensité. Le protocole et l'ordre des efforts doivent être respectés à la lettre pour que les données soient exploitables. La séance évalue deux capacités distinctes.<br>__________<br><b><i><font color=\"#2dd4bf\">1. ÉCHAUFFEMENT</font></i></b><br><br><b>5:00 À 10:00 FACILE</b><br><b>5:00 ACCÉLÉRATIONS</b><br>20\" SOUTENU / 40\" MODÉRÉ<br><br>Pour préparer le système nerveux et cardiovasculaire.<br>__________<br><b><i><font color=\"#2dd4bf\">2. TEST 3:00 ALL OUT</font></i></b><br><br>Ce n'est ni un sprint court, ni un effort de gestion. Le but est de passer la ligne des 3 minutes le réservoir totalement vide.<br><br><b>Intention :</b> partir fort et survivre. La puissance va obligatoirement baisser au fil des minutes, c'est le comportement attendu.<br><b>Stratégie :</b> départ très agressif. On ne cherche pas à être régulier, on repousse l'épuisement le plus loin possible. Si vous êtes capable d'accélérer dans les 15 dernières secondes, c'est que vous n'avez pas joué le jeu au départ.<br><br><b>Effort :</b><br>0 à 30\" (RPE 8 à 9) : départ soutenu, intense.<br>1:00 à 2:00 (RPE 10) : la difficulté s'installe.<br>Dernière minute (RPE 10+) : donnez tout ce que vous avez, même si vous avez l'impression de ralentir.<br>__________<br><b><i><font color=\"#2dd4bf\">3. RÉCUPÉRATION 20:00 À 30:00</font></i></b><br><br><i>(Si le test 12:00 est effectué à la suite du test 3:00)</i><br>Non négociable. Récupération active légère (marche ou ergo très facile), puis repos complet. Sans cette pause, le test 12:00 est faussé.<br>__________<br><b><i><font color=\"#2dd4bf\">4. TEST 12:00</font></i></b><br><br>Un départ explosif garantit l'échec. Trouvez votre ligne rouge et restez collés dessus le plus longtemps possible.<br><br><b>Intention :</b> votre rythme maximum soutenable. Effort très engagé mais sous contrôle. Un bon test garde une puissance stable du début à la fin, avec éventuellement une légère accélération à la fin.<br><b>Stratégie :</b> rythme soutenu et soutenable au départ. Les premières minutes doivent sembler modérées, pour dériver et devenir difficiles sur la seconde partie.<br><br><b>Effort :</b><br>0 à 4:00 (RPE 7 à 8) : respiration forte mais cadencée.<br>4:00 à 9:00 (RPE 9 à 9+) : phase clé, concentration pour ne pas baisser de rythme.<br>3 dernières minutes (RPE 9+ à 10) : on lâche tout, on maintient ou on accélère.<br>__________<br><b><i><font color=\"#2dd4bf\">SCORES</font></i></b><br><br>Score 1 : puissance moyenne du test 3:00 (W).<br>Score 2 : puissance moyenne du test 12:00 (W).<br><i>Les scores alimentent directement le profil PC / VC de l'athlète.</i>", "intensity": 10, "score_type": "watt", "color": "#47c8ff", "multi_score": true, "score_count": 2, "score_labels": ["TEST 3:00::watt", "TEST 12:00::watt"], "videos": [], "builtin": true}, {"name": "TEST VITESSE CRITIQUE (RUN)", "type": "run", "title": "TEST VITESSE CRITIQUE RUN", "content": "<b><i><font color=\"#2dd4bf\">TEST VITESSE CRITIQUE</font></i></b><br>Objectif : déterminer vos zones d'intensité. Le protocole et l'ordre des efforts doivent être respectés à la lettre pour que les données soient exploitables. La séance évalue deux capacités distinctes.<br>__________<br><b><i><font color=\"#2dd4bf\">1. ÉCHAUFFEMENT</font></i></b><br><br><b>5:00 À 10:00 FACILE</b><br><b>5:00 ACCÉLÉRATIONS</b><br>20\" SOUTENU / 40\" MODÉRÉ<br><br>Pour préparer le système nerveux et cardiovasculaire.<br>__________<br><b><i><font color=\"#2dd4bf\">2. TEST 3:00 ALL OUT</font></i></b><br><br>Ce n'est ni un sprint court, ni un effort de gestion. Le but est de passer la ligne des 3 minutes le réservoir totalement vide.<br><br><b>Intention :</b> partir fort et survivre. La vitesse va obligatoirement baisser au fil des minutes, c'est le comportement attendu.<br><b>Stratégie :</b> départ très agressif. On ne cherche pas à être régulier, on repousse l'épuisement le plus loin possible. Si vous êtes capable d'accélérer dans les 15 dernières secondes, c'est que vous n'avez pas joué le jeu au départ.<br><br><b>Effort :</b><br>0 à 30\" (RPE 8 à 9) : départ soutenu, intense.<br>1:00 à 2:00 (RPE 10) : la difficulté s'installe.<br>Dernière minute (RPE 10+) : donnez tout ce que vous avez, même si vous avez l'impression de ralentir.<br>__________<br><b><i><font color=\"#2dd4bf\">3. RÉCUPÉRATION 20:00 À 30:00</font></i></b><br><br><i>(Si le test 12:00 est effectué à la suite du test 3:00)</i><br>Non négociable. Récupération active légère (marche), puis repos complet. Sans cette pause, le test 12:00 est faussé.<br>__________<br><b><i><font color=\"#2dd4bf\">4. TEST 12:00</font></i></b><br><br>Un départ explosif garantit l'échec. Trouvez votre ligne rouge et restez collés dessus le plus longtemps possible.<br><br><b>Intention :</b> votre rythme maximum soutenable. Effort très engagé mais sous contrôle. Un bon test garde une vitesse stable du début à la fin, avec éventuellement une légère accélération à la fin.<br><b>Stratégie :</b> rythme soutenu et soutenable au départ. Les premières minutes doivent sembler modérées, pour dériver et devenir difficiles sur la seconde partie.<br><br><b>Effort :</b><br>0 à 4:00 (RPE 7 à 8) : respiration forte mais cadencée.<br>4:00 à 9:00 (RPE 9 à 9+) : phase clé, concentration pour ne pas baisser de rythme.<br>3 dernières minutes (RPE 9+ à 10) : on lâche tout, on maintient ou on accélère.<br>__________<br><b><i><font color=\"#2dd4bf\">SCORES</font></i></b><br><br>Score 1 : allure moyenne du test 3:00 (min/km).<br>Score 2 : allure moyenne du test 12:00 (min/km).<br><i>Les scores alimentent directement le profil PC / VC de l'athlète.</i>", "intensity": 10, "score_type": "pace", "color": "#47c8ff", "multi_score": true, "score_count": 2, "score_labels": ["TEST 3:00::pace", "TEST 12:00::pace"], "videos": [], "builtin": true}];
+
 function _tplKey(){
   try{return 'upside:session_templates:'+(currentUser&&currentUser.id?currentUser.id:'anon');}catch(e){return 'upside:session_templates:anon';}
 }
@@ -297,11 +300,16 @@ function renderSessionTemplates(){
   const list=document.getElementById('session-templates-list');
   if(!list)return;
   const tpls=getSessionTemplates();
+  const builtin=BUILTIN_SESSION_TEMPLATES.map((t,k)=>`
+    <div class="tpl-chip" style="display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border2);border-left:3px solid #2dd4bf;border-radius:8px;padding:5px 8px">
+      <span style="font-size:11px" title="Séance type UDT">🔒</span>
+      <button type="button" onclick="applyBuiltinTemplate(${k})" style="background:none;border:none;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;padding:0;text-align:left">${t.name}</button>
+    </div>`).join('');
   if(!tpls.length){
-    list.innerHTML='<div style="font-size:11px;color:var(--muted);padding:6px 2px;font-style:italic">Aucun template — sauvegarde ta première séance type ci-dessous</div>';
+    list.innerHTML=builtin+'<div style="font-size:11px;color:var(--muted);padding:6px 2px;font-style:italic;width:100%">Aucun template perso : sauvegarde ta première séance type ci-dessous</div>';
     return;
   }
-  list.innerHTML=tpls.map((t,i)=>`
+  list.innerHTML=builtin+tpls.map((t,i)=>`
     <div class="tpl-chip" data-i="${i}" style="display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border2);border-left:3px solid ${t.color||'#e8ff47'};border-radius:8px;padding:6px 4px 6px 10px;max-width:100%">
       <button type="button" onclick="applySessionTemplate(${i})" style="background:none;border:none;color:var(--text);font-size:12px;font-weight:600;cursor:pointer;padding:0;text-align:left;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="Charger ce template">${(t.name||t.title||'Sans titre').replace(/</g,'&lt;')}</button>
       <span style="font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px">${(t.type||'').slice(0,6)}</span>
@@ -354,9 +362,10 @@ async function saveAsSessionTemplate(){
   if(body&&body.style.display==='none'){toggleSessionTemplates();}
   showToast('✅ Template sauvegardé');
 }
-function applySessionTemplate(i){
-  const tpls=getSessionTemplates();
-  const t=tpls[i];if(!t)return;
+function applyBuiltinTemplate(k){_applyTpl(BUILTIN_SESSION_TEMPLATES[k]);}
+function applySessionTemplate(i){_applyTpl(getSessionTemplates()[i]);}
+function _applyTpl(t){
+  if(!t)return;
   // Type d'abord (déclenche affichage sets)
   document.getElementById('f-type').value=t.type||'wod';
   if(typeof toggleSetsField==='function')toggleSetsField();

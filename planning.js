@@ -195,7 +195,7 @@ async function buildSessionCard(s){
         return `
         <div class="multi-score-row">
           <div class="multi-score-lbl">${pl.label}</div>
-          <input class="multi-score-input" id="score-${i}-${s.id}" data-stype="${ty}" type="text" ${ty==='time'?`inputmode="text" placeholder="2:00" pattern="\\d{1,2}:\\d{2}" onblur="checkTimeInput(this)" oninput="this.classList.remove('bad-time')"`:`placeholder="${getScorePlaceholder(ty)}${ty==='weight'?' kg':''}"`}>
+          <input class="multi-score-input" id="score-${i}-${s.id}" data-stype="${ty}" type="text" ${ty==='time'||ty==='pace'?`inputmode="text" placeholder="${ty==='pace'?'4:30 /km':'2:00'}" pattern="\\d{1,2}:\\d{2}" onblur="checkTimeInput(this)" oninput="this.classList.remove('bad-time')"`:`placeholder="${getScorePlaceholder(ty)}${ty==='weight'?' kg':''}"`}>
         </div>`;}).join('')}
     </div>`;
   } else if(s.score_type==='time'){
@@ -711,7 +711,7 @@ function fmtTimeSec(x){const h=Math.floor(x/3600),m=Math.floor(x%3600/60),s=x%60
 function normTimeInput(el){const v=parseTimeLoose(el.value);if(el.value.trim()&&v!=null)el.value=fmtTimeSec(v);}
 /* Strict : m:ss ou h:mm:ss uniquement */
 function parseTimeStrict(v){const t=String(v||'').trim();if(!/^\d{1,2}(:\d{2}){1,2}$/.test(t))return null;return parseTimeLoose(t);}
-function checkTimeInput(el){const v=el.value.trim();el.classList.toggle('bad-time',!!v&&parseTimeStrict(v)==null);}
+function checkTimeInput(el){const v=el.value.trim().replace(/\s*\/?\s*km$/i,'');el.classList.toggle('bad-time',!!v&&parseTimeStrict(v)==null);}
 (function(){if(document.getElementById('time-strict-css'))return;const st=document.createElement('style');st.id='time-strict-css';
   st.textContent='.multi-score-input.bad-time{border-color:var(--red)!important;box-shadow:0 0 0 2px rgba(255,68,68,.25)}';document.head.appendChild(st);})();
 
@@ -831,6 +831,7 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
       const lbl=(el.closest('.multi-score-row')?.querySelector('.multi-score-lbl')?.textContent||`Score ${i+1}`).trim();
       let shown=v,num=parseFloat(v.replace(',','.'))||0;
       if(ty==='time'){const sec=parseTimeStrict(v);if(sec==null){checkTimeInput(el);showToast('⚠️ '+lbl+' : format minutes:secondes, ex. 4:32');return;}shown=fmtTimeSec(sec);num=sec;}
+      else if(ty==='pace'){const sec=parseTimeStrict(v.replace(/\s*\/?\s*km$/i,''));if(sec==null){checkTimeInput(el);showToast('⚠️ '+lbl+' : allure en minutes:secondes par km, ex. 4:30');return;}shown=fmtTimeSec(sec)+' /km';num=sec;}
       else if(ty==='weight')shown=v.replace(/\s*kg$/i,'')+' kg';
       parts.push(`${lbl} ${shown}`);if(first==null)first=num;
     }
@@ -843,7 +844,15 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
       if(v)values.push(v);
     }
     if(!values.length){showToast('⚠️ Entre au moins un score');return;}
-    if(scoreType==='time'){
+    if(scoreType==='pace'){
+      // allure min/km (ex. 4:30)
+      const secs=values.map(v=>parseTimeStrict(String(v).replace(/\s*\/?\s*km$/i,'')));
+      if(secs.some(x=>x==null)){
+        for(let i=0;i<scoreCount;i++){const el=document.getElementById(`score-${i}-${sessionId}`);if(el)checkTimeInput(el);}
+        showToast('⚠️ Allure en minutes:secondes par km, ex. 4:30');return;}
+      scoreText=secs.map(x=>fmtTimeSec(x)+' /km').join(' | ');
+      scoreValue=secs[0];
+    } else if(scoreType==='time'){
       // format obligatoire minutes:secondes (ex. 1:47) — pas de 1'47, 1.47 ni 1,47
       const secs=values.map(parseTimeStrict);
       if(secs.some(x=>x==null)){
@@ -1016,7 +1025,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
   // Tri intelligent par type de score
   // - time : ASC (lowest = best), DNF (score_value < 0) toujours en bas, triés par reps DESC
   // - tous les autres : DESC
-  const isTime = scoreType==='time';
+  const isTime = scoreType==='time'||scoreType==='pace'; // allure : plus petite = meilleure
   const sorted=[...filtered].sort((a,b)=>{
     if(isWodBlock&&levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
     if(isTime){
