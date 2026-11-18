@@ -117,33 +117,22 @@
 
   /* ---------- texte de la plage ---------- */
   function rangeHTML(zone, mod) {
+    /* Pastille courte : juste l'allure (course) ou la puissance (ergo). Le détail est dans « Mes zones ». */
     var b = bounds(zone, mod);
-    var head = '<b>' + zone + ' · ' + Z[zone].n + '</b>';
-    if (!b) {
-      return chip(head + ' · RPE ' + Z[zone].rpe + ' <span style="opacity:.75">· pas encore de profilage ' + (mod === 'run' ? 'ni de VC' : 'ni de PC') + ' en ' + (LABEL[mod] || 'course') + '</span>', true);
-    }
-    var v, sub = '';
+    if (!b) return chip('pas encore de ' + (mod === 'run' ? 'VC' : 'PC') + ' en ' + (LABEL[mod] || 'course'), true);
+    var v;
     if (b.unit === 'km/h') {
-      v = '<span style="color:#2dd4bf">' + (b.hi == null ? '&lt; ' + mmss(3600 / b.lo) + ' /km' : mmss(3600 / b.lo) + ' – ' + mmss(3600 / b.hi) + ' /km') + '</span>';
-      sub = '<span style="opacity:.7;font-weight:400">(' + (b.hi == null ? '&gt; ' + fr(b.lo, 1) + ' km/h' : fr(b.lo, 1) + ' – ' + fr(b.hi, 1) + ' km/h') + ')</span>';
+      v = b.hi == null ? '&lt; ' + mmss(3600 / b.lo) + ' /km' : mmss(3600 / b.lo) + ' – ' + mmss(3600 / b.hi) + ' /km';
+    } else if (mod === 'row' || mod === 'ski') {
+      v = b.lo == null ? '&gt; ' + mmss(pace500(b.hi)) + ' /500m' : b.hi == null ? '&lt; ' + mmss(pace500(b.lo)) + ' /500m' : mmss(pace500(b.lo)) + ' – ' + mmss(pace500(b.hi)) + ' /500m';
     } else {
-      v = b.lo == null ? '< ' + Math.round(b.hi) + ' W' : b.hi == null ? '> ' + Math.round(b.lo) + ' W' : Math.round(b.lo) + ' – ' + Math.round(b.hi) + ' W';
-      if (mod === 'row' || mod === 'ski') {
-        sub = b.lo == null ? '> ' + mmss(pace500(b.hi)) + ' /500m' : b.hi == null ? '< ' + mmss(pace500(b.lo)) + ' /500m' : mmss(pace500(b.hi)) + ' – ' + mmss(pace500(b.lo)) + ' /500m';
-      }
+      v = b.lo == null ? '&lt; ' + Math.round(b.hi) + ' W' : b.hi == null ? '&gt; ' + Math.round(b.lo) + ' W' : Math.round(b.lo) + ' – ' + Math.round(b.hi) + ' W';
     }
-    var fc = '';
-    if (b.fcAt) {
-      if (b.lo == null) fc = 'FC < ' + b.fcAt(b.hi);
-      else if (zone === 'Z5') fc = 'FC > ' + b.fcAt(b.lo);
-      else fc = 'FC ' + b.fcAt(b.lo) + '–' + b.fcAt(b.hi);
-    }
-    var parts = [head, v, sub, 'RPE ' + Z[zone].rpe, fc].filter(Boolean);
-    return chip(parts.join(' · ') + ' <span style="opacity:.6;font-weight:400;font-size:11px">(' + b.src + ')</span>');
+    return chip(v);
   }
   function chip(inner, muted) {
-    return ' <span class="allure-zone" style="display:inline-block;margin:2px 0;background:' + (muted ? 'rgba(255,255,255,.06)' : 'rgba(232,255,71,.15)') +
-      ';color:' + (muted ? 'var(--muted)' : 'var(--accent)') + ';padding:2px 8px;border-radius:6px;font-size:12.5px;line-height:1.45">' + inner + '</span>';
+    return ' <span class="allure-zone" style="display:inline-block;margin:2px 0;background:' + (muted ? 'rgba(255,255,255,.06)' : 'rgba(45,212,191,.14)') +
+      ';color:' + (muted ? 'var(--muted)' : '#2dd4bf') + ';padding:1px 8px;border-radius:6px;font-size:12.5px;font-weight:700;line-height:1.45">' + inner + '</span>';
   }
 
   /* ---------- application au contenu rendu (lignes séparées par <br>) ---------- */
