@@ -155,7 +155,9 @@ async function buildSessionCard(s){
   ].join('');
 
   // renderContentWithCharges normalise tout en <br> — pas besoin de test isHtml
-  const contentHtml=renderContentWithCharges(s.content||'');
+  let contentHtml=renderContentWithCharges(s.content||'');
+  // Blocs ENGINE / RUN : onglet dépliable « Mes zones » (fourchettes perso par zone)
+  try{if(window.udtAllure&&window.udtAllure.panel)contentHtml+=window.udtAllure.panel(s);}catch(e){}
   const isStrength=s.type==='strength'&&s.sets>0;
   const isMulti=s.multi_score&&s.score_count>0;
   const isText=s.score_type==='text';
@@ -609,6 +611,11 @@ function findPRByName(name,format){
     const normFmt=format.trim().toLowerCase().replace(/\s+/g,'');
     const fmtPRs=prs.filter(p=>(p.format||'').toLowerCase().replace(/\s+/g,'')===normFmt);
     if(fmtPRs.length){
+      // Puissance / Vitesse critique : la référence est le DERNIER test (priorité aux PC/VC issues des tests)
+      if(normFmt==='vitessecritique'||normFmt==='puissancecritique'){
+        const auto=fmtPRs.filter(p=>/^auto:cp/.test(p.note||''));
+        return (auto.length?auto:fmtPRs).reduce((a,b)=>String(b.recorded_at||'')>String(a.recorded_at||'')?b:a);
+      }
       // meilleur PR du format (max value)
       return fmtPRs.reduce((a,b)=>b.value>a.value?b:a);
     }

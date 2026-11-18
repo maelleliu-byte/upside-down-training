@@ -174,5 +174,50 @@
     } catch (e) { /* zones indisponibles : la séance s'affiche sans plage */ }
   }
 
-  window.udtAllure = { apply: apply, load: load, zoneOf: zoneOf, modOf: modOf };
+  /* ---------- onglet « Mes zones » sous les blocs ENGINE / RUN ---------- */
+  var ORDER = ['run', 'row', 'ski', 'bike', 'assault', 'echo'];
+  function modsOf(s) {
+    var t = strip(String((s.title || '') + ' ' + (s.content || '')).replace(/<[^>]+>/g, ' '));
+    var found = [];
+    var tests = {
+      row: /\b(row|rameur|rowing)\b/, ski: /\bski\b|skierg/, assault: /assault|air ?bike/, echo: /\becho\b/,
+      bike: /bike ?erg|\bbike\b/, run: /\b(run|course|footing|running|piste|tapis)\b/
+    };
+    ORDER.forEach(function (m) { if (tests[m].test(t)) found.push(m); });
+    if (String(s.type).toLowerCase() === 'run' && found.indexOf('run') < 0) found.unshift('run');
+    return found.slice(0, 3);
+  }
+  function zoneRow(zone, mod) {
+    var b = bounds(zone, mod);
+    if (!b) return '';
+    var v, sub = '';
+    if (b.unit === 'km/h') {
+      v = b.hi == null ? '&gt; ' + fr(b.lo, 1) + ' km/h' : fr(b.lo, 1) + ' – ' + fr(b.hi, 1) + ' km/h';
+      sub = b.hi == null ? '&lt; ' + mmss(3600 / b.lo) + ' /km' : mmss(3600 / b.hi) + ' – ' + mmss(3600 / b.lo) + ' /km';
+    } else {
+      v = b.lo == null ? '&lt; ' + Math.round(b.hi) + ' W' : b.hi == null ? '&gt; ' + Math.round(b.lo) + ' W' : Math.round(b.lo) + ' – ' + Math.round(b.hi) + ' W';
+      if (mod === 'row' || mod === 'ski') sub = b.lo == null ? '&gt; ' + mmss(pace500(b.hi)) + ' /500m' : b.hi == null ? '&lt; ' + mmss(pace500(b.lo)) + ' /500m' : mmss(pace500(b.hi)) + ' – ' + mmss(pace500(b.lo)) + ' /500m';
+    }
+    return '<div style="display:flex;gap:8px;align-items:baseline;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)">' +
+      '<span style="min-width:150px;font-weight:700;font-size:12px">' + zone + ' · ' + Z[zone].n + '</span>' +
+      '<span style="flex:1;font-size:12.5px;color:var(--accent);font-weight:700">' + v + (sub ? ' <span style="color:var(--text);font-weight:400;opacity:.8">· ' + sub + '</span>' : '') + '</span>' +
+      '<span style="font-size:11px;color:var(--muted);white-space:nowrap">RPE ' + Z[zone].rpe + '</span></div>';
+  }
+  function panel(s) {
+    if (!s || !/^(engine|run)$/i.test(s.type || '') || s.vbt) return '';
+    var mods = modsOf(s);
+    if (!mods.length) return '';
+    var body = mods.map(function (mod) {
+      var b = bounds('Z2', mod);
+      var head = '<div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:8px 0 2px">' + (LABEL[mod] || mod) +
+        (b ? ' <span style="text-transform:none;letter-spacing:0;font-weight:400">· ' + b.src + '</span>' : '') + '</div>';
+      if (!b) return head + '<div style="font-size:12px;color:var(--muted);padding:4px 0">Pas encore de ' + (mod === 'run' ? 'VC' : 'PC') + ' ni de profilage en ' + (LABEL[mod] || mod) + ' : fais le test critique pour voir tes zones.</div>';
+      return head + ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map(function (z) { return zoneRow(z, mod); }).join('');
+    }).join('');
+    return '<details class="zones-panel" onclick="event.stopPropagation()" style="margin-top:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 12px">' +
+      '<summary style="cursor:pointer;font-size:13px;font-weight:700;list-style:none">🎯 Mes zones <span style="font-weight:400;color:var(--muted)">· ' +
+      mods.map(function (m) { return LABEL[m] || m; }).join(' / ') + '</span></summary>' + body + '</details>';
+  }
+
+  window.udtAllure = { apply: apply, load: load, zoneOf: zoneOf, modOf: modOf, panel: panel };
 })();
