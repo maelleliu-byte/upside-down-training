@@ -204,9 +204,22 @@
       '<span style="flex:1;font-size:12.5px;color:' + (b.unit === 'km/h' ? '#2dd4bf' : 'var(--accent)') + ';font-weight:700">' + v + (sub ? ' <span style="color:var(--muted);font-weight:400;font-size:11.5px">(' + sub + ')</span>' : '') + '</span>' +
       '<span style="font-size:11px;color:var(--muted);white-space:nowrap">RPE ' + Z[zone].rpe + '</span></div>';
   }
+  /* modalités citées dans les formules %|VITESSE / PUISSANCE CRITIQUE|<MOUVEMENT>| */
+  function formulaMods(s) {
+    var out = [], re = /%\|\s*(vitesse|puissance)\s+critique\s*\|([^|\n<]+)\|/gi, m;
+    var txt = String(s.content || '');
+    while ((m = re.exec(txt))) {
+      var md = modOf(m[2]) || (/vitesse/i.test(m[1]) ? 'run' : null);
+      if (md && out.indexOf(md) < 0) out.push(md);
+    }
+    return out;
+  }
   function panel(s) {
-    if (!s || !/^(engine|run)$/i.test(s.type || '') || s.vbt) return '';
-    var mods = modsOf(s);
+    if (!s || s.vbt) return '';
+    var isEnd = /^(engine|run)$/i.test(s.type || '');
+    var fm = formulaMods(s);
+    if (!isEnd && !fm.length) return '';
+    var mods = isEnd ? modsOf(s) : fm;
     if (!mods.length) return '';
     var body = mods.map(function (mod) {
       var b = bounds('Z2', mod);
