@@ -124,8 +124,8 @@
     }
     var v, sub = '';
     if (b.unit === 'km/h') {
-      v = b.hi == null ? '> ' + fr(b.lo, 1) + ' km/h' : fr(b.lo, 1) + ' – ' + fr(b.hi, 1) + ' km/h';
-      sub = b.hi == null ? '< ' + mmss(3600 / b.lo) + ' /km' : mmss(3600 / b.hi) + ' – ' + mmss(3600 / b.lo) + ' /km';
+      v = '<span style="color:#2dd4bf">' + (b.hi == null ? '&lt; ' + mmss(3600 / b.lo) + ' /km' : mmss(3600 / b.lo) + ' – ' + mmss(3600 / b.hi) + ' /km') + '</span>';
+      sub = '<span style="opacity:.7;font-weight:400">(' + (b.hi == null ? '&gt; ' + fr(b.lo, 1) + ' km/h' : fr(b.lo, 1) + ' – ' + fr(b.hi, 1) + ' km/h') + ')</span>';
     } else {
       v = b.lo == null ? '< ' + Math.round(b.hi) + ' W' : b.hi == null ? '> ' + Math.round(b.lo) + ' W' : Math.round(b.lo) + ' – ' + Math.round(b.hi) + ' W';
       if (mod === 'row' || mod === 'ski') {
@@ -192,15 +192,16 @@
     if (!b) return '';
     var v, sub = '';
     if (b.unit === 'km/h') {
-      v = b.hi == null ? '&gt; ' + fr(b.lo, 1) + ' km/h' : fr(b.lo, 1) + ' – ' + fr(b.hi, 1) + ' km/h';
-      sub = b.hi == null ? '&lt; ' + mmss(3600 / b.lo) + ' /km' : mmss(3600 / b.hi) + ' – ' + mmss(3600 / b.lo) + ' /km';
+      // allure en premier (teal), dans le même ordre que la vitesse : vitesse basse ↔ allure lente
+      v = b.hi == null ? '&lt; ' + mmss(3600 / b.lo) + ' /km' : mmss(3600 / b.lo) + ' – ' + mmss(3600 / b.hi) + ' /km';
+      sub = b.hi == null ? '&gt; ' + fr(b.lo, 1) + ' km/h' : fr(b.lo, 1) + ' – ' + fr(b.hi, 1) + ' km/h';
     } else {
       v = b.lo == null ? '&lt; ' + Math.round(b.hi) + ' W' : b.hi == null ? '&gt; ' + Math.round(b.lo) + ' W' : Math.round(b.lo) + ' – ' + Math.round(b.hi) + ' W';
       if (mod === 'row' || mod === 'ski') sub = b.lo == null ? '&gt; ' + mmss(pace500(b.hi)) + ' /500m' : b.hi == null ? '&lt; ' + mmss(pace500(b.lo)) + ' /500m' : mmss(pace500(b.hi)) + ' – ' + mmss(pace500(b.lo)) + ' /500m';
     }
     return '<div style="display:flex;gap:8px;align-items:baseline;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)">' +
       '<span style="min-width:150px;font-weight:700;font-size:12px">' + zone + ' · ' + Z[zone].n + '</span>' +
-      '<span style="flex:1;font-size:12.5px;color:var(--accent);font-weight:700">' + v + (sub ? ' <span style="color:var(--text);font-weight:400;opacity:.8">· ' + sub + '</span>' : '') + '</span>' +
+      '<span style="flex:1;font-size:12.5px;color:' + (b.unit === 'km/h' ? '#2dd4bf' : 'var(--accent)') + ';font-weight:700">' + v + (sub ? ' <span style="color:var(--muted);font-weight:400;font-size:11.5px">(' + sub + ')</span>' : '') + '</span>' +
       '<span style="font-size:11px;color:var(--muted);white-space:nowrap">RPE ' + Z[zone].rpe + '</span></div>';
   }
   function panel(s) {

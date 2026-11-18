@@ -414,7 +414,7 @@ function _formatChargeForMovement(mvt,bestPR,pct){
     // bestPR.value stocké en km/h
     const targetKmh=Math.round((parseFloat(pct)/100)*bestPR.value*10)/10;
     const pace=_kmhToPaceStr(targetKmh);
-    return `${targetKmh} km/h <span style="opacity:.7">(${pace})</span>`;
+    return `<span style="color:#2dd4bf">${pace}</span> <span style="opacity:.7;font-weight:400">(${String(targetKmh).replace('.',',')} km/h)</span>`;
   }
   if(mode==='watt'){
     const target=Math.round((parseFloat(pct)/100)*bestPR.value);
