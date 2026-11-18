@@ -26,7 +26,7 @@
   };
   /* Bornes PC / VC (identiques à l'outil Profil PC / VC) */
   var PC_ERG = { Z1: [45, 60], Z2: [60, 75], Z3: [75, 88], Z4: [88, 103], Z5: [103, null] };
-  var PC_RUN = { Z1: [45, 78], Z2: [78, 88], Z3: [88, 93], Z4: [93, 103], Z5: [103, null] };
+  var PC_RUN = { Z1: [45, 72], Z2: [72, 80], Z3: [80, 88], Z4: [88, 100], Z5: [100, null] };  // S1 ≈ 82 % VC, MLSS ≈ 93 % VC
   var MV = { row: 'Row', ski: 'Ski Erg', bike: 'Bike Erg', assault: 'Assault Bike', echo: 'Echo Bike', run: 'Run' };
   var LABEL = { row: 'Row', ski: 'Ski', bike: 'Bike Erg', assault: 'Assault', echo: 'Echo', velo: 'Vélo', run: 'Course' };
 
