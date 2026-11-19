@@ -742,6 +742,13 @@ function intervalScoring(s){
     if(n<2||n>12)continue;
     if(!best||n*w>best.n*best.w)best={n,w};
   }
+  // Séries d'intervalles répétées : « 2 SETS REST 2:00 » puis « 7x 500m » → 14 intervalles (max 20)
+  const reS=/(\d+)\s*SETS?\s*REST\s*\d{1,2}:\d{2}\s*\n\s*(\d+)\s*x\s*(?:(\d{1,2}):(\d{2})|(\d+)\s*m\b)/gi;
+  while((m=reS.exec(txt))){
+    const k=+m[1],n=k*(+m[2]),w=m[3]?(+m[3]*60+ +m[4]):(+m[5]/4);
+    if(k<2||+m[2]<1||n>20)continue;
+    if(!best||n*w>best.n*best.w)best={n,w};
+  }
   if(!best)return null;
   return {n:best.n,unit,stype,word};
 }
