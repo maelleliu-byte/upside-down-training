@@ -188,10 +188,13 @@
       v = b.lo == null ? '&lt; ' + Math.round(b.hi) + ' W' : b.hi == null ? '&gt; ' + Math.round(b.lo) + ' W' : Math.round(b.lo) + ' – ' + Math.round(b.hi) + ' W';
       if (mod === 'row' || mod === 'ski') sub = b.lo == null ? '&gt; ' + mmss(pace500(b.hi)) + ' /500m' : b.hi == null ? '&lt; ' + mmss(pace500(b.lo)) + ' /500m' : mmss(pace500(b.hi)) + ' – ' + mmss(pace500(b.lo)) + ' /500m';
     }
-    return '<div style="display:flex;gap:8px;align-items:baseline;padding:5px 0;border-top:1px solid rgba(255,255,255,.06)">' +
+    var fc = '';
+    if (b.fcAt) fc = b.lo == null ? '&lt; ' + b.fcAt(b.hi) + ' bpm' : zone === 'Z5' ? '&gt; ' + b.fcAt(b.lo) + ' bpm' : b.fcAt(b.lo) + '–' + b.fcAt(b.hi) + ' bpm';
+    var ZCOL = { Z1: '#3B8FEA', Z2: '#22B35E', Z3: '#E8C21C', Z4: '#F58A1F', Z5: '#E5483B' };
+    return '<div style="display:flex;gap:8px;align-items:baseline;padding:6px 0 6px 8px;border-top:1px solid rgba(255,255,255,.06);border-left:3px solid ' + ZCOL[zone] + '">' +
       '<span style="min-width:150px;font-weight:700;font-size:12px">' + zone + ' · ' + Z[zone].n + '</span>' +
       '<span style="flex:1;font-size:12.5px;color:' + (b.unit === 'km/h' ? '#2dd4bf' : 'var(--accent)') + ';font-weight:700">' + v + (sub ? ' <span style="color:var(--muted);font-weight:400;font-size:11.5px">(' + sub + ')</span>' : '') + '</span>' +
-      '<span style="font-size:11px;color:var(--muted);white-space:nowrap">RPE ' + Z[zone].rpe + '</span></div>';
+      '<span style="font-size:11px;color:var(--muted);white-space:nowrap">' + (fc ? fc + ' · ' : '') + 'RPE ' + Z[zone].rpe + '</span></div>';
   }
   /* modalités citées dans les formules %|VITESSE / PUISSANCE CRITIQUE|<MOUVEMENT>| */
   function formulaMods(s) {
@@ -217,9 +220,10 @@
       if (!b) return head + '<div style="font-size:12px;color:var(--muted);padding:4px 0">Pas encore de ' + (mod === 'run' ? 'VC' : 'PC') + ' ni de profilage en ' + (LABEL[mod] || mod) + ' : fais le test critique pour voir tes zones.</div>';
       return head + ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map(function (z) { return zoneRow(z, mod); }).join('');
     }).join('');
-    return '<details class="zones-panel" onclick="event.stopPropagation()" style="margin-top:12px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.08);border-radius:10px;padding:8px 12px">' +
-      '<summary style="cursor:pointer;font-size:13px;font-weight:700;list-style:none">🎯 Mes zones <span style="font-weight:400;color:var(--muted)">· ' +
-      mods.map(function (m) { return LABEL[m] || m; }).join(' / ') + '</span></summary>' + body + '</details>';
+    return '<details class="zones-panel" onclick="event.stopPropagation()" style="margin-top:10px">' +
+      '<summary style="list-style:none;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:#2dd4bf;padding:8px 10px;border:1px solid rgba(45,212,191,.4);border-radius:8px;background:rgba(45,212,191,.08)">' +
+      '<span>🎯 Mes zones d\'intensité · ' + mods.map(function (m) { return LABEL[m] || m; }).join(' / ') + '</span><span style="font-size:12px">▾</span></summary>' +
+      '<div style="padding:4px 10px 2px">' + body + '</div></details>';
   }
 
   window.udtAllure = { apply: apply, load: load, zoneOf: zoneOf, modOf: modOf, panel: panel };

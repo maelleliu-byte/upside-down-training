@@ -156,8 +156,6 @@ async function buildSessionCard(s){
 
   // renderContentWithCharges normalise tout en <br> — pas besoin de test isHtml
   let contentHtml=renderContentWithCharges(s.content||'');
-  // Blocs ENGINE / RUN : onglet dépliable « Mes zones » (fourchettes perso par zone)
-  try{if(window.udtAllure&&window.udtAllure.panel)contentHtml+=window.udtAllure.panel(s);}catch(e){}
   const isStrength=s.type==='strength'&&s.sets>0;
   const isMulti=s.multi_score&&s.score_count>0;
   const isText=s.score_type==='text';

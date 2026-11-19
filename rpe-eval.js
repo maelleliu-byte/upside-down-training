@@ -76,7 +76,10 @@
 
   /* Coaching Tips + encart RPE (même rendu partout où les tips s'affichent) */
   window.tipsWithRpeHtml = function (s) {
-    var rpe = window.rpeEvalHtml(s);
+    // « Mes zones d'intensité » juste au-dessus de l'évaluation du RPE (sous la séance, avant les scores)
+    var zones = '';
+    try { if (window.udtAllure && window.udtAllure.panel) zones = window.udtAllure.panel(s); } catch (e) {}
+    var rpe = zones + window.rpeEvalHtml(s);
     if (s && s.tips) return '<div class="info-block"><div class="info-block-title"><span>💡</span> Coaching Tips</div><div class="info-block-text">' + s.tips + '</div>' + rpe + '</div>';
     return rpe ? '<div class="info-block">' + rpe + '</div>' : '';
   };
