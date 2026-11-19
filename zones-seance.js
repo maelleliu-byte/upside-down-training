@@ -33,6 +33,7 @@
   /* données par athlète : le coach qui ouvre l'espace d'un athlète voit les zones de CET athlète */
   var cache = {};          // id → { tests, ov, prs }
   var active = null;       // athlète dont on affiche les zones
+  var ctxMod = null;       // modalité lue dans le titre de la séance en cours de rendu
   var data = { tests: [], ov: [], prs: null, ready: false };
   function setActive(id) { active = id; data = cache[id] || { tests: [], ov: [], prs: null, ready: false }; }
 
@@ -150,7 +151,7 @@
   function apply(html) {
     if (!html || !/allure|puissance|intensite/i.test(strip(html.replace(/<[^>]+>/g, ' ')))) return html;
     var plain = strip(html.replace(/<[^>]+>/g, ' '));
-    var defMod = modOf(plain) || 'run';
+    var defMod = modOf(plain) || ctxMod || 'run';
     return html.split(/(<br>)/).map(function (seg) {
       if (seg === '<br>' || seg.indexOf('allure-zone') >= 0) return seg;
       var txt = seg.replace(/<[^>]+>/g, ' ');
@@ -184,7 +185,8 @@
     } catch (e) { /* zones indisponibles : la séance s'affiche sans plage */ }
   }
   /* à appeler avant de rendre une séance : bascule sur l'athlète de la séance */
-  async function use(id) {
+  async function use(id, title) {
+    ctxMod = modOf(title || '');
     try {
       if (typeof currentUser === 'undefined' || !currentUser) return;
       id = id || currentUser.id;

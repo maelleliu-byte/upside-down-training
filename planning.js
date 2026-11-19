@@ -129,7 +129,7 @@ async function renderSessions(){
 }
 
 async function buildSessionCard(s){
-  try{if(window.udtAllure&&window.udtAllure.use)await window.udtAllure.use(s.athlete_id||null);}catch(e){}
+  try{if(window.udtAllure&&window.udtAllure.use)await window.udtAllure.use(s.athlete_id||null,s.title||'');}catch(e){}
   // Multi-vidéos (avec fallback legacy)
   let _vids=[];
   try{_vids=Array.isArray(s.videos)?s.videos:(typeof s.videos==='string'?JSON.parse(s.videos):[]);}catch(e){_vids=[];}
