@@ -87,28 +87,31 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
     <div class="section" id="billing-section">
       <div class="section-title">📦 Abonnement Upside Down</div>
 
+      <div id="billing-alert" style="display:none;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;line-height:1.6"></div>
+
+      <div id="billing-exempt" style="display:none">
+        <div class="status-badge connected"><span class="dot"></span>Studio exempté de facturation</div>
+      </div>
+
       <div id="billing-active" style="display:none">
-        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-          <div class="status-badge connected"><span class="dot"></span>Abonnement actif</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <div class="status-badge connected" id="billing-status-badge"><span class="dot"></span>Abonnement actif</div>
           <div style="font-size:13px;color:#666" id="billing-tier-label"></div>
         </div>
         <div style="background:#0a0a0a;border:1px solid #1e1e1e;border-radius:10px;padding:14px;margin-bottom:16px;font-size:13px;color:#888;line-height:1.8" id="billing-info"></div>
-        <p style="font-size:12px;color:#555;margin-bottom:0">Le tier évolue automatiquement avec le nombre d'athlètes.</p>
+        <p style="font-size:12px;color:#555;margin-bottom:16px">Le palier suit automatiquement ton nombre d'athlètes, au prorata.</p>
+        <button class="btn btn-secondary" id="btn-portal" onclick="openBillingPortal()">Gérer mon abonnement (carte, factures)</button>
       </div>
 
       <div id="billing-inactive">
         <div class="info-box">
-          <strong>Abonne-toi pour activer ton studio</strong> et permettre à tes athlètes de s'inscrire.
-          <ul>
-            <li>Starter — 0 à 10 athlètes — <strong>10€/mois</strong></li>
-            <li>Scale — 11 à 30 athlètes — <strong>30€/mois</strong></li>
-            <li>Pro — 31+ athlètes — <strong>50€/mois</strong></li>
-          </ul>
+          <strong>Abonne-toi pour que tes athlètes gardent l'accès.</strong> 30 jours d'essai gratuit pour un premier abonnement, puis :
+          <ul id="billing-grid"></ul>
+          Le palier s'ajuste tout seul quand ton nombre d'athlètes change (enfants compris).
         </div>
         <div style="font-size:13px;color:#666;margin-bottom:16px" id="billing-athlete-count"></div>
-        <button class="btn" id="btn-subscribe" onclick="startBillingSubscription()">
-          S'abonner
-        </button>
+        <button class="btn" id="btn-subscribe" onclick="startBillingSubscription()">S'abonner</button>
+        <p id="billing-owner-only" style="display:none;font-size:12px;color:#555;margin-top:10px">Seul le propriétaire du studio peut gérer l'abonnement.</p>
       </div>
     </div>
 
@@ -276,71 +279,117 @@ async function disconnectStripe() {
 }
 
 // ── Billing SaaS ─────────────────────────────────────────────────────
-
+// Mêmes seuils que supabase/functions/_shared/studio-tiers.ts
 const TIERS = {
-  starter: { label: 'Starter', price: '10€/mois', max: 10 },
-  scale:   { label: 'Scale',   price: '30€/mois', max: 30 },
-  pro:     { label: 'Pro',     price: '50€/mois', max: 99999 },
+  starter: { label: 'Starter', price: '20 €/mois', range: '1 à 10 athlètes' },
+  scale:   { label: 'Scale',   price: '40 €/mois', range: '11 à 29 athlètes' },
+  pro:     { label: 'Pro',     price: '60 €/mois', range: '30 athlètes et +' },
 };
+function tierForCount(n) { return n <= 10 ? 'starter' : n <= 29 ? 'scale' : 'pro'; }
+function nextTierHint(n) {
+  if (n <= 10) return (11 - n) + ' athlète' + (11 - n > 1 ? 's' : '') + ' avant Scale (40 €/mois)';
+  if (n <= 29) return (30 - n) + ' athlète' + (30 - n > 1 ? 's' : '') + ' avant Pro (60 €/mois)';
+  return 'Palier maximum';
+}
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+}
+function setAlert(kind, html) {
+  const el = document.getElementById('billing-alert');
+  if (!kind) { el.style.display = 'none'; return; }
+  const c = kind === 'danger' ? ['#ff474715', '#ff474740', '#ff7070'] : ['#ff8c4715', '#ff8c4740', '#ffb27a'];
+  el.style.cssText += ';background:' + c[0] + ';border:1px solid ' + c[1] + ';color:' + c[2];
+  el.style.display = 'block';
+  el.innerHTML = html;
+}
 
 function renderBilling(studio) {
-  const hasSubscription = studio.is_active && (!!studio.stripe_subscription_id || !!studio.stripe_customer_id);
-  document.getElementById('billing-active').style.display = hasSubscription ? 'block' : 'none';
-  document.getElementById('billing-inactive').style.display = hasSubscription ? 'none' : 'block';
+  const count = studio.athlete_count || 0;
+  const isOwner = studio.owner_id === currentUser.id;
+  const status = studio.billing_status || 'active';
+  const hasSub = !!studio.stripe_subscription_id;
 
-  if (hasSubscription) {
-    const tier = TIERS[studio.plan_tier] || TIERS.starter;
-    document.getElementById('billing-tier-label').textContent = tier.label + ' — ' + tier.price;
-    document.getElementById('billing-info').innerHTML =
-      'Athlètes : <strong style="color:#f0f0f0">' + (studio.athlete_count || 0) + '</strong><br>' +
-      'Tier actuel : <strong style="color:#f0f0f0">' + tier.label + '</strong><br>' +
-      'Prochain palier : ' + (studio.plan_tier === 'pro' ? '—' : (studio.plan_tier === 'scale' ? '31 athlètes → Pro 50€/mois' : '11 athlètes → Scale 30€/mois'));
-  } else {
-    const count = studio.athlete_count || 0;
-    let tierLabel = count <= 10 ? 'Starter (10€/mois)' : count <= 30 ? 'Scale (30€/mois)' : 'Pro (50€/mois)';
-    document.getElementById('billing-athlete-count').textContent =
-      'Tu as ' + count + ' athlète' + (count > 1 ? 's' : '') + ' — tier adapté : ' + tierLabel;
+  document.getElementById('billing-grid').innerHTML = Object.values(TIERS)
+    .map(t => '<li>' + t.label + ' — ' + t.range + ' — <strong>' + t.price + '</strong></li>').join('');
+
+  document.getElementById('billing-exempt').style.display = studio.billing_exempt ? 'block' : 'none';
+  document.getElementById('billing-active').style.display = !studio.billing_exempt && hasSub ? 'block' : 'none';
+  document.getElementById('billing-inactive').style.display = !studio.billing_exempt && !hasSub ? 'block' : 'none';
+  document.getElementById('btn-subscribe').style.display = isOwner ? '' : 'none';
+  document.getElementById('btn-portal').style.display = isOwner ? '' : 'none';
+  document.getElementById('billing-owner-only').style.display = isOwner ? 'none' : 'block';
+
+  setAlert(null);
+  if (!studio.billing_exempt) {
+    if (status === 'paused') {
+      setAlert('danger', '<strong>Studio en pause.</strong> Tes athlètes n\'ont plus accès à l\'app. ' +
+        (hasSub ? 'Mets à jour ton moyen de paiement pour réactiver le studio.' : 'Abonne-toi pour le réactiver immédiatement.'));
+    } else if (status === 'past_due') {
+      setAlert('warn', '<strong>Paiement refusé.</strong> Mets à jour ta carte' +
+        (studio.billing_grace_until ? ' avant le <strong>' + fmtDate(studio.billing_grace_until) + '</strong>' : '') +
+        ', sinon le studio sera mis en pause.');
+    } else if (!hasSub && studio.billing_grace_until) {
+      setAlert('warn', 'Abonne-toi avant le <strong>' + fmtDate(studio.billing_grace_until) + '</strong> pour que tes athlètes gardent l\'accès.');
+    }
   }
 
-  // Gérer retour Stripe billing
+  if (hasSub) {
+    const tier = TIERS[studio.plan_tier] || TIERS[tierForCount(count)];
+    const badge = document.getElementById('billing-status-badge');
+    badge.className = 'status-badge ' + (status === 'active' ? 'connected' : 'pending');
+    badge.innerHTML = '<span class="dot"></span>' + (status === 'active' ? 'Abonnement actif' : status === 'past_due' ? 'Paiement en attente' : 'En pause');
+    document.getElementById('billing-tier-label').textContent = tier.label + ' — ' + tier.price;
+    document.getElementById('billing-info').innerHTML =
+      'Athlètes : <strong style="color:#f0f0f0">' + count + '</strong><br>' +
+      'Palier actuel : <strong style="color:#f0f0f0">' + tier.label + ' (' + tier.range + ')</strong><br>' +
+      'Prochain palier : ' + nextTierHint(count);
+  } else {
+    const t = TIERS[tierForCount(count)];
+    document.getElementById('billing-athlete-count').textContent =
+      'Tu as ' + count + ' athlète' + (count > 1 ? 's' : '') + ' — palier ' + t.label + ' (' + t.price + ')';
+  }
+
+  // Retour depuis Stripe
   const params = new URLSearchParams(window.location.search);
   if (params.get('billing') === 'success') {
-    showToast('🎉 Abonnement activé !', 5000);
-    setTimeout(async () => { await refreshStudioStatus(); }, 3000);
+    showToast('🎉 Abonnement activé !');
     window.history.replaceState({}, '', window.location.pathname);
+    // Le webhook peut arriver quelques secondes après la redirection
+    setTimeout(refreshStudioStatus, 3000);
+    setTimeout(refreshStudioStatus, 8000);
   } else if (params.get('billing') === 'canceled') {
-    showToast('Abonnement annulé.');
+    showToast('Paiement annulé.');
     window.history.replaceState({}, '', window.location.pathname);
   }
 }
 
-async function startBillingSubscription() {
-  const btn = document.getElementById('btn-subscribe');
+async function callBilling(payload, btn, label) {
   if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Redirection...'; }
-
+  const reset = () => { if (btn) { btn.disabled = false; btn.textContent = label; } };
   try {
     const { data: { session } } = await sb.auth.getSession();
     const token = session?.access_token;
-    if (!token) { showToast('⚠️ Session expirée'); return; }
-
+    if (!token) { showToast('⚠️ Session expirée'); reset(); return; }
     const res = await fetch(SUPABASE_URL + '/functions/v1/create-studio-subscription', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify({ studio_id: currentStudio.id }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
-
-    if (data.error) {
-      showToast('❌ ' + data.error);
-      if (btn) { btn.disabled = false; btn.textContent = "S'abonner"; }
-      return;
-    }
+    if (data.error) { showToast('❌ ' + data.error); reset(); return; }
     if (data.url) window.location.href = data.url;
-
+    else reset();
   } catch (e) {
     showToast('❌ ' + e.message);
-    if (btn) { btn.disabled = false; btn.textContent = "S'abonner"; }
+    reset();
   }
+}
+
+function startBillingSubscription() {
+  callBilling({ studio_id: currentStudio.id }, document.getElementById('btn-subscribe'), "S'abonner");
+}
+function openBillingPortal() {
+  callBilling({ action: 'portal' }, document.getElementById('btn-portal'), 'Gérer mon abonnement (carte, factures)');
 }
 
 init();

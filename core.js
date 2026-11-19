@@ -391,6 +391,8 @@ function applyAvatarToUI(url){
 }
 
 async function initApp(){
+  // Studio en pause (abonnement impayé) : écran de suspension pour les athlètes
+  if(typeof checkStudioBilling==='function'&&await checkStudioBilling())return;
   document.getElementById('auth-screen').classList.add('hidden');
   document.getElementById('main-app').style.display='block';
   const init=(currentProfile?.full_name||currentUser.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
