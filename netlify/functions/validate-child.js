@@ -8,7 +8,7 @@ const { send, template } = require('./lib/mailer');
 const { checkSig, isKidEmail } = require('./lib/family');
 
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const APP_URL = process.env.APP_URL || 'https://upside-down-training.netlify.app';
+const APP_URL = process.env.APP_URL || 'https://app.upsidedown-training.fr';
 
 function esc(s) {
   return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');

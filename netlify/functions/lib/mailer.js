@@ -18,7 +18,7 @@ const ADMINS = (process.env.NOTIFY_TO || 'upsidedowntraining0@gmail.com')
   .map((s) => s.trim())
   .filter(Boolean);
 
-const APP_URL = process.env.APP_URL || 'https://upside-down-training.netlify.app';
+const APP_URL = process.env.APP_URL || 'https://app.upsidedown-training.fr';
 
 // ── Helpers ────────────────────────────────────────────────────
 function esc(v) {

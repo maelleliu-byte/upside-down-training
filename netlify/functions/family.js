@@ -20,7 +20,7 @@ const { send, template } = require('./lib/mailer');
 const { kidEmail, sign, ageFrom } = require('./lib/family');
 
 const sb = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_KEY);
-const APP_URL = process.env.APP_URL || 'https://upside-down-training.netlify.app';
+const APP_URL = process.env.APP_URL || 'https://app.upsidedown-training.fr';
 const ADMINS = (process.env.NOTIFY_TO || 'upsidedowntraining0@gmail.com')
   .split(',').map((s) => s.trim()).filter(Boolean);
 

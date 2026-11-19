@@ -26,3 +26,10 @@
   to = "/index.html"
   status = 200
   force = false
+
+# L'application est reservee aux membres : on demande a Google de ne pas l'indexer.
+# (la page publique est la landing sur upsidedown-training.fr)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Robots-Tag = "noindex"

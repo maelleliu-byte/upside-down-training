@@ -110,7 +110,7 @@
       wrap(ctx, d.note, colW).forEach(function (l) { txt(l, P, y, "400 20px " + IN, C.muted); y += 28; });
     }
     y += 26;
-    txt("Upside Down Training · upside-down-training.netlify.app", P, y, "500 19px " + IN, C.teal);
+    txt("Upside Down Training · app.upsidedown-training.fr", P, y, "500 19px " + IN, C.teal);
     return y + 56;
   }
   function roundRect(ctx, x, y, w, h, r) {
