@@ -1,5 +1,5 @@
 /* ============================================================
- * Zones dans les séances : « allure EF », « allure tempo », « allure seuil »…
+ * Zones dans les séances : « allure EF », « puissance seuil », « allure tempo »…
  *
  * Dès qu'une ligne d'une séance contient « allure <zone> » (majuscules, accents
  * et tirets indifférents), l'app affiche la plage personnelle de l'athlète :
@@ -30,7 +30,11 @@
   var MV = { row: 'Row', ski: 'Ski Erg', bike: 'Bike Erg', assault: 'Assault Bike', echo: 'Echo Bike', run: 'Run' };
   var LABEL = { row: 'Row', ski: 'Ski', bike: 'Bike Erg', assault: 'Assault', echo: 'Echo', velo: 'Vélo', run: 'Course' };
 
-  var data = { tests: [], ov: [], ready: false };
+  /* données par athlète : le coach qui ouvre l'espace d'un athlète voit les zones de CET athlète */
+  var cache = {};          // id → { tests, ov, prs }
+  var active = null;       // athlète dont on affiche les zones
+  var data = { tests: [], ov: [], prs: null, ready: false };
+  function setActive(id) { active = id; data = cache[id] || { tests: [], ov: [], prs: null, ready: false }; }
 
   function strip(s) {
     return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -43,7 +47,7 @@
   /* ---------- lecture de la ligne ---------- */
   function zoneOf(txt) {
     var t = strip(txt);
-    var m = t.match(/allure[\s:\-–]*([a-z0-9₂ .]{1,30})/);
+    var m = t.match(/(?:allure|puissance|intensite)[\s:\-–]*([a-z0-9₂ .]{1,30})/);
     if (!m) return null;
     var w = m[1].replace(/\./g, '');
     if (/^(z ?1\b|recup|recuperation)/.test(w)) return 'Z1';
@@ -73,11 +77,13 @@
     return l[0] || null;
   }
   function critical(mod) {
-    if (!MV[mod] || typeof movements === 'undefined' || typeof myPRs === 'undefined') return null;
+    if (!MV[mod] || typeof movements === 'undefined') return null;
+    var prs = data.prs || (typeof myPRs !== 'undefined' ? myPRs : null);
+    if (!prs) return null;
     var mv = (movements || []).find(function (m) { return m.name === MV[mod]; });
     if (!mv) return null;
     var fmt = mod === 'run' ? 'vitessecritique' : 'puissancecritique';
-    var l = (myPRs[mv.id] || []).filter(function (p) { return String(p.format || '').toLowerCase().replace(/\s+/g, '') === fmt; });
+    var l = (prs[mv.id] || []).filter(function (p) { return String(p.format || '').toLowerCase().replace(/\s+/g, '') === fmt; });
     if (!l.length) return null;
     var auto = l.filter(function (p) { return /^auto:cp/.test(p.note || ''); });
     var p = (auto.length ? auto : l).reduce(function (a, b) { return String(b.recorded_at) > String(a.recorded_at) ? b : a; });
@@ -124,7 +130,7 @@
   function rangeHTML(zone, mod) {
     /* Pastille courte : juste l'allure (course) ou la puissance (ergo). Le détail est dans « Mes zones ». */
     var b = bounds(zone, mod);
-    if (!b) return chip('pas encore de ' + (mod === 'run' ? 'VC' : 'PC') + ' en ' + (LABEL[mod] || 'course'), true);
+    if (!b) return chip(mod === 'run' ? 'pas encore de VC en course' : 'pas encore de profil ni de PC en ' + (LABEL[mod] || mod), true);
     var v;
     if (b.unit === 'km/h') {
       v = b.hi == null ? '&lt; ' + mmss(3600 / b.lo) + ' /km' : mmss(3600 / b.lo) + ' – ' + mmss(3600 / b.hi) + ' /km';
@@ -142,7 +148,7 @@
 
   /* ---------- application au contenu rendu (lignes séparées par <br>) ---------- */
   function apply(html) {
-    if (!html || !/allure/i.test(strip(html.replace(/<[^>]+>/g, ' ')))) return html;
+    if (!html || !/allure|puissance|intensite/i.test(strip(html.replace(/<[^>]+>/g, ' ')))) return html;
     var plain = strip(html.replace(/<[^>]+>/g, ' '));
     var defMod = modOf(plain) || 'run';
     return html.split(/(<br>)/).map(function (seg) {
@@ -154,18 +160,37 @@
     }).join('');
   }
 
+  async function fetchFor(id, withPrs) {
+    var q = [
+      sb.from('endurance_tests').select('kind,modality,test_date,s1,s2,fc1,fc2,created_at,data').eq('athlete_id', id),
+      sb.from('pc_zone_overrides').select('modality,z2_hi').eq('athlete_id', id)
+    ];
+    if (withPrs) q.push(sb.from('athlete_prs').select('movement_id,format,value,recorded_at,note').eq('athlete_id', id));
+    var r = await Promise.all(q);
+    var d = { tests: (r[0] && r[0].data) || [], ov: (r[1] && r[1].data) || [], prs: null, ready: true };
+    if (withPrs) {
+      d.prs = {};
+      ((r[2] && r[2].data) || []).forEach(function (p) { (d.prs[p.movement_id] = d.prs[p.movement_id] || []).push(p); });
+    }
+    cache[id] = d;
+    return d;
+  }
+  /* zones de l'utilisateur connecté (ses PR sont déjà dans myPRs) */
   async function load() {
     try {
       if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
-      var id = currentUser.id;
-      var r = await Promise.all([
-        sb.from('endurance_tests').select('kind,modality,test_date,s1,s2,fc1,fc2,created_at,data').eq('athlete_id', id),
-        sb.from('pc_zone_overrides').select('modality,z2_hi').eq('athlete_id', id)
-      ]);
-      data.tests = (r[0] && r[0].data) || [];
-      data.ov = (r[1] && r[1].data) || [];
-      data.ready = true;
+      await fetchFor(currentUser.id, false);
+      setActive(currentUser.id);
     } catch (e) { /* zones indisponibles : la séance s'affiche sans plage */ }
+  }
+  /* à appeler avant de rendre une séance : bascule sur l'athlète de la séance */
+  async function use(id) {
+    try {
+      if (typeof currentUser === 'undefined' || !currentUser) return;
+      id = id || currentUser.id;
+      if (!cache[id]) await fetchFor(id, id !== currentUser.id);
+      setActive(id);
+    } catch (e) { }
   }
 
   /* ---------- onglet « Mes zones » sous les blocs ENGINE / RUN ---------- */
@@ -213,6 +238,7 @@
   }
   function panel(s) {
     if (!s || s.vbt) return '';
+    if (s.athlete_id && cache[s.athlete_id]) setActive(s.athlete_id);
     var isEnd = /^(engine|run)$/i.test(s.type || '');
     var fm = formulaMods(s);
     if (!isEnd && !fm.length) return '';
@@ -222,7 +248,7 @@
       var b = bounds('Z2', mod);
       var head = '<div style="font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:8px 0 2px">' + (LABEL[mod] || mod) +
         (b ? ' <span style="text-transform:none;letter-spacing:0;font-weight:400">· ' + b.src + '</span>' : '') + '</div>';
-      if (!b) return head + '<div style="font-size:12px;color:var(--muted);padding:4px 0">Pas encore de ' + (mod === 'run' ? 'VC' : 'PC') + ' ni de profilage en ' + (LABEL[mod] || mod) + ' : fais le test critique pour voir tes zones.</div>';
+      if (!b) return head + '<div style="font-size:12px;color:var(--muted);padding:4px 0">' + (mod === 'run' ? 'Pas encore de VC en course' : 'Pas encore de profilage (lactate / RPE) ni de PC en ' + (LABEL[mod] || mod)) + ' : fais le test critique pour voir tes zones.</div>';
       return head + ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'].map(function (z) { return zoneRow(z, mod); }).join('');
     }).join('');
     return '<details class="zones-panel" onclick="event.stopPropagation()" style="margin-top:10px">' +
@@ -231,5 +257,5 @@
       '<div style="padding:4px 10px 2px">' + body + '</div></details>';
   }
 
-  window.udtAllure = { apply: apply, load: load, zoneOf: zoneOf, modOf: modOf, panel: panel };
+  window.udtAllure = { apply: apply, load: load, use: use, zoneOf: zoneOf, modOf: modOf, panel: panel };
 })();
