@@ -85,7 +85,12 @@ async function openReadSession(id, source){
   if(data.type==='separator'){
     body.innerHTML=buildSeparatorCard(data);
   } else {
-    body.innerHTML=await buildSessionCard(data);
+    const _card=await buildSessionCard(data);
+    let _cmp='';
+    try{if(readModalIsPerso&&window.udtAllure&&window.udtAllure.compareHtml){const _ath=currentPersoAthlete&&currentPersoAthlete.id===data.athlete_id?currentPersoAthlete:persoAthletesCache.find(a=>a.id===data.athlete_id);_cmp=window.udtAllure.compareHtml(data,_ath&&_ath.full_name);}}catch(e){}
+    const _box=document.querySelector('#read-modal .read-modal-box');
+    if(_box)_box.classList.toggle('has-cmp',!!_cmp);
+    body.innerHTML=_cmp?'<div class="rm-grid"><div class="rm-main">'+_card+'</div><div class="rm-side">'+_cmp+'</div></div>':_card;
     body.querySelectorAll('.tm-pill').forEach(function(x){x.remove();}); // timer : côté athlète uniquement
     if(readModalIsPerso&&data.athlete_id){
       try{await _readModalAppendRetour(body,data);}catch(e){console.warn('retour modale',e);}
@@ -455,7 +460,7 @@ async function renderPersoCalendar(){
       }
       const color=s.color||'#e8ff47';
       const typeLabel=TYPE_LABELS[s.type]||s.type;
-      const fullHtml=(typeof formatPlanningContent==='function')?(window.udtAllure&&window.udtAllure.ctx&&window.udtAllure.ctx(s.athlete_id,s.title),formatPlanningContent(s.content||'')):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
+      const fullHtml=(typeof formatPlanningContent==='function')?((window.udtAllure&&window.udtAllure.renderAs)?window.udtAllure.renderAs(s.athlete_id,s.title,()=>formatPlanningContent(s.content||'')):formatPlanningContent(s.content||'')):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
       const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
       const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
       const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
@@ -520,7 +525,7 @@ async function renderPersoCalendar(){
         }
         const color=s.color||'#e8ff47';
         const typeLabel=TYPE_LABELS[s.type]||s.type;
-        const fullHtml=(typeof formatPlanningContent==='function')?(window.udtAllure&&window.udtAllure.ctx&&window.udtAllure.ctx(s.athlete_id,s.title),formatPlanningContent(s.content||'')):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
+        const fullHtml=(typeof formatPlanningContent==='function')?((window.udtAllure&&window.udtAllure.renderAs)?window.udtAllure.renderAs(s.athlete_id,s.title,()=>formatPlanningContent(s.content||'')):formatPlanningContent(s.content||'')):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
         const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
         const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
         const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';

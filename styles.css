@@ -1245,3 +1245,22 @@ html[data-theme="light"] .cal-rich-full .cr-rest,:root[data-theme="light"] .cal-
 :root[data-theme="light"] .blk-sep.dot{background:none;border-top-color:#c4c4c4}
 .blk-sep.sm{width:34%;background:linear-gradient(90deg,#3a3a3a,#3a3a3a 60%,transparent);margin:10px 0 9px}
 :root[data-theme="light"] .blk-sep.sm{background:linear-gradient(90deg,#d4d4d4,#d4d4d4 60%,transparent)}
+
+/* Vue séance : comparatif « TES VALEURS » (coach) */
+.read-modal-box.has-cmp{max-width:980px}
+.rm-grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:14px;align-items:start}
+.rm-side{position:sticky;top:0}
+.rm-cmp{background:var(--card);border:1px solid rgba(45,212,191,.45);border-radius:12px;padding:12px 14px}
+.rm-cmp summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.rm-cmp summary::-webkit-details-marker{display:none}
+.rmc-t{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:1px;color:#2dd4bf}
+.rmc-chev{color:#2dd4bf;font-size:12px}
+.rmc-sub{font-size:11px;color:var(--muted);margin:2px 0 10px}
+.rmc-tab{width:100%;border-collapse:collapse;table-layout:fixed}
+.rmc-tab td{padding:8px 4px 8px 0;border-top:1px solid rgba(255,255,255,.08);font-size:12px;vertical-align:middle;line-height:1.35}
+.rmc-h td{border-top:none;font-size:10px;letter-spacing:1.5px;color:var(--muted);padding-bottom:4px}
+.rmc-tab td.rmc-l{width:38%;color:var(--text)}
+.rmc-ha,.rmc-a{color:var(--accent)!important;font-weight:700}
+.rmc-hc{color:#2dd4bf!important;font-size:11px!important;font-weight:700}
+.rmc-c{color:#2dd4bf;font-weight:700;font-size:14.5px!important}
+@media (max-width:760px){.rm-grid{grid-template-columns:1fr}.rm-side{position:static}}

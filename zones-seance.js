@@ -143,8 +143,8 @@
     return chip(v);
   }
   function chip(inner, muted) {
-    return ' <span class="allure-zone" style="display:inline-block;margin:2px 0;background:' + (muted ? 'rgba(255,255,255,.06)' : 'rgba(45,212,191,.14)') +
-      ';color:' + (muted ? 'var(--muted)' : '#2dd4bf') + ';padding:1px 8px;border-radius:6px;font-size:12.5px;font-weight:700;line-height:1.45">' + inner + '</span>';
+    return ' <span class="allure-zone" style="display:inline-block;margin:2px 0;background:' + (muted ? 'rgba(255,255,255,.06)' : 'color-mix(in srgb, var(--accent) 15%, transparent)') +
+      ';color:' + (muted ? 'var(--muted)' : 'var(--accent)') + ';padding:1px 8px;border-radius:6px;font-size:12.5px;font-weight:700;line-height:1.45">' + inner + '</span>';
   }
 
   /* ---------- application au contenu rendu (lignes séparées par <br>) ---------- */
@@ -266,5 +266,63 @@
     if (id && cache[id]) setActive(id);
   }
 
-  window.udtAllure = { apply: apply, load: load, use: use, ctx: ctx, zoneOf: zoneOf, modOf: modOf, panel: panel };
+  /* rend fn() avec les zones ET les PR de l'athlète id (puis restaure l'état) */
+  function renderAs(id, title, fn) {
+    var prevActive = active, prevMod = ctxMod, swapped = false, saved;
+    ctx(id, title);
+    try {
+      var me = typeof currentUser !== 'undefined' && currentUser ? currentUser.id : null;
+      if (id && id !== me && cache[id] && cache[id].prs && typeof myPRs !== 'undefined') {
+        saved = myPRs; myPRs = cache[id].prs; swapped = true;
+      }
+      return fn();
+    } finally {
+      if (swapped) myPRs = saved;
+      if (prevActive) setActive(prevActive);
+      ctxMod = prevMod;
+    }
+  }
+
+  /* ---------- comparatif « TES VALEURS » (vue coach, séance perso d'un athlète) ---------- */
+  function esc(t) { return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  var VAL_SEL = '.allure-zone, span[style*="232,255,71"], span[onclick^="openPRFromSession"]';
+  function lineVals(html) {
+    var d = document.createElement('div'); d.innerHTML = html;
+    var vals = [];
+    d.querySelectorAll(VAL_SEL).forEach(function (el) {
+      var muted = /pas encore|Entrer/i.test(el.textContent);
+      vals.push(muted ? '—' : el.textContent.trim());
+      el.remove();
+    });
+    var label = d.textContent.replace(/\s+/g, ' ').trim();
+    return { vals: vals, label: label };
+  }
+  function compareHtml(s, athleteName) {
+    try {
+      if (!s || !s.athlete_id || typeof currentUser === 'undefined' || !currentUser || s.athlete_id === currentUser.id) return '';
+      if (typeof renderContentWithCharges !== 'function') return '';
+      var me = currentUser.id;
+      var a = renderAs(s.athlete_id, s.title, function () { return renderContentWithCharges(s.content || ''); });
+      var c = renderAs(me, s.title, function () { return renderContentWithCharges(s.content || ''); });
+      var la = a.split('<br>'), lc = c.split('<br>');
+      if (la.length !== lc.length) return '';
+      var rows = [];
+      for (var i = 0; i < la.length; i++) {
+        var A = lineVals(la[i]);
+        if (!A.vals.length) continue;
+        var C = lineVals(lc[i]);
+        var lab = A.label.length > 42 ? A.label.slice(0, 40) + '…' : A.label;
+        rows.push('<tr><td class="rmc-l">' + esc(lab) + '</td><td class="rmc-a">' + A.vals.map(esc).join('<br>') +
+          '</td><td class="rmc-c">' + (C.vals.length ? C.vals.map(esc).join('<br>') : '—') + '</td></tr>');
+      }
+      if (!rows.length) return '';
+      var nm = esc(String(athleteName || 'Athlète').split(' ')[0]).toUpperCase();
+      var open = (typeof window !== 'undefined' && window.innerWidth >= 760) ? ' open' : '';
+      return '<details class="rm-cmp"' + open + '><summary><span class="rmc-t">⇄ TES VALEURS</span><span class="rmc-chev">▾</span></summary>' +
+        '<div class="rmc-sub">La même séance, calculée sur toi · vue coach</div>' +
+        '<table class="rmc-tab"><tr class="rmc-h"><td>LIGNE</td><td class="rmc-ha">' + nm + '</td><td class="rmc-hc">TES VALEURS</td></tr>' + rows.join('') + '</table></details>';
+    } catch (e) { return ''; }
+  }
+
+  window.udtAllure = { apply: apply, load: load, use: use, ctx: ctx, renderAs: renderAs, compareHtml: compareHtml, zoneOf: zoneOf, modOf: modOf, panel: panel };
 })();

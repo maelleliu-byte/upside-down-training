@@ -156,7 +156,7 @@ async function buildSessionCard(s){
   ].join('');
 
   // renderContentWithCharges normalise tout en <br> — pas besoin de test isHtml
-  let contentHtml=renderContentWithCharges(s.content||'');
+  let contentHtml=(window.udtAllure&&window.udtAllure.renderAs)?window.udtAllure.renderAs(s.athlete_id||null,s.title||'',()=>renderContentWithCharges(s.content||'')):renderContentWithCharges(s.content||'');
   const isStrength=s.type==='strength'&&s.sets>0;
   const isMulti=s.multi_score&&s.score_count>0;
   const isText=s.score_type==='text';
