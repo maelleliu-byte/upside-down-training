@@ -8,6 +8,7 @@
 
 const { createClient } = require('@supabase/supabase-js');
 const { notifySignup } = require('./lib/mailer');
+const { isKidEmail } = require('./lib/family');
 
 const supabase = createClient(
   process.env.SUPABASE_URL,
@@ -48,6 +49,9 @@ exports.handler = async (event) => {
     console.error('[notify-signup] profil introuvable :', profileId, error?.message);
     return { statusCode: 200, body: 'OK' };
   }
+
+  // Profil enfant : le coach reçoit déjà le mail « à valider » (family.js).
+  if (isKidEmail(profile.email)) return { statusCode: 200, body: 'OK' };
 
   await notifySignup(supabase, profile);
 

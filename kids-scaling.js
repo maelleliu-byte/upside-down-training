@@ -710,6 +710,23 @@ function rafraichir(sid,catId){
   if(neuf.firstElementChild)barre.replaceWith(neuf.firstElementChild);
 }
 
+/* Tranche d'âge ouverte par défaut : celle de l'enfant connecté (date de
+   naissance du profil), sinon 16-17. Le coach reste toujours sur 16-17. */
+function catDefaut(){
+  if(estAdmin())return CAT_BASE;
+  var p=null;
+  try{p=window.currentProfile||null;}catch(e){}
+  if(!p||!p.birth_date)return CAT_BASE;
+  var b=new Date(p.birth_date); if(isNaN(b))return CAT_BASE;
+  var n=new Date(), a=n.getFullYear()-b.getFullYear(), m=n.getMonth()-b.getMonth();
+  if(m<0||(m===0&&n.getDate()<b.getDate()))a--;
+  for(var i=0;i<CATS.length;i++){
+    var bornes=CATS[i].id.split('-');
+    if(a>=+bornes[0]&&a<=+bornes[1])return CATS[i].id;
+  }
+  return a<6?CATS[0].id:CAT_BASE;
+}
+
 /* Glisse la barre de boutons dans la carte, juste au-dessus du bloc WOD. */
 function injecterBarre(s,html){
   var d=document.createElement('div');
@@ -730,12 +747,25 @@ function injecterBarre(s,html){
   }
   ORIGINE[s.id]=memo;
 
+  /* Profil enfant : la carte s'ouvre directement sur sa tranche d'âge. */
+  var defaut=catDefaut();
+  if(defaut!==CAT_BASE){
+    var c=contenuKids(s,defaut);
+    zone.innerHTML=c.html;
+    if(!c.base)zone.classList.add('udtk-on');
+    for(var j=0;j<BLOCS_SCALING.length;j++){
+      var el=d.querySelector('[data-udtk-sc="'+s.id+'-'+BLOCS_SCALING[j].niv+'"]');
+      var neuf=el&&scalingKids(s,defaut,BLOCS_SCALING[j].niv);
+      if(neuf!=null&&el)el.innerHTML=neuf;
+    }
+  }
+
   /* Dans l'en-tête, après le badge de type : les boutons ne prennent aucune
      ligne au WOD et restent au même endroit quoi qu'affiche la carte. */
   var hdr=d.querySelector('.session-header'), badge=hdr&&hdr.querySelector('.badge');
-  if(badge)badge.insertAdjacentHTML('afterend',barreKids(s,CAT_BASE));
-  else if(hdr)hdr.insertAdjacentHTML('afterbegin',barreKids(s,CAT_BASE));
-  else zone.insertAdjacentHTML('beforebegin',barreKids(s,CAT_BASE));
+  if(badge)badge.insertAdjacentHTML('afterend',barreKids(s,defaut));
+  else if(hdr)hdr.insertAdjacentHTML('afterbegin',barreKids(s,defaut));
+  else zone.insertAdjacentHTML('beforebegin',barreKids(s,defaut));
   return d.innerHTML;
 }
 function toast(msg){
