@@ -534,6 +534,7 @@ async function loadAdminCalendar(){
           const color=s.color||'#e8ff47';
           const typeLabel=TYPE_LABELS[s.type]||s.type;
           const rawContent=s.content||'';
+          if(window.udtAllure&&window.udtAllure.ctx)window.udtAllure.ctx(null,s.title);
           const fullHtml=formatPlanningContent(rawContent);
           const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
           const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
@@ -606,7 +607,8 @@ async function loadAdminCalendar(){
         const typeLabel=TYPE_LABELS[s.type]||s.type;
         // Aperçu contenu (strip HTML, charges remplacées)
         const rawContent=s.content||'';
-        const fullHtml=formatPlanningContent(rawContent);
+        if(window.udtAllure&&window.udtAllure.ctx)window.udtAllure.ctx(null,s.title);
+          const fullHtml=formatPlanningContent(rawContent);
         const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
         const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
         const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';

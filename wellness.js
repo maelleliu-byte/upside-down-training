@@ -424,6 +424,7 @@ async function renderPersoCalendar(){
     persoLblElDay.textContent=`${DAYS[d.getDay()]} ${d.getDate()} ${MONTHS[d.getMonth()]}${iso===today?' · aujourd\'hui':''}`;
     persoLblElDay.title='';persoLblElDay.style.cursor='';persoLblElDay.style.textDecoration='';persoLblElDay.onclick=null;
     const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).eq('date',iso).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+    try{if(window.udtAllure&&window.udtAllure.use)await window.udtAllure.use(currentPersoAthlete.id);}catch(e){}
     persoSessionsCache=data||[];
     const sessions=persoSessionsCache;
     const _sidsD=sessions.filter(s=>s.type!=='separator').map(s=>s.id);
@@ -454,7 +455,7 @@ async function renderPersoCalendar(){
       }
       const color=s.color||'#e8ff47';
       const typeLabel=TYPE_LABELS[s.type]||s.type;
-      const fullHtml=(typeof formatPlanningContent==='function')?formatPlanningContent(s.content||''):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
+      const fullHtml=(typeof formatPlanningContent==='function')?(window.udtAllure&&window.udtAllure.ctx&&window.udtAllure.ctx(s.athlete_id,s.title),formatPlanningContent(s.content||'')):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
       const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
       const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
       const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
@@ -491,6 +492,7 @@ async function renderPersoCalendar(){
     persoLblEl.onclick=null;
     const isos=dates.map(d=>d.toISOString().split('T')[0]);
     const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+    try{if(window.udtAllure&&window.udtAllure.use)await window.udtAllure.use(currentPersoAthlete.id);}catch(e){}
     persoSessionsCache=data||[];
     const byDate={};isos.forEach(iso=>byDate[iso]=[]);
     (data||[]).forEach(s=>{if(byDate[s.date])byDate[s.date].push(s);});
@@ -518,7 +520,7 @@ async function renderPersoCalendar(){
         }
         const color=s.color||'#e8ff47';
         const typeLabel=TYPE_LABELS[s.type]||s.type;
-        const fullHtml=(typeof formatPlanningContent==='function')?formatPlanningContent(s.content||''):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
+        const fullHtml=(typeof formatPlanningContent==='function')?(window.udtAllure&&window.udtAllure.ctx&&window.udtAllure.ctx(s.athlete_id,s.title),formatPlanningContent(s.content||'')):escapeHtml(stripHtml(renderContentWithCharges(s.content||'')));
         const intensity=s.intensity?`<span>I${s.intensity}/10</span><span class="dot"></span>`:'';
         const sets=s.sets?`<span>${s.sets} séries</span><span class="dot"></span>`:'';
         const yt=s.youtube_url?`<span>▶ vidéo</span>`:'';
@@ -568,6 +570,7 @@ async function renderPersoCalendar(){
     }
     const isos=cells.map(d=>d.toISOString().split('T')[0]);
     const {data}=await sb.from('personal_sessions').select('*').eq('athlete_id',currentPersoAthlete.id).in('date',isos).order('sort_order',{ascending:true,nullsFirst:false}).order('created_at');
+    try{if(window.udtAllure&&window.udtAllure.use)await window.udtAllure.use(currentPersoAthlete.id);}catch(e){}
     const byDate={};isos.forEach(iso=>byDate[iso]=[]);
     (data||[]).forEach(s=>{if(byDate[s.date])byDate[s.date].push(s);});
     // === RETOURS ATHLÈTE : indicateurs sur les pills du mois ===

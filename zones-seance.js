@@ -259,5 +259,12 @@
       '<div style="padding:4px 10px 2px">' + body + '</div></details>';
   }
 
-  window.udtAllure = { apply: apply, load: load, use: use, zoneOf: zoneOf, modOf: modOf, panel: panel };
+  /* version synchrone pour les vues calendrier (données déjà chargées par use) */
+  function ctx(id, title) {
+    ctxMod = modOf(title || '');
+    id = id || (typeof currentUser !== 'undefined' && currentUser ? currentUser.id : null);
+    if (id && cache[id]) setActive(id);
+  }
+
+  window.udtAllure = { apply: apply, load: load, use: use, ctx: ctx, zoneOf: zoneOf, modOf: modOf, panel: panel };
 })();
