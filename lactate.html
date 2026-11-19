@@ -558,6 +558,13 @@ function calc(d){
   const hr=d.hr;
   R.fcMax=hr&&hr.length?Math.max(...hr):fp.length?Math.max(...fp.map(p=>p.fc)):NaN;
   R.fcAt=w=>{if(!isFinite(fa)||!isFinite(w))return NaN;const f=fa+fb*w;return isFinite(R.fcMax)?Math.min(f,R.fcMax):f};
+  // FC de référence saisies à la main (ex. fiche Excel importée) : interpolation entre ces points
+  if(Array.isArray(d.fcRef)&&d.fcRef.length>=2){
+    const ref=d.fcRef.map(p=>[+p[0],+p[1]]).filter(p=>isFinite(p[0])&&isFinite(p[1])).sort((a,b)=>a[0]-b[0]);
+    R.fcAt=w=>{if(!isFinite(w)||ref.length<2)return NaN;let i=0;while(i<ref.length-2&&w>ref[i+1][0])i++;
+      const a=ref[i],b=ref[i+1];return a[1]+(w-a[0])*(b[1]-a[1])/(b[0]-a[0])};
+    if(num(d.fcMaxO))R.fcMax=num(d.fcMaxO);
+  }
   R.fc1=R.fcAt(R.s1);R.fc2=R.fcAt(R.s2);
   // zones
   if(R.thrOk){const s1=R.s1,s2=R.s2;R.b=[r5(s1*.65),r5(s1),r5(s2*.9),r5(s2),r5(s2*1.05),r5(s2*1.5)]}

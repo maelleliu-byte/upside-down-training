@@ -92,6 +92,11 @@
       var lohi = { Z1: [null, b[0]], Z2: [b[0], b[1]], Z3: [b[1], b[2]], Z4: [b[2], b[4]], Z5: [b[4], b[5]] }[zone];
       var f1 = +t.fc1, f2 = +t.fc2, fcAt = null;
       if (f1 > 0 && f2 > f1) fcAt = function (w) { return Math.round(f1 + (w - s1) * (f2 - f1) / (s2 - s1)); };
+      var ref = t.data && Array.isArray(t.data.fcRef) ? t.data.fcRef.map(function (p) { return [+p[0], +p[1]]; }).sort(function (a, b) { return a[0] - b[0]; }) : null;
+      if (ref && ref.length >= 2) fcAt = function (w) {
+        var i = 0; while (i < ref.length - 2 && w > ref[i + 1][0]) i++;
+        var a = ref[i], b = ref[i + 1]; return Math.round(a[1] + (w - a[0]) * (b[1] - a[1]) / (b[0] - a[0]));
+      };
       return { lo: lohi[0], hi: lohi[1], unit: 'W', fcAt: fcAt, src: (t.kind === 'lactate' ? 'profilage lactate' : 'profilage RPE') + ' du ' + dateFR(t.test_date) };
     }
     /* 3 · PC / VC */
@@ -154,7 +159,7 @@
       if (typeof sb === 'undefined' || typeof currentUser === 'undefined' || !currentUser) return;
       var id = currentUser.id;
       var r = await Promise.all([
-        sb.from('endurance_tests').select('kind,modality,test_date,s1,s2,fc1,fc2,created_at').eq('athlete_id', id),
+        sb.from('endurance_tests').select('kind,modality,test_date,s1,s2,fc1,fc2,created_at,data').eq('athlete_id', id),
         sb.from('pc_zone_overrides').select('modality,z2_hi').eq('athlete_id', id)
       ]);
       data.tests = (r[0] && r[0].data) || [];
