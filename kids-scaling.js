@@ -44,9 +44,7 @@ var CATS = [
   {id:'10-11',nom:'10-11 ans',fede:'Benjamins',k:0.34,kvol:0.75,box:[30,30],cible:2.2,
    alerte:"Pas de 1RM. Kipping uniquement si 3 tractions strictes sont acquises.",
    note:"Barre 10 kg. La barre de 15 kg arrive en fin de catégorie."},
-  {id:'12-13',nom:'12-13 ans',fede:'Minimes',k:0.47,kvol:0.90,box:[40,35],cible:2.5,
-   alerte:"Pas de 1RM avant maturité osseuse : plancher à 3 répétitions.",
-   note:"Barre 15 kg (F) et 20 kg (M) utilisables à partir de 13 ans."},
+  {id:'12-13',nom:'12-13 ans',fede:'Minimes',k:0.47,kvol:0.90,box:[40,35],cible:2.5,note:''},
   {id:'14-15',nom:'14-15 ans',fede:'Cadets',k:0.67,kvol:1,box:[50,45],cible:2.7,officiel:true,
    note:"Volume, time caps et standards techniques adultes conservés."},
   {id:'16-17',nom:'16-17 ans',fede:'Juniors',k:1,kvol:1,box:[60,50],cible:3.0,officiel:true,
@@ -192,6 +190,37 @@ var ECHELLES = [
    de mouvement chargé — sinon "21-15-9" deviendrait des kilos. */
 var CHARGE_LEX = /snatch|clean|jerk|thrust|deadlift|soulev|squat|press|swing|lunge|fente|carry|port[ée]|wall ?ball|dumb+ell|\bdb\b|haltère|kettlebell|\bkb\b|sandbag|\bsac\b|d-?ball|worm|barre|\bbar\b|overhead|\bohs\b|sdhp|farmer|devil|hang|complex|\b\d\s*[x×]\s*\d/i;
 
+/* Paire « 28/20 » qui n'est ni des calories, ni des mètres, ni des cm. */
+var PAIRE_NUE=/(^|[^\d.,\/])\d+(?:[.,]\d+)?\s*\/\s*\d+(?:[.,]\d+)?(?![\d.,\/])(?!\s*(?:cal|m\b|cm|"|kg|lb))/i;
+
+/* Ligne du WOD d'origine à laquelle se rapporte une ligne de scaling :
+   celle qui partage le plus de mots, parmi les lignes chargées ; à défaut,
+   la seule ligne chargée du WOD. */
+function ligneContexte(l,contexte){
+  var mots=function(x){return x.toLowerCase().replace(/<[^>]*>/g,' ').match(/[a-zà-ÿ0-9]+/g)||[];};
+  var mine=mots(l).filter(function(w){return !/^\d+(?:[.,]\d+)?$/.test(w);});
+  var best='',score=0,chargees=[];
+  for(var i=0;i<contexte.length;i++){
+    var c=contexte[i];
+    if(!CHARGE_LEX.test(c)||!/\d+(?:[.,]\d+)?\s*\/\s*\d/.test(c))continue;
+    chargees.push(c);
+    var m=mots(c),n=0;
+    for(var j=0;j<mine.length;j++){if(m.indexOf(mine[j])>=0)n++;}
+    if(n>score){score=n;best=c;}
+  }
+  if(best)return best;
+  return chargees.length===1?chargees[0]:'';
+}
+
+/* Un mouvement remplacé emporte ses qualificatifs : « JUMPING BAR MUSCLE UP »
+   devient « PULL-UPS SAUTÉES », pas « JUMPING PULL-UPS SAUTÉES ». */
+var RE_QUALIF={};
+function avecQualif(re){
+  var cle=re.source+'|'+re.flags;
+  if(!RE_QUALIF[cle])RE_QUALIF[cle]=new RegExp('(?:\\b(?:jumping|low|high|strict|banded|assisted|scaled)[- ]+)*'+re.source,re.flags);
+  return RE_QUALIF[cle];
+}
+
 /* Valeurs d'usine, pour le bouton « Rétablir » du panneau Outils. */
 var USINE = JSON.parse(JSON.stringify({
   cats:(function(){var o={};for(var i=0;i<CATS.length;i++)o[CATS[i].id]=CATS[i].k;return o;})(),
@@ -320,6 +349,8 @@ function scaleWod(texte,o){
   var p=profil(o.categorie,o.niveau);
   if(!p)return null;
   var voie=o.voie||'volume';
+  var nivBarreau=(typeof o.barreau==='number')?o.barreau:p.barreau;
+  var contexte=o.contexte?String(o.contexte).split('\n').filter(function(x){return x.trim();}):[];
   var opts={intensite:o.intensite||'auto',volume:o.volume!==false,
             gym:o.gym!==false,reps:!!o.reps};
   var flags={};
@@ -331,7 +362,10 @@ function scaleWod(texte,o){
     l=l.replace(/♀\s*(\d+(?:[.,]\d+)?)\s*(?:kg|lb)?\s*[\/|,•·–—-]?\s*♂\s*(\d+(?:[.,]\d+)?)\s*(kg|lb)/gi,function(m,f,h,u){return h+'/'+f+' '+u;});
     l=l.replace(/♂\s*(\d+(?:[.,]\d+)?)\s*(?:kg|lb)?\s*[\/|,•·–—-]?\s*♀\s*(\d+(?:[.,]\d+)?)\s*(kg|lb)/gi,function(m,h,f,u){return h+'/'+f+' '+u;});
 
-    var equip=equipOf(l), rack=RACKS[equip]||RACKS.barre;
+    /* Ligne de scaling sans engin nommé (« 40m 28/20 », « 30/20 ») : on
+       retrouve la ligne du WOD qu'elle allège pour savoir de quoi il s'agit. */
+    var ctx=(!CHARGE_LEX.test(l)&&PAIRE_NUE.test(l))?ligneContexte(l,contexte):'';
+    var equip=equipOf(ctx||l), rack=RACKS[equip]||RACKS.barre;
     var inten=intensiteDe(repsOf(l),opts.intensite);
     if(inten.lbl==='max'&&p.jeune)flags.max=true;
     var kInt=inten.lbl==='metcon'?1:(p.jeune?0.85:inten.k);
@@ -386,7 +420,7 @@ function scaleWod(texte,o){
       return paire(exact?refH*k:snap(refH*k,rack),snap(refH*RATIO_CHARGE*k,rack));
     });
 
-    if(CHARGE_LEX.test(l)){
+    if(CHARGE_LEX.test(l)||ctx){
       l=safe(l,/(^|[^\d.,\/])(\d+(?:[.,]\d+)?)\s*\/\s*(\d+(?:[.,]\d+)?)(?![\d.,\/])/g,function(m,pre,a,b){
         return pre+paire(exact?num(a)*k:snap(num(a)*k,rack),exact?num(b)*k:snap(num(b)*k,rack));
       });
@@ -413,15 +447,16 @@ function scaleWod(texte,o){
     /* Mouvements : barreau de l'échelle, dans la voie retenue */
     if(opts.gym){
       for(var i=0;i<ECHELLES.length;i++){
-        var sub=marche(ECHELLES[i],voie,p.barreau);
+        var sub=marche(ECHELLES[i],voie,nivBarreau);
         if(!sub)continue;
         /* La prog est écrite en capitales : la substitution suit le mouvement
            qu'elle remplace, sinon la ligne part en minuscules au milieu. */
         var poser=(function(x){return function(m){
           return M1+((/[A-ZÀ-Þ]/.test(m)&&m===m.toUpperCase())?x.toUpperCase():x)+M2;
         };})(sub);
-        ECHELLES[i].re.lastIndex=0;
-        l=safeSub(l,ECHELLES[i].re,poser);
+        var reMv=avecQualif(ECHELLES[i].re);
+        reMv.lastIndex=0;
+        l=safeSub(l,reMv,poser);
         if(ECHELLES[i].re2){ECHELLES[i].re2.lastIndex=0;l=safeSub(l,ECHELLES[i].re2,poser);}
       }
     }
@@ -604,12 +639,12 @@ function contenuKids(s,catId){
 
   var html='<div class="udtk-ban"><span class="udtk-age">'+cat.nom+'</span>'+
       (perso!==null?'<span class="udtk-tag">modifié</span>':'')+
-      '<span class="udtk-meta">'+meta+'</span>'+outils+'</div>'+
+      (estAdmin()?'<span class="udtk-meta">'+meta+'</span>':'')+outils+'</div>'+
     '<div class="udtk-wod">'+corps+'</div>'+
-    '<div class="udtk-note">'+
-      (cat.alerte?'<span class="udtk-alerte">⚠ '+cat.alerte+'</span>':'')+cat.note+
-    '</div>'+
-    voieLigne(s,estAdmin());
+    ((cat.alerte||cat.note)?'<div class="udtk-note">'+
+      (cat.alerte?'<span class="udtk-alerte">⚠ '+cat.alerte+'</span>':'')+(cat.note||'')+
+    '</div>':'')+
+    (estAdmin()?voieLigne(s,true):'');
 
   return {html:html,base:false};
 }
@@ -626,8 +661,12 @@ function scalingKids(s,catId,nivId){
   var ecrit=texteEcrit(s,niveau);
   if(!ecrit)return null;
   if(cat.id===CAT_BASE)return null;
+  /* Le texte écrit correspond au niveau à 16-17. On ne change le mouvement que
+     si la grille fait descendre ce niveau plus bas pour cette tranche d'âge. */
+  var bAge=barreau(cat.id,niveau.id), bRef=barreau(CAT_BASE,niveau.id);
   var r=scaleWod(ecrit,{categorie:cat.id,niveau:NIV_BASE,
-        intensite:REGIMES[s.type]||'auto',voie:voieDe(s)});
+        intensite:REGIMES[s.type]||'auto',voie:voieDe(s),
+        barreau:(bAge<bRef?bAge:NB_BARREAUX),contexte:enTexte(s.content||'')});
   return r?r.html:null;
 }
 
