@@ -35,20 +35,12 @@ var RATIO_CHARGE = 0.70, RATIO_CAL = 0.80;
 /* Tranches d'âge — pilotent la CHARGE uniquement.
    14-15 et 16-17 = coefficients officiels CrossFit Games ; 6-13 = extrapolation. */
 var CATS = [
-  {id:'6-7',nom:'6-7 ans',fede:'Poussins',k:0.21,kvol:0.50,box:[20,20],cible:1.8,
-   alerte:"Pas de barre chargée ni de travail maximal. PVC ou bâton, séries courtes.",
-   note:"Charge indicative : l'objectif est le schéma moteur, pas le kilo."},
-  {id:'8-9',nom:'8-9 ans',fede:'Pupilles',k:0.26,kvol:0.60,box:[25,25],cible:2.0,
-   alerte:"Pas de travail maximal. Barre technique 5 kg maximum, pas de kipping.",
-   note:"Privilégier haltères, médecine-ball et sacs lestés à la barre."},
-  {id:'10-11',nom:'10-11 ans',fede:'Benjamins',k:0.34,kvol:0.75,box:[30,30],cible:2.2,
-   alerte:"Pas de 1RM. Kipping uniquement si 3 tractions strictes sont acquises.",
-   note:"Barre 10 kg. La barre de 15 kg arrive en fin de catégorie."},
+  {id:'6-7',nom:'6-7 ans',fede:'Poussins',k:0.21,kvol:0.50,box:[20,20],cible:1.8,note:''},
+  {id:'8-9',nom:'8-9 ans',fede:'Pupilles',k:0.26,kvol:0.60,box:[25,25],cible:2.0,note:''},
+  {id:'10-11',nom:'10-11 ans',fede:'Benjamins',k:0.34,kvol:0.75,box:[30,30],cible:2.2,note:''},
   {id:'12-13',nom:'12-13 ans',fede:'Minimes',k:0.47,kvol:0.90,box:[40,35],cible:2.5,note:''},
-  {id:'14-15',nom:'14-15 ans',fede:'Cadets',k:0.67,kvol:1,box:[50,45],cible:2.7,officiel:true,
-   note:"Volume, time caps et standards techniques adultes conservés."},
-  {id:'16-17',nom:'16-17 ans',fede:'Juniors',k:1,kvol:1,box:[60,50],cible:3.0,officiel:true,
-   note:"Charges Rx adultes en metcon ; −15 % seulement sur les barres lourdes."}
+  {id:'14-15',nom:'14-15 ans',fede:'Cadets',k:0.67,kvol:1,box:[50,45],cible:2.7,officiel:true,note:''},
+  {id:'16-17',nom:'16-17 ans',fede:'Juniors',k:1,kvol:1,box:[60,50],cible:3.0,officiel:true,note:''}
 ];
 var JEUNES = ['6-7','8-9','10-11','12-13'];
 
