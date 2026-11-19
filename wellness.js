@@ -703,6 +703,9 @@ function _persoDrawerInner(sc,nt,w){
       if(Array.isArray(sd)&&sd.length){
         setsHtml=`<div class="sets">${sd.map(s=>`S${s.set}: ${s.value}${s.unit||'kg'}`).join(' · ')}</div>`;
       }
+      // intervalles avec RPE : graphique valeurs + courbe RPE (iv-recap.js) à la place de la ligne S1…Sn
+      const iv=(Array.isArray(sd)&&typeof ivRecapHtml==='function')?ivRecapHtml(sd,{noTitle:true}):'';
+      if(iv)setsHtml=`<div class="perso-r-iv" style="margin-top:4px">${iv}</div>`;
     }catch(e){}
     rows.push(`<div class="perso-r-row"><div class="lbl">Score</div><div class="val">${scoreHtml}${setsHtml}</div></div>`);
     if(sc.vbt&&typeof window.vbtRecapHTML==='function'){
