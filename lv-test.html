@@ -635,13 +635,16 @@ function zoneLoad(src,z,i){
 const ZLIGHT={"--z1":"#C24A3D","--z2":"#D98A2B","--z3":"#0B9488","--z4":"#5FA8A0","--z5":"#7D8A86"};
 function cssVar(v){const m=/var\((--[\w-]+)\)/.exec(v);return m?(ZLIGHT[m[1]]||"#0B9488"):v}
 function athleteName(){const a=store.athletes.find(x=>x.id===store.viewId);return a?a.name:""}
+/* Fiche zones : même visuel que les zones d'endurance (fond teal, logo, couleurs vives) */
+const LOGO_PATH=(LOGO.match(/ d="([^"]+)"/)||[])[1]||"";
+const ZEXP=["#E5483B","#F58A1F","#E8C21C","#22B35E","#3B8FEA"];
 function lvExport(){
   const ref=reference(),d=draft();const src=ref||(d.f?d:null);if(!src)return null;
   const mv=MOVES.find(m=>m.k===store.mv)||MOVES[0];
-  return {kind:"Profilage charge-vitesse",title:mv.name,athlete:athleteName(),date:ref?dateFR(src.date):"",
+  return {kind:"Profilage charge-vitesse",theme:"teal",logo:LOGO_PATH,title:mv.name,athlete:athleteName(),date:ref?dateFR(src.date):"",
     refs:[["1RM estimé",kg(src.e1)+" kg"],["RM all time",src.rm?kg(src.rm)+" kg":"–"],[src.pv?"Vitesse du PR":"VMT",fr(src.mvt,2)+" m/s"]],
     head:["Zone","Vitesse","Charges"],
-    rows:ZONES.map((z,i)=>{const {load,pr}=zoneLoad(src,z,i);return {c:cssVar(z.c),cells:[z.n,z.vr,load],sub:z.ex+(pr?" · "+pr+" du RM":"")}}),
+    rows:ZONES.map((z,i)=>{const {load,pr}=zoneLoad(src,z,i);return {c:ZEXP[i]||cssVar(z.c),cells:[z.n,z.vr,load],sub:z.ex+(pr?" · "+pr+" du RM":"")}}),
     note:"Les plages de vitesse restent fixes : les charges se recalculent à chaque nouveau test. Vitesse moyenne concentrique mesurée au capteur.",
     file:"zones-"+mv.name+(athleteName()?"-"+athleteName():"")};
 }

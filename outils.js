@@ -23,7 +23,7 @@
   // Idem pour pc.html (profil puissance / vitesse critique)
   var PC_VERSION = '2026-11-18a';
   // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
-  var LV_VERSION = '2026-11-20a';
+  var LV_VERSION = '2026-11-20b';
   // Idem pour lactate.html (profilage lactate · profilage RPE, protocole 41)
   var ENDU_VERSION = '20261119a';
 
