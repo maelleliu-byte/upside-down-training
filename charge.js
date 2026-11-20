@@ -1364,7 +1364,7 @@
       const stale=a.last_entry?Math.round((Date.now()-new Date(a.last_entry))/86400000):null;
       return`<div class="chg-rost" data-ath="${a.athlete_id}" style="border-left:3px solid ${z.c}">
         <div style="flex:1;min-width:0">
-          <div class="n">${a.is_favorite?'⭐ ':''}${a.full_name||a.email||'—'}${
+          <div class="n">${a.is_favorite?'⭐ ':''}${escapeHtml(a.full_name||a.email||'—')}${
             a.is_me?' <span style="font-size:10px;color:var(--muted);font-weight:500">· moi</span>':''}</div>
           <div class="s">${fmt(a.load7)} UA · 7 j · ${fmt(a.hours7,1)} h${
             a.monotony!=null?` · mono. ${fmt(a.monotony,2)}`:''}${
@@ -1469,7 +1469,7 @@
       rpe=await fetchRpe(athleteId);br=await fetchBreakdown(athleteId);
     }catch(e){console.error('[charge] fiche',e);}
     fiche.innerHTML=`<button class="chg-back" id="chg-back">${opts.fromPerso?'‹ Retour à l\'espace perso':'‹ Retour'}</button>
-      <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${a.full_name||a.email||'Athlète'}</div>
+      <div style="font-size:15px;font-weight:700;margin:10px 0 2px">${escapeHtml(a.full_name||a.email||'Athlète')}</div>
       <div class="chg-card chg-fiche-card" id="chg-fiche-wod" style="padding-top:2px"></div>
       ${series.length?`<div class="chg-card chg-fiche-card">${suiviHTML(series,weeks,mods,{coach:true,rpe})}</div>`
         :'<div style="color:var(--muted);font-size:13px;margin-top:8px">Aucune saisie de charge pour cet athlète.</div>'}`;

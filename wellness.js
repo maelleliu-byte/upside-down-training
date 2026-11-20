@@ -1058,7 +1058,7 @@ function openDupPersoWeekModal(){
     return (a.full_name||'').localeCompare(b.full_name||'');
   });
   document.getElementById('dup-perso-target-athlete').innerHTML=athletes.length
-    ? athletes.map(a=>`<option value="${a.id}">${a.coach_favorite?'★ ':''}${a.full_name||a.email||a.id}</option>`).join('')
+    ? athletes.map(a=>`<option value="${a.id}">${a.coach_favorite?'★ ':''}${escapeHtml(a.full_name||a.email||a.id)}</option>`).join('')
     : '<option value="">— Aucun autre athlète —</option>';
   // Remplir programmes
   const progs=programmes||[];
@@ -2265,14 +2265,14 @@ async function loadWellnessAdmin(){
   document.getElementById('wa-list').innerHTML=rows.map(r=>{
     if(!r.e){
       return `<div class="well-alert muted">
-        <div class="av">${_initials(r.p.full_name||r.p.email)}</div>
+        <div class="av">${escapeHtml(_initials(r.p.full_name||r.p.email))}</div>
         <div class="mid"><div class="nm">${escapeHtml(r.p.full_name||'—')}</div><div class="meta"><span class="well-chip">Pas de saisie</span></div></div>
       </div>`;
     }
     const ic=r.sev==='red'?'🚨':(r.sev==='orange'?'⚠️':(r.sev==='green'?'✅':''));
     const chips=_wellnessChips(r.e);
     return `<div class="well-alert ${r.sev}" onclick="openAthleteFicheFromDash('${r.p.id}')">
-      <div class="av">${_initials(r.p.full_name||r.p.email)}</div>
+      <div class="av">${escapeHtml(_initials(r.p.full_name||r.p.email))}</div>
       <div class="mid">
         <div class="nm">${escapeHtml(r.p.full_name||'—')}</div>
         <div class="meta">${chips}</div>
@@ -4361,7 +4361,7 @@ async function openDupWeekModalV2(preselectDay){
     return (a.full_name||'').localeCompare(b.full_name||'');
   });
   document.getElementById('dup-week-target-athlete').innerHTML=athletes.length
-    ? athletes.map(a=>`<option value="${a.id}">${a.coach_favorite?'★ ':''}${a.full_name||a.email||a.id}</option>`).join('')
+    ? athletes.map(a=>`<option value="${a.id}">${a.coach_favorite?'★ ':''}${escapeHtml(a.full_name||a.email||a.id)}</option>`).join('')
     : '<option value="">— Aucun athlète —</option>';
 }
 
@@ -5926,7 +5926,7 @@ async function claimFreeAccess(programmeId){
 
       showToast('✅ Athlète créé');
       let html = `<div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px">
-        <b>${data.athlete.full_name}</b> (${data.athlete.email}) a été créé(e).`;
+        <b>${escapeHtml(data.athlete.full_name)}</b> (${escapeHtml(data.athlete.email)}) a été créé(e).`;
       if(data.temp_password){
         html += `<br>Mot de passe temporaire : <code style="background:var(--card2);padding:2px 6px;border-radius:4px">${data.temp_password}</code>
           <div style="color:var(--muted);font-size:11px;margin-top:4px">Transmets-le à l'athlète — il pourra le changer depuis son profil.</div>`;

@@ -2564,7 +2564,7 @@ async function openAwardBadgeModal(badgeId) {
         font-size:14px;padding:11px 14px;outline:none;margin-bottom:12px;
       ">
         <option value="">— Choisir un athlète —</option>
-        ${(athletes || []).map(a => `<option value="${a.id}">${a.full_name || a.id}</option>`).join('')}
+        ${(athletes || []).map(a => `<option value="${a.id}">${escapeHtml(a.full_name || a.id)}</option>`).join('')}
       </select>
 
       <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Message du coach <span style="font-weight:400;text-transform:none;letter-spacing:0">(optionnel)</span></div>

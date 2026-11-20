@@ -673,13 +673,13 @@ async function loadScores(sessionId,scoreType,sets){
       <div class="score-rank ${rankIcons[i]||''}">${i+1}</div>
       <div style="flex:1">
         <div style="display:flex;align-items:center;gap:6px">
-          <span class="score-name">${sc.profiles?.full_name||'Athlète'}${isMe?' 👈':''}</span>
+          <span class="score-name">${escapeHtml(sc.profiles?.full_name||'Athlète')}${isMe?' 👈':''}</span>
           <span class="level-badge lbadge-${sc.level}">${LEVEL_LABELS[sc.level]||sc.level}</span>
         </div>
         ${setsHtml}
       </div>
       <div style="text-align:right">
-        <div class="score-val">${sc.score_text||sc.score_value||'—'}</div>
+        <div class="score-val">${escapeHtml(sc.score_text||sc.score_value||'—')}</div>
       </div>
     </div>
     <div class="score-actions">
@@ -1065,7 +1065,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
         const reps=(sc.score_value||0)+1000;
         scoreDisplay=`<div class="score-val">DNF</div><div class="score-val-sub">${reps} reps</div>`;
       } else {
-        scoreDisplay=`<div class="score-val">${sc.score_text||sc.score_value||'—'}</div>`;
+        scoreDisplay=`<div class="score-val">${escapeHtml(sc.score_text||sc.score_value||'—')}</div>`;
       }
       return `<div class="sc-card${isMe?' sc-me':''}${i<3?' sc-r'+(i+1):''}">
         <div class="score-row ${isDnf?'score-row-dnf':''}" id="sr-${sc.id}">
@@ -1073,7 +1073,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
           ${avatarHtml(sc.profiles)}
           <div style="flex:1">
             <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-              <span class="score-name">${sc.profiles?.full_name||'Athlète'}${isMe?' 👈':''}</span>
+              <span class="score-name">${escapeHtml(sc.profiles?.full_name||'Athlète')}${isMe?' 👈':''}</span>
               ${isWodBlock?`<span class="level-badge lbadge-${sc.level}">${LEVEL_LABELS[sc.level]||sc.level}</span>`:''}
             </div>
             ${setsHtml}
@@ -1408,7 +1408,7 @@ async function loadComments(scoreId){
     const delBtn=isMine?`<button onclick="deleteComment('${c.id}','${scoreId}')" title="Supprimer" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:12px;margin-left:6px;opacity:.6">🗑️</button>`:'';
     return `<div class="comment-item" style="display:flex;align-items:flex-start;gap:6px">
       <div style="flex:1;min-width:0">
-        <div class="comment-author">${c.profiles?.full_name||'Athlète'}</div>
+        <div class="comment-author">${escapeHtml(c.profiles?.full_name||'Athlète')}</div>
         <div class="comment-text">${escapeHtml(c.content||'')}</div>
       </div>
       ${delBtn}
@@ -1607,7 +1607,7 @@ function renderAll(){
       if(isAll)html+=`<div style="padding:16px 20px 4px;font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:2px;color:var(--muted);border-top:1px solid var(--border);margin-top:8px">BENCHMARKS</div>`;
       html+=filteredB.map(b=>{
         const scores=myBenchScores[b.id]||[];const best=scores[0];
-        const scoreHtml=best?`<div><div class="mv-pr-val">${best.score_text||best.score_value}</div><div class="mv-pr-unit">${LEVEL_LABELS[best.level]||best.level}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`:`<div class="mv-no-pr">+ Score</div>`;
+        const scoreHtml=best?`<div><div class="mv-pr-val">${escapeHtml(best.score_text||best.score_value)}</div><div class="mv-pr-unit">${LEVEL_LABELS[best.level]||best.level}</div><div class="mv-pr-date">${formatDate(best.recorded_at)}</div></div>`:`<div class="mv-no-pr">+ Score</div>`;
         return`<div class="movement-item" onclick="openBenchModal('${b.id}')">
           <div><div class="mv-name">${b.name}</div><div class="mv-cat">${b.category==='girl'?'Girl WOD':b.category==='test'?'Test force':b.category==='hero'?'Hero WOD':'Custom'}</div></div>${scoreHtml}
         </div>`;
@@ -2158,7 +2158,7 @@ function openBenchModal(benchmarkId){
   currentBLevel='rx';
   const scores=myBenchScores[benchmarkId]||[];
   const histEl=document.getElementById('bmodal-history');
-  if(scores.length>0){histEl.innerHTML=`<div class="pr-hist-title">Mon historique</div>`+scores.slice(0,3).map(s=>`<div class="pr-hist-item"><span class="pr-hist-val">${s.score_text||s.score_value}</span> <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span><span class="pr-hist-date">${formatDate(s.recorded_at)}</span></div>`).join('');}
+  if(scores.length>0){histEl.innerHTML=`<div class="pr-hist-title">Mon historique</div>`+scores.slice(0,3).map(s=>`<div class="pr-hist-item"><span class="pr-hist-val">${escapeHtml(s.score_text||s.score_value)}</span> <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span><span class="pr-hist-date">${formatDate(s.recorded_at)}</span></div>`).join('');}
   else{histEl.innerHTML='';}
   loadBenchLeaderboard(benchmarkId);
   document.getElementById('bench-modal').classList.add('open');
@@ -2186,8 +2186,8 @@ async function loadBenchLeaderboard(benchmarkId){
   const levelOrder={rx:0,intermediate:1,scaled:2,foundation:3};
   const sorted=[...data].sort((a,b)=>levelOrder[a.level]-levelOrder[b.level]||(b.score_value-a.score_value));
   el.innerHTML=`<div class="pr-hist-title">Leaderboard</div>`+sorted.slice(0,10).map((s,i)=>`<div class="pr-hist-item">
-    <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Bebas Neue';font-size:16px;color:var(--muted)">${i+1}</span>${avatarHtml(s.profiles)}<span style="font-size:13px;font-weight:600">${s.profiles?.full_name||'Athlète'}</span><span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span></div>
-    <span class="pr-hist-val" style="font-size:16px">${s.score_text||s.score_value}</span>
+    <div style="display:flex;align-items:center;gap:8px"><span style="font-family:'Bebas Neue';font-size:16px;color:var(--muted)">${i+1}</span>${avatarHtml(s.profiles)}<span style="font-size:13px;font-weight:600">${escapeHtml(s.profiles?.full_name||'Athlète')}</span><span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]}</span></div>
+    <span class="pr-hist-val" style="font-size:16px">${escapeHtml(s.score_text||s.score_value)}</span>
   </div>`).join('');
 }
 

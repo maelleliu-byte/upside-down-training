@@ -358,8 +358,9 @@ function avatarHtml(profile,opts){
   const url=profile&&profile.avatar_url;
   const name=(profile&&profile.full_name)||'';
   const initials=name?name.split(' ').filter(Boolean).map(w=>w[0]).join('').toUpperCase().slice(0,2):'?';
-  if(url)return `<div class="${cls} has-img" style="background-image:url('${url.replace(/'/g,"\\'")}')"></div>`;
-  return `<div class="${cls}">${initials}</div>`;
+  // URL et initiales viennent du profil (modifiable par l'athlète) : on échappe tout.
+  if(url&&/^https?:\/\//i.test(url))return `<div class="${cls} has-img" style="background-image:url('${escapeHtml(url.replace(/['\\\n\r]/g,c=>encodeURIComponent(c)))}')"></div>`;
+  return `<div class="${cls}">${escapeHtml(initials)}</div>`;
 }
 function refreshMyGenderUI(){
   const g=(currentProfile?.gender||'').toLowerCase();
