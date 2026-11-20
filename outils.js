@@ -17,7 +17,7 @@
   // ---------- catalogue des outils ----------
 
   // À changer à chaque mise à jour de vbt.html : force le rechargement (cache navigateur)
-  var VBT_VERSION = '2026-11-16a';
+  var VBT_VERSION = '2026-11-20a';
   // Idem pour ef.html (profil endurance fondamentale)
   var EF_VERSION = '2026-10-25b';
   // Idem pour pc.html (profil puissance / vitesse critique)

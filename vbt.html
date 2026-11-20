@@ -128,6 +128,17 @@ td.n{font-family:var(--sg);font-weight:500}
 .seg{display:inline-flex;gap:6px}
 .seg button{font-size:13px;padding:6px 10px;border-radius:7px;border:1px solid var(--line);color:var(--muted)}
 .seg button[aria-pressed=true]{border-color:var(--accent);color:var(--text);background:var(--chip)}
+.zchip{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;font-weight:600}
+.zchip i{width:9px;height:9px;border-radius:2px;flex:0 0 auto}
+.zchip small{font-weight:400;color:var(--muted)}
+.presc td,.presc th{white-space:nowrap}
+.presc td,.presc th{padding-left:6px;padding-right:6px}
+.zlist{padding:6px 12px}
+.zrow{border-left:4px solid;padding:8px 0 8px 10px;border-bottom:1px solid var(--line)}
+.zrow:last-child{border-bottom:0}
+.zrow-h{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.zrow-l{font-weight:600;margin:3px 0 2px}
+tr.pbest td{background:rgba(232,87,63,.12)}
 .legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:6px}
 .legend i{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px;vertical-align:-1px}
 .overlay textarea{min-height:200px;font:400 12px ui-monospace,monospace}
@@ -674,62 +685,180 @@ function statsHTML(b,st){
 }
 
 /* ---------- Profil charge-vitesse ---------- */
+/* ---------- Profil charge-vitesse-puissance ----------
+ * Puissance = charge sur la barre × 9,81 × vitesse (moyenne en force, pic en haltéro).
+ * Droite v = a + b·charge ; parabole P = 9,81·charge·(a + b·charge) ;
+ * sommet de la parabole = charge optimale (L0/2) et Pmax.
+ * Axe horizontal en % du 1RM (référence de Mouvements, sinon 1RM estimé), avec la charge en kg. */
+const G=9.81;
+const PZONES=[
+  {k:"vmax",name:"Vitesse max",sub:"",min:1.30,max:null,col:"#47c8ff",obj:"Sauts chargés, vitesse pure."},
+  {k:"ss",name:"Speed Strength",sub:"Vitesse-force",min:1.00,max:1.30,col:"#34d399",obj:"Explosivité pure, démarrage, sauts."},
+  {k:"st",name:"Strength Speed",sub:"Force-vitesse · DE",min:0.75,max:1.00,col:"#facc15",obj:"Cœur du Dynamic Effort. Puissance optimale."},
+  {k:"acc",name:"Accelerative Strength",sub:"",min:0.50,max:0.75,col:"#fb923c",obj:"Zone hybride : on déplace assez lourd, vite."},
+  {k:"me3",name:"Absolute Strength",sub:"ME 2-3 reps",min:0.35,max:0.50,col:"#f87171",obj:"Max Effort 2-3 reps. Conservation de vitesse."},
+  {k:"me1",name:"Absolute Strength",sub:"ME 1-2 reps",min:null,max:0.35,col:"#dc2626",obj:"Max Effort 1-2 reps. Lutte nerveuse (grinding)."}
+];
+function zoneOfV(v){return PZONES.find(z=>(z.min==null||v>=z.min)&&(z.max==null||v<z.max))||PZONES[PZONES.length-1]}
+function powerOf(load,v){return load*G*v}
+function lvCalc(f,m,e1,halt){
+  if(!f)return null;
+  const a=f.a,b=f.b,L0=-a/b,Lopt=L0/2,Pmax=G*Lopt*(a+b*Lopt);
+  let rm=m.rm>0?m.rm:null,rmSrc="référence";
+  if(!rm&&e1>0&&!halt){rm=e1;rmSrc="estimé"}
+  return {a,b,V0:a,L0,Lopt,Pmax,rm,rmSrc,
+    vAt:L=>a+b*L, LAt:v=>(v-a)/b};
+}
+function pct(L,c){return c&&c.rm?L/c.rm*100:null}
+
 function viewProfile(){
   const m=move(state.profileMove),halt=m.type==="haltero";
   const pacc=halt?"":state.profileAcc;const pts=allPoints(m.id,state.period,pacc);
   const f=linfit(pts);
   const e1=f&&!halt&&m.mvt?(m.mvt-f.a)/f.b:null;
+  const c=lvCalc(f,m,e1,halt);
   const per=[[30,"30 j"],[90,"90 j"],[0,"Tout"]];
+  const pw=halt?"pic":"moy.";
   // Historique par séance
   const bySess={};
   pts.forEach(p=>{(bySess[p.sid]=bySess[p.sid]||[]).push(p)});
-  const hist=Object.entries(bySess).map(([sid,ps])=>{const top=ps.reduce((a,p)=>p.load>a.load||(p.load===a.load&&p.v>a.v)?p:a,ps[0]);return {date:ps[0].date,top,best:Math.max(...ps.map(p=>p.v)),n:ps.length}}).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
+  const hist=Object.entries(bySess).map(([sid,ps])=>{const top=ps.reduce((a,p)=>p.load>a.load||(p.load===a.load&&p.v>a.v)?p:a,ps[0]);return {date:ps[0].date,top,best:Math.max(...ps.map(p=>p.v)),pmax:Math.max(...ps.map(p=>powerOf(p.load,p.v))),n:ps.length}}).sort((a,b)=>b.date.localeCompare(a.date)).slice(0,10);
   let bestByLoad="";
   if(halt&&pts.length){
     const g={};pts.forEach(p=>{g[p.load]=Math.max(g[p.load]||0,p.v)});
-    bestByLoad=`<div class="sec"><h2>Meilleur pic par charge</h2></div><div class="card tbl"><table><thead><tr><th>Charge</th><th>Pic max</th><th>% 1RM</th></tr></thead><tbody>${Object.keys(g).map(Number).sort((a,b)=>b-a).map(l=>`<tr><td class="n">${show(l)} kg</td><td class="n">${fmt(g[l])} m/s</td><td>${m.rm?Math.round(l/m.rm*100)+" %":"–"}</td></tr>`).join("")}</tbody></table></div>`;
+    bestByLoad=`<div class="sec"><h2>Meilleur pic par charge</h2></div><div class="card tbl"><table><thead><tr><th>Charge</th><th>Pic max</th><th>Puissance</th><th>% 1RM</th></tr></thead><tbody>${Object.keys(g).map(Number).sort((a,b)=>b-a).map(l=>`<tr><td class="n">${show(l)} kg</td><td class="n">${fmt(g[l])} m/s</td><td class="n">${Math.round(powerOf(l,g[l]))} W</td><td>${m.rm?Math.round(l/m.rm*100)+" %":"–"}</td></tr>`).join("")}</tbody></table></div>`;
   }
+  const kpi=(v,l)=>`<div class="card kpi"><b>${v}</b><span>${l}</span></div>`;
+  const okC=c&&c.L0>0&&isFinite(c.Pmax);
   return `${header()}
   <h1>Profil <span class="ac">charge-vitesse</span></h1>
-  <p class="lede">Construit automatiquement à partir de toutes les séries saisies dans tes séances : la meilleure rep de chaque série, placée selon sa charge. La droite sert à estimer ta forme du jour et ton 1RM.</p>
+  <p class="lede">Construit à partir de toutes les séries saisies : la meilleure rep de chaque série, placée selon sa charge. La droite donne la vitesse attendue à chaque charge, la parabole la puissance développée sur la barre (charge × 9,81 × vitesse).</p>
   <div class="card stack">
     <div><label class="f" for="pm">Mouvement</label><select id="pm" data-pf="move">${moveOptions(m.id)}</select></div>
     ${halt?"":`<div><label class="f" for="pacc">Résistance</label><select id="pacc" data-pf="acc">${ACC.map(a=>`<option value="${a.k}" ${pacc===a.k?"selected":""}>${a.name}</option>`).join("")}</select></div>`}
     <div class="seg" role="group" aria-label="Période">${per.map(([d,l])=>`<button data-act="period" data-d="${d}" aria-pressed="${state.period===d}">${l}</button>`).join("")}</div>
   </div>
   <div class="card" style="margin-top:12px">
-    ${pts.length?chartSVG(pts,f,halt?null:m.mvt,e1):'<div class="hint" style="padding:30px 4px;text-align:center">Pas encore de données pour ce mouvement sur la période.</div>'}
-    ${pts.length?`<div class="legend"><span><i style="background:var(--accent)"></i>14 derniers jours</span><span><i style="background:var(--muted)"></i>Plus ancien</span>${!halt&&m.mvt?`<span><i style="background:var(--bad)"></i>MVT ${fmt(m.mvt)} m/s</span>`:""}</div>`:""}
+    ${pts.length?chartLVP(pts,okC?c:null,halt?null:m.mvt,e1):'<div class="hint" style="padding:30px 4px;text-align:center">Pas encore de données pour ce mouvement sur la période.</div>'}
+    ${pts.length?`<div class="legend"><span><i style="background:var(--accent)"></i>Vitesse (14 derniers jours)</span><span><i style="background:var(--muted)"></i>Vitesse (plus ancien)</span><span><i style="background:transparent;border:2px solid #e8573f"></i>Puissance ${pw}</span>${okC?`<span><i style="background:var(--text);border-radius:0;height:2px;vertical-align:3px"></i>Droite L-V</span><span><i style="background:#e8573f;border-radius:0;height:2px;vertical-align:3px"></i>Parabole de puissance</span>`:""}${!halt&&m.mvt?`<span><i style="background:var(--bad)"></i>MVT ${fmt(m.mvt)} m/s</span>`:""}</div>`:""}
+    ${okC?`<p class="hint" style="margin-top:8px">${c.rm?`Droite : v = ${fmt(c.b*c.rm/100,4)} × %1RM + ${fmt(c.a,3)}<br>Parabole : P = ${fmt(G*c.b*c.rm*c.rm/10000,3)} × %1RM² + ${fmt(G*c.a*c.rm/100,2)} × %1RM`:`Droite : v = ${fmt(c.b,4)} × kg + ${fmt(c.a,3)}`} · R² ${fmt(f.r2)}</p>`:""}
   </div>
-  <div class="kpis" style="margin-top:12px">
-    <div class="card kpi"><b>${pts.length}</b><span>séries</span></div>
-    <div class="card kpi"><b>${f?fmt(f.r2):"–"}</b><span>R² de la droite</span></div>
-    <div class="card kpi"><b>${e1&&e1>0?Math.round(e1):"–"}</b><span>${halt?"1RM (réf.) "+(m.rm?show(m.rm):"–"):"1RM estimé (kg)"}</span></div>
+  ${okC?`<div class="kpis" style="margin-top:12px">
+    ${kpi(Math.round(c.Pmax)+" W","Pmax estimée")}
+    ${kpi(show(Math.round(c.Lopt*2)/2)+" kg",`Charge à Pmax${c.rm?" · "+Math.round(pct(c.Lopt,c))+" %":""}`)}
+    ${kpi(fmt(c.vAt(c.Lopt))+"","Vitesse à Pmax (m/s)")}
+    ${kpi(fmt(c.V0),"V0 (m/s)")}
+    ${kpi(Math.round(c.L0)+" kg","L0 (charge à v = 0)")}
+    ${kpi(c.rm?Math.round(c.rm)+" kg":"–",c.rm?"1RM "+c.rmSrc:"1RM (à renseigner)")}
   </div>
-  ${f?`<p class="hint" style="margin-top:10px">Pente : ${fmt(f.b*100,2)} m/s par 100 kg. ${halt?"":"L’estimation du 1RM reste indicative : elle dépend de la MVT réglée dans Mouvements et de charges assez lourdes dans le profil."}</p>`:`<p class="hint" style="margin-top:10px">Il faut au moins 3 charges différentes pour tracer la droite.</p>`}
+  <div class="kpis" style="margin-top:10px">
+    ${kpi(pts.length,"séries")}
+    ${kpi(fmt(f.r2),"R² de la droite")}
+    ${kpi(Math.round(c.V0*c.L0/2),"Indice de perf (V0·L0/2)")}
+  </div>
+  ${c.rm?"":`<p class="hint" style="margin-top:10px">Renseigne le 1RM de référence${halt?"":" ou la MVT"} dans Mouvements pour afficher l’axe en % du 1RM et le tableau de prescription.</p>`}
+  ${c.rm?prescriptionHTML(c,halt):""}
+  ${zonesHTML(c)}`:`<div class="kpis" style="margin-top:12px">${kpi(pts.length,"séries")}${kpi(f?fmt(f.r2):"–","R² de la droite")}${kpi(e1&&e1>0?Math.round(e1):"–",halt?"1RM (réf.) "+(m.rm?show(m.rm):"–"):"1RM estimé (kg)")}</div>
+  <p class="hint" style="margin-top:10px">Il faut au moins 3 charges différentes pour tracer la droite et la parabole de puissance.</p>`}
   ${bestByLoad}
   <div class="sec"><h2>Dernières séances</h2></div>
-  ${hist.length?`<div class="card tbl"><table><thead><tr><th>Date</th><th>Top set</th><th>V. à la top</th><th>Meilleure</th><th>Séries</th></tr></thead><tbody>${hist.map(h=>`<tr><td>${esc(fdate(h.date))}</td><td class="n">${show(h.top.load)} kg</td><td class="n">${fmt(h.top.v)}</td><td class="n">${fmt(h.best)}</td><td>${h.n}</td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">Rien sur cette période.</div>'}`;
+  ${hist.length?`<div class="card tbl"><table><thead><tr><th>Date</th><th>Top set</th><th>V. à la top</th><th>Meilleure</th><th>P max</th><th>Séries</th></tr></thead><tbody>${hist.map(h=>`<tr><td>${esc(fdate(h.date))}</td><td class="n">${show(h.top.load)} kg</td><td class="n">${fmt(h.top.v)}</td><td class="n">${fmt(h.best)}</td><td class="n">${Math.round(h.pmax)} W</td><td>${h.n}</td></tr>`).join("")}</tbody></table></div>`:'<div class="empty">Rien sur cette période.</div>'}`;
 }
 
-function chartSVG(pts,f,mvt,e1){
-  const W=340,H=228,L=38,R=10,T=20,B=30;
-  let xmin=Math.min(...pts.map(p=>p.load)),xmax=Math.max(...pts.map(p=>p.load));
-  if(e1&&e1>xmax&&e1<xmax*1.6)xmax=e1;
-  const xr=Math.max(10,xmax-xmin);xmin=Math.max(0,xmin-xr*.08);xmax=xmax+xr*.08;
-  let ymax=Math.max(...pts.map(p=>p.v))*1.1,ymin=Math.min(...pts.map(p=>p.v),mvt||9)*0.85;
-  ymin=Math.max(0,Math.floor(ymin*10)/10);ymax=Math.ceil(ymax*10)/10;if(ymax-ymin<0.3)ymax=ymin+0.3;
-  const X=x=>L+(x-xmin)/(xmax-xmin)*(W-L-R),Y=y=>T+(1-(y-ymin)/(ymax-ymin))*(H-T-B);
+const ZSHORT={vmax:"V max",ss:"Speed Str.",st:"Strength Sp.",acc:"Accel.",me3:"ME 2-3",me1:"ME 1-2"};
+function zdot(z){return `<span class="zchip"><i style="background:${z.col}"></i>${ZSHORT[z.k]}</span>`}
+function zchip(z){return `<span class="zchip"><i style="background:${z.col}"></i>${esc(z.name)}${z.sub?` <small>${esc(z.sub)}</small>`:""}</span>`}
+
+function prescriptionHTML(c,halt){
+  const rows=[];
+  for(let p=30;p<=90;p+=10){
+    const L=c.rm*p/100,v=c.vAt(L);
+    if(!(v>0))continue;
+    const F=L*G,P=F*v;rows.push({p,L,v,F,P,z:zoneOfV(v)});
+  }
+  if(!rows.length)return "";
+  const best=rows.reduce((a,r)=>r.P>a.P?r:a,rows[0]);
+  return `<div class="sec"><h2>Prescription</h2></div>
+  <div class="card tbl"><table class="presc"><thead><tr><th>%</th><th>Charge</th><th>m/s</th><th>Force</th><th>Puiss.</th><th>Zone</th></tr></thead><tbody>
+  ${rows.map(r=>`<tr${r===best?' class="pbest"':""}><td class="n">${r.p} %</td><td class="n">${Math.round(r.L)} kg</td><td class="n">${fmt(r.v)}</td><td class="n">${Math.round(r.F)} N</td><td class="n">${Math.round(r.P)} W</td><td>${zdot(r.z)}</td></tr>`).join("")}
+  </tbody></table></div>
+  <p class="hint" style="margin-top:8px">Vitesse prédite par la droite${halt?" (vitesse pic)":" (vitesse moyenne)"}. Ligne surlignée : la plus proche de la puissance max.</p>`;
+}
+
+function zonesHTML(c){
+  const rows=PZONES.map(z=>{
+    // vitesse haute -> charge basse
+    const Llo=z.max==null?0:Math.max(0,c.LAt(z.max)),Lhi=z.min==null?(c.rm||c.L0):c.LAt(z.min);
+    const vtxt=z.min==null?`&lt; ${fmt(z.max)}`:z.max==null?`&gt; ${fmt(z.min)}`:`${fmt(z.min)} – ${fmt(z.max)}`;
+    let ltxt="–";
+    if(Lhi>0&&Lhi>Llo){
+      const kg=`${Math.round(Llo)} – ${Math.round(Lhi)} kg`;
+      ltxt=c.rm?`${Math.round(pct(Llo,c))} – ${Math.round(pct(Lhi,c))} % · ${kg}`:kg;
+    }
+    return `<div class="zrow" style="border-left-color:${z.col}"><div class="zrow-h">${zchip(z)}<span class="n">${vtxt} m/s</span></div><div class="zrow-l n">${ltxt}</div><div class="hint">${esc(z.obj)}</div></div>`;
+  }).join("");
+  return `<div class="sec"><h2>Zones de travail</h2></div>
+  <div class="card zlist">${rows}</div>
+  <p class="hint" style="margin-top:8px">Seuils de vitesse des zones Simmons ; les % et les charges sont calculés à partir de ce profil.</p>`;
+}
+
+function chartLVP(pts,c,mvt,e1){
+  const W=340,H=262,L=34,R=40,T=18,B=52;
+  const usePct=!!(c&&c.rm);
+  const toX=load=>usePct?load/c.rm*100:load;
+  let xmax;
+  if(usePct)xmax=Math.max(100,Math.ceil(Math.max(...pts.map(p=>toX(p.load)))/10)*10);
+  else{const ml=Math.max(...pts.map(p=>p.load),c?c.Lopt*1.2:0);xmax=Math.ceil(ml*1.1/20)*20}
+  const xstep=usePct?10:Math.max(10,Math.round(xmax/50)*10);
+  const vMaxData=Math.max(...pts.map(p=>p.v),c?c.V0:0);
+  const ystep=vMaxData*1.08>1.6?0.5:0.4;
+  const ymax=Math.max(0.8,Math.ceil(vMaxData*1.08/ystep)*ystep);
+  const powers=pts.map(p=>powerOf(p.load,p.v));
+  const pTop=Math.max(...powers,c?c.Pmax:0)*1.12;
+  const pstep=pTop>2000?500:pTop>800?200:100;
+  const pmaxAx=Math.max(pstep,Math.ceil(pTop/pstep)*pstep);
+  const X=x=>L+x/xmax*(W-L-R),Y=v=>T+(1-v/ymax)*(H-T-B),YP=p=>T+(1-p/pmaxAx)*(H-T-B);
+  const bot=H-B;
   let g="";
-  const ys=[];for(let i=0;i<=4;i++)ys.push(ymin+(ymax-ymin)*i/4);
-  ys.forEach(y=>{g+=`<line x1="${L}" x2="${W-R}" y1="${Y(y)}" y2="${Y(y)}" stroke="var(--line)" stroke-width="1"/><text x="${L-6}" y="${Y(y)+4}" text-anchor="end" font-size="10" fill="var(--muted)">${fmt(y)}</text>`});
-  for(let i=0;i<=4;i++){const x=xmin+(xmax-xmin)*i/4;g+=`<text x="${X(x)}" y="${H-10}" text-anchor="middle" font-size="10" fill="var(--muted)">${Math.round(x)}</text>`}
-  g+=`<text x="${W-R}" y="${H-0}" text-anchor="end" font-size="10" fill="var(--muted)">kg</text><text x="4" y="9" font-size="10" fill="var(--muted)">m/s</text>`;
-  if(mvt&&mvt>=ymin&&mvt<=ymax)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(mvt)}" y2="${Y(mvt)}" stroke="var(--bad)" stroke-dasharray="3 4" stroke-width="1.2"/>`;
-  if(f){const x1=xmin,x2=xmax;g+=`<line x1="${X(x1)}" y1="${Y(f.a+f.b*x1)}" x2="${X(x2)}" y2="${Y(f.a+f.b*x2)}" clip-path="url(#cp)" stroke="var(--text)" stroke-opacity=".55" stroke-width="1.5" stroke-dasharray="5 4"/>`}
-  if(e1&&e1>=xmin&&e1<=xmax&&mvt)g+=`<circle cx="${X(e1)}" cy="${Y(mvt)}" r="5" fill="none" stroke="var(--bad)" stroke-width="2"/>`;
-  pts.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(p=>{const recent=p.date&&daysAgo(p.date)<=14;g+=`<circle cx="${X(p.load)}" cy="${Y(p.v)}" r="4.5" fill="${recent?"var(--accent)":"var(--muted)"}" fill-opacity="${recent?1:.55}"/>`});
-  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Nuage charge-vitesse" font-family="Inter, sans-serif"><defs><clipPath id="cp"><rect x="${L}" y="${T}" width="${W-L-R}" height="${H-T-B}"/></clipPath></defs>${g}</svg>`;
+  for(let i=0;i<=4;i++){const v=ymax*i/4,p=pmaxAx*i/4;
+    g+=`<line x1="${L}" x2="${W-R}" y1="${Y(v)}" y2="${Y(v)}" stroke="var(--line)" stroke-width="1"/>`+
+       `<text x="${L-5}" y="${Y(v)+3.5}" text-anchor="end" font-size="9.5" fill="var(--muted)">${fmt(v,v*10%1?2:1)}</text>`+
+       `<text x="${W-R+5}" y="${YP(p)+3.5}" font-size="9.5" fill="#e8573f">${Math.round(p)}</text>`}
+  g+=`<text x="2" y="10" font-size="9.5" fill="var(--muted)">m/s</text><text x="${W-2}" y="10" text-anchor="end" font-size="9.5" fill="#e8573f">W</text>`;
+  // zones (bande colorée sous le graphe)
+  if(c){PZONES.forEach(z=>{
+    const lo=z.max==null?0:Math.max(0,c.LAt(z.max)),hi=z.min==null?xmax*(usePct?c.rm/100:1):c.LAt(z.min);
+    const x1=Math.max(0,toX(lo)),x2=Math.min(xmax,toX(hi));
+    if(x2>x1)g+=`<rect x="${X(x1)}" y="${bot+3}" width="${X(x2)-X(x1)}" height="5" fill="${z.col}" opacity=".85"/>`});}
+  // axe X : % et kg
+  for(let x=0;x<=xmax+1e-9;x+=xstep){
+    g+=`<text x="${X(x)}" y="${bot+20}" text-anchor="middle" font-size="9.5" fill="var(--text)">${Math.round(x)}${usePct?"%":""}</text>`;
+    if(usePct&&x%20===0)g+=`<text x="${X(x)}" y="${bot+33}" text-anchor="middle" font-size="9" fill="var(--muted)">${Math.round(c.rm*x/100)}</text>`;
+  }
+  g+=`<text x="${W-R}" y="${H-3}" text-anchor="end" font-size="9" fill="var(--muted)">${usePct?"% 1RM · kg":"kg"}</text>`;
+  if(mvt&&mvt<=ymax)g+=`<line x1="${L}" x2="${W-R}" y1="${Y(mvt)}" y2="${Y(mvt)}" stroke="var(--bad)" stroke-dasharray="3 4" stroke-width="1.2"/>`;
+  if(c){
+    // droite L-V
+    const Lend=Math.min(usePct?c.rm*xmax/100:xmax,c.L0);
+    g+=`<line x1="${X(0)}" y1="${Y(c.a)}" x2="${X(toX(Lend))}" y2="${Y(c.vAt(Lend))}" clip-path="url(#cp)" stroke="var(--text)" stroke-opacity=".75" stroke-width="1.6"/>`;
+    // parabole de puissance
+    let d="";const n=60;
+    for(let i=0;i<=n;i++){const Ld=Lend*i/n,P=powerOf(Ld,c.vAt(Ld));d+=(i?"L":"M")+X(toX(Ld)).toFixed(1)+" "+YP(Math.max(0,P)).toFixed(1)}
+    g+=`<path d="${d}" fill="none" stroke="#e8573f" stroke-width="1.8" clip-path="url(#cp)"/>`;
+    // Pmax
+    const xo=toX(c.Lopt);
+    if(xo<=xmax){
+      g+=`<line x1="${X(xo)}" x2="${X(xo)}" y1="${YP(c.Pmax)}" y2="${bot}" stroke="#e8573f" stroke-dasharray="3 3" stroke-width="1"/>`+
+         `<circle cx="${X(xo)}" cy="${YP(c.Pmax)}" r="4.5" fill="#e8573f"/>`;
+      const lx=Math.min(W-R-78,Math.max(L+78,X(xo)));
+      g+=`<text x="${lx}" y="${YP(c.Pmax)-9}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--text)" paint-order="stroke" stroke="var(--panel)" stroke-width="3">Pmax ${Math.round(c.Pmax)} W · ${Math.round(c.Lopt)} kg${usePct?" ("+Math.round(xo)+" %)":""}</text>`;
+    }
+    if(e1&&mvt&&toX(e1)<=xmax)g+=`<circle cx="${X(toX(e1))}" cy="${Y(mvt)}" r="5" fill="none" stroke="var(--bad)" stroke-width="2"/>`;
+  }
+  // points mesurés : puissance (anneaux) puis vitesse
+  pts.forEach(p=>{const P=powerOf(p.load,p.v);g+=`<circle cx="${X(toX(p.load))}" cy="${YP(P)}" r="3.4" fill="none" stroke="#e8573f" stroke-width="1.5" opacity=".9"/>`});
+  pts.slice().sort((a,b)=>a.date.localeCompare(b.date)).forEach(p=>{const recent=p.date&&daysAgo(p.date)<=14;g+=`<circle cx="${X(toX(p.load))}" cy="${Y(p.v)}" r="4.2" fill="${recent?"var(--accent)":"var(--muted)"}" fill-opacity="${recent?1:.6}"/>`});
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Profil charge-vitesse et puissance" font-family="Inter, sans-serif"><defs><clipPath id="cp"><rect x="${L}" y="${T}" width="${W-L-R}" height="${bot-T}"/></clipPath></defs>${g}</svg>`;
 }
 
 /* ---------- Mouvements & export ---------- */
