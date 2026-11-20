@@ -1264,7 +1264,8 @@
  * via window.App après init.
  * ============================================================ */
 </script>
-<script src="core.js?v=20261110a"></script>
+<script src="/vendor/purify-3.1.6.min.js"></script>
+<script src="core.js?v=20261120a"></script>
 <script src="timer.js?v=20261112a"></script>
 <script src="timer-saisie.js?v=20261113a"></script>
 <script src="rpe-eval.js?v=20261119a"></script>
@@ -2564,7 +2565,7 @@ async function openAwardBadgeModal(badgeId) {
         font-size:14px;padding:11px 14px;outline:none;margin-bottom:12px;
       ">
         <option value="">— Choisir un athlète —</option>
-        ${(athletes || []).map(a => `<option value="${a.id}">${a.full_name || a.id}</option>`).join('')}
+        ${(athletes || []).map(a => `<option value="${a.id}">${escapeHtml(a.full_name || a.id)}</option>`).join('')}
       </select>
 
       <div style="font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px">Message du coach <span style="font-weight:400;text-transform:none;letter-spacing:0">(optionnel)</span></div>

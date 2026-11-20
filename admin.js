@@ -451,6 +451,7 @@ function importSessionTemplates(){
 // Reprend le rendu des charges (renderContentWithCharges) puis met en valeur
 // les séparateurs ____ et ---PARTIE--- (MIN x : et REST restent tels qu'écrits).
 function _sanitizePlanningHtml(html){
+  if(typeof safeHtml==='function'&&window.DOMPurify)return safeHtml(html);
   return (html||'')
     .replace(/<\s*(script|style|iframe|object|embed)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,'')
     .replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*>/gi,'')
@@ -1243,13 +1244,13 @@ async function loadAdminAthletes(){
     const init=(p.full_name||p.email||'?').split(' ').map(w=>w[0]).join('').toUpperCase().slice(0,2);
     const isMe=p.id===currentUser.id;
     return`<div class="athlete-row">
-      <div class="athlete-avatar">${init}</div>
+      <div class="athlete-avatar">${escapeHtml(init)}</div>
       <div style="flex:1;min-width:0">
-        <div class="athlete-name">${p.full_name||'—'}</div>
-        <div class="athlete-email">${p.email||''}</div>
+        <div class="athlete-name">${escapeHtml(p.full_name||'—')}</div>
+        <div class="athlete-email">${escapeHtml(p.email||'')}</div>
       </div>
       <span class="athlete-role ${p.role==='admin'?'role-admin':'role-athlete'}">${p.role==='admin'?'Admin':'Athlète'}</span>
-      ${isMe?'':`<button class="btn-delete" onclick="deleteAthlete('${p.id}','${(p.full_name||p.email||'?').replace(/'/g,"\\'")}')">✕</button>`}
+      ${isMe?'':`<button class="btn-delete" onclick="deleteAthlete('${p.id}','${escapeHtml((p.full_name||p.email||'?').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}')">✕</button>`}
     </div>`;
   }).join('');
 }
@@ -1377,7 +1378,7 @@ async function loadDashboard(){
       return{...a,days};
     }));
     inactiveEl.innerHTML=inactiveWithDays.map(a=>`<div class="inactive-row">
-      <div><div class="inactive-name">${a.full_name||a.email||'—'}</div></div>
+      <div><div class="inactive-name">${escapeHtml(a.full_name||a.email||'—')}</div></div>
       <div class="inactive-days">${a.days===999?'Jamais scoré':`${a.days}j sans score`}</div>
     </div>`).join('');
   }
@@ -1404,10 +1405,10 @@ async function loadDashboard(){
   document.getElementById('dash-recent').innerHTML=recentScores.map(s=>`<div class="recent-score-row">
     ${avatarHtml(s.profiles)}
     <div class="recent-score-info">
-      <div class="recent-score-name">${s.profiles?.full_name||'—'}</div>
+      <div class="recent-score-name">${escapeHtml(s.profiles?.full_name||'—')}</div>
       <div class="recent-score-meta">${recSessTitleById[s.session_id]||'—'} · <span class="level-badge lbadge-${s.level}">${LEVEL_LABELS[s.level]||s.level}</span></div>
     </div>
-    <div class="recent-score-val">${s.score_text||s.score_value||'—'}</div>
+    <div class="recent-score-val">${escapeHtml(s.score_text||s.score_value||'—')}</div>
   </div>`).join('');
   await _dashEmbedExtras();
 }
