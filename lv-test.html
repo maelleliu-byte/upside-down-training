@@ -425,7 +425,7 @@ function sessionPoints(k){
 
 /* ---------- graphique ---------- */
 function chart(o){
-  const W=340,H=240,Lm=38,R=10,T=18,B=30;
+  const W=340,H=240,Lm=38,R=o.power?40:10,T=18,B=30;
   const xs=[0].concat(o.pts.map(p=>p.x),(o.extra||[]).map(p=>p.x),o.marks||[]);
   const xmax=Math.max(50,Math.ceil(Math.max(...xs)*1.1/50)*50);
   const ys=[1.5].concat(o.pts.map(p=>p.y),(o.extra||[]).map(p=>p.y),o.lines.map(l=>l.f.a));
@@ -438,6 +438,24 @@ function chart(o){
   g+=`<text x="${W-R}" y="${H-1}" text-anchor="end" font-size="10" fill="var(--muted)">charge (kg)</text><text x="2" y="10" font-size="10" fill="var(--muted)">m/s</text>`;
   if(o.mvt)g+=`<line x1="${Lm}" x2="${W-R}" y1="${Y(o.mvt)}" y2="${Y(o.mvt)}" stroke="var(--bad)" stroke-dasharray="3 4" stroke-width="1.2"/><text x="${Lm+4}" y="${Y(o.mvt)-5}" font-size="10" fill="var(--bad)">${esc(o.mvtLabel||"")}</text>`;
   if(o.rm)g+=`<line x1="${X(o.rm)}" x2="${X(o.rm)}" y1="${T}" y2="${H-B}" stroke="var(--text)" stroke-opacity=".45" stroke-dasharray="2 4"/><text x="${X(o.rm)}" y="${T+10}" text-anchor="middle" font-size="10" fill="var(--text)">RM ${kg(o.rm)}</text>`;
+  /* Puissance sur la barre : P = charge × 9,81 × vitesse ; parabole issue de la droite, sommet = Pmax (L0/2) */
+  if(o.power){
+    const f=o.power,G=9.81,L0=-f.a/f.b,Lo=L0/2,Pmax=G*Lo*(f.a+f.b*Lo);
+    const pp=o.pts.map(p=>G*p.x*p.y);
+    const top=Math.max(Pmax,...pp)*1.12,ps=top>2000?500:top>800?250:100,pax=Math.ceil(top/ps)*ps;
+    const YP=w=>T+(1-w/pax)*(H-T-B);
+    for(let w=0;w<=pax;w+=ps)g+=`<text x="${W-R+5}" y="${YP(w)+3.5}" font-size="9.5" fill="#e8573f">${w}</text>`;
+    g+=`<text x="${W-2}" y="10" text-anchor="end" font-size="10" fill="#e8573f">W</text>`;
+    const xe=Math.min(xmax,L0);let d="";
+    for(let i=0;i<=60;i++){const x=xe*i/60,w=G*x*(f.a+f.b*x);d+=(i?"L":"M")+X(x).toFixed(1)+" "+YP(Math.max(0,w)).toFixed(1)}
+    g+=`<path d="${d}" fill="none" stroke="#e8573f" stroke-width="2"/>`;
+    o.pts.forEach((p,i)=>{g+=`<circle cx="${X(p.x)}" cy="${YP(pp[i])}" r="3.6" fill="none" stroke="#e8573f" stroke-width="1.6"/>`});
+    if(Lo<=xmax){
+      g+=`<line x1="${X(Lo)}" x2="${X(Lo)}" y1="${YP(Pmax)}" y2="${H-B}" stroke="#e8573f" stroke-dasharray="3 3"/><circle cx="${X(Lo)}" cy="${YP(Pmax)}" r="5" fill="#e8573f"/>`;
+      const lx=Math.min(W-R-72,Math.max(Lm+72,X(Lo)));
+      g+=`<text x="${lx}" y="${YP(Pmax)-9}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--text)" paint-order="stroke" stroke="var(--panel)" stroke-width="3">Pmax ${Math.round(Pmax)} W · ${kg(Lo)} kg</text>`;
+    }
+  }
   (o.extra||[]).forEach(p=>{g+=`<circle cx="${X(p.x)}" cy="${Y(p.y)}" r="3.5" fill="var(--muted)" fill-opacity=".45"/>`});
   o.lines.forEach(l=>{const xe=Math.min(xmax,-l.f.a/l.f.b);g+=`<line x1="${X(0)}" y1="${Y(l.f.a)}" x2="${X(xe)}" y2="${Y(l.f.a+l.f.b*xe)}" stroke="${l.c}" stroke-width="${l.w||2.5}" stroke-linecap="round"/>`;
     if(l.e1&&l.mvt)g+=`<circle cx="${X(l.e1)}" cy="${Y(l.mvt)}" r="5.5" fill="var(--bg)" stroke="${l.mark||l.c}" stroke-width="2.5"/>`});
@@ -577,9 +595,14 @@ function viewProfil(){
     <div class="card kpi"><b>${Math.round(-src.f.a/src.f.b)}</b><span>L0 (kg)</span></div>
     <div class="card kpi"><b>${fr(src.f.r2,3)}</b><span>R²</span></div>
   </div>
+  ${(()=>{const G=9.81,Lo=-src.f.a/src.f.b/2,P=G*Lo*(src.f.a+src.f.b*Lo);return `<div class="kpis" style="margin-top:10px;grid-template-columns:repeat(3,1fr)">
+    <div class="card kpi"><b>${Math.round(P)}</b><span>Pmax (W)</span></div>
+    <div class="card kpi"><b>${kg(Lo)}</b><span>Charge à Pmax (kg)${src.rm?" · "+Math.round(Lo/src.rm*100)+" %":""}</span></div>
+    <div class="card kpi"><b>${fr(src.f.a+src.f.b*Lo,2)}</b><span>Vitesse à Pmax (m/s)</span></div>
+  </div>`})()}
   <div class="card" style="margin-top:12px">
-    ${chart({pts:src.pts,extra:store.showSess?sp:[],lines:[{f:src.f,c:"var(--accent)",e1:src.e1,mvt:src.mvt,mark:"var(--bad)"}],mvt:src.mvt,mvtLabel:(src.pv?"V PR ":"VMT ")+fr(src.mvt,2),rm:src.rm,bands:true,label:"Profil charge-vitesse, 1RM estimé "+kg(src.e1)+" kg"})}
-    <div class="legend"><span><i style="background:var(--text)"></i>Test standardisé</span>${store.showSess&&sp.length?`<span><i style="background:var(--muted);opacity:.6"></i>Séances (90 j)</span>`:""}<span><i style="background:var(--bad)"></i>${src.pv?"Vitesse du PR":"VMT"} ${fr(src.mvt,2)} m/s</span></div>
+    ${chart({pts:src.pts,extra:store.showSess?sp:[],lines:[{f:src.f,c:"var(--accent)",e1:src.e1,mvt:src.mvt,mark:"var(--bad)"}],power:src.f,mvt:src.mvt,mvtLabel:(src.pv?"V PR ":"VMT ")+fr(src.mvt,2),rm:src.rm,bands:true,label:"Profil charge-vitesse, 1RM estimé "+kg(src.e1)+" kg"})}
+    <div class="legend"><span><i style="background:var(--text)"></i>Test standardisé</span><span><i style="background:transparent;border:2px solid #e8573f"></i>Puissance (W)</span>${store.showSess&&sp.length?`<span><i style="background:var(--muted);opacity:.6"></i>Séances (90 j)</span>`:""}<span><i style="background:var(--bad)"></i>${src.pv?"Vitesse du PR":"VMT"} ${fr(src.mvt,2)} m/s</span></div>
     ${sp.length?`<label class="toggle"><input type="checkbox" data-f="sess" ${store.showSess?"checked":""}> Afficher les séries des séances en fond (${sp.length})</label>`:""}
   </div>
   ${oriSummary(orientLV(src))}
