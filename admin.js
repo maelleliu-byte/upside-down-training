@@ -32,8 +32,9 @@ async function editProgramme(id){
   if(p.type==='subscription'&&newPrice){
     showToast('⏳ Sync Stripe...');
     try{
+      const {data:{session}}=await sb.auth.getSession();
       const fnUrl=(window.SUPABASE_URL||sb.supabaseUrl||'').replace(/\/$/,'')+'/functions/v1/create-stripe-product';
-      const res=await fetch(fnUrl,{method:'POST',headers:{'Content-Type':'application/json'},
+      const res=await fetch(fnUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?.access_token||'')},
         body:JSON.stringify({programme_id:id,name:updates.name,description:updates.description,price_monthly:newPrice,currency:'eur'})});
       const data=await res.json();
       if(data.error){showToast('⚠️ Stripe : '+data.error);}else{showToast('✅ Stripe synchronisé');}
@@ -49,8 +50,18 @@ async function deleteProgramme(id,name,sessionCount){
   }else{
     if(!confirm(`Supprimer le programme "${name}" ?`))return;
   }
-  // Récupérer les IDs Stripe AVANT suppression DB
+  // Archiver le produit Stripe AVANT suppression DB : la fonction relit les IDs
+  // Stripe en base à partir du programme_id et vérifie qu'il est bien à notre studio.
   const {data:progBeforeDelete}=await sb.from('programmes').select('stripe_product_id,stripe_price_id').eq('id',id).maybeSingle();
+  if(progBeforeDelete?.stripe_product_id||progBeforeDelete?.stripe_price_id){
+    try{
+      const {data:{session}}=await sb.auth.getSession();
+      const fnUrl=(window.SUPABASE_URL||sb.supabaseUrl||'').replace(/\/$/,'')+'/functions/v1/delete-stripe-product';
+      const r=await fetch(fnUrl,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+(session?.access_token||'')},
+        body:JSON.stringify({programme_id:id})});
+      if(!r.ok)console.warn('stripe archive',r.status,await r.text());
+    }catch(e){console.warn('stripe archive',e);}
+  }
   // Cascade manuelle scores + notes pour toutes les séances (prog + perso) liées à ce programme
   const sessIds=[];
   const r1=await sb.from('sessions').select('id').eq('programme_id',id);
@@ -74,15 +85,6 @@ async function deleteProgramme(id,name,sessionCount){
     return;
   }
   showToast('🗑 Programme supprimé');
-  // Archiver le produit Stripe en arrière-plan (silencieux)
-  if(progBeforeDelete?.stripe_product_id||progBeforeDelete?.stripe_price_id){
-    try{
-      const fnUrl=(window.SUPABASE_URL||sb.supabaseUrl||'').replace(/\/$/,'')+'/functions/v1/delete-stripe-product';
-      fetch(fnUrl,{method:'POST',headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({stripe_product_id:progBeforeDelete.stripe_product_id,stripe_price_id:progBeforeDelete.stripe_price_id})
-      }).catch(e=>console.warn('stripe archive',e));
-    }catch(e){console.warn(e);}
-  }
   // Forcer reset du state local + reload complet
   programmes=programmes.filter(p=>p.id!==id);
   await loadProgrammes();
