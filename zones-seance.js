@@ -285,7 +285,7 @@
 
   /* ---------- comparatif « TES VALEURS » (vue coach, séance perso d'un athlète) ---------- */
   function esc(t) { return String(t || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
-  var VAL_SEL = '.allure-zone, span[style*="232,255,71"], span[onclick^="openPRFromSession"]';
+  var VAL_SEL = '.allure-zone, span[style*="232,255,71"], span[data-pr-mv]';
   function lineVals(html) {
     var d = document.createElement('div'); d.innerHTML = html;
     var vals = [];

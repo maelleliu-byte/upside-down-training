@@ -525,9 +525,7 @@ function renderContentWithCharges(content,opts){
     }
     if(mvt){
       const fmtLabel=fmt.trim().toUpperCase();
-      const mvtNameEsc=mvtName.trim().replace(/'/g,"\\'");
-      const fmtEsc=fmt.trim().replace(/'/g,"\\'");
-      return `<span style="color:var(--muted)">${pct}% <span style="font-size:10px">${fmtLabel}</span></span> <span onclick="openPRFromSession('${mvtNameEsc}','${fmtEsc}')" style="background:rgba(255,255,255,.06);color:var(--muted);padding:1px 7px;border-radius:5px;font-size:11px;cursor:pointer;text-decoration:underline dotted">+ Entrer ${fmtLabel}</span>`;
+      return `<span style="color:var(--muted)">${pct}% <span style="font-size:10px">${escapeHtml(fmtLabel)}</span></span> <span data-pr-mv="${escapeHtml(mvtName.trim())}" data-pr-fmt="${escapeHtml(fmt.trim())}" style="background:rgba(255,255,255,.06);color:var(--muted);padding:1px 7px;border-radius:5px;font-size:11px;cursor:pointer;text-decoration:underline dotted">+ Entrer ${fmtLabel}</span>`;
     }
     return match;
   });
@@ -566,7 +564,8 @@ function renderContentWithCharges(content,opts){
   if(out.includes('\u0002'))out=out.replace(/(?:<br>)*\u0002(?:<br>)*/g,'<div class="blk-sep sm"></div>');
   // ligne de 5 points ou plus → séparateur en pointillés (ex. séance / adaptations)
   if(out.includes('\u0003'))out=out.replace(/(?:<br>)*\u0003(?:<br>)*/g,'<div class="blk-sep dot"></div>');
-  return out;
+  // Le contenu peut venir d'un athlète (séance perso) : on ne garde que la mise en forme.
+  return safeHtml(out);
 }
 
 function findMovementByName(name){

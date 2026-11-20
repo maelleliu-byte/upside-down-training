@@ -451,6 +451,7 @@ function importSessionTemplates(){
 // Reprend le rendu des charges (renderContentWithCharges) puis met en valeur
 // les séparateurs ____ et ---PARTIE--- (MIN x : et REST restent tels qu'écrits).
 function _sanitizePlanningHtml(html){
+  if(typeof safeHtml==='function'&&window.DOMPurify)return safeHtml(html);
   return (html||'')
     .replace(/<\s*(script|style|iframe|object|embed)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,'')
     .replace(/<\s*(script|style|iframe|object|embed|link|meta)[^>]*>/gi,'')

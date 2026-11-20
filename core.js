@@ -353,6 +353,24 @@ async function uploadAvatar(ev){
   currentProfile.avatar_url=url;
   applyAvatarToUI(url);
 }
+// ===== Nettoyage du HTML de contenu (séances, blocs) =====
+// Le contenu des séances est du HTML mis en forme (gras, couleurs, sauts de ligne).
+// Il peut venir d'un athlète (séances perso) : on ne garde que la mise en forme,
+// tout code (script, on*=, javascript:, iframe, formulaires…) est supprimé.
+// DOMPurify est servi depuis /vendor ; s'il manque, repli sur un texte échappé.
+const SAFE_HTML_CFG={FORBID_TAGS:['style','form','input','button','textarea','select','option'],FORBID_ATTR:['srcset','action','formaction'],ALLOW_DATA_ATTR:true};
+function safeHtml(html){
+  if(html==null||html==='')return '';
+  if(window.DOMPurify&&DOMPurify.isSupported)return DOMPurify.sanitize(String(html),SAFE_HTML_CFG);
+  return String(html).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/&lt;br\s*\/?&gt;/gi,'<br>');
+}
+// Lien « + Entrer 3RM » dans le contenu : plus d'onclick inline (supprimé par le nettoyage),
+// un seul écouteur délégué lit data-pr-mv / data-pr-fmt.
+document.addEventListener('click',function(e){
+  const el=e.target&&e.target.closest&&e.target.closest('[data-pr-mv]');
+  if(!el||typeof openPRFromSession!=='function')return;
+  openPRFromSession(el.dataset.prMv,el.dataset.prFmt||'');
+});
 function avatarHtml(profile,opts){
   const cls=(opts&&opts.cls)||'score-avatar';
   const url=profile&&profile.avatar_url;
