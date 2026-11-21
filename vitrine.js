@@ -126,7 +126,25 @@
       '.v-head h2{font-family:"Bebas Neue",sans-serif;letter-spacing:2px;font-weight:400;font-size:30px;margin:0;color:var(--text,#ededed)}',
       '.v-head p{margin:4px 0 0;font-size:13px;color:var(--muted,#8a8f96)}',
       '.v-back{background:none;border:none;color:var(--muted,#8a8f96);font-size:13px;padding:0;margin-bottom:8px;cursor:pointer}',
-      '@media (min-width:980px){.v-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));align-items:start}}'
+      '@media (min-width:980px){.v-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));align-items:start}}',
+      '.vg{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:4px 16px 26px;max-width:720px;margin:0 auto}',
+      '@media (min-width:760px){.vg{grid-template-columns:repeat(3,1fr)}}',
+      '.vg-t{position:relative;height:215px;border-radius:16px;overflow:hidden;border:1px solid #1f2023;background:#141416;cursor:pointer;padding:0;text-align:left;font-family:inherit}',
+      '.vg-t:active{transform:scale(.98)}',
+      '.vg-ph{position:absolute;inset:0;background-size:cover;background-repeat:no-repeat}',
+      '.vg-sh{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(11,11,12,.95) 92%)}',
+      '.vg-bar{position:absolute;left:0;right:0;top:0;height:3px}',
+      '.vg-nm{position:absolute;left:11px;right:10px;bottom:30px;font-family:"Bebas Neue",sans-serif;font-size:27px;letter-spacing:.5px;line-height:.9;color:#fff}',
+      '.vg-pr{position:absolute;left:11px;bottom:10px;font-size:12px;font-weight:700}',
+      '.vg-ok{position:absolute;right:8px;top:10px;font-size:10px;font-weight:700;background:rgba(11,11,12,.75);color:#fff;border-radius:999px;padding:3px 8px}',
+      '.vt-tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 16px 14px;scrollbar-width:none;max-width:720px;margin:0 auto}',
+      '.vt-tabs::-webkit-scrollbar{display:none}',
+      '.vt-tab{flex:none;font-size:12.5px;font-weight:700;padding:8px 14px;border-radius:999px;border:1px solid #2a2b2e;color:#9aa0a6;background:#111214;font-family:inherit;cursor:pointer}',
+      '.vt-tab.on{color:var(--tc);border-color:var(--tc);background:color-mix(in srgb,var(--tc) 14%,transparent)}',
+      '.vt-card{padding:0 16px}',
+      '.vt-dots{display:flex;justify-content:center;gap:6px;padding:14px 0 28px}',
+      '.vt-dots i{width:6px;height:6px;border-radius:3px;background:#2a2b2e;transition:width .2s}',
+      '.vt-dots i.on{width:18px;background:var(--tc)}'
     ].join('');
     document.head.appendChild(st);
   }
@@ -205,6 +223,67 @@
       .sort(function (a, b) { return orderIndex(a.slug) - orderIndex(b.slug); });
   }
 
+  /* ---------- navigateur : grille de vignettes → vue détaillée avec onglets ----------
+     root : élément conteneur ; list : programmes ; o.cardOpts(p) → options de cardHTML ;
+     o.access(p) → bool ; o.base ; o.onChange(slug|null) */
+  function mountBrowser(root, list, o) {
+    css(); o = o || {};
+    var state = { sel: -1 };
+    function gridHTML() {
+      return '<div class="vg">' + list.map(function (p, i) {
+        var c = cfgOf(p.slug), col = p.color || '#e8ff47';
+        var one = p.type === 'oneshot', v = one ? p.price_oneshot : p.price_monthly;
+        var pr = p.is_free ? 'Gratuit' : (v ? (Math.round(+v * 100) / 100) + '€' + (one ? '' : '/mois') : '');
+        var ok = o.access && o.access(p) ? '<span class="vg-ok">✓ Accès actif</span>' : '';
+        return '<button class="vg-t" data-i="' + i + '">' +
+          '<div class="vg-ph" style="background-image:url(' + (o.base || '/') + c.photo + ');background-position:' + c.pos + '"></div>' +
+          '<div class="vg-sh"></div><div class="vg-bar" style="background:' + col + '"></div>' + ok +
+          '<div class="vg-nm">' + c.title.replace(/<br>/g, ' ') + '</div><div class="vg-pr" style="color:' + col + '">' + pr + '</div></button>';
+      }).join('') + '</div>';
+    }
+    function detailHTML(i) {
+      var p = list[i], col = p.color || '#e8ff47';
+      return (o.noGrid ? '' : '<div style="max-width:720px;margin:0 auto;padding:0 16px 10px"><button class="v-back" data-grid="1">‹ Toutes les programmations</button></div>') +
+        '<div class="vt-tabs">' + list.map(function (x, k) {
+          return '<button class="vt-tab' + (k === i ? ' on' : '') + '" data-i="' + k + '" style="--tc:' + (x.color || '#e8ff47') + '">' + esc(cfgOf(x.slug).title.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ')) + '</button>';
+        }).join('') + '</div>' +
+        '<div class="vt-card">' + cardHTML(p, o.cardOpts ? o.cardOpts(p) : {}) + '</div>' +
+        '<div class="vt-dots" style="--tc:' + col + '">' + list.map(function (x, k) { return '<i class="' + (k === i ? 'on' : '') + '"></i>'; }).join('') + '</div>';
+    }
+    function show(i) {
+      if (o.noGrid && i < 0) i = 0;   /* option 1 : toujours une programmation affichée */
+      state.sel = i;
+      root.innerHTML = i < 0 ? gridHTML() : detailHTML(i);
+      if (i >= 0) {
+        var t = root.querySelector('.vt-tab.on');
+        if (t) t.scrollIntoView({ block: 'nearest', inline: 'center' });
+      }
+      if (o.onChange) o.onChange(i < 0 ? null : list[i].slug);
+      var top = root.getBoundingClientRect().top;
+      if (top < 0) root.scrollIntoView({ block: 'start' });
+    }
+    root.onclick = function (e) {
+      var b = e.target.closest('[data-i],[data-grid]'); if (!b || !root.contains(b)) return;
+      if (b.hasAttribute('data-grid')) { show(-1); return; }
+      if (b.classList.contains('vg-t') || b.classList.contains('vt-tab')) show(+b.getAttribute('data-i'));
+    };
+    /* glisser gauche / droite dans la vue détaillée */
+    var x0 = null, y0 = null;
+    root.addEventListener('touchstart', function (e) { if (state.sel < 0) return; x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; }, { passive: true });
+    root.addEventListener('touchend', function (e) {
+      if (state.sel < 0 || x0 == null) return;
+      var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0; x0 = null;
+      if (Math.abs(dx) > 60 && Math.abs(dx) > 1.5 * Math.abs(dy)) {
+        var n = state.sel + (dx < 0 ? 1 : -1);
+        if (n >= 0 && n < list.length) show(n);
+      }
+    }, { passive: true });
+    return {
+      show: show,
+      showSlug: function (slug) { var i = -1; list.forEach(function (p, k) { if (p.slug === slug) i = k; }); show(i); }
+    };
+  }
+
   async function render(focusSlug) {
     css();
     var page = document.getElementById('page-vitrine'); if (!page) return;
@@ -213,19 +292,21 @@
     var staff = isStaff();
     page.innerHTML = '<div class="v-head"><button class="v-back" onclick="goPage(\'prog\')">‹ Retour</button>' +
       '<h2>ACCÈS AUX PROGRAMMATIONS</h2><p>Choisis ta programmation. ' + TRIAL_DAYS + ' jours d\'essai gratuits sur les abonnements.</p></div>' +
-      '<div class="v-list" id="v-list"><div class="spinner"></div></div>';
+      '<div id="v-browser"><div class="spinner"></div></div>';
+    if (!list.length) { document.getElementById('v-browser').innerHTML = '<div style="padding:40px;text-align:center;color:var(--muted)">Aucune programmation disponible</div>'; return; }
     var weeks = await Promise.all(list.map(function (p) { return weekOf(p.id); }));
-    document.getElementById('v-list').innerHTML = list.map(function (p, i) {
-      return cardHTML(p, {
-        week: weeks[i], access: access(p), staff: staff,
-        ctaAction: (p.is_free ? 'claimFreeAccess' : 'subscribeToProg') + "('" + p.id + "')",
-        openAction: "udtVitrine.openProg('" + p.id + "')"
-      });
-    }).join('') || '<div style="padding:40px;text-align:center;color:var(--muted)">Aucune programmation disponible</div>';
-    if (focusSlug) {
-      var el = document.getElementById('v-' + focusSlug);
-      if (el) setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 60);
-    }
+    var wk = {}; list.forEach(function (p, i) { wk[p.id] = weeks[i]; });
+    var br = mountBrowser(document.getElementById('v-browser'), list, {
+      noGrid: true, access: access,
+      cardOpts: function (p) {
+        return {
+          week: wk[p.id], access: access(p), staff: staff,
+          ctaAction: (p.is_free ? 'claimFreeAccess' : 'subscribeToProg') + "('" + p.id + "')",
+          openAction: "udtVitrine.openProg('" + p.id + "')"
+        };
+      }
+    });
+    br.showSlug(focusSlug || null);
   }
 
   function open(focusSlug) {
@@ -254,6 +335,6 @@
     VITRINE: VITRINE, ORDER: VITRINE_ORDER, TRIAL_DAYS: TRIAL_DAYS, PUBLIC_BASE: PUBLIC_BASE,
     css: css, cardHTML: cardHTML, cfgOf: cfgOf, slugFromLink: slugFromLink, linkOf: linkOf,
     orderIndex: orderIndex, inVitrine: inVitrine, copyLink: copyLink, open: open, render: render, openProg: openProg,
-    consumePending: consumePending, isStaff: isStaff
+    consumePending: consumePending, isStaff: isStaff, mountBrowser: mountBrowser
   };
 })();

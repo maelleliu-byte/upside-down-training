@@ -28,11 +28,12 @@
 <body>
 <div class="wrap">
   <div class="brand"><b>UPSIDE DOWN TRAINING</b><a href="/">Se connecter</a></div>
+  <div class="v-head" style="padding-top:4px"><h2 style="font-family:'Bebas Neue',sans-serif;letter-spacing:2px;font-weight:400;font-size:30px;margin:0">NOS PROGRAMMATIONS</h2><p style="margin:4px 0 6px;font-size:13px;color:#8a8f96">7 jours d'essai gratuits sur les abonnements · sans engagement</p></div>
   <div id="vitrine-root"><div style="padding:60px;text-align:center;color:#8a8f96">Chargement…</div></div>
   <div class="foot">Upside Down Training · CrossFit Sandglass</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/vitrine.js?v=20261121b"></script>
+<script src="/vitrine.js?v=20261121d"></script>
 <script>
 (async function () {
   var SUPABASE_URL = 'https://tltqtpbaaxiwwpvuzszt.supabase.co';
@@ -61,7 +62,6 @@
   var m = location.pathname.match(/^\/p\/([^\/?#]+)/);
   var one = m ? V.slugFromLink(decodeURIComponent(m[1])) : null;
   var list = one ? rows.filter(function (p) { return p.slug === one; }) : rows;
-  if (m && !list.length) list = rows;
 
   window.udtStart = function (slug) {
     var c = V.cfgOf(slug);
@@ -69,9 +69,18 @@
     location.href = '/?prog=' + encodeURIComponent(c ? c.link : slug);
   };
   var root = document.getElementById('vitrine-root');
-  root.innerHTML = '<div class="v-list">' + list.map(function (p) {
-    return V.cardHTML(p, { base: '/', ctaAction: "udtStart('" + p.slug + "')" });
-  }).join('') + '</div>' + (one ? '<div class="more"><a href="/programmes">Voir toutes les programmations</a></div>' : '');
+  var base = location.pathname;
+  var br = V.mountBrowser(root, rows, {
+    noGrid: true, base: '/',
+    cardOpts: function (p) { return { base: '/', ctaAction: "udtStart('" + p.slug + "')" }; },
+    onChange: function (slug) {
+      var c = slug && V.cfgOf(slug);
+      var path = c ? '/p/' + c.link : '/programmes';
+      if (location.pathname !== path) history.replaceState(null, '', path);
+      document.title = c ? c.title.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim() + ' · Programmation Upside Down Training' : 'Programmations · Upside Down Training';
+    }
+  });
+  br.showSlug(one);
 
   if (one && list.length === 1) {
     var c = V.cfgOf(one), p = list[0];
