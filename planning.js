@@ -736,6 +736,25 @@ function checkTimeInput(el){const v=el.value.trim().replace(/\s*\/?\s*km$/i,'');
 
 /* Bloc ENGINE / RUN en intervalles : nombre d'intervalles (ex. 3x 8:00, 2 SETS 12:00, 4x 800m)
    et unité du score (W si la séance est en watts). Une ligne par intervalle avec la valeur + le RPE. */
+/* Ne garde que le corps de séance : on retire WARM UP / échauffement / activation / récup / cool down.
+   Si une partie « SEANCE… » (ou MAIN, CORPS DE SÉANCE, PARTIE PRINCIPALE) existe, on ne garde qu'elle. */
+function udtMainPart(txt){
+  const lines=String(txt||'').split('\n');
+  const head=l=>{const x=l.replace(/^[\s\-–—_=*•|]+|[\s:\-–—_=*•|]+$/g,'').trim();if(!x||x.length>40)return null;
+    if(/^(WARM?P?[\s-]*UP|[ÉE]CHAUFFEMENT|ECHAUF|ACTIVATION|STRIDES|ACC[ÉE]L[ÉE]RATIONS?|GAMMES|[ÉE]DUCATIFS|PR[ÉE]PA(RATION)?|MOBILIT[ÉE]|R[ÉE]CUP([ÉE]RATION)?|COOL[\s-]*DOWN|RETOUR AU CALME|CALME)\b/i.test(x))return 'skip';
+    if(/^(S[ÉE]ANCE|MAIN|CORPS DE S[ÉE]ANCE|PARTIE PRINCIPALE|BLOC|INTERVALLES|HAUTE INTENSIT)/i.test(x))return 'main';
+    return null;};
+  const secs=[];let cur={kind:'none',lines:[]};secs.push(cur);
+  for(const l of lines){
+    const h=head(l);
+    if(h){cur={kind:h,lines:[]};secs.push(cur);continue;}
+    if(/^\s*([-_=─]{3,})\s*$/.test(l)){if(cur.kind!=='none'){cur={kind:'none',lines:[]};secs.push(cur);}continue;}
+    cur.lines.push(l);
+  }
+  const pick=k=>secs.filter(s=>s.kind===k).map(s=>s.lines.join('\n')).join('\n').trim();
+  const main=pick('main');if(main)return main;
+  const rest=pick('none');return rest||String(txt||'');
+}
 function intervalScoring(s){
   if(!s||!/^(engine|run)$/i.test(s.type||'')||s.ef||s.vbt)return null;
   const st=s.score_type||'';
@@ -750,21 +769,20 @@ function intervalScoring(s){
   else if(isRun&&!(st==='watt'||usesW&&/\b(SKI|ROW|BIKE|ERG)/i.test(txt))){unit='/km';stype='pace';}
   else {unit='W';stype='watt';}
   // Toutes les séries du bloc sont additionnées (ex. 5 x 1'15'' puis 12 x 35'' → 17 efforts)
-  const tq=txt.replace(/[’‘′`]/g,"'").replace(/[″]/g,"''");
+  const tq=udtMainPart(txt).replace(/[’‘′`]/g,"'").replace(/[″"]/g,"''");
   const groups=[],covered=[];let m;
   const inCov=i=>covered.some(c=>i>=c[0]&&i<c[1]);
   const add=(m,n,lab)=>{covered.push([m.index,m.index+m[0].length]);groups.push({at:m.index,n,label:lab||m[0].replace(/\s+/g,' ').trim()});};
-  // « 2 SETS REST 2:00 » puis « 7x 500m » → 14 intervalles
-  const reS=/(\d+)\s*SETS?\s*REST\s*\d{1,2}:\d{2}\s*\n\s*(\d+)\s*x\s*(?:\d{1,2}:\d{2}|\d+\s*m\b|\d+\s*'{1,2}(?:\s*\d+\s*'')?)/gi;
-  while((m=reS.exec(tq))){const k=+m[1],n=k*(+m[2]);if(k<2||n<2||n>24)continue;add(m,n,m[1]+' x '+m[0].split('\n').pop().trim());}
-  // « 6x 1:00 », « 4 SETS 3:00 », « 10x 500m »
-  const re=/(\d+)\s*(?:SETS?|S[EÉ]RIES?|x)\s*(\d{1,2}):(\d{2})|(\d+)\s*x\s*(\d+)\s*m\b/gi;
-  while((m=re.exec(tq))){if(inCov(m.index))continue;const n=+(m[1]||m[4]);if(n<2||n>12)continue;add(m,n);}
-  // « 6 x 1' », « 12 x 30'' », « 5 x 1'15'' », « 2 X 30' »
-  const reQ=/(\d+)\s*x\s*(\d+)\s*('{1,2})(?:\s*(\d+)\s*'')?/gi;
-  while((m=reQ.exec(tq))){if(inCov(m.index))continue;const n=+m[1];if(n<2||n>12)continue;add(m,n);}
-  // « 4 SETS EVERY 4:00 » (un effort par série), seulement s'il n'y a rien d'autre
-  if(!groups.length){
+  const TOK=String.raw`(?:\d{1,2}:\d{2}|\d+\s*m\b|\d+\s*'{1,2}(?:\s*\d+\s*'')?|\d+\s*MIN\b)`;
+  // « 2 SERIES - 2:00 REPOS » puis « 10x 30''/30'' » → 20 efforts (« 10 à 12x » → 12)
+  const reS=new RegExp(String.raw`(\d+)\s*(?:SETS?|S[EÉ]RIES?)\b[^\n]*?(?:REST|REPOS|R[ÉE]CUP)[^\n]*\n\s*(?:\d+\s*(?:à|a|-)\s*)?(\d+)\s*x\s*`+TOK,'gi');
+  while((m=reS.exec(tq))){const k=+m[1],n=k*(+m[2]);if(k<2||k>6||n<2||n>30)continue;add(m,n,m[1]+' x '+m[0].split('\n').pop().trim());}
+  // « 6x 1:00 », « 4 SETS 3:00 », « 10x 500m », « 6 x 1' », « 12 x 30'' », « 5 x 2 MIN » (« 4 à 6x » → 6)
+  const re=new RegExp(String.raw`(\d+)\s*(?:SETS?\s*|S[EÉ]RIES?\s*|x\s*)`+TOK,'gi');
+  while((m=re.exec(tq))){if(inCov(m.index))continue;if(/^\d+\s*(?:SETS?|S[EÉ]RIES?)\s*\d+\s*m\b/i.test(m[0]))continue;const n=+m[1];if(n<2||n>12)continue;add(m,n);}
+  // « 4 SETS EVERY 4:00 », « 6 À 10 SETS REST 1:00 » (un effort par série), seulement s'il n'y a rien d'autre
+  // et pas sur un bloc chronométré (ex. 6 SETS EVERY 5:00 row + thrusters : on garde le score au temps)
+  if(!groups.length&&!/^(time|rounds|reps)$/.test(st)){
     const reE=/(\d+)\s*SETS?\s*(?:EVERY|E|REST|ON)\s*(\d{1,2}):(\d{2})/gi;
     if((m=reE.exec(tq))&&+m[1]>=2&&+m[1]<=12)add(m,+m[1]);
   }
