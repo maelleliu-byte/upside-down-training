@@ -62,7 +62,8 @@
     }
   };
   /* ordre de la rangée des programmations et de la vitrine */
-  var VITRINE_ORDER = ['training', 'affiliate', 'hyrox', '3-days-prgm', 'running-club', 'fix-toes-to-bar', 'kids'];
+  var VITRINE_ORDER = ['training', 'affiliate', 'hyrox', '3-days-prgm', 'running-club', 'fix-toes-to-bar'];
+  var VITRINE_HIDDEN = ['kids']; /* présentation prête, pas encore affichée dans la vitrine */
   var TRIAL_DAYS = 7;
   var PUBLIC_BASE = 'https://app.upsidedown-training.fr';
 
@@ -197,9 +198,10 @@
     } catch (e) { return []; }
   }
 
+  function inVitrine(slug) { return !!VITRINE[slug] && VITRINE_ORDER.indexOf(slug) >= 0; }
   function vitrineProgs() {
     if (typeof programmes === 'undefined') return [];
-    return programmes.filter(function (p) { return VITRINE[p.slug]; })
+    return programmes.filter(function (p) { return inVitrine(p.slug); })
       .sort(function (a, b) { return orderIndex(a.slug) - orderIndex(b.slug); });
   }
 
@@ -251,7 +253,7 @@
   window.udtVitrine = {
     VITRINE: VITRINE, ORDER: VITRINE_ORDER, TRIAL_DAYS: TRIAL_DAYS, PUBLIC_BASE: PUBLIC_BASE,
     css: css, cardHTML: cardHTML, cfgOf: cfgOf, slugFromLink: slugFromLink, linkOf: linkOf,
-    orderIndex: orderIndex, copyLink: copyLink, open: open, render: render, openProg: openProg,
+    orderIndex: orderIndex, inVitrine: inVitrine, copyLink: copyLink, open: open, render: render, openProg: openProg,
     consumePending: consumePending, isStaff: isStaff
   };
 })();

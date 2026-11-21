@@ -8,7 +8,7 @@ language sql stable security definer set search_path = public as $$
          coalesce(p.is_free,false), p.stripe_price_id is not null
   from programmes p
   where p.is_active and p.studio_id is null
-    and p.slug in ('training','affiliate','hyrox','3-days-prgm','running-club','fix-toes-to-bar','kids')
+    and p.slug in ('training','affiliate','hyrox','3-days-prgm','running-club','fix-toes-to-bar')
 $$;
 revoke all on function public.vitrine_programmes() from public;
 grant execute on function public.vitrine_programmes() to anon, authenticated;

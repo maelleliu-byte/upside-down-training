@@ -32,7 +32,7 @@
   <div class="foot">Upside Down Training · CrossFit Sandglass</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/vitrine.js?v=20261121a"></script>
+<script src="/vitrine.js?v=20261121b"></script>
 <script>
 (async function () {
   var SUPABASE_URL = 'https://tltqtpbaaxiwwpvuzszt.supabase.co';
@@ -54,7 +54,7 @@
     var r = await sb.rpc('vitrine_programmes');
     if (r && !r.error && r.data && r.data.length) rows = r.data;
   } catch (e) { }
-  rows = rows.filter(function (p) { return V.cfgOf(p.slug); })
+  rows = rows.filter(function (p) { return V.inVitrine(p.slug); })
     .sort(function (a, b) { return V.orderIndex(a.slug) - V.orderIndex(b.slug); });
 
   /* /p/<lien> → un programme ; /programmes → tous */
