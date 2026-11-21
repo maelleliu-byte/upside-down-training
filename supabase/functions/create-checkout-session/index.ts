@@ -159,7 +159,7 @@ serve(async (req) => {
           connectOptions
         )
       : await stripe.checkout.sessions.create(
-          { ...baseParams, mode: 'subscription', subscription_data: { trial_period_days: 14, metadata: { supabase_user_id: user.id, programme_slug: slug } } },
+          { ...baseParams, mode: 'subscription', subscription_data: { trial_period_days: 7, metadata: { supabase_user_id: user.id, programme_slug: slug } } },
           connectOptions
         );
 

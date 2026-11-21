@@ -18,6 +18,15 @@ const SESSION_TYPE_ICONS={
 };
 
 async function renderProgramWeekBroadcast(prog, area) {
+  // Programmation de la vitrine : on affiche sa présentation complète (photo, textes, prix, essai)
+  if (window.udtVitrine && udtVitrine.cfgOf(prog.slug)) {
+    udtVitrine.css();
+    area.innerHTML = '<div style="padding:16px">' + udtVitrine.cardHTML(prog, {
+      ctaAction: (prog.is_free ? 'claimFreeAccess' : 'subscribeToProg') + "('" + prog.id + "')",
+      staff: udtVitrine.isStaff()
+    }) + '</div>';
+    return;
+  }
   // Charger les séances de la semaine courante (sans contenu — juste titre et type)
   const today = new Date();
   const dow = today.getDay();

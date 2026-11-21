@@ -41,7 +41,7 @@ async function renderPlans(){
       ${hasAccess
         ?`<div class="access-badge">✓ Accès actif</div>`
         :stripePriceId
-          ?`<button class="btn-subscribe locked" onclick="subscribeToProg('${p.id}')">💳 ${isOneshot?'Acheter':"S'abonner"} — ${price}${period}${isOneshot?'':`<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">14 jours d'essai gratuits</div>`}</button>`
+          ?`<button class="btn-subscribe locked" onclick="subscribeToProg('${p.id}')">💳 ${isOneshot?'Acheter':"S'abonner"} — ${price}${period}${isOneshot?'':`<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">7 jours d'essai gratuits</div>`}</button>`
           :`<div style="text-align:center;padding:14px;background:rgba(255,140,71,.1);border:1px dashed rgba(255,140,71,.4);border-radius:10px;color:var(--orange);font-size:12px;font-weight:700">⚠️ Paiement non configuré</div>`
       }
     </div>`;

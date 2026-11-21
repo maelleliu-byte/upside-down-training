@@ -1339,6 +1339,7 @@ selectProg=function(id){
 };
 
 function activatePersoTab(){
+  {const lb=document.getElementById('prog-link-btn');if(lb)lb.style.display='none';}
   document.querySelectorAll('.prog-tab').forEach(t=>{
     if(t.dataset.id==='__perso__'){
       t.style.borderColor=PERSO_PROG.color;t.style.color=PERSO_PROG.color;t.style.background=PERSO_PROG.color+'18';
@@ -4700,7 +4701,7 @@ function onNpFreeChange(){
       } else if(p.is_free){
         actionHtml=`<button class="btn-subscribe locked" onclick="claimFreeAccess('${p.id}')" style="background:var(--yellow);color:#000">🎁 Accéder gratuitement</button>`;
       } else if(stripePriceId){
-        actionHtml=`<button class="btn-subscribe locked" onclick="subscribeToProg('${p.id}')">💳 ${isOneshot?'Acheter':"S'abonner"} — ${price}${period}${isOneshot?'':`<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">14 jours d'essai gratuits</div>`}</button>`;
+        actionHtml=`<button class="btn-subscribe locked" onclick="subscribeToProg('${p.id}')">💳 ${isOneshot?'Acheter':"S'abonner"} — ${price}${period}${isOneshot?'':`<div style="font-size:11px;font-weight:600;opacity:.85;margin-top:2px">7 jours d'essai gratuits</div>`}</button>`;
       } else {
         actionHtml=`<div style="text-align:center;padding:14px;background:rgba(255,140,71,.1);border:1px dashed rgba(255,140,71,.4);border-radius:10px;color:var(--orange);font-size:12px;font-weight:700">⚠️ Paiement non configuré</div>`;
       }

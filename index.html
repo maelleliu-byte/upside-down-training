@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
+<meta name="robots" content="noindex">
 <meta charset="UTF-8">
 <!-- drag-drop-touch polyfill: lazy, silent — sandbox may block CDNs (non-critical) -->
 <script>
@@ -129,7 +130,7 @@
 })();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261121b">
+<link rel="stylesheet" href="styles.css?v=20261121v">
 <style>
 /* PATCH: blocs séances en mode clair */
 :root[data-theme="light"] .cal-rich{background:#ffffff !important;border-color:#dcdcd2 !important}
@@ -215,7 +216,11 @@
         <div class="topbar-title" id="prog-topbar-title">UPSIDE DOWN</div>
         <div class="topbar-sub" id="prog-topbar-date">—</div>
       </div>
-      <button class="avatar-btn" id="avatar-btn" onclick="goPage('profil')">?</button>
+      <div style="display:flex;align-items:center;gap:8px">
+        <button class="btn-progs-access" onclick="udtVitrine.open()">Accès aux<br>programmations</button>
+        <button class="btn-prog-link" id="prog-link-btn" title="Copier le lien de la programmation" style="display:none">🔗</button>
+        <button class="avatar-btn" id="avatar-btn" onclick="goPage('profil')">?</button>
+      </div>
     </div>
     <div class="prog-tabs" id="prog-tabs"></div>
     <div class="week-nav" style="position:relative">
@@ -230,6 +235,9 @@
     <div class="day-strip" id="day-strip"></div>
     <div id="sessions-area"></div>
   </div>
+
+  <!-- PAGE ACCÈS AUX PROGRAMMATIONS (vitrine.js) -->
+  <div class="page" id="page-vitrine" style="display:none"></div>
 
   <!-- PAGE PR + BENCHMARKS -->
   <div class="page" id="page-pr" style="display:none">
@@ -1265,17 +1273,18 @@
  * ============================================================ */
 </script>
 <script src="/vendor/purify-3.1.6.min.js"></script>
-<script src="core.js?v=20261120a"></script>
+<script src="core.js?v=20261121v"></script>
 <script src="timer.js?v=20261112a"></script>
 <script src="timer-saisie.js?v=20261113a"></script>
 <script src="rpe-eval.js?v=20261119a"></script>
+<script src="vitrine.js?v=20261121a"></script>
 <script src="iv-recap.js?v=20261121b"></script>
 <script src="zones-seance.js?v=20261119f"></script>
-<script src="planning.js?v=20261121c"></script>
+<script src="planning.js?v=20261121v"></script>
 <script src="admin.js?v=20261119a"></script>
 <script src="open-read-session.js"></script>
 <script src="abos.js"></script>
-<script src="wellness.js?v=20261119c"></script>
+<script src="wellness.js?v=20261121v"></script>
 <script src="kids-scaling.js?v=20261119c"></script>
 <script src="famille.js?v=20261119a"></script>
 <script src="charge.js?v=20261113a"></script>

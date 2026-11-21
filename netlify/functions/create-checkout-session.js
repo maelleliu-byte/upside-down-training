@@ -65,7 +65,7 @@ exports.handler = async (event) => {
         cancel_url: cancelUrl,
         ...(prog?.type !== 'oneshot' && {
           subscription_data: {
-            trial_period_days: 14,
+            trial_period_days: 7,
             metadata: {
               athlete_id: user.id,
               programme_slug: programme_slug || '',

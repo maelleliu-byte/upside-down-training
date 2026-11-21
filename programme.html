@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Programmations · Upside Down Training</title>
+<meta name="description" content="Programmations Upside Down Training : Training, Affiliate, HYROX, 3 Days Program, Running Club, Toes to Bar. Coaching CrossFit, HYROX et running à Saint-Vit, Dole et Besançon.">
+<meta name="robots" content="index,follow">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Upside Down Training">
+<meta property="og:title" content="Programmations · Upside Down Training">
+<meta property="og:description" content="Choisis ta programmation : Training, Affiliate, HYROX, 3 Days Program, Running Club, Toes to Bar.">
+<meta property="og:image" content="https://app.upsidedown-training.fr/img/progs/training.jpg">
+<meta name="theme-color" content="#0b0b0c">
+<link rel="icon" href="/icon-192.png">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,400;0,500;0,700;1,500;1,700&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;background:#050506;color:#ededed;font-family:"DM Sans",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:10px 0 40px}
+  .brand{display:flex;align-items:center;justify-content:space-between;padding:14px 18px}
+  .brand b{font-family:"Bebas Neue",sans-serif;letter-spacing:2px;font-weight:400;font-size:20px}
+  .brand a{white-space:nowrap;color:#2dd4bf;font-size:12.5px;font-weight:700;text-decoration:none;border:1px solid rgba(45,212,191,.5);border-radius:10px;padding:7px 11px}
+  .more{display:block;text-align:center;color:#8a8f96;font-size:13px;margin:18px 0 0}
+  .more a{color:#2dd4bf}
+  .foot{color:#5f6368;font-size:11px;text-align:center;margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><b>UPSIDE DOWN TRAINING</b><a href="/">Se connecter</a></div>
+  <div id="vitrine-root"><div style="padding:60px;text-align:center;color:#8a8f96">Chargement…</div></div>
+  <div class="foot">Upside Down Training · CrossFit Sandglass</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="/vitrine.js?v=20261121a"></script>
+<script>
+(async function () {
+  var SUPABASE_URL = 'https://tltqtpbaaxiwwpvuzszt.supabase.co';
+  var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRsdHF0cGJhYXhpd3dwdnV6c3p0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5NDA5NTQsImV4cCI6MjA5MzUxNjk1NH0.5LVedQ-ktLcTC6z2X0XIoqY-mqP9_tw-gzrt-KNfuuY';
+  var V = window.udtVitrine; V.css();
+  /* Prix et couleurs : lus en direct (fonction publique vitrine_programmes), sinon valeurs par défaut */
+  var FALLBACK = [
+    { slug: 'training', name: 'Training', color: '#ff8c47', type: 'subscription', price_monthly: 45, has_stripe: true },
+    { slug: 'affiliate', name: 'Affiliate', color: '#e8ff47', type: 'subscription', price_monthly: 120, has_stripe: true },
+    { slug: 'hyrox', name: 'HYROX', color: '#ff479c', type: 'subscription', price_monthly: 30, has_stripe: true },
+    { slug: '3-days-prgm', name: '3 DAYS PRGM', color: '#cccccc', type: 'subscription', price_monthly: 35, has_stripe: true },
+    { slug: 'running-club', name: 'RUNNING CLUB', color: '#7c47ff', type: 'subscription', price_monthly: 30, has_stripe: true },
+    { slug: 'fix-toes-to-bar', name: 'TOES TO BAR', color: '#c847ff', type: 'oneshot', price_oneshot: 50, has_stripe: true },
+    { slug: 'kids', name: 'KIDS-TEENS', color: '#47a8ff', type: 'subscription', price_monthly: 30, has_stripe: false }
+  ];
+  var rows = FALLBACK;
+  try {
+    var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    var r = await sb.rpc('vitrine_programmes');
+    if (r && !r.error && r.data && r.data.length) rows = r.data;
+  } catch (e) { }
+  rows = rows.filter(function (p) { return V.cfgOf(p.slug); })
+    .sort(function (a, b) { return V.orderIndex(a.slug) - V.orderIndex(b.slug); });
+
+  /* /p/<lien> → un programme ; /programmes → tous */
+  var m = location.pathname.match(/^\/p\/([^\/?#]+)/);
+  var one = m ? V.slugFromLink(decodeURIComponent(m[1])) : null;
+  var list = one ? rows.filter(function (p) { return p.slug === one; }) : rows;
+  if (m && !list.length) list = rows;
+
+  window.udtStart = function (slug) {
+    var c = V.cfgOf(slug);
+    try { localStorage.setItem('udt_pending_prog', c ? c.link : slug); } catch (e) { }
+    location.href = '/?prog=' + encodeURIComponent(c ? c.link : slug);
+  };
+  var root = document.getElementById('vitrine-root');
+  root.innerHTML = '<div class="v-list">' + list.map(function (p) {
+    return V.cardHTML(p, { base: '/', ctaAction: "udtStart('" + p.slug + "')" });
+  }).join('') + '</div>' + (one ? '<div class="more"><a href="/programmes">Voir toutes les programmations</a></div>' : '');
+
+  if (one && list.length === 1) {
+    var c = V.cfgOf(one), p = list[0];
+    var name = c.title.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    document.title = name + ' · Programmation Upside Down Training';
+    var d = document.querySelector('meta[name="description"]'); if (d) d.setAttribute('content', c.tag + ' ' + c.desc);
+    var t = document.querySelector('meta[property="og:title"]'); if (t) t.setAttribute('content', name + ' · Upside Down Training');
+    var od = document.querySelector('meta[property="og:description"]'); if (od) od.setAttribute('content', c.tag);
+    var oi = document.querySelector('meta[property="og:image"]'); if (oi && c.photo) oi.setAttribute('content', V.PUBLIC_BASE + '/' + c.photo);
+  }
+})();
+</script>
+</body>
+</html>

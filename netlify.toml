@@ -10,6 +10,17 @@
   to = "/register.html"
   status = 200
 
+# Vitrine publique des programmations (liens courts) — avant les routes studio
+[[redirects]]
+  from = "/p/:lien"
+  to = "/programme.html"
+  status = 200
+
+[[redirects]]
+  from = "/programmes"
+  to = "/programme.html"
+  status = 200
+
 [[redirects]]
   from = "/:studio/settings"
   to = "/studio-settings.html"
@@ -27,9 +38,10 @@
   status = 200
   force = false
 
-# L'application est reservee aux membres : on demande a Google de ne pas l'indexer.
-# (la page publique est la landing sur upsidedown-training.fr)
+# L'application est reservee aux membres : chaque page HTML de l'app porte
+# <meta name="robots" content="noindex">. Seule la vitrine (/programmes, /p/...)
+# est indexable par Google. Les fichiers JS/JSON restent hors index.
 [[headers]]
-  for = "/*"
+  for = "/*.js"
   [headers.values]
     X-Robots-Tag = "noindex"

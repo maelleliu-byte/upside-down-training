@@ -1,2 +1,4 @@
+/p/:lien  /programme.html  200
+/programmes  /programme.html  200
 /:studio/settings  /studio-settings.html  200
 /*  /index.html  200

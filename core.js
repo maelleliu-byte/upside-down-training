@@ -87,10 +87,10 @@ const SCORE_HINTS={time:'Format: mm:ss (ex: 14:32)',reps:'Nombre de répétition
 // STRIPE — clé publique LIVE + price IDs
 const STRIPE_PUBLIC_KEY='pk_live_51TTgoeGfW5FegIxCCDUZQvm2EakuXj3rC2UFYiRDXfvuaE42WwX3Hjys4734FK0p9Dqe5ngaCNKpR35ssPKRUVSH004VamRL0F';
 const STRIPE_PLANS={
-  affiliate:{priceId:'price_1TThBIGfW5FegIxCy3Bd5zmi',name:'Affiliate',icon:'',price:'120€',period:'/mois',trial:14,desc:'Programmation salle complète — CrossFit Sandglass.',features:['WOD quotidien','Séances force & skill','Coaching tips & targets','Suivi des scores','PR tracking','14 jours d\'essai gratuit'],color:'#e8ff47'},
-  hyrox:{priceId:'price_1TVVEsGfW5FegIxCD0fssSlu',name:'Hyrox',icon:'',price:'30€',period:'/mois',trial:14,desc:'Programmation Hyrox — endurance & compromised running.',features:['Sessions Hyrox spécifiques','Compromised running','Sled push/pull','Wall balls & burpees','14 jours d\'essai gratuit'],color:'#ff4444'},
-  training:{priceId:'price_1TThDzGfW5FegIxCGRb4q1tN',name:'Training',icon:'',price:'45€',period:'/mois',trial:14,desc:'Préparation compétition Upside Down.',features:['Programmation compétition','Haltérophilie avancée','Périodisation structurée','Suivi performances','Accès coach direct','14 jours d\'essai gratuit'],color:'#ff8c47'},
-  kids:{priceId:'price_1TVVFiGfW5FegIxCmwl0GkBV',name:'Kids & Teens',icon:'',price:'30€',period:'/mois',trial:14,desc:'Programmation jeunes athlètes (8-16 ans).',features:['Adapté au développement','Mouvements fondamentaux','Coordination & motricité','Suivi progression','14 jours d\'essai gratuit'],color:'#47b8ff'}
+  affiliate:{priceId:'price_1TThBIGfW5FegIxCy3Bd5zmi',name:'Affiliate',icon:'',price:'120€',period:'/mois',trial:7,desc:'Programmation salle complète — CrossFit Sandglass.',features:['WOD quotidien','Séances force & skill','Coaching tips & targets','Suivi des scores','PR tracking','7 jours d\'essai gratuit'],color:'#e8ff47'},
+  hyrox:{priceId:'price_1TVVEsGfW5FegIxCD0fssSlu',name:'Hyrox',icon:'',price:'30€',period:'/mois',trial:7,desc:'Programmation Hyrox — endurance & compromised running.',features:['Sessions Hyrox spécifiques','Compromised running','Sled push/pull','Wall balls & burpees','7 jours d\'essai gratuit'],color:'#ff4444'},
+  training:{priceId:'price_1TThDzGfW5FegIxCGRb4q1tN',name:'Training',icon:'',price:'45€',period:'/mois',trial:7,desc:'Préparation compétition Upside Down.',features:['Programmation compétition','Haltérophilie avancée','Périodisation structurée','Suivi performances','Accès coach direct','7 jours d\'essai gratuit'],color:'#ff8c47'},
+  kids:{priceId:'price_1TVVFiGfW5FegIxCmwl0GkBV',name:'Kids & Teens',icon:'',price:'30€',period:'/mois',trial:7,desc:'Programmation jeunes athlètes (8-16 ans).',features:['Adapté au développement','Mouvements fondamentaux','Coordination & motricité','Suivi progression','7 jours d\'essai gratuit'],color:'#47b8ff'}
 };
 
 // SPLASH SCREEN — branding dynamique selon le studio
@@ -539,13 +539,18 @@ async function loadProgrammes(){
     if(isAdmin){
       first=programmes.find(p=>p.slug==='training')||programmes[0];
     } else {
-      first=programmes.find(p=>hasAccess(p))||programmes[0];
+      first=programmes.find(p=>hasAccess(p));
+      // Aucune programmation : l'athlète arrive sur son Espace perso (la vitrine est accessible via « Accès aux programmations »)
+      if(!first&&document.querySelector('#prog-tabs [data-id="__perso__"]')){selectProg('__perso__');if(window.udtVitrine)udtVitrine.consumePending();return;}
+      if(!first)first=programmes[0];
     }
     currentProg=first;
     activateProgTab(first.id);
     await renderDayStrip();
     await renderSessions();
   }
+  // Lien /p/<programme> ouvert avant connexion → on affiche sa présentation
+  if(window.udtVitrine)udtVitrine.consumePending();
 }
 function renderProgTabs(){
   const tabs=document.getElementById('prog-tabs');
@@ -555,19 +560,11 @@ function renderProgTabs(){
   // Trier : accessibles en premier, puis verrouillés
   // Pour admins : Training en premier
   const isAdmin=currentProfile?.role==='admin';
-  const sorted=[...programmes].sort((a,b)=>{
-    if(isAdmin){
-      // Training en premier pour les admins
-      if(a.slug==='training')return -1;
-      if(b.slug==='training')return 1;
-      return a.name.localeCompare(b.name);
-    }
-    // Athlètes : accessibles en premier
-    const aAccess=hasAccess(a)?0:1;
-    const bAccess=hasAccess(b)?0:1;
-    if(aAccess!==bAccess)return aAccess-bAccess;
-    return a.name.localeCompare(b.name);
-  });
+  // Ordre : Training, Affiliate, HYROX, 3 Days, Running Club, Toes to Bar… puis les autres (vitrine.js)
+  const ord=p=>(window.udtVitrine?udtVitrine.orderIndex(p.slug):(p.slug==='training'?0:999));
+  // Coachs : toutes les programmations. Athlètes : uniquement celles auxquelles ils ont accès
+  // (les autres se trouvent dans « Accès aux programmations »).
+  const sorted=[...programmes].filter(p=>isAdmin||hasAccess(p)).sort((a,b)=>(ord(a)-ord(b))||a.name.localeCompare(b.name));
 
   tabs.innerHTML=sorted.map(p=>{
     const locked=!hasAccess(p);
@@ -585,6 +582,9 @@ function activateProgTab(id){
     else{t.style.cssText='';}
   });
   if(currentProg)document.getElementById('prog-topbar-title').textContent=currentProg.name.toUpperCase();
+  // Coach : bouton « copier le lien » de la programmation affichée
+  const lb=document.getElementById('prog-link-btn');
+  if(lb){const ok=currentProfile?.role==='admin'&&currentProg&&window.udtVitrine&&udtVitrine.cfgOf(currentProg.slug);lb.style.display=ok?'':'none';if(ok)lb.onclick=()=>udtVitrine.copyLink(currentProg.slug,null);}
 }
 
 // WEEK / DAY
