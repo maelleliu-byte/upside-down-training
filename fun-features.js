@@ -365,8 +365,6 @@ const COLOR_THEMES = [
   { id: 'green',   label: 'Forest',     dark: '#47ff8c', darkText: '#000', light: '#15703a', lightText: '#fff' },
   { id: 'pink',    label: 'Rose',       dark: '#ff47a0', darkText: '#fff', light: '#8b0045', lightText: '#fff' },
   { id: 'white',   label: 'Ghost',      dark: '#f0f0f0', darkText: '#000', light: '#333333', lightText: '#fff' },
-  // Vice : palette GTA VI (deep violet, purple, magenta, coral pink, coral, orange, warm yellow), touches en dégradé
-  { id: 'vice',    label: 'Vice',       dark: '#C9349B', darkText: '#fff', light: '#7B208F', lightText: '#fff', swatch: 'linear-gradient(180deg,#3B146B 0%,#7B208F 17%,#C9349B 34%,#F36A78 51%,#F87572 64%,#FF9B55 80%,#FFB458 100%)' },
 ];
 
 function applyColorTheme(themeId) {
@@ -374,7 +372,6 @@ function applyColorTheme(themeId) {
   const isDark = (document.documentElement.getAttribute('data-theme') || 'dark') !== 'light';
   const accentColor = isDark ? theme.dark : theme.light;
   document.documentElement.style.setProperty('--accent', accentColor);
-  document.documentElement.setAttribute('data-color-theme', theme.id);
   try { localStorage.setItem('upside-color-theme', themeId); } catch (e) {}
   // Fermer le picker si ouvert
   const picker = document.getElementById('color-theme-picker');
@@ -406,7 +403,7 @@ function openColorThemePicker() {
           border-radius:10px;transition:background 0.15s;
         " onmouseover="this.style.background='var(--card2)'" onmouseout="this.style.background='transparent'">
           <div style="
-            width:32px;height:32px;border-radius:50%;background:${t.swatch || t.dark};
+            width:32px;height:32px;border-radius:50%;background:${t.dark};
             border:3px solid ${t.id === saved ? 'var(--text)' : 'transparent'};
             transition:border-color 0.2s;box-shadow:0 0 0 1px rgba(255,255,255,0.1);
           "></div>
