@@ -28,12 +28,17 @@
     css();
     opts = opts || {};
     var unit = (sd[0] && sd[0].unit) || 'W', sum = /^(m|cal)$/.test(unit);
-    var vals = sd.map(function (x) { return x.value == null ? null : +x.value; });
+    // Allure (course) : valeurs en secondes/km ; barres en vitesse (plus haut = plus rapide), étiquettes en min/km
+    var pace = unit === '/km';
+    var mmss = function (s) { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
+    var lab = function (v) { return pace ? mmss(3600 / v) : fr(v); };
+    var vals = sd.map(function (x) { return x.value == null || !(+x.value > 0 || !pace) ? null : pace ? 3600 / +x.value : +x.value; });
     var rpes = sd.map(function (x) { return x.rpe == null ? null : +x.rpe; });
     var vv = vals.filter(function (x) { return x != null; }), rr = rpes.filter(function (x) { return x != null; });
     var n = sd.length, W = 320, H = 162, L = 34, R = 296, B = 140, T = 18;
     var vmax = vv.length ? Math.max.apply(null, vv) : 1, vmin = vv.length ? Math.min.apply(null, vv) : 0;
-    var lo = Math.max(0, Math.floor(vmin * 0.8 / 10) * 10), hi = Math.ceil(vmax * 1.06 / 10) * 10; if (hi <= lo) hi = lo + 10;
+    var stp = pace ? 1 : 10;
+    var lo = Math.max(0, Math.floor(vmin * (pace ? 0.9 : 0.8) / stp) * stp), hi = Math.ceil(vmax * 1.06 / stp) * stp; if (hi <= lo) hi = lo + stp;
     var y = function (v) { return B - (v - lo) / (hi - lo) * (B - T); };
     var yr = function (r) { return B - r / 10 * (B - T); };
     var slot = (R - L) / n, bw = Math.min(46, slot * 0.55);
@@ -42,14 +47,14 @@
     [lo, (lo + hi) / 2, hi].forEach(function (v, k) {
       var yy = y(v).toFixed(1);
       g += '<line x1="' + L + '" y1="' + yy + '" x2="' + R + '" y2="' + yy + '" stroke="var(--border)"' + (k ? ' stroke-dasharray="3 4"' : '') + '/>' +
-        '<text x="' + (L - 5) + '" y="' + (+yy + 3) + '" fill="var(--muted)" font-size="10" text-anchor="end">' + Math.round(v) + '</text>';
+        '<text x="' + (L - 5) + '" y="' + (+yy + 3) + '" fill="var(--muted)" font-size="10" text-anchor="end">' + (pace ? (v > 0 ? mmss(3600 / v) : '') : Math.round(v)) + '</text>';
     });
     g += '<text x="' + (R + 6) + '" y="' + (yr(10) + 3) + '" fill="var(--muted)" font-size="10">10</text><text x="' + (R + 6) + '" y="' + (yr(5) + 3) + '" fill="var(--muted)" font-size="10">5</text>';
     vals.forEach(function (v, i) {
       if (v != null) {
         var yy = y(v);
         g += '<rect x="' + (cx(i) - bw / 2).toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (B - yy).toFixed(1) + '" rx="4" fill="var(--accent)" fill-opacity=".85"/>';
-        if (B - yy > 16) g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B - 6) + '" fill="#000" font-size="' + (n > 6 ? 9 : 11) + '" font-weight="700" text-anchor="middle">' + fr(v) + '</text>';
+        if (B - yy > 16) g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B - 6) + '" fill="#000" font-size="' + (n > 6 ? 9 : 11) + '" font-weight="700" text-anchor="middle">' + lab(v) + '</text>';
       }
       g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B + 16) + '" fill="var(--text2)" font-size="' + (n > 6 ? 9 : 11) + '" text-anchor="middle">' + (n > 6 ? '' : 'INT ') + (i + 1) + '</text>';
     });
@@ -67,8 +72,8 @@
     var fv = vals[0], lv = vals[n - 1], fR = rpes[0], lR = rpes[n - 1];
     var dW = fv != null && lv != null ? lv - fv : null, dR = fR != null && lR != null ? lR - fR : null;
     var k = '<div class="k">' +
-      '<div><small>' + (sum ? 'Total' : 'Moyenne') + '</small><b style="color:var(--accent)">' + (vv.length ? fr(sum ? tot : avg) + ' ' + unit : '–') + '</b></div>' +
-      '<div><small>Écart INT 1 → ' + n + '</small><b>' + (dW == null ? '–' : sgn(dW, unit)) + '</b></div>' +
+      '<div><small>' + (pace ? 'Allure moy.' : sum ? 'Total' : 'Moyenne') + '</small><b style="color:var(--accent)">' + (vv.length ? (pace ? mmss(3600 / avg) + ' /km' : fr(sum ? tot : avg) + ' ' + unit) : '–') + '</b></div>' +
+      '<div><small>Écart INT 1 → ' + n + '</small><b>' + (dW == null ? '–' : pace ? sgn(Math.round(3600 / lv - 3600 / fv), 's/km') : sgn(dW, unit)) + '</b></div>' +
       '<div><small>Dérive RPE</small><b style="color:#ff8c47">' + (dR == null ? '–' : sgn(dR)) + '</b></div></div>';
 
     var rd = '';
@@ -83,7 +88,7 @@
     }
     return '<div class="ivr">' + (opts.noTitle ? '' : '<div class="t">Récap de séance</div>') + k +
       '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" role="img" aria-label="Valeur et RPE par intervalle">' + g + '</svg>' +
-      '<div class="lg"><span><i style="background:var(--accent)"></i>' + unit + '</span><span><i style="background:#d8872a;border-radius:50%"></i>RPE (couleur = zone)</span></div>' +
+      '<div class="lg"><span><i style="background:var(--accent)"></i>' + (pace ? 'Allure /km' : unit) + '</span><span><i style="background:#d8872a;border-radius:50%"></i>RPE (couleur = zone)</span></div>' +
       (rd ? '<div class="rd">' + rd + '</div>' : '') + '</div>';
   };
 })();

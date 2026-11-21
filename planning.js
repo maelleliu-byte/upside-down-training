@@ -165,11 +165,19 @@ async function buildSessionCard(s){
   // Bloc en charge découpé en parties (ex. WEIGHTLIFTING) : un score par partie
   const autoParts=(!isText&&!isStrength&&!isMulti&&s.score_type==='weight')?weightPartSlots(s.content):null;
   // Bloc ENGINE / RUN en intervalles (ex. 3x 8:00) : une ligne par intervalle, valeur + RPE
-  const ivl=(!isText&&!isStrength&&!isMulti&&!autoParts)?intervalScoring(s):null;
+  const ivl=(!isStrength&&!isMulti&&!autoParts)?intervalScoring(s):null;
 
   // Score input
   let scoreInputHtml='';
-  if(isText){
+  if(ivl){
+    const pace=ivl.unit==='/km';
+    scoreInputHtml=`<div class="multi-score-inputs" data-intervals="${ivl.n}" data-unit="${ivl.unit}" data-stype="${ivl.stype}">${Array.from({length:ivl.n},(_,i)=>`
+      <div class="multi-score-row">
+        <div class="multi-score-lbl" style="min-width:48px">${ivl.word}${ivl.n>1?' '+(i+1):''}</div>
+        <input class="multi-score-input" id="score-${i}-${s.id}" data-stype="${ivl.stype}" type="text" style="flex:1 1 0;min-width:0" ${pace?'inputmode="text" placeholder="4:30 /km" pattern="\\d{1,2}:\\d{2}"':'inputmode="decimal" placeholder="'+ivl.unit+'"'}>
+        <select class="multi-score-input" id="rpe-${i}-${s.id}" data-stype="rpe" aria-label="RPE" style="flex:0 0 80px;width:80px;min-width:0;padding:9px 4px"><option value="">RPE</option>${Array.from({length:19},(_,k)=>1+k/2).map(n=>`<option value="${n}">RPE ${String(n).replace('.',',')}</option>`).join('')}</select>
+      </div>`).join('')}</div>`;
+  } else if(isText){
     scoreInputHtml=`<div class="score-input-row"><textarea class="score-input" id="score-input-${s.id}" style="height:60px;resize:none;line-height:1.5;font-size:13px" placeholder="Décris ta séance, tes sensations..."></textarea></div>`;
   } else if(isStrength){
     const setsArr=Array.from({length:s.sets},(_,i)=>`<div class="set-row"><div class="set-label">Série ${i+1}</div><input class="set-input" id="set-${s.id}-${i}" type="number" step="0.5" min="0" placeholder="kg"></div>`).join('');
@@ -181,7 +189,7 @@ async function buildSessionCard(s){
         return `<div class="multi-score-row" style="flex:1;min-width:52px;flex-direction:column;align-items:stretch;gap:3px">${p.n>1?`<div class="multi-score-lbl" style="min-width:0;font-size:10px;text-align:center">S${j+1}</div>`:''}<input class="multi-score-input" id="score-${i}-${s.id}" data-stype="weight" data-part="${pi}" data-set="${j}" data-plbl="${escapeHtml(p.label)}" type="text" inputmode="decimal" placeholder="kg" style="padding:9px 4px"></div>`;}).join('');
       return `<div><div class="multi-score-lbl" style="margin-bottom:4px">${escapeHtml(p.label)}${p.n>1?' · '+p.n+' séries':''}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${ins}</div></div>`;
     }).join('')}</div>`;
-  } else if(ivl){
+  } else if(false&&ivl){
     scoreInputHtml=`<div class="multi-score-inputs" data-intervals="${ivl.n}" data-unit="${ivl.unit}">${Array.from({length:ivl.n},(_,i)=>`
       <div class="multi-score-row">
         <div class="multi-score-lbl" style="min-width:58px">${ivl.word} ${i+1}</div>
@@ -228,7 +236,7 @@ async function buildSessionCard(s){
   let myScore=null,myScoreElsewhere=false;
   try{
     const _ids=await _lbSessionIds(s.id);
-    const {data:_rows}=await sb.from('wod_scores').select('athlete_id,session_id,score_text,score_value,level,sets_data,done_at').in('session_id',_ids);
+    const {data:_rows}=await sb.from('wod_scores').select('athlete_id,session_id,score_text,score_value,level,sets_data,done_at,rpe').in('session_id',_ids);
     const _u=_dedupeByAthlete(_rows||[],s.id);
     scoreCount=_u.length;
     if(currentUser?.id){const m=_u.find(r=>r.athlete_id===currentUser.id);if(m){myScore=m;myScoreElsewhere=m.session_id!==s.id;}}
@@ -260,6 +268,7 @@ ${s.type==='wod'?`        <div class="level-selector">
           <button class="level-btn found" onclick="selectLevel('${s.id}','foundation',this)">FOND.</button>
         </div>`:''}
         ${scoreInputHtml}
+        ${(s.type==='wod'||/^(engine|run)$/i.test(s.type||''))&&!ivl&&!isStrength?`<div class="score-rpe-row"><label for="rpe-opt-${s.id}">RPE <small>(optionnel)</small></label><select id="rpe-opt-${s.id}"><option value="">—</option>${Array.from({length:19},(_,k)=>1+k/2).map(n=>`<option value="${n}">${String(n).replace('.',',')}</option>`).join('')}</select></div>`:''}
         <div class="score-done-at-row" style="display:flex;align-items:center;gap:8px;margin-top:8px;font-size:12px;color:var(--muted)">
           <label for="done-at-${s.id}" style="white-space:nowrap">Fait le</label>
           <input type="date" id="done-at-${s.id}" value="${s.date||''}" max="${new Date().toISOString().slice(0,10)}" style="flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:6px 8px;border-radius:6px;font-size:12px">
@@ -280,7 +289,8 @@ function myScoreSummary(sc,isWod){
   if(!sc)return '<span class="score-title">📊 Mon score</span><span class="ms-chev">▾</span>';
   const v=escapeHtml(String(sc.score_text||sc.score_value||''));
   const lvl=isWod&&sc.level?' · '+(LEVEL_LABELS[sc.level]||sc.level):'';
-  return '<span class="ms-ok">✓ Score rentré</span><span class="ms-val">'+v+lvl+'</span><span class="ms-chev">▾</span>';
+  const rpe=sc.rpe!=null?' · RPE '+String(sc.rpe).replace('.',','):'';
+  return '<span class="ms-ok">✓ Score rentré</span><span class="ms-val">'+v+lvl+rpe+'</span><span class="ms-chev">▾</span>';
 }
 function markMyScoreDone(sessionId,payload){
   const d=document.getElementById('ms-'+sessionId);if(!d)return;
@@ -294,7 +304,7 @@ function markMyScoreDone(sessionId,payload){
       cnt.style.cssText='display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 7px;margin-left:8px;border-radius:11px;background:'+c+';color:'+(typeof isLightColor==='function'&&isLightColor(c)?'#000':'#fff')+';font-size:12px;font-weight:700;line-height:1';
     }
   }
-  d.querySelector('.ms-sum').innerHTML=myScoreSummary({score_text:payload.score_text,score_value:payload.score_value,level:payload.level},isWod);
+  d.querySelector('.ms-sum').innerHTML=myScoreSummary({score_text:payload.score_text,score_value:payload.score_value,level:payload.level,rpe:payload.rpe},isWod);
   d.classList.add('ms-done');d.open=false;
   if(typeof window.chgPaintBand==='function')window.chgPaintBand(sessionId);
   const rb=document.getElementById('ivr-'+sessionId);if(rb&&typeof ivRecapHtml==='function')rb.innerHTML=ivRecapHtml(payload.sets_data);
@@ -326,6 +336,8 @@ function prefillMyScore(sessionId,sc){
     const btn=cls&&card.querySelector('.level-btn.'+cls);
     if(btn){card.querySelectorAll('.level-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
   }
+  // RPE optionnel (WOD)
+  if(sc.rpe!=null){const rs=document.getElementById('rpe-opt-'+sessionId),v=String(sc.rpe);if(rs&&[...rs.options].some(o=>o.value===v))rs.value=v;}
   // Date « fait le »
   if(sc.done_at)set(document.getElementById('done-at-'+sessionId),String(sc.done_at).slice(0,10));
 
@@ -334,7 +346,7 @@ function prefillMyScore(sessionId,sc){
   if(ivBox){
     if(sd)sd.forEach(r=>{
       const i=(+r.set||0)-1;if(i<0)return;
-      set(document.getElementById(`score-${i}-${sessionId}`),r.value==null?'':num(r.value));
+      set(document.getElementById(`score-${i}-${sessionId}`),r.value==null?'':r.unit==='/km'?Math.floor(r.value/60)+':'+String(Math.round(r.value%60)).padStart(2,'0'):num(r.value));
       const rs=document.getElementById(`rpe-${i}-${sessionId}`);
       if(rs&&r.rpe!=null){const v=String(r.rpe);if([...rs.options].some(o=>o.value===v))rs.value=v;}
     });
@@ -679,6 +691,7 @@ async function loadScores(sessionId,scoreType,sets){
       </div>
       <div style="text-align:right">
         <div class="score-val">${escapeHtml(sc.score_text||sc.score_value||'—')}</div>
+        ${sc.rpe!=null?`<div class="score-rpe">RPE ${String(sc.rpe).replace('.',',')}</div>`:''}
       </div>
     </div>
     <div class="score-actions">
@@ -727,19 +740,35 @@ function intervalScoring(s){
   const st=s.score_type||'';
   const txt=String(s.content||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(div|p|li)>/gi,'\n').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ');
   const usesW=st==='watt'||/\d\s*W\b/.test(txt)||/PUISSANCE CRITIQUE/i.test(txt);
+  const isRun=String(s.type).toLowerCase()==='run';
   let unit,stype,word='INT';
-  if(usesW&&st!=='distance'&&st!=='calories'){unit='W';stype='watt';}
-  else if(st==='distance'){unit='m';stype='distance';}
+  // Tous les blocs ENGINE / RUN : une valeur par effort + RPE (même si le bloc est scoré en texte)
+  if(st==='distance'){unit='m';stype='distance';}
   else if(st==='calories'){unit='cal';stype='calories';}
-  else if(st==='watt'){unit='W';stype='watt';}
-  else if(String(s.type).toLowerCase()==='run'&&st&&!/^(time|rounds|text|reps)$/.test(st)){unit='km/h';stype='speed';}
-  else return null;
+  else if(isRun&&st==='speed'){unit='km/h';stype='speed';}
+  else if(isRun&&!(st==='watt'||usesW&&/\b(SKI|ROW|BIKE|ERG)/i.test(txt))){unit='/km';stype='pace';}
+  else {unit='W';stype='watt';}
   let best=null;
   const re=/(\d+)\s*(?:SETS?|S[EÉ]RIES?|x)\s*(\d{1,2}):(\d{2})|(\d+)\s*x\s*(\d+)\s*m\b/gi;let m;
   while((m=re.exec(txt))){
     const n=+(m[1]||m[4]),w=m[1]?(+m[2]*60+ +m[3]):(+m[5]/4);
     if(n<2||n>12)continue;
     if(!best||n*w>best.n*best.w)best={n,w};
+  }
+  // Écritures en minutes / secondes : « 6 x 1' », « 12 x 30'' », « 5 x 1'15'' », « 2 X 30' »
+  const tq=txt.replace(/[’‘′`]/g,"'").replace(/[″]/g,"''");
+  const reQ=/(\d+)\s*x\s*(\d+)\s*('{1,2})(?:\s*(\d+)\s*'')?/gi;
+  while((m=reQ.exec(tq))){
+    const n=+m[1],w=m[3]==="''"?+m[2]:(+m[2]*60+(+m[4]||0));
+    if(n<2||n>12)continue;
+    if(!best||n*w>best.n*best.w)best={n,w};
+  }
+  // « 4 SETS EVERY 4:00 », « 5 SETS REST 2:00 » (un effort par série)
+  const reE=/(\d+)\s*SETS?\s*(?:EVERY|E|REST|ON)\s*(\d{1,2}):(\d{2})/gi;
+  while((m=reE.exec(txt))){
+    const n=+m[1],w=+m[2]*60+ +m[3];
+    if(n<2||n>12)continue;
+    if(!best)best={n,w};
   }
   // Séries d'intervalles répétées : « 2 SETS REST 2:00 » puis « 7x 500m » → 14 intervalles (max 20)
   const reS=/(\d+)\s*SETS?\s*REST\s*\d{1,2}:\d{2}\s*\n\s*(\d+)\s*x\s*(?:(\d{1,2}):(\d{2})|(\d+)\s*m\b)/gi;
@@ -748,7 +777,9 @@ function intervalScoring(s){
     if(k<2||+m[2]<1||n>20)continue;
     if(!best||n*w>best.n*best.w)best={n,w};
   }
-  if(!best)return null;
+  // Pas d'intervalles (ex. 40:00 footing) : une seule ligne valeur + RPE
+  // (sauf bloc chronométré / rounds / reps : on garde ce score, avec le RPE optionnel à côté)
+  if(!best)return /^(time|rounds|reps)$/.test(st)?null:{n:1,unit,stype,word:'EFFORT'};
   return {n:best.n,unit,stype,word};
 }
 /* Bloc en charge à plusieurs parties (lu comme le timer) :
@@ -790,19 +821,26 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
   if(ivBox){
     // Une ligne par intervalle : valeur (W, m, cal, km/h) + RPE
     const n=+ivBox.dataset.intervals||0,unit=ivBox.dataset.unit||'',sd=[],txt=[];
+    const pace=unit==='/km';
+    const mmss=x=>{x=Math.round(x);return Math.floor(x/60)+':'+String(x%60).padStart(2,'0');};
+    if(ivBox.dataset.stype)scoreType=ivBox.dataset.stype;
     for(let i=0;i<n;i++){
-      const raw=String(document.getElementById(`score-${i}-${sessionId}`)?.value||'').trim().replace(/\s*(w|m|cal|km\/h)$/i,'');
+      const raw=String(document.getElementById(`score-${i}-${sessionId}`)?.value||'').trim().replace(/\s*(w|m|cal|km\/h|\/km|min\/km)$/i,'');
       const rpe=parseFloat(document.getElementById(`rpe-${i}-${sessionId}`)?.value)||null;
-      const v=raw?parseFloat(raw.replace(',','.')):null;
+      let v=null;
+      if(raw){
+        if(pace){const m=raw.match(/^(\d{1,2})[:'.,h](\d{1,2})$/);v=m?(+m[1]*60+ +m[2]):null;if(raw&&v==null){showToast('⚠️ Allure au format 4:30');return;}}
+        else v=parseFloat(raw.replace(',','.'));
+      }
       if((v==null||isNaN(v))&&!rpe)continue;
       sd.push({set:i+1,value:(v==null||isNaN(v))?null:v,rpe,unit});
-      txt.push(`${(v==null||isNaN(v))?'–':v+' '+unit}${rpe?' · RPE '+String(rpe).replace('.',','):''}`);
+      txt.push(`${(v==null||isNaN(v))?'–':pace?mmss(v)+' /km':v+' '+unit}${rpe?' · RPE '+String(rpe).replace('.',','):''}`);
     }
-    if(!sd.length){showToast('⚠️ Entre au moins un intervalle');return;}
+    if(!sd.length){showToast(n>1?'⚠️ Entre au moins un intervalle':'⚠️ Entre ta valeur ou ton RPE');return;}
     const vals=sd.map(x=>x.value).filter(x=>x!=null);
-    // moyenne pour la puissance / la vitesse, total pour distance et calories
+    // moyenne pour la puissance / la vitesse / l'allure, total pour distance et calories
     scoreValue=!vals.length?0:(/^(m|cal)$/.test(unit)?vals.reduce((a,b)=>a+b,0):Math.round(vals.reduce((a,b)=>a+b,0)/vals.length*10)/10);
-    scoreText=txt.join(' | ');setsData=sd;
+    scoreText=pace&&vals.length>1?`Moy. ${mmss(scoreValue)} /km — ${txt.join(' | ')}`:txt.join(' | ');setsData=sd;
   } else if(apBox){
     // Un score par partie : charge unique, ou une charge par série si montée en charge
     const groups={},order=[],sd=[];let best=0;
@@ -922,6 +960,9 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     score_type:scoreType,score_value:scoreValue,score_text:scoreText,
     level,sets_data:setsData?JSON.stringify(setsData):null
   };
+  // RPE global optionnel (WOD) : à côté du score, n'entre pas dans le score
+  const _rpeOpt=document.getElementById(`rpe-opt-${sessionId}`);
+  if(_rpeOpt)payload.rpe=_rpeOpt.value?parseFloat(_rpeOpt.value):null;
   if(doneAt)payload.done_at=doneAt;
 
   const {error}=await sb.from('wod_scores').upsert(payload,{onConflict:'session_id,athlete_id'});
@@ -1002,7 +1043,9 @@ async function renderScoresModal(sessionId, scoreType, sets){
     sb.from('sessions').select('type').eq('id',sessionId).maybeSingle()
   ]);
   let _sType=(sessRes&&sessRes.data&&sessRes.data.type)||'';
-  if(!_sType){try{const r=await sb.from('personal_sessions').select('type').eq('id',sessionId).maybeSingle();_sType=(r&&r.data&&r.data.type)||'';}catch(e){}}
+  // Programmation individuelle (espace perso) : graphique déplié ; programmation générale : replié
+  let _isPerso=false;
+  if(!_sType){try{const r=await sb.from('personal_sessions').select('type').eq('id',sessionId).maybeSingle();_sType=(r&&r.data&&r.data.type)||'';_isPerso=!!(r&&r.data);}catch(e){}}
   const isWodBlock=_sType==='wod';
   const data=scoresRes.data?_dedupeByAthlete(scoresRes.data,sessionId):scoresRes.data;
   const allNotes=notesRes.data||[];
@@ -1037,7 +1080,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
   // Tri intelligent par type de score
   // - time : ASC (lowest = best), DNF (score_value < 0) toujours en bas, triés par reps DESC
   // - tous les autres : DESC
-  const isTime = scoreType==='time'||scoreType==='pace'; // allure : plus petite = meilleure
+  const isTime = scoreType==='time'||scoreType==='pace'||(filtered.length>0&&filtered.every(x=>x.score_type==='pace')); // allure : plus petite = meilleure
   const sorted=[...filtered].sort((a,b)=>{
     if(isWodBlock&&levelOrder[a.level]!==levelOrder[b.level])return levelOrder[a.level]-levelOrder[b.level];
     if(isTime){
@@ -1054,7 +1097,11 @@ async function renderScoresModal(sessionId, scoreType, sets){
     ${sorted.map((sc,i)=>{
       const isMe=sc.athlete_id===currentUser?.id;
       const setsDetail=sc.sets_data?JSON.parse(typeof sc.sets_data==='string'?sc.sets_data:JSON.stringify(sc.sets_data)):null;
-      const setsHtml=setsDetail?`<div class="score-sets-detail">${setsDetail.map(s=>`S${s.set}: ${s.value}kg`).join(' · ')}</div>`:'';
+      const ivHtml=setsDetail&&typeof ivRecapHtml==='function'?ivRecapHtml(setsDetail,{noTitle:true}):'';
+      const isEffort=Array.isArray(setsDetail)&&setsDetail.some(x=>x&&'rpe' in x);
+      const setsHtml=ivHtml?(_isPerso?`<div class="sc-ivr">${ivHtml}</div>`:`<details class="sc-ivr"><summary>📈 Graphique de séance</summary>${ivHtml}</details>`)
+        :(!setsDetail||isEffort||setsDetail.some(x=>x&&x.part))?'':`<div class="score-sets-detail">${setsDetail.map(s=>`S${s.set}: ${s.value}kg`).join(' · ')}</div>`;
+      const rpeHtml=sc.rpe!=null?`<div class="score-rpe">RPE ${String(sc.rpe).replace('.',',')}</div>`:'';
       const isDnf=isTime&&(sc.score_value||0)<0;
       const note=noteByAth[sc.athlete_id];
       const noteHtml=note?`<div class="score-note-attached"><div class="nlbl">📝 Note de séance</div><div class="nctt">${escapeHtml(note.content)}</div></div>`:'';
@@ -1066,6 +1113,7 @@ async function renderScoresModal(sessionId, scoreType, sets){
       } else {
         scoreDisplay=`<div class="score-val">${escapeHtml(sc.score_text||sc.score_value||'—')}</div>`;
       }
+      scoreDisplay+=rpeHtml;
       return `<div class="sc-card${isMe?' sc-me':''}${i<3?' sc-r'+(i+1):''}">
         <div class="score-row ${isDnf?'score-row-dnf':''}" id="sr-${sc.id}">
           <div class="score-rank ${!isDnf?(rankIcons[i]||''):''}">${i+1}</div>
