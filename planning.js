@@ -171,7 +171,8 @@ async function buildSessionCard(s){
   let scoreInputHtml='';
   if(ivl){
     const pace=ivl.unit==='/km';
-    scoreInputHtml=`<div class="multi-score-inputs" data-intervals="${ivl.n}" data-unit="${ivl.unit}" data-stype="${ivl.stype}">${Array.from({length:ivl.n},(_,i)=>`
+    const _gStart={};if(ivl.groups&&ivl.groups.length>1){let k=0;ivl.groups.forEach((g,gi)=>{_gStart[k]=`Série ${gi+1} · ${escapeHtml(g.label)}`;k+=g.n;});}
+    scoreInputHtml=`<div class="multi-score-inputs" data-intervals="${ivl.n}" data-unit="${ivl.unit}" data-stype="${ivl.stype}">${Array.from({length:ivl.n},(_,i)=>`${_gStart[i]?`<div class="iv-group-h">${_gStart[i]}</div>`:''}
       <div class="multi-score-row">
         <div class="multi-score-lbl" style="min-width:48px">${ivl.word}${ivl.n>1?' '+(i+1):''}</div>
         <input class="multi-score-input" id="score-${i}-${s.id}" data-stype="${ivl.stype}" type="text" style="flex:1 1 0;min-width:0" ${pace?'inputmode="text" placeholder="4:30 /km" pattern="\\d{1,2}:\\d{2}"':'inputmode="decimal" placeholder="'+ivl.unit+'"'}>
@@ -748,39 +749,32 @@ function intervalScoring(s){
   else if(isRun&&st==='speed'){unit='km/h';stype='speed';}
   else if(isRun&&!(st==='watt'||usesW&&/\b(SKI|ROW|BIKE|ERG)/i.test(txt))){unit='/km';stype='pace';}
   else {unit='W';stype='watt';}
-  let best=null;
-  const re=/(\d+)\s*(?:SETS?|S[EÉ]RIES?|x)\s*(\d{1,2}):(\d{2})|(\d+)\s*x\s*(\d+)\s*m\b/gi;let m;
-  while((m=re.exec(txt))){
-    const n=+(m[1]||m[4]),w=m[1]?(+m[2]*60+ +m[3]):(+m[5]/4);
-    if(n<2||n>12)continue;
-    if(!best||n*w>best.n*best.w)best={n,w};
-  }
-  // Écritures en minutes / secondes : « 6 x 1' », « 12 x 30'' », « 5 x 1'15'' », « 2 X 30' »
+  // Toutes les séries du bloc sont additionnées (ex. 5 x 1'15'' puis 12 x 35'' → 17 efforts)
   const tq=txt.replace(/[’‘′`]/g,"'").replace(/[″]/g,"''");
+  const groups=[],covered=[];let m;
+  const inCov=i=>covered.some(c=>i>=c[0]&&i<c[1]);
+  const add=(m,n,lab)=>{covered.push([m.index,m.index+m[0].length]);groups.push({at:m.index,n,label:lab||m[0].replace(/\s+/g,' ').trim()});};
+  // « 2 SETS REST 2:00 » puis « 7x 500m » → 14 intervalles
+  const reS=/(\d+)\s*SETS?\s*REST\s*\d{1,2}:\d{2}\s*\n\s*(\d+)\s*x\s*(?:\d{1,2}:\d{2}|\d+\s*m\b|\d+\s*'{1,2}(?:\s*\d+\s*'')?)/gi;
+  while((m=reS.exec(tq))){const k=+m[1],n=k*(+m[2]);if(k<2||n<2||n>24)continue;add(m,n,m[1]+' x '+m[0].split('\n').pop().trim());}
+  // « 6x 1:00 », « 4 SETS 3:00 », « 10x 500m »
+  const re=/(\d+)\s*(?:SETS?|S[EÉ]RIES?|x)\s*(\d{1,2}):(\d{2})|(\d+)\s*x\s*(\d+)\s*m\b/gi;
+  while((m=re.exec(tq))){if(inCov(m.index))continue;const n=+(m[1]||m[4]);if(n<2||n>12)continue;add(m,n);}
+  // « 6 x 1' », « 12 x 30'' », « 5 x 1'15'' », « 2 X 30' »
   const reQ=/(\d+)\s*x\s*(\d+)\s*('{1,2})(?:\s*(\d+)\s*'')?/gi;
-  while((m=reQ.exec(tq))){
-    const n=+m[1],w=m[3]==="''"?+m[2]:(+m[2]*60+(+m[4]||0));
-    if(n<2||n>12)continue;
-    if(!best||n*w>best.n*best.w)best={n,w};
-  }
-  // « 4 SETS EVERY 4:00 », « 5 SETS REST 2:00 » (un effort par série)
-  const reE=/(\d+)\s*SETS?\s*(?:EVERY|E|REST|ON)\s*(\d{1,2}):(\d{2})/gi;
-  while((m=reE.exec(txt))){
-    const n=+m[1],w=+m[2]*60+ +m[3];
-    if(n<2||n>12)continue;
-    if(!best)best={n,w};
-  }
-  // Séries d'intervalles répétées : « 2 SETS REST 2:00 » puis « 7x 500m » → 14 intervalles (max 20)
-  const reS=/(\d+)\s*SETS?\s*REST\s*\d{1,2}:\d{2}\s*\n\s*(\d+)\s*x\s*(?:(\d{1,2}):(\d{2})|(\d+)\s*m\b)/gi;
-  while((m=reS.exec(txt))){
-    const k=+m[1],n=k*(+m[2]),w=m[3]?(+m[3]*60+ +m[4]):(+m[5]/4);
-    if(k<2||+m[2]<1||n>20)continue;
-    if(!best||n*w>best.n*best.w)best={n,w};
+  while((m=reQ.exec(tq))){if(inCov(m.index))continue;const n=+m[1];if(n<2||n>12)continue;add(m,n);}
+  // « 4 SETS EVERY 4:00 » (un effort par série), seulement s'il n'y a rien d'autre
+  if(!groups.length){
+    const reE=/(\d+)\s*SETS?\s*(?:EVERY|E|REST|ON)\s*(\d{1,2}):(\d{2})/gi;
+    if((m=reE.exec(tq))&&+m[1]>=2&&+m[1]<=12)add(m,+m[1]);
   }
   // Pas d'intervalles (ex. 40:00 footing) : une seule ligne valeur + RPE
   // (sauf bloc chronométré / rounds / reps : on garde ce score, avec le RPE optionnel à côté)
-  if(!best)return /^(time|rounds|reps)$/.test(st)?null:{n:1,unit,stype,word:'EFFORT'};
-  return {n:best.n,unit,stype,word};
+  if(!groups.length)return /^(time|rounds|reps)$/.test(st)?null:{n:1,unit,stype,word:'EFFORT'};
+  groups.sort((x,y)=>x.at-y.at);
+  const keep=[];let tot=0;
+  for(const g of groups){if(tot+g.n>30)break;keep.push({n:g.n,label:g.label});tot+=g.n;}
+  return {n:tot,unit,stype,word,groups:keep};
 }
 /* Bloc en charge à plusieurs parties (lu comme le timer) :
    un seul % dans la partie → une charge ; montée en charge (plusieurs %, From…to, à) → une charge par série */

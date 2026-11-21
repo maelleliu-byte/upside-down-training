@@ -1274,3 +1274,5 @@ html[data-theme="light"] .cal-rich-full .cr-rest,:root[data-theme="light"] .cal-
 .sc-ivr{margin-top:6px}
 details.sc-ivr>summary{cursor:pointer;font-size:11px;font-weight:700;color:var(--accent);list-style:none}
 details.sc-ivr>summary::-webkit-details-marker{display:none}
+.iv-group-h{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#2dd4bf;margin:10px 0 4px}
+.iv-group-h:first-child{margin-top:0}

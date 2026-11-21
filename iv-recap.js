@@ -53,8 +53,8 @@
     vals.forEach(function (v, i) {
       if (v != null) {
         var yy = y(v);
-        g += '<rect x="' + (cx(i) - bw / 2).toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (B - yy).toFixed(1) + '" rx="4" fill="var(--accent)" fill-opacity=".85"/>';
-        if (B - yy > 16) g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B - 6) + '" fill="#000" font-size="' + (n > 6 ? 9 : 11) + '" font-weight="700" text-anchor="middle">' + lab(v) + '</text>';
+        g += '<rect x="' + (cx(i) - bw / 2).toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (B - yy).toFixed(1) + '" rx="4" fill="var(--accent)" fill-opacity=".85"><title>' + lab(v) + '</title></rect>';
+        if (B - yy > 16 && bw >= 20) g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B - 6) + '" fill="#000" font-size="' + (n > 6 ? 9 : 11) + '" font-weight="700" text-anchor="middle">' + lab(v) + '</text>';
       }
       g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B + 16) + '" fill="var(--text2)" font-size="' + (n > 6 ? 9 : 11) + '" text-anchor="middle">' + (n > 6 ? '' : 'INT ') + (i + 1) + '</text>';
     });
