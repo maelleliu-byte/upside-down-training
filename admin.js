@@ -13,10 +13,13 @@ async function loadAdminProgs(){
     <div class="prog-card-name" style="color:${p.color}">${p.name}</div>
     <div class="prog-card-desc">${p.description||''}</div>
     <div class="prog-card-count" style="color:${p.color}">${counts[p.id]} séances</div>
+    <div style="font-size:11px;color:var(--muted);margin-top:4px">${p.vitrine_visible?`👁 Vitrine · ${p.vitrine_order??'–'} · /p/${p.vitrine_link||''}`:'Hors vitrine'}</div>
   </div>`).join('');
 }
 
 async function editProgramme(id){
+  // Éditeur complet (nom, prix, textes et photo de la vitrine) : vitrine-admin.js
+  if(typeof openProgEditor==='function'){openProgEditor(id);return;}
   const p=programmes.find(x=>x.id===id);if(!p){showToast('❌ Programme introuvable');return;}
   const newName=prompt('Nom du programme :',p.name);if(newName===null)return;
   const newDesc=prompt('Description :',p.description||'');if(newDesc===null)return;

@@ -33,7 +33,7 @@
   <div class="foot">Upside Down Training · CrossFit Sandglass</div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="/vitrine.js?v=20261121d"></script>
+<script src="/vitrine.js?v=20261121e"></script>
 <script>
 (async function () {
   var SUPABASE_URL = 'https://tltqtpbaaxiwwpvuzszt.supabase.co';
@@ -53,8 +53,9 @@
   try {
     var sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
     var r = await sb.rpc('vitrine_programmes');
-    if (r && !r.error && r.data && r.data.length) rows = r.data;
+    if (r && !r.error && r.data && r.data.length) rows = r.data.map(function (x) { return Object.assign({ vitrine_visible: true }, x); });
   } catch (e) { }
+  V.setRows(rows);
   rows = rows.filter(function (p) { return V.inVitrine(p.slug); })
     .sort(function (a, b) { return V.orderIndex(a.slug) - V.orderIndex(b.slug); });
 
@@ -77,19 +78,19 @@
       var c = slug && V.cfgOf(slug);
       var path = c ? '/p/' + c.link : '/programmes';
       if (location.pathname !== path) history.replaceState(null, '', path);
-      document.title = c ? c.title.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim() + ' · Programmation Upside Down Training' : 'Programmations · Upside Down Training';
+      document.title = c ? c.titleText + ' · Programmation Upside Down Training' : 'Programmations · Upside Down Training';
     }
   });
   br.showSlug(one);
 
   if (one && list.length === 1) {
     var c = V.cfgOf(one), p = list[0];
-    var name = c.title.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim();
+    var name = c.titleText;
     document.title = name + ' · Programmation Upside Down Training';
     var d = document.querySelector('meta[name="description"]'); if (d) d.setAttribute('content', c.tag + ' ' + c.desc);
     var t = document.querySelector('meta[property="og:title"]'); if (t) t.setAttribute('content', name + ' · Upside Down Training');
     var od = document.querySelector('meta[property="og:description"]'); if (od) od.setAttribute('content', c.tag);
-    var oi = document.querySelector('meta[property="og:image"]'); if (oi && c.photo) oi.setAttribute('content', V.PUBLIC_BASE + '/' + c.photo);
+    var oi = document.querySelector('meta[property="og:image"]'); if (oi && c.photo) oi.setAttribute('content', /^https?:/.test(c.photo) ? c.photo : V.PUBLIC_BASE + c.photo);
   }
 })();
 </script>

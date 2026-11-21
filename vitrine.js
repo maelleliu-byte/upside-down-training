@@ -4,8 +4,9 @@
  *   description, points forts, aperçu de la semaine, prix, essai gratuit).
  * - Utilisée dans l'app (page « Accès aux programmations ») et par la page
  *   publique programme.html (liens courts /p/<lien>).
- * - Ordre d'affichage = ordre de VITRINE_ORDER. Un programme absent de
- *   VITRINE n'apparaît pas dans la vitrine.
+ * - Les textes, la photo, l'ordre, le lien court et la visibilité viennent de la
+ *   table programmes (colonnes vitrine_*), modifiables dans Admin → Programmations.
+ *   Le dictionnaire VITRINE ci-dessous ne sert que de secours si la base ne répond pas.
  * ============================================================ */
 (function () {
   'use strict';
@@ -81,14 +82,50 @@
     var r = parseInt(h.slice(0, 2), 16), g = parseInt(h.slice(2, 4), 16), b = parseInt(h.slice(4, 6), 16);
     return (0.299 * r + 0.587 * g + 0.114 * b) > 170;
   }
-  function cfgOf(slug) { return VITRINE[slug] || null; }
+  /* ---------- données : base (colonnes vitrine_*) puis secours statique ---------- */
+  var ROWS = null;                       /* lignes fournies par la page publique */
+  function setRows(list) { ROWS = list || null; }
+  function allRows() {
+    if (ROWS) return ROWS;
+    try { if (typeof programmes !== 'undefined' && Array.isArray(programmes)) return programmes; } catch (e) { }
+    return [];
+  }
+  function rowOf(slug) { var r = allRows(); for (var i = 0; i < r.length; i++) if (r[i].slug === slug) return r[i]; return null; }
+  function photoURL(ph) { if (!ph) return ''; return /^(https?:)?\//.test(ph) ? ph : '/' + ph; }
+  function titleHTML(t) {
+    var lines = String(t || '').split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+    if (lines.length < 2) return esc(lines[0] || '');
+    return esc(lines[0]) + '<br><span class="v-c2">' + esc(lines.slice(1).join(' ')) + '</span>';
+  }
+  function cfgOf(slug, row) {
+    row = row || rowOf(slug);
+    if (row && row.vitrine_title) {
+      return {
+        link: row.vitrine_link || slug, title: titleHTML(row.vitrine_title),
+        titleText: String(row.vitrine_title).replace(/\s+/g, ' ').trim(),
+        tag: row.vitrine_tagline || '', chips: row.vitrine_chips || [], desc: row.vitrine_desc || '',
+        features: row.vitrine_features || [], photo: photoURL(row.vitrine_photo), pos: row.vitrine_pos || '50% 40%'
+      };
+    }
+    var c = VITRINE[slug]; if (!c) return null;
+    return {
+      link: c.link, title: c.title, titleText: c.title.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ').trim(),
+      tag: c.tag, chips: c.chips, desc: c.desc, features: c.features, photo: photoURL(c.photo), pos: c.pos
+    };
+  }
   function slugFromLink(link) {
-    link = String(link || '').toLowerCase();
+    link = String(link || '').toLowerCase(); if (!link) return null;
+    var r = allRows();
+    for (var i = 0; i < r.length; i++) if (String(r[i].vitrine_link || '').toLowerCase() === link || r[i].slug === link) return r[i].slug;
     for (var k in VITRINE) if (VITRINE[k].link === link || k === link) return k;
     return null;
   }
   function linkOf(slug) { var c = cfgOf(slug); return c ? PUBLIC_BASE + '/p/' + c.link : ''; }
-  function orderIndex(slug) { var i = VITRINE_ORDER.indexOf(slug); return i < 0 ? 999 : i; }
+  function orderIndex(slug) {
+    var r = rowOf(slug);
+    if (r && r.vitrine_order != null) return r.vitrine_order;
+    var i = VITRINE_ORDER.indexOf(slug); return i < 0 ? 999 : i + 1;
+  }
 
   function css() {
     if (document.getElementById('vitrine-css')) return;
@@ -152,7 +189,7 @@
   /* p = ligne programmes (id, slug, name, color, type, price_monthly, price_oneshot, is_free, stripe_price_id/has_stripe)
      opts = { week: [{date,type}], access: bool, staff: bool, ctaAction: 'js code', base: '' } */
   function cardHTML(p, opts) {
-    var c = cfgOf(p.slug); if (!c) return '';
+    var c = cfgOf(p.slug, p); if (!c) return '';
     opts = opts || {};
     var col = p.color || '#e8ff47';
     var oneshot = p.type === 'oneshot';
@@ -161,7 +198,7 @@
     var hasStripe = !!(p.stripe_price_id || p.has_stripe);
     var base = opts.base || '/';
     var hero = c.photo
-      ? '<div class="v-hero" style="background-image:url(' + base + c.photo + ');background-position:' + c.pos + '"></div>'
+      ? '<div class="v-hero" style="background-image:url(' + c.photo + ');background-position:' + esc(c.pos) + '"></div>'
       : '<div class="v-gfx"></div>';
     var week = '';
     if (opts.week && opts.week.length) {
@@ -216,7 +253,11 @@
     } catch (e) { return []; }
   }
 
-  function inVitrine(slug) { return !!VITRINE[slug] && VITRINE_ORDER.indexOf(slug) >= 0; }
+  function inVitrine(slug) {
+    var r = rowOf(slug);
+    if (r && 'vitrine_visible' in r) return !!r.vitrine_visible && !!cfgOf(slug, r);
+    return !!VITRINE[slug] && VITRINE_ORDER.indexOf(slug) >= 0;
+  }
   function vitrineProgs() {
     if (typeof programmes === 'undefined') return [];
     return programmes.filter(function (p) { return inVitrine(p.slug); })
@@ -231,12 +272,12 @@
     var state = { sel: -1 };
     function gridHTML() {
       return '<div class="vg">' + list.map(function (p, i) {
-        var c = cfgOf(p.slug), col = p.color || '#e8ff47';
+        var c = cfgOf(p.slug, p), col = p.color || '#e8ff47';
         var one = p.type === 'oneshot', v = one ? p.price_oneshot : p.price_monthly;
         var pr = p.is_free ? 'Gratuit' : (v ? (Math.round(+v * 100) / 100) + '€' + (one ? '' : '/mois') : '');
         var ok = o.access && o.access(p) ? '<span class="vg-ok">✓ Accès actif</span>' : '';
         return '<button class="vg-t" data-i="' + i + '">' +
-          '<div class="vg-ph" style="background-image:url(' + (o.base || '/') + c.photo + ');background-position:' + c.pos + '"></div>' +
+          '<div class="vg-ph" style="background-image:url(' + c.photo + ');background-position:' + esc(c.pos) + '"></div>' +
           '<div class="vg-sh"></div><div class="vg-bar" style="background:' + col + '"></div>' + ok +
           '<div class="vg-nm">' + c.title.replace(/<br>/g, ' ') + '</div><div class="vg-pr" style="color:' + col + '">' + pr + '</div></button>';
       }).join('') + '</div>';
@@ -245,7 +286,7 @@
       var p = list[i], col = p.color || '#e8ff47';
       return (o.noGrid ? '' : '<div style="max-width:720px;margin:0 auto;padding:0 16px 10px"><button class="v-back" data-grid="1">‹ Toutes les programmations</button></div>') +
         '<div class="vt-tabs">' + list.map(function (x, k) {
-          return '<button class="vt-tab' + (k === i ? ' on' : '') + '" data-i="' + k + '" style="--tc:' + (x.color || '#e8ff47') + '">' + esc(cfgOf(x.slug).title.replace(/<[^>]+>/g, ' ').replace(/&amp;/g, '&').replace(/\s+/g, ' ')) + '</button>';
+          return '<button class="vt-tab' + (k === i ? ' on' : '') + '" data-i="' + k + '" style="--tc:' + (x.color || '#e8ff47') + '">' + esc(cfgOf(x.slug, x).titleText) + '</button>';
         }).join('') + '</div>' +
         '<div class="vt-card">' + cardHTML(p, o.cardOpts ? o.cardOpts(p) : {}) + '</div>' +
         '<div class="vt-dots" style="--tc:' + col + '">' + list.map(function (x, k) { return '<i class="' + (k === i ? 'on' : '') + '"></i>'; }).join('') + '</div>';
@@ -334,7 +375,7 @@
   window.udtVitrine = {
     VITRINE: VITRINE, ORDER: VITRINE_ORDER, TRIAL_DAYS: TRIAL_DAYS, PUBLIC_BASE: PUBLIC_BASE,
     css: css, cardHTML: cardHTML, cfgOf: cfgOf, slugFromLink: slugFromLink, linkOf: linkOf,
-    orderIndex: orderIndex, inVitrine: inVitrine, copyLink: copyLink, open: open, render: render, openProg: openProg,
+    orderIndex: orderIndex, inVitrine: inVitrine, setRows: setRows, titleHTML: titleHTML, photoURL: photoURL, copyLink: copyLink, open: open, render: render, openProg: openProg,
     consumePending: consumePending, isStaff: isStaff, mountBrowser: mountBrowser
   };
 })();
