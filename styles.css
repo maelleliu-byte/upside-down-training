@@ -1281,3 +1281,12 @@ details.sc-ivr>summary::-webkit-details-marker{display:none}
 .btn-progs-access{background:rgba(45,212,191,.1);border:1px solid rgba(45,212,191,.55);color:#2dd4bf;border-radius:10px;padding:5px 10px;font-size:10.5px;font-weight:700;letter-spacing:.3px;line-height:1.2;text-align:center;cursor:pointer;font-family:inherit;text-transform:uppercase}
 .btn-progs-access:active{transform:scale(.97)}
 .btn-prog-link{width:34px;height:34px;border-radius:10px;background:var(--card2);border:1px solid var(--border2);font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+
+/* Thème « Vice » : palette GTA VI — deep violet #3B146B, purple #7B208F, magenta #C9349B,
+   coral pink #F36A78, coral #F87572, orange #FF9B55, warm yellow #FFB458 */
+:root{--vice-grad:linear-gradient(90deg,#C9349B 0%,#F36A78 40%,#FF9B55 75%,#FFB458 100%);--vice-line:linear-gradient(90deg,#3B146B,#7B208F,#C9349B,#F36A78,#F87572,#FF9B55,#FFB458)}
+[data-color-theme="vice"] .topbar-title{background:var(--vice-grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+[data-color-theme="vice"] .topbar{border-image:var(--vice-line) 1;border-bottom-width:2px}
+[data-color-theme="vice"] .nav-btn.active{color:#C9349B}
+[data-color-theme="vice"] .bottom-nav{border-top:2px solid transparent;border-image:var(--vice-line) 1}
+[data-color-theme="vice"] .btn-progs-access{background:linear-gradient(90deg,rgba(123,32,143,.35),rgba(201,52,155,.25));border-color:#C9349B;color:#F9A9C9}
