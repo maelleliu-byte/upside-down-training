@@ -79,7 +79,9 @@
     // « Mes zones d'intensité » juste au-dessus de l'évaluation du RPE (sous la séance, avant les scores)
     var zones = '';
     try { if (window.udtAllure && window.udtAllure.panel) zones = window.udtAllure.panel(s); } catch (e) {}
-    var rpe = zones + window.rpeEvalHtml(s);
+    var conv = '';
+    try { if (window.udtConv) conv = window.udtConv.panel(s); } catch (e) {}
+    var rpe = zones + conv + window.rpeEvalHtml(s);
     if (s && s.tips) return '<div class="info-block"><div class="info-block-title"><span>💡</span> Coaching Tips</div><div class="info-block-text">' + s.tips + '</div>' + rpe + '</div>';
     return rpe ? '<div class="info-block">' + rpe + '</div>' : '';
   };
