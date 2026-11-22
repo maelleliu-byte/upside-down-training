@@ -21,12 +21,78 @@
   function fr(x) { return String(Math.round(x * 10) / 10).replace('.', ','); }
   function sgn(x, u) { return (x > 0 ? '+' : x < 0 ? '−' : '') + fr(Math.abs(x)) + (u ? ' ' + u : ''); }
 
+  var SER_COL = ['#2dd4bf', '#ff8c47', '#c13cff', '#47a8ff', '#e8ff47', '#ff479c'];
+  function seriesHtml(sd, nSer, opts) {
+    var unit = (sd[0] && sd[0].unit) || 'W';
+    if (unit === '/km' || /^(m|cal)$/.test(unit)) return '';
+    var ser = [], maxI = 0;
+    for (var k = 0; k < nSer; k++) ser.push([]);
+    sd.forEach(function (x) { if (!x || !x.serie) return; var i = (x.int || 1) - 1; ser[x.serie - 1][i] = x; if (i + 1 > maxI) maxI = i + 1; });
+    if (maxI < 2) return '';
+    var all = []; sd.forEach(function (x) { if (x && x.value != null) all.push(+x.value); });
+    if (!all.length) return '';
+    /* deux petits graphiques : puissance puis RPE, une ligne par série */
+    function chart(get, lo, hi, step, fmtY, title) {
+      var W = 320, H = 118, L = 34, R = 310, B = 96, T = 10, g = '';
+      var y = function (v) { return B - (v - lo) / (hi - lo) * (B - T); };
+      var slot = (R - L) / maxI, cx = function (i) { return L + slot * (i + 0.5); };
+      [lo, (lo + hi) / 2, hi].forEach(function (v, k) {
+        var yy = y(v).toFixed(1);
+        g += '<line x1="' + L + '" y1="' + yy + '" x2="' + R + '" y2="' + yy + '" stroke="var(--border)"' + (k ? ' stroke-dasharray="3 4"' : '') + '/>' +
+          '<text x="' + (L - 5) + '" y="' + (+yy + 3) + '" fill="var(--muted)" font-size="10" text-anchor="end">' + fmtY(v) + '</text>';
+      });
+      for (var i = 0; i < maxI; i++) g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B + 15) + '" fill="var(--text2)" font-size="10" text-anchor="middle">' + (i + 1) + '</text>';
+      ser.forEach(function (S, k) {
+        var col = SER_COL[k % SER_COL.length], pts = [];
+        for (var i = 0; i < maxI; i++) { var x = S[i], v = x ? get(x) : null; if (v != null) pts.push([cx(i), y(v), v]); }
+        if (pts.length > 1) g += '<polyline points="' + pts.map(function (q) { return q[0].toFixed(1) + ',' + q[1].toFixed(1); }).join(' ') + '" fill="none" stroke="' + col + '" stroke-width="2.5" stroke-linejoin="round"/>';
+        pts.forEach(function (q) { g += '<circle cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="3.5" fill="' + col + '"><title>Série ' + (k + 1) + ' : ' + fr(q[2]) + '</title></circle>'; });
+      });
+      return '<div class="t" style="margin:10px 0 2px">' + title + '</div><svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" role="img" aria-label="' + title + ' par intervalle, une ligne par série">' + g + '</svg>';
+    }
+    var lo = Math.floor(Math.min.apply(null, all) * 0.97 / 5) * 5, hi = Math.ceil(Math.max.apply(null, all) * 1.02 / 5) * 5; if (hi <= lo) hi = lo + 10;
+    var allR = []; sd.forEach(function (x) { if (x && x.rpe != null) allR.push(+x.rpe); });
+    var rlo = allR.length ? Math.max(0, Math.floor(Math.min.apply(null, allR)) - 1) : 0, rhi = allR.length ? Math.min(10, Math.ceil(Math.max.apply(null, allR)) + 1) : 10;
+    var charts = chart(function (x) { return x.value == null ? null : +x.value; }, lo, hi, 5, function (v) { return Math.round(v); }, 'Puissance (' + unit + ')') +
+      (allR.length ? chart(function (x) { return x.rpe == null ? null : +x.rpe; }, rlo, rhi, 1, function (v) { return fr(v); }, 'RPE') : '');
+    var means = [], rpeMeans = [];
+    ser.forEach(function (S) {
+      var vs = [], rs = [];
+      S.forEach(function (x) { if (!x) return; if (x.value != null) vs.push(+x.value); if (x.rpe != null) rs.push(+x.rpe); });
+      means.push(vs.length ? vs.reduce(function (a, b) { return a + b; }, 0) / vs.length : null);
+      rpeMeans.push(rs.length ? rs.reduce(function (a, b) { return a + b; }, 0) / rs.length : null);
+    });
+    var kp = '<div class="k">' + means.map(function (m, k) {
+      return '<div><small>Série ' + (k + 1) + ' · moy.</small><b style="color:' + SER_COL[k % SER_COL.length] + '">' + (m == null ? '–' : fr(m) + ' ' + unit) + '</b>' +
+        '<small>RPE moy. ' + (rpeMeans[k] == null ? '–' : fr(rpeMeans[k])) + '</small></div>';
+    }).join('');
+    var m1 = means[0], mL = means[means.length - 1], r1 = rpeMeans[0], rL = rpeMeans[rpeMeans.length - 1];
+    var dW = m1 != null && mL != null ? mL - m1 : null, dR = r1 != null && rL != null ? rL - r1 : null;
+    kp += '<div><small>Écart S1 → S' + means.length + '</small><b>' + (dW == null ? '–' : sgn(dW, unit)) + '</b><small>RPE ' + (dR == null ? '–' : sgn(dR)) + '</small></div></div>';
+    var rd = '';
+    if (dW != null && m1) {
+      var p = dW / m1;
+      if (Math.abs(p) <= 0.02 && (dR == null || dR <= 0.5)) rd = 'Les séries se ressemblent : même puissance, même ressenti. Allure bien tenue.';
+      else if (Math.abs(p) <= 0.02) rd = 'Même puissance d\'une série à l\'autre, mais RPE plus haut (+' + fr(dR) + ') : la fatigue s\'installe.';
+      else if (p < -0.02) rd = 'Puissance en baisse sur la dernière série (' + sgn(dW, unit) + ') : départ trop rapide ou récupération insuffisante.';
+      else rd = 'Puissance en hausse sur la dernière série (' + sgn(dW, unit) + ') : marge sous le pied, la cible peut monter.';
+    }
+    var lg = '<div class="lg" style="flex-wrap:wrap">' + means.map(function (m, k) {
+      return '<span><i style="background:' + SER_COL[k % SER_COL.length] + '"></i>Série ' + (k + 1) + '</span>';
+    }).join('') + '<span>Axe du bas : n° d\'intervalle dans la série</span></div>';
+    return '<div class="ivr">' + (opts.noTitle ? '' : '<div class="t">Récap de séance</div>') + kp +
+      charts + lg + (rd ? '<div class="rd">' + rd + '</div>' : '') + '</div>';
+  }
+
   /* sd = sets_data d'un score (tableau ou JSON). Renvoie '' si ce n'est pas un score par intervalles. */
   window.ivRecapHtml = function (sd, opts) {
     try { if (typeof sd === 'string') sd = JSON.parse(sd); } catch (e) { return ''; }
     if (!Array.isArray(sd) || sd.length < 2 || !sd.some(function (x) { return x && 'rpe' in x; })) return '';
     css();
     opts = opts || {};
+    /* Intervalles en plusieurs séries (ex. 2 SETS de 7x 500m) : une ligne de puissance et une ligne de RPE par série */
+    var nSer = 0; sd.forEach(function (x) { if (x && x.serie > nSer) nSer = x.serie; });
+    if (nSer >= 2) { var hs = seriesHtml(sd, nSer, opts); if (hs) return hs; }
     var unit = (sd[0] && sd[0].unit) || 'W', sum = /^(m|cal)$/.test(unit);
     // Allure (course) : valeurs en secondes/km ; barres en vitesse (plus haut = plus rapide), étiquettes en min/km
     var pace = unit === '/km';

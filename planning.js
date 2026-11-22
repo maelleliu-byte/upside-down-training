@@ -180,10 +180,12 @@ async function buildSessionCard(s){
   let scoreInputHtml='';
   if(ivl){
     const pace=ivl.unit==='/km';
-    const _gStart={};if(ivl.groups&&ivl.groups.length>1){let k=0;ivl.groups.forEach((g,gi)=>{_gStart[k]=`Série ${gi+1} · ${escapeHtml(g.label)}`;k+=g.n;});}
-    scoreInputHtml=`<div class="multi-score-inputs" data-intervals="${ivl.n}" data-unit="${ivl.unit}" data-stype="${ivl.stype}">${Array.from({length:ivl.n},(_,i)=>`${_gStart[i]?`<div class="iv-group-h">${_gStart[i]}</div>`:''}
+    const _gStart={},_gOf=[],_gIdx=[];
+    if(ivl.groups&&ivl.groups.length>1){let k=0;ivl.groups.forEach((g,gi)=>{_gStart[k]=`Série ${gi+1} · ${escapeHtml(g.label)}`;for(let j=0;j<g.n;j++){_gOf[k+j]=gi+1;_gIdx[k+j]=j+1;}k+=g.n;});}
+    const _grp=ivl.groups&&ivl.groups.length>1?ivl.groups.map(g=>g.n).join(','):'';
+    scoreInputHtml=`<div class="multi-score-inputs" data-intervals="${ivl.n}" data-unit="${ivl.unit}" data-stype="${ivl.stype}" data-groups="${_grp}">${Array.from({length:ivl.n},(_,i)=>`${_gStart[i]?`<div class="iv-group-h">${_gStart[i]}</div>`:''}
       <div class="multi-score-row">
-        <div class="multi-score-lbl" style="min-width:48px">${ivl.word}${ivl.n>1?' '+(i+1):''}</div>
+        <div class="multi-score-lbl" style="min-width:48px">${ivl.word}${ivl.n>1?' '+(_gIdx[i]||i+1):''}</div>
         <input class="multi-score-input" id="score-${i}-${s.id}" data-stype="${ivl.stype}" type="text" style="flex:1 1 0;min-width:0" ${pace?'inputmode="text" placeholder="4:30 /km" pattern="\\d{1,2}:\\d{2}"':'inputmode="decimal" placeholder="'+ivl.unit+'"'}>
         <select class="multi-score-input" id="rpe-${i}-${s.id}" data-stype="rpe" aria-label="RPE" style="flex:0 0 80px;width:80px;min-width:0;padding:9px 4px"><option value="">RPE</option>${Array.from({length:19},(_,k)=>1+k/2).map(n=>`<option value="${n}">RPE ${String(n).replace('.',',')}</option>`).join('')}</select>
       </div>`).join('')}</div>`;
@@ -785,7 +787,11 @@ function intervalScoring(s){
   const TOK=String.raw`(?:\d{1,2}:\d{2}|\d+\s*m\b|\d+\s*'{1,2}(?:\s*\d+\s*'')?|\d+\s*MIN\b)`;
   // « 2 SERIES - 2:00 REPOS » puis « 10x 30''/30'' » → 20 efforts (« 10 à 12x » → 12)
   const reS=new RegExp(String.raw`(\d+)\s*(?:SETS?|S[EÉ]RIES?)\b[^\n]*?(?:REST|REPOS|R[ÉE]CUP)[^\n]*\n\s*(?:\d+\s*(?:à|a|-)\s*)?(\d+)\s*x\s*`+TOK,'gi');
-  while((m=reS.exec(tq))){const k=+m[1],n=k*(+m[2]);if(k<2||k>6||n<2||n>30)continue;add(m,n,m[1]+' x '+m[0].split('\n').pop().trim());}
+  // Une ligne de saisie par intervalle, regroupées par série (Série 1 : INT 1…7, Série 2 : INT 1…7)
+  while((m=reS.exec(tq))){const k=+m[1],r=+m[2],n=k*r;if(k<2||k>6||n<2||n>30)continue;
+    covered.push([m.index,m.index+m[0].length]);
+    const lab=(tq.slice(m.index).split('\n')[1]||m[0].split('\n').pop()).replace(/\s+/g,' ').trim();
+    for(let j=0;j<k;j++)groups.push({at:m.index+j*0.001,n:r,label:lab,serie:true});}
   // « 6x 1:00 », « 4 SETS 3:00 », « 10x 500m », « 6 x 1' », « 12 x 30'' », « 5 x 2 MIN » (« 4 à 6x » → 6)
   const re=new RegExp(String.raw`(\d+)\s*(?:SETS?\s*|S[EÉ]RIES?\s*|x\s*)`+TOK,'gi');
   while((m=re.exec(tq))){if(inCov(m.index))continue;if(/^\d+\s*(?:SETS?|S[EÉ]RIES?)\s*\d+\s*m\b/i.test(m[0]))continue;const n=+m[1];if(n<2||n>12)continue;add(m,n);}
@@ -800,7 +806,7 @@ function intervalScoring(s){
   if(!groups.length)return /^(time|rounds|reps)$/.test(st)?null:{n:1,unit,stype,word:'EFFORT'};
   groups.sort((x,y)=>x.at-y.at);
   const keep=[];let tot=0;
-  for(const g of groups){if(tot+g.n>30)break;keep.push({n:g.n,label:g.label});tot+=g.n;}
+  for(const g of groups){if(tot+g.n>30)break;keep.push({n:g.n,label:g.label,serie:!!g.serie});tot+=g.n;}
   return {n:tot,unit,stype,word,groups:keep};
 }
 /* Bloc en charge à plusieurs parties (lu comme le timer) :
@@ -842,6 +848,8 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
   if(ivBox){
     // Une ligne par intervalle : valeur (W, m, cal, km/h) + RPE
     const n=+ivBox.dataset.intervals||0,unit=ivBox.dataset.unit||'',sd=[],txt=[];
+    const _gs=String(ivBox.dataset.groups||'').split(',').map(Number).filter(x=>x>0),_ser=[],_int=[];
+    {let k=0;_gs.forEach((c,gi)=>{for(let j=0;j<c;j++){_ser[k]=gi+1;_int[k]=j+1;k++;}});}
     const pace=unit==='/km';
     const mmss=x=>{x=Math.round(x);return Math.floor(x/60)+':'+String(x%60).padStart(2,'0');};
     if(ivBox.dataset.stype)scoreType=ivBox.dataset.stype;
@@ -854,7 +862,9 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
         else v=parseFloat(raw.replace(',','.'));
       }
       if((v==null||isNaN(v))&&!rpe)continue;
-      sd.push({set:i+1,value:(v==null||isNaN(v))?null:v,rpe,unit});
+      const _e={set:i+1,value:(v==null||isNaN(v))?null:v,rpe,unit};
+      if(_ser[i]){_e.serie=_ser[i];_e.int=_int[i];}
+      sd.push(_e);
       txt.push(`${(v==null||isNaN(v))?'–':pace?mmss(v)+' /km':v+' '+unit}${rpe?' · RPE '+String(rpe).replace('.',','):''}`);
     }
     if(!sd.length){showToast(n>1?'⚠️ Entre au moins un intervalle':'⚠️ Entre ta valeur ou ton RPE');return;}
