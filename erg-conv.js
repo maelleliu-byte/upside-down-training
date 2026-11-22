@@ -35,10 +35,10 @@
 
   function modOf(s) {
     var txt = ((s && s.title) || '') + ' ' + ((s && s.content) || '').replace(/<[^>]+>/g, ' ');
-    try { if (window.udtAllure && udtAllure.modOf) return udtAllure.modOf((s && s.title) || '') || udtAllure.modOf(txt); } catch (e) { }
+    /* détection propre au convertisseur : les ergos seulement (pas « ring row », « bent over row »…) */
     var t = txt.toLowerCase();
     if (/\bski\b|skierg/.test(t)) return 'ski';
-    if (/\b(row|rameur)\b/.test(t)) return 'row';
+    if (/row ?erg|\brower\b|\brameur\b|\brow\b(?!\s*(?:s\b|ing))(?![^\n]{0,3}ring)/.test(t) && !/ring row|ring rows|bent[- ]over row|db row|kb row|renegade row|pendlay row|upright row|seal row|chest[- ]supported row|cable row/.test(t)) return 'row';
     if (/assault|air ?bike/.test(t)) return 'assault';
     if (/\becho\b/.test(t)) return 'echo';
     if (/bike ?erg|\bbike\b/.test(t)) return 'bike';
@@ -68,12 +68,12 @@
   }
 
   /* panneau HTML pour une séance (vide si pas une séance machine) */
+  /* Uniquement les blocs ENGINE qui se font sur un ergo (Row, Ski, Bike Erg, Echo, Assault).
+     Jamais dans un échauffement, un WOD, un bloc force… (ex. « ARCHER RING ROW » n'est pas un rameur). */
   function panel(s) {
-    if (!s) return '';
+    if (!s || String(s.type || '').toLowerCase() !== 'engine') return '';
     var mod = modOf(s);
-    var engine = /engine/.test(String(s.type || ''));
-    var hasWatts = /\bwatts?\b|\d\s*w\b|split|\/500|\/1000|puissance critique/i.test(((s.title || '') + ' ' + (s.content || '')).replace(/<[^>]+>/g, ' '));
-    if (!(mod in C2) && mod !== 'echo' && mod !== 'assault') { if (!(engine && hasWatts)) return ''; mod = 'row'; }
+    if (!(mod in C2) && mod !== 'echo' && mod !== 'assault') return '';
     css();
     var id = 'ec' + Math.random().toString(36).slice(2, 8);
     var label = mod === 'echo' ? 'Echo Bike' : mod === 'assault' ? 'Assault Bike' : C2[mod].label;
