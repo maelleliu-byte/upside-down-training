@@ -3,8 +3,7 @@
  * Panneau « 🔄 Convertisseur · <machine> » sous la séance (à côté de
  * « Mes zones d'intensité »), pour tous les athlètes.
  * - Row / Ski Erg  : watts ↔ split /500 m ↔ cal/h   (formules Concept2)
- * - Bike Erg       : watts ↔ split /1000 m           (formule Concept2 ; les calories
- *                    du BikeErg ne suivent pas la formule du rameur → non affichées)
+ * - Bike Erg       : watts ↔ split /1000 m ↔ cal/h  (formules Concept2, même calcul de calories)
  * - Echo / Assault : renvoi vers le calculateur Assault ↔ Echo
  * Les valeurs en watts affichées dans la séance deviennent des raccourcis.
  * ============================================================ */
@@ -15,7 +14,7 @@
   var C2 = {
     row:  { label: 'Row Erg',  dist: 500,  half: 1 },
     ski:  { label: 'Ski Erg',  dist: 500,  half: 1 },
-    bike: { label: 'Bike Erg', dist: 1000, nocal: true }   /* BikeErg : à watts égaux, l'allure /1000 m = l'allure /500 m du rameur */
+    bike: { label: 'Bike Erg', dist: 1000 }   /* BikeErg : à watts égaux, l'allure /1000 m = l'allure /500 m du rameur */
   };
   /* allure en s/m : split /500 m ÷ 500 (Row, Ski) ; BikeErg : split /1000 m ÷ 500 (vérifié sur des logs Concept2 : 1:35.4/1000 m = 403 W) */
   function wFromSplit(sec) { var p = sec / 500; return 2.8 / (p * p * p); }
