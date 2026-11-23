@@ -103,10 +103,11 @@
   if (window.UDT_EMBED && window.parent !== window) {
     var lastH = 0;
     var sendH = function () {
-      var h = document.documentElement.scrollHeight;
+      var w = document.querySelector('.wrap');
+      var h = Math.ceil(w ? w.getBoundingClientRect().height : document.body.scrollHeight);
       if (h !== lastH) { lastH = h; window.parent.postMessage({ type: 'udt-vitrine-height', height: h }, '*'); }
     };
-    if (window.ResizeObserver) new ResizeObserver(sendH).observe(document.body);
+    if (window.ResizeObserver) new ResizeObserver(sendH).observe(document.querySelector('.wrap') || document.body);
     window.addEventListener('load', sendH); setInterval(sendH, 1000); sendH();
   }
 
