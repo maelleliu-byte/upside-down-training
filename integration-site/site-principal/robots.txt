@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://upsidedown-training.fr/sitemap.xml
