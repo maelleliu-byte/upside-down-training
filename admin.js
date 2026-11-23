@@ -1354,7 +1354,13 @@ async function saveEditAccount(){
     const data=await resp.json().catch(()=>({}));
     if(!resp.ok)throw new Error(data.error||'Erreur inconnue');
     if(id===currentUser.id&&currentProfile){currentProfile.full_name=data.athlete.full_name;currentProfile.email=data.athlete.email;}
-    showToast('✅ Compte mis à jour');
+    const st=data.stripe||{};
+    if(st.errors?.length){
+      console.warn('Stripe email non mis à jour :',st.errors);
+      showToast('⚠️ Compte mis à jour, mais email Stripe non modifié (voir console)');
+    }else{
+      showToast(st.updated?'✅ Compte mis à jour (Stripe aussi)':'✅ Compte mis à jour');
+    }
     closeEditAccountModal();
     loadAdminAthletes();
   }catch(e){

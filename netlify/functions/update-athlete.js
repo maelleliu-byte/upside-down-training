@@ -10,9 +10,14 @@
 //    (studio_id null = Upside Down) → un admin ne touche jamais un autre studio
 //  - L'email de connexion (auth.users) et celui du profil sont modifiés ensemble ;
 //    si la mise à jour du profil échoue, l'email auth est remis à l'ancien.
+//  - Stripe : les clients (customers) de l'athlète qui portent encore l'ancien
+//    email sont mis à jour, sur le compte plateforme ou le compte Connect du
+//    studio. Un échec Stripe ne bloque pas la correction du compte (signalé
+//    dans la réponse).
 
 const { createClient } = require('@supabase/supabase-js');
 const { isKidEmail } = require('./lib/family');
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const supabaseAdmin = createClient(
   process.env.SUPABASE_URL,
@@ -110,12 +115,97 @@ exports.handler = async (event) => {
       return json(400, { error: profErr.message });
     }
 
+    // 6) Stripe (seulement si l'email change)
+    const stripeResult = emailChanged
+      ? await updateStripeEmail(targetId, oldEmail, email)
+      : { updated: 0, errors: [] };
+
     return json(200, {
       success: true,
-      athlete: { id: targetId, full_name: fullName, email: emailChanged ? email : target.email }
+      athlete: { id: targetId, full_name: fullName, email: emailChanged ? email : target.email },
+      stripe: stripeResult
     });
   } catch (err) {
     console.error('update-athlete error:', err);
     return json(500, { error: err.message || 'Erreur serveur' });
   }
 };
+
+// Met à jour l'email des clients Stripe de l'athlète.
+// Sources des customer IDs : stripe_customers (avec le compte Connect) puis
+// stripe_subscriptions (compte déduit du programme). Pour chaque customer on
+// essaie les comptes candidats jusqu'à trouver celui où il existe.
+// On ne remplace que si l'email Stripe est vide ou égal à l'ancien : un email
+// de facturation volontairement différent n'est pas écrasé.
+async function updateStripeEmail(userId, oldEmail, newEmail) {
+  const errors = [];
+  let updated = 0;
+  if (!process.env.STRIPE_SECRET_KEY) return { updated, errors: ['Clé Stripe absente'] };
+
+  const candidates = {}; // customerId -> [account|null, ...]
+  const add = (cid, acct) => {
+    if (!cid) return;
+    (candidates[cid] = candidates[cid] || []);
+    if (!candidates[cid].includes(acct)) candidates[cid].push(acct);
+  };
+
+  const { data: custRows } = await supabaseAdmin
+    .from('stripe_customers')
+    .select('stripe_customer_id, stripe_account_id')
+    .eq('user_id', userId);
+  (custRows || []).forEach(c => add(c.stripe_customer_id, c.stripe_account_id || null));
+
+  const { data: subs } = await supabaseAdmin
+    .from('stripe_subscriptions')
+    .select('stripe_customer_id, programme_slug')
+    .eq('user_id', userId);
+  const slugs = [...new Set((subs || []).map(s => s.programme_slug).filter(Boolean))];
+  const accountBySlug = {};
+  if (slugs.length) {
+    const { data: progs } = await supabaseAdmin
+      .from('programmes')
+      .select('slug, stripe_account_id')
+      .in('slug', slugs);
+    (progs || []).forEach(p => { accountBySlug[p.slug] = p.stripe_account_id || null; });
+  }
+  (subs || []).forEach(s => {
+    if (s.programme_slug && s.programme_slug in accountBySlug) add(s.stripe_customer_id, accountBySlug[s.programme_slug]);
+  });
+  Object.keys(candidates).forEach(cid => add(cid, null)); // plateforme en dernier recours
+
+  for (const [cid, accounts] of Object.entries(candidates)) {
+    let found = false;
+    for (const acct of accounts) {
+      const opts = acct ? { stripeAccount: acct } : undefined;
+      try {
+        const cust = await stripe.customers.retrieve(cid, opts);
+        if (cust.deleted) { found = true; break; }
+        found = true;
+        const cur = (cust.email || '').toLowerCase();
+        if (cur && cur !== oldEmail) break; // email de facturation différent : on n'y touche pas
+        if (cur !== newEmail) {
+          await stripe.customers.update(cid, { email: newEmail }, opts);
+          updated++;
+        }
+        break;
+      } catch (e) {
+        if (e?.code === 'resource_missing') continue; // pas sur ce compte, on essaie le suivant
+        found = true;
+        errors.push(`${cid} : ${e.message}`);
+        break;
+      }
+    }
+    if (!found) errors.push(`${cid} : client introuvable sur Stripe`);
+  }
+
+  // Garder la copie locale cohérente
+  await supabaseAdmin
+    .from('stripe_customers')
+    .update({ email: newEmail })
+    .eq('user_id', userId)
+    .eq('email', oldEmail)
+    .then(() => {}, () => {});
+
+  if (errors.length) console.warn('update-athlete stripe:', errors);
+  return { updated, errors };
+}
