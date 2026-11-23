@@ -102,8 +102,8 @@ h1{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;color:#
           <strong>Abonne-toi pour activer ton studio</strong> et permettre à tes athlètes de s'inscrire.
           <ul>
             <li>Starter — 0 à 10 athlètes — <strong>20€/mois</strong></li>
-            <li>Scale — 11 à 30 athlètes — <strong>40€/mois</strong></li>
-            <li>Pro — 31+ athlètes — <strong>60€/mois</strong></li>
+            <li>Scale — 11 à 29 athlètes — <strong>40€/mois</strong></li>
+            <li>Pro — 30+ athlètes — <strong>60€/mois</strong></li>
           </ul>
         </div>
         <div style="font-size:13px;color:#666;margin-bottom:16px" id="billing-athlete-count"></div>
@@ -280,7 +280,7 @@ async function disconnectStripe() {
 
 const TIERS = {
   starter: { label: 'Starter', price: '20€/mois', max: 10 },
-  scale:   { label: 'Scale',   price: '40€/mois', max: 30 },
+  scale:   { label: 'Scale',   price: '40€/mois', max: 29 },
   pro:     { label: 'Pro',     price: '60€/mois', max: 99999 },
 };
 
@@ -295,10 +295,10 @@ function renderBilling(studio) {
     document.getElementById('billing-info').innerHTML =
       'Athlètes : <strong style="color:#f0f0f0">' + (studio.athlete_count || 0) + '</strong><br>' +
       'Tier actuel : <strong style="color:#f0f0f0">' + tier.label + '</strong><br>' +
-      'Prochain palier : ' + (studio.plan_tier === 'pro' ? '—' : (studio.plan_tier === 'scale' ? '31 athlètes → Pro 60€/mois' : '11 athlètes → Scale 40€/mois'));
+      'Prochain palier : ' + (studio.plan_tier === 'pro' ? '—' : (studio.plan_tier === 'scale' ? '30 athlètes → Pro 60€/mois' : '11 athlètes → Scale 40€/mois'));
   } else {
     const count = studio.athlete_count || 0;
-    let tierLabel = count <= 10 ? 'Starter (20€/mois)' : count <= 30 ? 'Scale (40€/mois)' : 'Pro (60€/mois)';
+    let tierLabel = count <= 10 ? 'Starter (20€/mois)' : count <= 29 ? 'Scale (40€/mois)' : 'Pro (60€/mois)';
     document.getElementById('billing-athlete-count').textContent =
       'Tu as ' + count + ' athlète' + (count > 1 ? 's' : '') + ' — tier adapté : ' + tierLabel;
   }
