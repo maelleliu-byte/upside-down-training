@@ -6,15 +6,64 @@ async function loadAdminProgs(){
   const _btn=document.getElementById('btn-show-new-prog');
   if(_btn&&(!_form||_form.style.display==='none'))_btn.style.display='block';
   const counts={};
-  for(const p of programmes){const {count}=await sb.from('sessions').select('id',{count:'exact'}).eq('programme_id',p.id);counts[p.id]=count||0;}
-  grid.innerHTML=programmes.map(p=>`<div class="prog-card-admin" style="border-color:${p.color}33;position:relative">
-    <button class="btn-delete" onclick="event.stopPropagation();deleteProgramme('${p.id}','${(p.name||'').replace(/'/g,"\\'")}',${counts[p.id]||0})" style="position:absolute;top:8px;right:8px;width:26px;height:26px;font-size:12px">✕</button>
-    <button class="btn-secondary" onclick="event.stopPropagation();editProgramme('${p.id}')" style="position:absolute;top:8px;right:40px;width:26px;height:26px;font-size:12px;padding:0;border-radius:50%;display:flex;align-items:center;justify-content:center">✏</button>
-    <div class="prog-card-name" style="color:${p.color}">${p.name}</div>
-    <div class="prog-card-desc">${p.description||''}</div>
-    <div class="prog-card-count" style="color:${p.color}">${counts[p.id]} séances</div>
-    <div style="font-size:11px;color:var(--muted);margin-top:4px">${p.vitrine_visible?`👁 Vitrine · ${p.vitrine_order??'–'} · /p/${p.vitrine_link||''}`:'Hors vitrine'}</div>
-  </div>`).join('');
+  await Promise.all(programmes.map(async p=>{const {count}=await sb.from('sessions').select('id',{count:'exact',head:true}).eq('programme_id',p.id);counts[p.id]=count||0;}));
+  _paCss();
+  const V=window.udtVitrine;
+  const light=c=>{const h=String(c||'').replace('#','');if(h.length!==6)return false;const r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16);return .299*r+.587*g+.114*b>170;};
+  const sorted=[...programmes].sort((a,b)=>((a.vitrine_visible?0:1)-(b.vitrine_visible?0:1))||((a.vitrine_order??999)-(b.vitrine_order??999))||a.name.localeCompare(b.name));
+  grid.classList.add('pa-grid');
+  grid.innerHTML=sorted.map(p=>{
+    const c=V?V.cfgOf(p.slug,p):null;
+    const photo=p.vitrine_photo||(c&&c.photo)||'';
+    const pos=p.vitrine_pos||(c&&c.pos)||'50% 40%';
+    const one=p.type==='oneshot';
+    const price=p.is_free?'Gratuit':one?(p.price_oneshot?(+p.price_oneshot)+' € unique':'—'):(p.price_monthly?(+p.price_monthly)+' €/mois':'—');
+    const vis=p.vitrine_visible?`👁 Vitrine · ${p.vitrine_order??'–'} · /p/${escapeHtml(p.vitrine_link||'')}`:'Hors vitrine';
+    const nm=escapeHtml((p.vitrine_title||p.name||'').replace(/\n/g,' '));
+    return `<div class="pa" style="--c:${p.color||'#e8ff47'}"><div class="pa-bar"></div>
+      <div class="pa-ph${photo?'':' pa-gfx'}"${photo?` style="background-image:url('${escapeHtml(photo)}');background-position:${escapeHtml(pos)}"`:''}><div class="pa-nm">${nm}</div></div>
+      <button class="pa-del" title="Supprimer" onclick="event.stopPropagation();deleteProgramme('${p.id}','${(p.name||'').replace(/'/g,"\\'")}',${counts[p.id]||0})">✕</button>
+      <div class="pa-b"><div class="pa-row"><span>${price}</span><b>${counts[p.id]||0} séances</b></div>
+      <div class="pa-v${p.vitrine_visible?' on':''}">${vis}</div>
+      <div class="pa-btns"><button class="pa-see" onclick="event.stopPropagation();previewProgramme('${p.id}')">👁 Aperçu</button>
+      <button class="pa-edit" style="color:${light(p.color)?'#0b0b0c':'#fff'}" onclick="event.stopPropagation();editProgramme('${p.id}')">✏ Modifier</button></div></div></div>`;
+  }).join('');
+}
+
+/* Cartes photo des programmations (Admin → Programmations) */
+function _paCss(){
+  if(document.getElementById('pa-css'))return;
+  const st=document.createElement('style');st.id='pa-css';
+  st.textContent=`.pa-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px}
+.pa{position:relative;border-radius:16px;overflow:hidden;background:var(--card);border:1px solid var(--c)}
+.pa-ph{height:150px;background:center/cover no-repeat;position:relative}
+.pa-ph::after{content:'';position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.05) 30%,rgba(11,11,12,.96) 100%)}
+.pa-gfx{background:var(--c)}
+.pa-nm{position:absolute;left:12px;right:10px;bottom:8px;z-index:1;font-family:'Bebas Neue',sans-serif;font-size:24px;line-height:.95;color:#fff;letter-spacing:.5px}
+.pa-del{position:absolute;top:8px;right:8px;z-index:2;width:26px;height:26px;border-radius:8px;border:1px solid rgba(255,71,71,.5);background:rgba(11,11,12,.7);color:#ff4747;font-size:12px;cursor:pointer}
+.pa-bar{position:absolute;left:0;right:0;top:0;height:3px;background:var(--c);z-index:1}
+.pa-b{padding:10px 12px 12px}
+.pa-row{display:flex;justify-content:space-between;gap:6px;font-size:12px;color:var(--muted);margin-bottom:4px}
+.pa-row b{color:var(--c);font-weight:700;white-space:nowrap}
+.pa-v{font-size:11px;color:var(--muted);margin-bottom:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pa-v.on{color:#2dd4bf}
+.pa-btns{display:flex;gap:6px}
+.pa-btns button{flex:1;font-size:12px;font-weight:700;padding:8px 4px;border-radius:9px;font-family:inherit;cursor:pointer}
+.pa-see{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.pa-edit{background:var(--c);border:none}
+#pa-prev{position:fixed;inset:0;z-index:400;background:rgba(0,0,0,.88);overflow-y:auto;padding:20px 12px 40px}
+#pa-prev .pa-close{display:block;margin:0 auto 12px;background:none;border:1px solid var(--border2);color:var(--text);border-radius:10px;padding:8px 16px;font-family:inherit;cursor:pointer}`;
+  document.head.appendChild(st);
+}
+/* Aperçu : la présentation telle que les athlètes la voient */
+function previewProgramme(id){
+  const p=programmes.find(x=>x.id===id);if(!p||!window.udtVitrine)return;
+  udtVitrine.css();
+  const html=udtVitrine.cfgOf(p.slug,p)?udtVitrine.cardHTML(p,{ctaAction:'',staff:true}):'<div style="color:var(--muted);text-align:center;padding:40px">Pas encore de présentation : clique sur ✏ Modifier pour la créer.</div>';
+  const o=document.createElement('div');o.id='pa-prev';
+  o.innerHTML=`<button class="pa-close" onclick="document.getElementById('pa-prev').remove()">✕ Fermer l'aperçu</button>${html}`;
+  o.addEventListener('click',e=>{if(e.target===o)o.remove();});
+  document.body.appendChild(o);
 }
 
 async function editProgramme(id){
