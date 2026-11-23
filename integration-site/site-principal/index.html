@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Upside Down Training · App de programmation CrossFit & Hyrox</title>
+<meta name="description" content="L'app créée par des coachs de Besançon pour programmer, suivre vos athlètes et gérer vos abonnements : séances, cycles, PR, calcul de charges. Dès 10 €/mois.">
+<link rel="canonical" href="https://upsidedown-training.fr/">
+<meta name="theme-color" content="#080808">
+<link rel="icon" type="image/png" href="/logo.png">
+<link rel="apple-touch-icon" href="/logo.png">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="fr_FR">
+<meta property="og:site_name" content="Upside Down Training">
+<meta property="og:title" content="Upside Down Training · App de programmation CrossFit & Hyrox">
+<meta property="og:description" content="L'app créée par des coachs de Besançon pour programmer, suivre vos athlètes et gérer vos abonnements : séances, cycles, PR, calcul de charges. Dès 10 €/mois.">
+<meta property="og:url" content="https://upsidedown-training.fr/">
+<meta property="og:image" content="https://upsidedown-training.fr/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">{"@context": "https://schema.org", "@graph": [{"@type": "Organization", "@id": "https://upsidedown-training.fr/#org", "name": "Upside Down Training", "legalName": "UPSIDE DOWN", "url": "https://upsidedown-training.fr/", "logo": "https://upsidedown-training.fr/logo.png", "email": "upsidedowntraining0@gmail.com", "telephone": "+33756822269", "address": {"@type": "PostalAddress", "streetAddress": "55 rue de Dole", "postalCode": "25000", "addressLocality": "Besançon", "addressCountry": "FR"}, "sameAs": ["https://www.instagram.com/upside_downtraining/"]}, {"@type": "WebSite", "@id": "https://upsidedown-training.fr/#website", "url": "https://upsidedown-training.fr/", "name": "Upside Down Training", "inLanguage": "fr-FR", "publisher": {"@id": "https://upsidedown-training.fr/#org"}}, {"@type": "SoftwareApplication", "name": "Upside Down Training", "applicationCategory": "SportsApplication", "operatingSystem": "Web, iOS, Android", "url": "https://upsidedown-training.fr/coach", "publisher": {"@id": "https://upsidedown-training.fr/#org"}, "offers": [{"@type": "Offer", "name": "Starter", "price": "10", "priceCurrency": "EUR"}, {"@type": "Offer", "name": "Scale", "price": "30", "priceCurrency": "EUR"}, {"@type": "Offer", "name": "Pro", "price": "50", "priceCurrency": "EUR"}]}]}</script>
+<script>
+/* SEO : une vraie URL par page (/coach, /athlete, /mentions-legales) */
+window.__UDT_META={"home": ["Upside Down Training · App de programmation CrossFit & Hyrox", "L'app créée par des coachs de Besançon pour programmer, suivre vos athlètes et gérer vos abonnements : séances, cycles, PR, calcul de charges. Dès 10 €/mois."], "coach": ["Logiciel de programmation pour coachs et box CrossFit · Upside Down", "Créez vos séances et cycles, calculez les charges depuis les PR, suivez vos athlètes et encaissez vos abonnements via Stripe. Starter 10 €, Scale 30 €, Pro 50 €/mois."], "athlete": ["Programmations CrossFit, Hyrox et Kids & Teens en ligne · Upside Down", "Programmations en ligne par des coachs : Athlète/Compétiteur 45 €/mois, Hyrox & Hybrid Race 30 €/mois, Kids & Teens, Affiliate pour les box. 14 jours d'essai offerts."], "legal": ["Mentions légales, CGU/CGV et confidentialité · Upside Down Training", "Mentions légales, conditions générales d'utilisation et de vente, politique de confidentialité, cookies et rétractation d'Upside Down Training (SARL UPSIDE DOWN, Besançon)."]};
+window.__UDT_PATHS={"home": "/", "coach": "/coach", "athlete": "/athlete", "legal": "/mentions-legales"};
+window.__udtApplyMeta=function(id,root){var doc=root||document;var m=window.__UDT_META[id]||window.__UDT_META.home;
+ var url='https://upsidedown-training.fr'+(window.__UDT_PATHS[id]||'/');
+ var s=function(q,a,v){var e=doc.querySelector(q);if(e)e.setAttribute(a,v);};
+ var ti=doc.querySelector('title');if(ti)ti.textContent=m[0];
+ s('meta[name="description"]','content',m[1]);s('link[rel="canonical"]','href',url);
+ s('meta[property="og:title"]','content',m[0]);s('meta[property="og:description"]','content',m[1]);s('meta[property="og:url"]','content',url);};
+/* bouton du mode edition visible seulement avec ?edit dans l'adresse */
+if(/[?&]edit\b/.test(location.search))document.documentElement.classList.add('can-edit');
+</script>
+<style>html:not(.can-edit) #admin-toggle{display:none!important}</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --black:#080808;--dark:#101010;--card:#161616;--card2:#1e1e1e;
+  --border:#252525;--border2:#333;
+  --accent:#00968f;--accent2:#007a74;
+  --red:#ff4444;--blue:#47c8ff;--orange:#ff8c47;--purple:#c847ff;--green:#47ff8c;
+  --text:#f0f0f0;--text2:#aaa;--muted:#8a8a8a;
+}
+html{scroll-behavior:smooth;}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;}
+body{font-family:'DM Sans',sans-serif;background:var(--black);color:var(--text);overflow-x:hidden;line-height:1.6;}
+
+/* NAV */
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:0 5vw;height:64px;border-bottom:1px solid var(--border);background:rgba(8,8,8,0.9);backdrop-filter:blur(12px);}
+.nav-logo img{height:34px;width:auto;object-fit:contain;display:block;}
+.nav-links{display:flex;align-items:center;gap:8px;}
+.nav-link{font-size:13px;font-weight:600;padding:9px 18px;border-radius:8px;text-decoration:none;color:var(--text2);transition:all .2s;}
+.nav-link:hover{color:var(--text);background:rgba(255,255,255,0.05);}
+.nav-link.active{color:#000;background:var(--accent);}
+.nav-login{font-size:13px;font-weight:700;padding:8px 16px;border-radius:8px;text-decoration:none;color:var(--accent);border:1px solid var(--accent);margin-left:6px;white-space:nowrap;transition:all .2s;}
+.nav-login:hover{background:var(--accent);color:#000;}
+.nav-login svg{display:none;}
+@media(max-width:600px){.nav-login{padding:7px;margin-left:0;line-height:0;}.nav-login .nl-txt{display:none;}.nav-login svg{display:block;}}
+/* Vitrine des programmations (lue en direct depuis l'app) */
+.udt-progs{padding:70px 0 50px;scroll-margin-top:70px;}
+.udt-progs-head{padding:0 5vw;max-width:1180px;margin:0 auto 18px;}
+.udt-progs-head .section-lead{max-width:620px;}
+.udt-vitrine{display:block;width:100%;max-width:1180px;margin:0 auto;border:0;height:1150px;background:transparent;}
+.udt-progs-foot{text-align:center;margin-top:22px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;padding:0 5vw;}
+@media(max-width:600px){.nav-link{padding:9px 12px;font-size:12px;}}
+
+/* PAGES */
+.page{display:none;padding-top:64px;}
+.page.active{display:block;}
+
+/* SHARED */
+section{padding:80px 5vw;}
+.section-eyebrow{font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--accent);margin-bottom:14px;display:block;}
+h1,h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(36px,5vw,60px);line-height:1;letter-spacing:1px;color:var(--text);margin-bottom:16px;}
+.section-lead{font-size:16px;color:var(--text2);max-width:540px;line-height:1.75;margin-bottom:56px;}
+.divider{border:none;border-top:1px solid var(--border);margin:0 5vw;}
+.btn-primary{background:var(--accent);color:#fff;font-weight:700;font-size:15px;padding:15px 32px;border-radius:10px;text-decoration:none;transition:all .2s;display:inline-block;}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px);}
+.btn-ghost{background:transparent;color:var(--text2);font-size:14px;font-weight:500;text-decoration:none;display:inline-flex;align-items:center;gap:6px;padding:15px 20px;border:1px solid var(--border2);border-radius:10px;transition:all .2s;}
+.btn-ghost:hover{color:var(--text);border-color:var(--text2);}
+.tag{font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;background:rgba(0,150,143,0.1);color:var(--accent);border:1px solid rgba(0,150,143,0.25);padding:5px 12px;border-radius:20px;}
+
+/* ═══════════════ HOME PAGE ═══════════════ */
+.home-hero{min-height:100vh;display:flex;flex-direction:column;justify-content:center;padding:100px 5vw 80px;position:relative;overflow:hidden;}
+.home-glow{position:absolute;top:5%;left:50%;transform:translateX(-50%);width:520px;height:520px;background:radial-gradient(ellipse,rgba(0,150,143,0.05) 0%,transparent 70%);pointer-events:none;}
+.home-content{position:relative;z-index:1;max-width:760px;}
+.home-logo{margin-bottom:40px;}
+.home-logo img{height:72px;width:auto;}
+.home-tagline{font-family:'Bebas Neue',sans-serif;font-size:clamp(52px,9vw,110px);line-height:0.9;letter-spacing:1px;margin-bottom:24px;}
+.home-tagline em{font-style:normal;color:var(--accent);display:block;}
+.home-sub{font-size:18px;color:var(--text2);max-width:480px;line-height:1.7;margin-bottom:48px;}
+.home-cards{display:grid;grid-template-columns:1fr 1fr;gap:16px;max-width:680px;margin-top:80px;}
+@media(max-width:600px){.home-cards{grid-template-columns:1fr;}}
+.home-card{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:28px 24px;text-decoration:none;transition:all .25s;position:relative;overflow:hidden;cursor:pointer;}
+.home-card:hover{border-color:var(--hc-color,var(--accent));background:var(--card2);transform:translateY(-2px);}
+.hc-icon{font-size:32px;margin-bottom:16px;display:block;}
+.hc-title{font-family:'Bebas Neue',sans-serif;font-size:28px;letter-spacing:1px;color:var(--text);margin-bottom:8px;}
+.hc-sub{font-size:13px;color:var(--text2);line-height:1.6;}
+.hc-arrow{position:absolute;bottom:20px;right:20px;font-size:20px;color:var(--hc-color,var(--accent));opacity:0;transform:translateX(-6px);transition:all .25s;}
+.home-card:hover .hc-arrow{opacity:1;transform:translateX(0);}
+
+/* About strip */
+.home-about{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;padding:80px 5vw;}
+@media(max-width:700px){.home-about{grid-template-columns:1fr;gap:40px;}}
+.about-text h2{margin-bottom:16px;}
+.about-text p{font-size:15px;color:var(--text2);line-height:1.8;margin-bottom:16px;}
+.about-text p strong{color:var(--text);}
+.about-stats{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.about-stat{background:var(--card);border:1px solid var(--border2);border-radius:12px;padding:20px;}
+.about-stat-n{font-family:'Bebas Neue',sans-serif;font-size:40px;color:var(--accent);line-height:1;}
+.about-stat-l{font-size:12px;color:var(--muted);margin-top:4px;line-height:1.4;}
+
+/* Team */
+.home-team{padding:0 5vw 80px;}
+.team-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;max-width:960px;}
+.team-card{background:var(--card);border:1px solid var(--border2);border-radius:14px;padding:28px 24px;display:flex;align-items:center;gap:20px;}
+.team-avatar{width:56px;height:56px;border-radius:50%;background:rgba(0,150,143,0.15);border:2px solid rgba(0,150,143,0.3);display:flex;align-items:center;justify-content:center;font-family:'Bebas Neue',sans-serif;font-size:20px;color:var(--accent);flex-shrink:0;}
+.team-name{font-weight:700;font-size:15px;color:var(--text);margin-bottom:4px;}
+.team-role{font-size:12px;color:var(--muted);}
+
+/* ═══════════════ COACH PAGE ═══════════════ */
+.coach-hero{padding:80px 5vw 60px;position:relative;overflow:hidden;border-bottom:1px solid var(--border);}
+.coach-hero-inner{max-width:680px;position:relative;z-index:1;}
+.coach-hero .tag{margin-bottom:20px;display:inline-block;}
+.coach-hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,7vw,88px);line-height:0.92;letter-spacing:1px;margin-bottom:20px;}
+.coach-hero h1 em{font-style:normal;color:var(--accent);}
+.coach-hero p{font-size:16px;color:var(--text2);line-height:1.75;max-width:500px;margin-bottom:32px;}
+.coach-hero-actions{display:flex;gap:14px;flex-wrap:wrap;}
+
+/* Features grid */
+.features-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:2px;background:var(--border);border:1px solid var(--border);border-radius:16px;overflow:hidden;}
+.feat-card{background:var(--dark);padding:36px 32px;transition:background .2s;position:relative;overflow:hidden;}
+.feat-card:hover{background:var(--card);}
+.feat-card--wide{grid-column:span 2;}
+@media(max-width:768px){.feat-card--wide{grid-column:span 1;}}
+.feat-icon{width:40px;height:40px;border-radius:9px;background:rgba(255,255,255,0.04);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:18px;margin-bottom:18px;}
+.feat-tag{display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--feat-color,var(--accent));margin-bottom:12px;}
+.feat-title{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1px;margin-bottom:10px;color:var(--text);}
+.feat-desc{font-size:13px;color:var(--text2);line-height:1.7;}
+.feat-bullets{margin-top:14px;list-style:none;display:flex;flex-direction:column;gap:7px;}
+.feat-bullets li{font-size:13px;color:var(--text2);display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+.feat-bullets li::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--feat-color,var(--accent));flex-shrink:0;margin-top:7px;}
+
+/* Pricing */
+.pricing-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:900px;}
+@media(max-width:860px){.pricing-grid{grid-template-columns:1fr;max-width:400px;}}
+.price-card{background:var(--card);border:1px solid var(--border2);border-radius:20px;padding:32px 28px;position:relative;transition:transform .2s;}
+.price-card:hover{transform:translateY(-3px);}
+.price-card.featured{border-color:var(--accent);border-width:2px;}
+.price-badge{position:absolute;top:-11px;left:28px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;letter-spacing:1px;padding:3px 12px;border-radius:20px;text-transform:uppercase;}
+.price-plan{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--muted);text-transform:uppercase;margin-bottom:14px;}
+.price-amount{display:flex;align-items:flex-start;gap:3px;margin-bottom:6px;}
+.price-cur{font-size:18px;font-weight:600;color:var(--text2);margin-top:8px;}
+.price-n{font-family:'Bebas Neue',sans-serif;font-size:58px;line-height:1;color:var(--text);}
+.price-period{font-size:12px;color:var(--muted);margin-bottom:16px;}
+.price-athletes-badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;background:rgba(255,255,255,0.05);color:var(--text2);border:1px solid var(--border2);padding:5px 12px;border-radius:20px;margin-bottom:22px;}
+.price-athletes-badge::before{content:'👥';font-size:13px;}
+.price-athletes-badge--accent{background:rgba(0,150,143,0.1);color:var(--accent);border-color:rgba(0,150,143,0.35);}
+.price-features{list-style:none;display:flex;flex-direction:column;gap:10px;margin-bottom:28px;}
+.price-features li{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px;}
+.check{color:var(--green);font-size:14px;}
+.cross{color:var(--muted);font-size:14px;}
+.btn-plan{display:block;width:100%;text-align:center;padding:13px;border-radius:9px;font-weight:700;font-size:13px;text-decoration:none;transition:all .2s;}
+.btn-plan-primary{background:var(--accent);color:#fff;}
+.btn-plan-primary:hover{background:var(--accent2);}
+.btn-plan-ghost{background:transparent;color:var(--text);border:1px solid var(--border2);}
+.btn-plan-ghost:hover{border-color:var(--text2);}
+.pricing-note{margin-top:24px;font-size:13px;color:var(--muted);max-width:900px;}
+.pricing-note::before{content:'↑ ';color:var(--accent);}
+
+/* Formula block */
+.formula-block{background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:16px 20px;margin-top:16px;}
+.formula-label{font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:8px;text-transform:uppercase;}
+.formula-code{font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:.3px;font-size:13px;color:var(--accent);margin-bottom:6px;}
+.formula-result{font-size:13px;color:var(--text2);}
+.formula-result strong{color:var(--green);}
+
+/* ═══════════════ ATHLETE PAGE ═══════════════ */
+/* Offer tabs */
+.offer-tabs{display:flex;gap:4px;margin-bottom:40px;background:var(--card);border:1px solid var(--border2);border-radius:12px;padding:4px;width:fit-content;}
+.offer-tab{font-size:13px;font-weight:700;padding:10px 22px;border-radius:9px;border:none;background:transparent;color:var(--muted);cursor:pointer;transition:all .2s;letter-spacing:.3px;}
+.offer-tab--active{background:var(--card2);color:var(--text);box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.offer-tab:hover:not(.offer-tab--active){color:var(--text2);}
+@media(max-width:500px){.offer-tabs{width:100%;} .offer-tab{flex:1;font-size:12px;padding:9px 10px;}}
+
+/* Offer grids */
+.offers-grid{display:grid;gap:16px;}
+.offers-grid--2col{grid-template-columns:repeat(auto-fit,minmax(300px,1fr));}
+.offers-grid--1col{grid-template-columns:1fr;}
+
+/* Offer cards */
+.offer-card{background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:32px 28px;display:flex;flex-direction:column;gap:16px;transition:transform .2s;position:relative;overflow:hidden;}
+.offer-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--ot,var(--accent));transform:scaleX(0);transform-origin:left;transition:transform .3s;}
+.offer-card:hover{transform:translateY(-2px);}
+.offer-card:hover::before{transform:scaleX(1);}
+.offer-card--featured{border-color:var(--accent);border-width:2px;}
+.offer-card--featured::before{transform:scaleX(1);}
+.offer-card--affiliate{border-color:rgba(200,71,255,0.3);}
+.offer-card--affiliate::before{background:var(--purple);transform:scaleX(1);}
+.offer-icon{font-size:28px;line-height:1;}
+.offer-tag{display:inline-block;font-size:15px;font-weight:700;letter-spacing:.5px;color:var(--ot,var(--accent));width:fit-content;margin-bottom:4px;}
+.offer-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(24px,3vw,32px);letter-spacing:1px;color:var(--text);line-height:1.05;}
+.offer-desc{font-size:14px;color:var(--text2);line-height:1.75;flex:1;}
+.offer-bullets{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.offer-bullets li{font-size:13px;color:var(--text2);display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+.offer-bullets li::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--ot,var(--accent));flex-shrink:0;margin-top:7px;}
+.offer-price{display:flex;align-items:baseline;gap:4px;margin-top:4px;}
+.offer-price-n{font-family:'Bebas Neue',sans-serif;font-size:48px;color:var(--text);line-height:1;}
+.offer-price-period{font-size:14px;color:var(--muted);}
+.offer-cta{display:inline-flex;align-items:center;gap:8px;background:#25d366;color:#fff;font-weight:700;font-size:13px;padding:12px 22px;border-radius:9px;text-decoration:none;transition:all .2s;width:fit-content;}
+.offer-cta:hover{background:#1ebe5a;transform:translateY(-1px);}
+
+/* Affiliate authority block */
+.affiliate-authority{background:rgba(200,71,255,0.07);border:1px solid rgba(200,71,255,0.2);border-radius:10px;padding:16px 18px;max-width:360px;}
+.aa-label{font-size:11px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--purple);margin-bottom:6px;}
+.aa-text{font-size:13px;color:var(--text2);line-height:1.65;font-style:italic;}
+
+/* Affiliate features */
+.affiliate-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;}
+.af-item{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--text2);padding:8px 12px;background:var(--card2);border-radius:8px;}
+.af-check{color:var(--green);font-size:15px;flex-shrink:0;}
+
+/* Affiliate pricing table */
+.affiliate-pricing{background:var(--card2);border:1px solid var(--border2);border-radius:12px;overflow:hidden;}
+.ap-title{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--muted);padding:12px 18px;border-bottom:1px solid var(--border);}
+.ap-grid{display:flex;flex-direction:column;}
+.ap-row{display:grid;grid-template-columns:1fr auto 80px;align-items:center;padding:11px 18px;border-bottom:1px solid var(--border);gap:12px;}
+.ap-row:last-child{border-bottom:none;}
+.ap-row--best{background:rgba(200,71,255,0.07);}
+.ap-label{font-size:13px;color:var(--text2);display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.ap-best-badge{font-size:9px;font-weight:800;letter-spacing:1px;text-transform:uppercase;background:var(--purple);color:#fff;padding:2px 7px;border-radius:3px;}
+.ap-price{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--text);white-space:nowrap;text-align:right;}
+.ap-mo{font-family:'DM Sans',sans-serif;font-size:11px;color:var(--muted);font-weight:400;}
+.ap-save{font-size:12px;font-weight:700;color:var(--green);text-align:right;white-space:nowrap;}
+.ap-row--best .ap-price{color:var(--purple);}
+
+/* WhatsApp button */
+.btn-wa{display:inline-flex;align-items:center;gap:10px;background:#25d366;color:#fff;font-weight:700;font-size:15px;padding:15px 28px;border-radius:10px;text-decoration:none;transition:all .2s;}
+.btn-wa:hover{background:#1ebe5a;transform:translateY(-1px);}
+.btn-wa--large{font-size:16px;padding:18px 40px;}
+
+/* Offer cards */
+.offers-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px;}
+.offer-card{background:var(--card);border:1px solid var(--border2);border-radius:22px;padding:32px 28px;display:flex;flex-direction:column;gap:14px;transition:transform .2s;position:relative;overflow:hidden;}
+.offer-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--ot,var(--accent));transform:scaleX(0);transform-origin:left;transition:transform .3s;}
+.offer-card:hover{transform:translateY(-2px);}
+.offer-card:hover::before{transform:scaleX(1);}
+.offer-card--featured{border-color:var(--accent);border-width:2px;}
+.offer-card--featured::before{transform:scaleX(1);}
+.offer-icon{font-size:30px;line-height:1;}
+.offer-tag{display:inline-block;font-size:15px;font-weight:700;letter-spacing:.5px;color:var(--ot,var(--accent));width:fit-content;margin-bottom:4px;}
+.offer-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;color:var(--text);line-height:1;}
+.offer-desc{font-size:14px;color:var(--text2);line-height:1.7;flex:1;}
+.offer-bullets{list-style:none;display:flex;flex-direction:column;gap:8px;}
+.offer-bullets li{font-size:13px;color:var(--text2);display:flex;align-items:flex-start;gap:8px;line-height:1.5;}
+.offer-bullets li::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--ot,var(--accent));flex-shrink:0;margin-top:7px;}
+.offer-cta{display:inline-flex;align-items:center;gap:8px;background:#25d366;color:#fff;font-weight:700;font-size:13px;padding:11px 20px;border-radius:8px;text-decoration:none;transition:all .2s;margin-top:4px;width:fit-content;}
+.offer-cta:hover{background:#1ebe5a;}
+
+.athlete-hero{padding:80px 5vw 60px;position:relative;overflow:hidden;border-bottom:1px solid var(--border);}
+.athlete-hero-inner{max-width:680px;position:relative;z-index:1;}
+.athlete-hero .tag{background:rgba(71,200,255,0.1);color:var(--blue);border-color:rgba(71,200,255,0.3);margin-bottom:20px;display:inline-block;}
+.athlete-hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(48px,7vw,88px);line-height:0.92;letter-spacing:1px;margin-bottom:20px;}
+.athlete-hero h1 em{font-style:normal;color:var(--blue);}
+.athlete-hero p{font-size:16px;color:var(--text2);line-height:1.75;max-width:500px;margin-bottom:32px;}
+
+/* Phone mockup */
+.phone-section{padding:60px 5vw;display:grid;grid-template-columns:1fr 320px;gap:80px;align-items:center;}
+@media(max-width:900px){.phone-section{grid-template-columns:1fr;gap:48px;}}
+.phone-text h2{margin-bottom:16px;}
+.phone-text p{font-size:15px;color:var(--text2);line-height:1.8;margin-bottom:24px;}
+.phone-frame{position:relative;width:280px;margin:0 auto;}
+.phone-shell{background:#0a0a0a;border:2px solid #2a2a2a;border-radius:36px;padding:12px;box-shadow:0 40px 80px rgba(0,0,0,0.6),inset 0 1px 0 rgba(255,255,255,0.05);}
+.phone-notch{width:80px;height:6px;background:#1a1a1a;border-radius:3px;margin:0 auto 10px;}
+.phone-screen{background:var(--dark);border-radius:26px;overflow:hidden;}
+.phone-topbar{background:var(--black);padding:10px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);}
+.phone-topbar-title{font-family:'Bebas Neue',sans-serif;font-size:12px;letter-spacing:1px;color:var(--text);white-space:nowrap;}
+.phone-content{padding:12px;display:flex;flex-direction:column;gap:8px;}
+.phone-day-strip{display:flex;gap:6px;overflow:hidden;margin-bottom:4px;}
+.phone-day{flex:1;text-align:center;padding:8px 2px;border-radius:10px;border:1px solid var(--border);}
+.phone-day.active{background:rgba(71,255,140,0.08);border-color:var(--green);}
+.phone-day-n{font-size:8px;color:var(--muted);letter-spacing:.5px;}
+.phone-day-d{font-size:13px;font-weight:700;color:var(--text2);}
+.phone-day.active .phone-day-d{color:var(--green);}
+.phone-day-dot{width:4px;height:4px;border-radius:50%;background:var(--green);margin:3px auto 0;}
+.phone-program-tabs{display:flex;gap:5px;overflow:hidden;margin-bottom:8px;}
+.phone-program-tab{font-size:8px;font-weight:600;padding:5px 8px;border-radius:12px;border:1px solid var(--border2);color:var(--muted);white-space:nowrap;}
+.phone-program-tab.active{background:rgba(255,140,71,0.15);color:var(--orange);border-color:var(--orange);}
+.phone-week-label{font-family:'Bebas Neue',sans-serif;font-size:13px;letter-spacing:1px;color:var(--text);margin-bottom:8px;}
+.phone-wod-tag{display:inline-block;font-size:9px;font-weight:700;letter-spacing:1px;color:var(--accent);background:rgba(0,150,143,0.12);padding:3px 8px;border-radius:4px;}
+.phone-wod-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--text);margin:8px 0 2px;}
+.phone-wod-cap{font-size:9px;color:var(--muted);font-weight:700;letter-spacing:.5px;margin-bottom:8px;}
+.phone-scaling{border-radius:5px;padding:7px 9px;margin-bottom:5px;border:1px solid;font-size:9px;line-height:1.6;}
+.phone-scaling-label{font-size:8px;font-weight:700;letter-spacing:1px;margin-bottom:2px;display:block;}
+.phone-mon-score-label{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);margin:10px 0 5px;text-transform:uppercase;}
+.phone-time-row{display:flex;gap:8px;align-items:center;margin:6px 0 8px;}
+.phone-time-box{flex:1;background:var(--card2);border:1px solid var(--border2);border-radius:5px;padding:6px 4px;font-size:12px;color:var(--text);text-align:center;font-weight:700;font-variant-numeric:tabular-nums;}
+.phone-validate-btn{background:var(--accent);color:#000;text-align:center;padding:9px;border-radius:6px;font-size:11px;font-weight:700;}
+.phone-leaderboard-btn{display:flex;align-items:center;justify-content:center;gap:6px;border:1px solid var(--border2);border-radius:6px;padding:8px;font-size:10px;color:var(--text2);margin-top:6px;}
+.phone-session{background:var(--card);border-radius:6px;padding:12px;border:1px solid var(--border2);}
+.phone-session-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+.phone-session-type{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--accent);text-transform:uppercase;}
+.phone-session-title{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:1px;color:var(--text);margin-bottom:6px;}
+.phone-bloc{background:var(--card2);border-radius:5px;padding:8px 10px;margin-bottom:5px;font-size:10px;color:var(--text2);line-height:1.6;}
+.phone-bloc strong{color:var(--text);font-weight:700;font-variant-numeric:tabular-nums;}
+.phone-score-row{display:flex;gap:6px;margin-top:8px;}
+.phone-score-chip{flex:1;text-align:center;padding:7px;background:var(--card2);border-radius:5px;font-size:10px;color:var(--text2);border:1px solid var(--border2);}
+.phone-score-chip.active{background:rgba(0,150,143,0.15);color:var(--accent);border-color:rgba(0,150,143,0.4);font-weight:700;}
+.phone-intensity-row{display:flex;justify-content:space-between;align-items:center;font-size:9px;font-weight:700;letter-spacing:.5px;text-transform:uppercase;color:var(--muted);margin:10px 0 5px;}
+.phone-intensity-value{color:var(--red);}
+.phone-intensity-bar{height:4px;background:var(--border2);border-radius:2px;overflow:hidden;}
+.phone-intensity-fill{height:100%;width:80%;background:var(--red);border-radius:2px;}
+.phone-wellness{background:var(--card);border-radius:6px;padding:10px 12px;border:1px solid var(--border2);}
+.phone-wellness-title{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;margin-bottom:8px;}
+.phone-wellness-emojis{display:flex;justify-content:space-between;}
+.phone-emoji{font-size:20px;opacity:.3;}
+.phone-emoji.selected{opacity:1;transform:scale(1.15);}
+.phone-navbar{background:var(--black);border-top:1px solid var(--border);padding:8px 0 4px;display:flex;justify-content:space-around;}
+.phone-nav-item{display:flex;flex-direction:column;align-items:center;gap:2px;font-size:8px;color:var(--muted);}
+.phone-nav-item.active{color:var(--accent);}
+.phone-nav-icon{font-size:16px;}
+
+/* Athlete features */
+.ath-features{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px;}
+.ath-card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:24px;transition:border-color .2s,transform .2s;}
+.ath-card:hover{border-color:var(--border2);transform:translateY(-2px);}
+.ath-icon{font-size:26px;margin-bottom:14px;display:block;}
+.ath-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:.5px;margin-bottom:6px;color:var(--text);}
+.ath-desc{font-size:13px;color:var(--text2);line-height:1.65;}
+
+/* ═══════════════ SHARED MOCKS ═══════════════ */
+/* Séance editor fields */
+.seance-fields{display:flex;flex-direction:column;gap:12px;margin-top:18px;}
+.seance-row{display:flex;flex-direction:column;gap:12px;}
+.seance-row--2col{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+@media(max-width:600px){.seance-row--2col{grid-template-columns:1fr;}}
+.seance-field{display:flex;flex-direction:column;gap:7px;}
+.sf-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);}
+.sf-chips{display:flex;flex-wrap:wrap;gap:5px;}
+.sf-chip{font-size:11px;font-weight:600;padding:4px 11px;border-radius:20px;background:var(--card2);color:var(--text2);border:1px solid var(--border2);}
+.sf-chip--active{background:rgba(71,200,255,0.12);color:var(--blue);border-color:rgba(71,200,255,0.35);}
+.sf-input-mock{background:var(--card2);border:1px solid var(--border2);border-radius:5px;padding:9px 13px;font-size:13px;color:var(--muted);font-style:italic;}
+.sf-intensity{display:flex;align-items:center;gap:8px;padding-top:4px;}
+.sf-dot{width:11px;height:11px;border-radius:50%;background:var(--border2);}
+.sf-dot--med.sf-dot--active{background:var(--orange);}
+.sf-intensity-label{font-size:13px;color:var(--orange);font-weight:600;}
+.sf-editor-mock{background:var(--card2);border:1px solid var(--border2);border-radius:5px;padding:13px 15px;display:flex;flex-direction:column;gap:4px;font-weight:600;font-variant-numeric:tabular-nums;font-size:12px;}
+.sf-editor-line{color:var(--text2);}
+.sf-editor-indent{padding-left:14px;}
+.sf-kw{color:var(--accent);font-weight:500;}
+.sf-formula{background:rgba(71,200,255,0.1);color:var(--blue);border-radius:4px;padding:1px 5px;font-size:11px;}
+.seance-scaling-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;}
+@media(max-width:500px){.seance-scaling-grid{grid-template-columns:1fr;}}
+.seance-scaling-card{background:var(--card2);border-radius:5px;padding:10px 12px;border-left:3px solid var(--sc);}
+.ss-label{font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--sc);margin-bottom:5px;}
+.ss-desc{font-size:11px;color:var(--text2);line-height:1.5;}
+.sf-tips-mock{background:rgba(0,150,143,0.05);border:1px solid rgba(0,150,143,0.15);border-radius:8px;padding:10px 13px;font-size:12px;color:var(--text2);line-height:1.6;}
+.sf-link-mock{background:var(--card2);border:1px solid var(--border2);border-radius:5px;padding:9px 13px;display:flex;align-items:center;gap:7px;}
+.sf-link-mock--strava{border-color:rgba(252,76,2,0.2);}
+.sf-link-icon{font-size:15px;color:var(--blue);}
+.sf-link-text{font-size:11px;color:var(--muted);font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* Planning mock */
+.planning-mock{margin-top:18px;background:var(--card2);border:1px solid var(--border2);border-radius:6px;overflow:hidden;}
+.planning-header{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:8px;}
+.planning-nav{display:flex;align-items:center;gap:10px;}
+.planning-nav-btn{color:var(--muted);font-size:16px;cursor:pointer;}
+.planning-week-label{font-size:12px;font-weight:600;color:var(--text2);flex:1;text-align:center;}
+.planning-prog-tabs{display:flex;gap:5px;flex-wrap:wrap;}
+.planning-prog-tab{font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;color:var(--muted);border:1px solid var(--border2);}
+.planning-prog-tab--active{color:var(--orange);border-color:rgba(255,140,71,.4);background:rgba(255,140,71,.08);}
+.planning-grid{padding:10px 14px;overflow-x:auto;}
+.planning-days{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin-bottom:6px;min-width:460px;}
+.planning-day-head{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);text-align:center;}
+.planning-row{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;min-width:460px;}
+.planning-bloc{border-radius:7px;padding:7px 8px;min-height:66px;display:flex;flex-direction:column;gap:3px;}
+.planning-bloc--wod{background:rgba(255,68,68,.1);border:1px solid rgba(255,68,68,.25);}
+.planning-bloc--strength{background:rgba(0,150,143,.1);border:1px solid rgba(0,150,143,.25);}
+.planning-bloc--rest{background:rgba(255,255,255,.02);border:1px dashed var(--border2);opacity:.5;}
+.planning-bloc--empty{background:transparent;border:1px dashed var(--border2);display:flex;align-items:center;justify-content:center;min-height:66px;}
+.planning-bloc--dragging{box-shadow:0 8px 24px rgba(0,0,0,.5);transform:rotate(-1.5deg) scale(1.04);border-color:var(--orange)!important;z-index:2;}
+.pb-type{font-size:8px;font-weight:700;letter-spacing:1px;color:var(--muted);text-transform:uppercase;}
+.planning-bloc--wod .pb-type{color:var(--red);}
+.planning-bloc--strength .pb-type{color:var(--accent);}
+.pb-title{font-size:11px;font-weight:700;color:var(--text);line-height:1.2;}
+.pb-meta{font-size:10px;color:var(--muted);}
+.pb-add{font-size:18px;color:var(--border2);}
+.pb-actions{display:flex;gap:5px;margin-top:auto;}
+.pb-action{font-size:10px;color:var(--muted);cursor:pointer;padding:1px 4px;border:1px solid var(--border);border-radius:3px;}
+.planning-footer-actions{padding:9px 14px;border-top:1px solid var(--border);display:flex;gap:7px;flex-wrap:wrap;}
+.planning-action-btn{font-size:11px;font-weight:600;padding:6px 12px;border-radius:6px;border:none;cursor:pointer;background:var(--orange);color:#000;}
+.planning-action-btn--ghost{background:transparent;color:var(--text2);border:1px solid var(--border2);}
+
+/* Cycle grid */
+.cycle-grid-mock{margin-top:18px;background:var(--card2);border:1px solid var(--border2);border-radius:6px;overflow:hidden;}
+.cgm-header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--border);}
+.cgm-week-label{font-family:'Bebas Neue',sans-serif;font-size:14px;letter-spacing:1px;color:var(--text2);}
+.cgm-table{overflow-x:auto;}
+.cgm-row{display:grid;grid-template-columns:80px repeat(5,1fr);min-width:560px;}
+.cgm-row--head,.cgm-row--export{border-bottom:1px solid var(--border);}
+.cgm-row--head{background:rgba(255,255,255,.02);}
+.cgm-row:not(.cgm-row--head):not(.cgm-row--export){border-bottom:1px solid var(--border);}
+.cgm-row:last-child{border-bottom:none;}
+.cgm-cat{font-size:9px;font-weight:700;letter-spacing:1px;text-transform:uppercase;color:var(--muted);padding:7px 10px;display:flex;align-items:center;border-right:1px solid var(--border);}
+.cgm-day-head{font-size:9px;font-weight:700;letter-spacing:1px;color:var(--muted);text-align:center;padding:7px 4px;border-right:1px solid var(--border);}
+.cgm-day-head:last-child{border-right:none;}
+.cgm-cell{padding:4px;border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;min-height:32px;}
+.cgm-cell:last-child{border-right:none;}
+.cgm-bloc{width:100%;border-radius:5px;padding:5px 7px;font-size:10px;font-weight:700;text-align:center;border:1px solid transparent;line-height:1.4;text-transform:uppercase;letter-spacing:.3px;}
+.cgm-bloc--wod{background:rgba(240,240,240,.05);color:var(--text);border-color:var(--border2);font-weight:500;text-transform:none;letter-spacing:0;font-size:9px;text-align:left;}
+.cgm-bloc--rpe{font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:1px;}
+.cgm-export-btn{font-size:10px;font-weight:700;padding:4px 9px;border-radius:5px;border:1px solid rgba(200,71,255,.4);background:rgba(200,71,255,.1);color:var(--purple);cursor:pointer;white-space:nowrap;width:100%;}
+.cgm-export-btn:hover{background:rgba(200,71,255,.2);}
+.ct-export-btn{font-size:11px;font-weight:700;padding:5px 10px;border-radius:6px;border:1px solid rgba(200,71,255,.4);background:rgba(200,71,255,.08);color:var(--purple);cursor:pointer;white-space:nowrap;}
+
+/* Dashboard mock */
+.dash-mock{margin-top:18px;display:flex;flex-direction:column;gap:14px;}
+.dash-stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;}
+@media(max-width:600px){.dash-stats-row{grid-template-columns:repeat(2,1fr);}}
+.dash-stat{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:14px;}
+.dash-stat-n{font-family:'Bebas Neue',sans-serif;font-size:34px;color:var(--accent);line-height:1;}
+.dash-stat-l{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.3;}
+.dash-main{display:grid;grid-template-columns:1fr 210px;gap:14px;}
+@media(max-width:650px){.dash-main{grid-template-columns:1fr;}}
+.dash-section-label{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:9px;}
+.dash-athletes{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;}
+.dash-athlete-row{display:flex;align-items:center;gap:9px;padding:9px 0;border-bottom:1px solid var(--border);}
+.dash-athlete-row:last-child{border-bottom:none;}
+.dash-avatar{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;flex-shrink:0;}
+.dash-ath-info{flex:1;min-width:0;}
+.dash-ath-name{font-size:12px;font-weight:700;color:var(--text);}
+.dash-ath-sub{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dash-wellness{font-size:16px;}
+.dash-badge-chip{font-size:10px;color:var(--text2);background:var(--card);border:1px solid var(--border2);padding:2px 7px;border-radius:20px;white-space:nowrap;}
+.dash-badge-chip--none{color:var(--muted);}
+.dash-chart-col{display:flex;flex-direction:column;}
+.dash-donut-wrap{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:10px;}
+.dash-donut-svg{width:100px;height:100px;}
+.dash-legend{width:100%;display:flex;flex-direction:column;gap:5px;}
+.dash-leg-item{display:flex;align-items:center;gap:7px;font-size:11px;color:var(--text2);}
+.dash-leg-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.dash-leg-item strong{margin-left:auto;color:var(--text);font-weight:700;}
+.dash-pr-list{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:5px;margin-top:12px;}
+.dash-pr-row{display:flex;align-items:center;gap:5px;font-size:11px;}
+.dash-pr-move{color:var(--text2);flex:1;}
+.dash-pr-ath{color:var(--muted);font-size:10px;}
+.dash-pr-val{color:var(--green);font-weight:700;font-variant-numeric:tabular-nums;font-size:11px;}
+
+/* FAQ */
+.faq-list{max-width:700px;display:flex;flex-direction:column;gap:2px;}
+.faq-item{background:var(--card);border-radius:10px;overflow:hidden;}
+.faq-q{width:100%;text-align:left;padding:18px 22px;background:none;border:none;color:var(--text);font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:14px;transition:color .2s;}
+.faq-q:hover{color:var(--accent);}
+.faq-q .arrow{font-size:17px;color:var(--accent);transition:transform .3s;flex-shrink:0;}
+.faq-item.open .faq-q .arrow{transform:rotate(45deg);}
+.faq-a{max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease;font-size:13px;color:var(--text2);line-height:1.7;padding:0 22px;}
+.faq-item.open .faq-a{max-height:300px;padding:0 22px 18px;}
+
+/* CTA */
+.cta-section{text-align:center;padding:100px 5vw;position:relative;overflow:hidden;}
+.cta-glow{position:absolute;inset:0;background:radial-gradient(ellipse 60% 80% at 50% 50%,rgba(0,150,143,0.06) 0%,transparent 70%);}
+.cta-section > *{position:relative;z-index:1;}
+.cta-section h2{margin-bottom:14px;}
+.cta-section p{font-size:16px;color:var(--text2);margin-bottom:36px;}
+
+/* Footer */
+footer{border-top:1px solid var(--border);padding:28px 5vw;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:14px;}
+footer p{font-size:12px;color:var(--muted);}
+.footer-right{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.footer-legal{display:flex;gap:12px;flex-wrap:wrap;}
+.footer-legal a{font-size:11px;color:var(--muted);text-decoration:none;}
+.footer-legal a:hover{color:var(--text2);}
+.footer-ig{color:var(--text2);display:inline-flex;align-items:center;transition:color .2s;}
+.footer-ig:hover{color:var(--accent);}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">
+    <img src="/logo.png" alt="Upside Down Training">
+  </div>
+  <div class="nav-links">
+    <a href="/" class="nav-link active" onclick="return showPage('home',this)">Accueil</a>
+    <a href="/coach" class="nav-link" onclick="return showPage('coach',this)">Espace Coach</a>
+    <a href="/athlete" class="nav-link" onclick="return showPage('athlete',this)">Espace Athlète</a>
+    <a href="https://app.upsidedown-training.fr/" class="nav-login" aria-label="Se connecter à l'app"><span class="nl-txt">Se connecter →</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg></a>
+  </div>
+</nav>
+
+<!-- ═══════════════ HOME ═══════════════ -->
+<div id="page-home" class="page active">
+
+  <div class="home-hero">
+    <div class="home-glow"></div>
+    <div class="home-content">
+      <div class="home-logo"><img src="/logo.png" alt="Upside Down Training" style="height:64px"></div>
+      <h1 class="home-tagline">
+        Une plateforme pensée<br><em>pour les athlètes, coachs et owners.</em>
+      </h1>
+      <p class="home-sub">Programmez une séance, suivez une prog, restez en contact : le tout dans une seule app.</p>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;">
+        <a href="/coach" class="btn-primary" onclick="return showPage('coach',document.querySelectorAll('.nav-link')[1])">Je suis coach →</a>
+        <a href="/athlete" class="btn-ghost" onclick="return showPage('athlete',document.querySelectorAll('.nav-link')[2])">Je suis athlète</a>
+        <a href="https://app.upsidedown-training.fr/" class="btn-ghost">Déjà membre ? Se connecter</a>
+      </div>
+
+      <div class="home-cards">
+        <div class="home-card" style="--hc-color:var(--accent)" role="button" tabindex="0" onclick="return showPage('coach',document.querySelectorAll('.nav-link')[1])" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showPage('coach',document.querySelectorAll('.nav-link')[1]);}">
+          <div class="hc-title" style="font-size:36px">Espace Coach</div>
+          <p class="hc-sub">Programmations, planning, cycles, suivi de vos athlètes. Tout au même endroit.</p>
+          <span class="hc-arrow">→</span>
+        </div>
+        <div class="home-card" style="--hc-color:var(--blue)" role="button" tabindex="0" onclick="return showPage('athlete',document.querySelectorAll('.nav-link')[2])" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();showPage('athlete',document.querySelectorAll('.nav-link')[2]);}">
+          <div class="hc-title" style="font-size:36px">Espace Athlète</div>
+          <p class="hc-sub">Vos séances, vos PR, votre feeling du jour. Direct depuis votre téléphone.</p>
+          <span class="hc-arrow">→</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+  <hr class="divider">
+
+  <!-- Programmations (vitrine de l'app) -->
+  <section id="home-programmations" class="udt-progs">
+    <div class="udt-progs-head">
+      <span class="section-eyebrow">Nos programmations</span>
+      <h2>Choisis ta programmation.</h2>
+      <p class="section-lead">7 jours d'essai gratuits sur les abonnements · sans engagement.</p>
+    </div>
+    <iframe class="udt-vitrine" src="https://app.upsidedown-training.fr/programmes?embed=1" title="Programmations Upside Down Training" loading="lazy" scrolling="no"></iframe>
+    <div class="udt-progs-foot">
+      <a href="https://app.upsidedown-training.fr/" class="btn-primary">Se connecter à l'app →</a>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- About -->
+  <div class="home-about">
+    <div class="about-text">
+      <span class="section-eyebrow">Qui sommes-nous</span>
+      <h2>Un groupe de coachs<br>qui a créé sa propre app.</h2>
+      <p>Nous n'étions pas satisfaits des applications disponibles sur le marché. Nous écrivions nos séances sur Excel, puis on les recopiait à la main dans une autre application pour que les athlètes puissent les voir.</p>
+      <p>Alors nous avons créé <strong>Upside Down Training</strong>, pour tout regrouper au même endroit : programmation, suivi des athlètes, cycles de force, planning hebdomadaire, scores, PR.</p>
+      <p>Développée à Besançon, testée sur notre propre box, conçue pour s'adapter à n'importe quel studio.</p>
+    </div>
+    <div class="about-stats">
+      <div class="about-stat">
+        <div class="about-stat-n">100%</div>
+        <div class="about-stat-l">Calcul de charges auto depuis les PR</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-n">0€</div>
+        <div class="about-stat-l">Pour démarrer avec 10 athlètes</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-n">4</div>
+        <div class="about-stat-l">Disciplines couvertes : CrossFit, Kids, Teens, Hyrox</div>
+      </div>
+      <div class="about-stat">
+        <div class="about-stat-n">1</div>
+        <div class="about-stat-l">Seul outil pour tout gérer, du planning à la facturation</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Team -->
+  <div class="home-team">
+    <span class="section-eyebrow">L'équipe</span>
+    <h2 style="margin-bottom:8px">Des coachs spécialisés,<br>une seule plateforme.</h2>
+    <p style="font-size:15px;color:var(--text2);max-width:540px;margin-bottom:36px;line-height:1.7">CrossFit, CrossFit Kids, Teens, Hyrox : des coachs qui pratiquent et qui coachent au quotidien.</p>
+    <div class="team-grid">
+      <div class="team-card">
+        <div class="team-avatar" style="background:rgba(0,150,143,0.15);color:var(--accent)">MA</div>
+        <div>
+          <div class="team-name">Maëlle</div>
+          <div class="team-role">CrossFit · Gymnastique · Kids & Teens · Weightlifting</div>
+        </div>
+        <a href="https://www.instagram.com/maelleliu" class="footer-ig" target="_blank" rel="noopener" aria-label="Instagram Maëlle" style="margin-left:auto"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></a>
+      </div>
+      <div class="team-card">
+        <div class="team-avatar" style="background:rgba(71,200,255,0.15);color:var(--blue)">AL</div>
+        <div>
+          <div class="team-name">Alexis</div>
+          <div class="team-role">CrossFit · Endurance · Hyrox · Weightlifting</div>
+        </div>
+        <a href="https://www.instagram.com/aag_623" class="footer-ig" target="_blank" rel="noopener" aria-label="Instagram Alexis" style="margin-left:auto"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></a>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <img src="/logo.png" alt="Upside Down Training" style="height:26px;opacity:.4">
+    <div class="footer-right">
+      <p>© 2025 Upside Down Training · Fait par des coachs, pour des coachs.</p>
+      <div class="footer-legal">
+        <a href="/mentions-legales#mentions-legales" onclick="return goLegal('mentions-legales')">Mentions légales</a>
+        <a href="/mentions-legales#cgu" onclick="return goLegal('cgu')">CGU/CGV</a>
+        <a href="/mentions-legales#confidentialite" onclick="return goLegal('confidentialite')">Confidentialité</a>
+        <a href="/mentions-legales#cookies" onclick="return goLegal('cookies')">Cookies</a>
+      </div>
+      <a href="https://www.instagram.com/upside_downtraining/" class="footer-ig" target="_blank" rel="noopener" aria-label="Instagram Upside Down Training"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════ COACH ═══════════════ -->
+<div id="page-coach" class="page">
+
+  <div class="coach-hero">
+    <div class="coach-hero-inner">
+      <span class="tag">Espace Coach</span>
+      <h1>Toutes vos programmations<br><em>au même endroit.</em></h1>
+      <p>Créez vos séances, gérez vos cycles, suivez vos athlètes et encaissez vos abonnements, sans jamais quitter l'app.</p>
+      <div class="coach-hero-actions">
+        <a href="https://api.whatsapp.com/send/?phone=33756822269&text=Bonjour+%21+Je+souhaiterai+ouvrir+mon+studio+de+coaching&type=phone_number&app_absent=0" class="btn-primary" target="_blank">Ouvrir mon studio →</a>
+        <a href="#coach-pricing" class="btn-ghost">Voir les tarifs</a>
+      </div>
+    </div>
+  </div>
+
+  <section>
+    <span class="section-eyebrow">Fonctionnalités</span>
+    <h2>Votre tableau<br>de bord complet</h2>
+    <p class="section-lead">Tout ce que vous gérez chaque semaine, dans un seul outil.</p>
+
+    <div class="features-grid">
+
+      <!-- PROGRAMMES -->
+      <div class="feat-card" style="--feat-color:var(--accent)">
+        <div class="feat-icon">📦</div>
+        <div class="feat-tag">Programmes</div>
+        <div class="feat-title">Offres reliées directement à Stripe</div>
+        <p class="feat-desc">Chaque programme génère automatiquement le produit Stripe correspondant. Gestion des abonnements intégrée.</p>
+        <ul class="feat-bullets">
+          <li>Création en 30 secondes</li>
+          <li>Produit Stripe créé automatiquement</li>
+          <li>Abonnements mensuels ou accès libre</li>
+        </ul>
+      </div>
+
+      <!-- SÉANCES -->
+      <div class="feat-card feat-card--wide" style="--feat-color:var(--blue)">
+        <div class="feat-icon">⚡</div>
+        <div class="feat-tag">Séances</div>
+        <div class="feat-title">Un éditeur complet, du WOD au coaching</div>
+        <p class="feat-desc">Charges calculées automatiquement depuis les PR de chaque athlète. Scaling, coaching tips, scoring, bibliothèque vidéo, Strava, tout en un bloc.</p>
+        <div class="seance-fields">
+          <div class="seance-row seance-row--2col">
+            <div class="seance-field">
+              <div class="sf-label">Type</div>
+              <div class="sf-chips"><span class="sf-chip sf-chip--active">WOD</span><span class="sf-chip">Strength</span><span class="sf-chip">Skill</span><span class="sf-chip">Hyrox</span></div>
+            </div>
+            <div class="seance-field">
+              <div class="sf-label">Intensité</div>
+              <div class="sf-intensity"><span class="sf-dot sf-dot--low"></span><span class="sf-dot sf-dot--med sf-dot--active"></span><span class="sf-dot sf-dot--high"></span><span class="sf-intensity-label">Modérée</span></div>
+            </div>
+          </div>
+          <div class="seance-field">
+            <div class="sf-label">Contenu</div>
+            <div class="sf-editor-mock">
+              <div class="sf-editor-line"><span class="sf-kw">3×5</span> Back Squat · <span class="sf-formula">80%|BACKSQUAT|</span></div>
+              <div class="sf-editor-line"><span class="sf-kw">For Time</span></div>
+              <div class="sf-editor-line sf-editor-indent">21-15-9 Thrusters <span class="sf-formula">43%|FRONTSQUAT|</span></div>
+              <div class="sf-editor-line sf-editor-indent">Pull-ups</div>
+            </div>
+          </div>
+          <div class="seance-field">
+            <div class="sf-label">Scoring</div>
+            <div class="sf-chips"><span class="sf-chip sf-chip--active">For Time</span><span class="sf-chip">AMRAP</span><span class="sf-chip">Load</span><span class="sf-chip">Reps</span><span class="sf-chip">Pace</span></div>
+          </div>
+          <div class="seance-scaling-grid">
+            <div class="seance-scaling-card" style="--sc:var(--red)"><div class="ss-label">RX / Inter</div><div class="ss-desc">Thrusters 43 kg · Pull-ups stricts</div></div>
+            <div class="seance-scaling-card" style="--sc:var(--blue)"><div class="ss-label">Scaled</div><div class="ss-desc">Thrusters 30 kg · Jumping pull-ups</div></div>
+            <div class="seance-scaling-card" style="--sc:var(--purple)"><div class="ss-label">Fondation</div><div class="ss-desc">Goblet squat · Ring rows</div></div>
+          </div>
+          <div class="seance-row seance-row--2col">
+            <div class="seance-field"><div class="sf-label">Coaching Tips</div><div class="sf-tips-mock">💡 Gardez une logique d'évolution sur la gym. Adaptez les répétitions au niveau de l'athlète.</div></div>
+            <div class="seance-field">
+              <div class="sf-label">Liens</div>
+              <div class="sf-link-mock"><span class="sf-link-icon">▶</span><span class="sf-link-text">youtube.com/watch?v=…</span></div>
+              <div class="sf-link-mock sf-link-mock--strava" style="margin-top:5px"><span class="sf-link-icon" style="color:#fc4c02">⬡</span><span class="sf-link-text">strava.com/routes/…</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="formula-block" style="margin-top:16px">
+          <div class="formula-label">Calcul auto côté athlète</div>
+          <div class="formula-code">80%|BACKSQUAT| → <strong style="color:var(--green)">104 kg</strong> (PR 130 kg)</div>
+          <div class="formula-code" style="margin-top:5px">70%|3RM|FRONTSQUAT| → <strong style="color:var(--green)">59 kg</strong></div>
+        </div>
+      </div>
+
+      <!-- PLANNING -->
+      <div class="feat-card feat-card--wide" style="--feat-color:var(--orange)">
+        <div class="feat-icon">📅</div>
+        <div class="feat-tag">Planning</div>
+        <div class="feat-title">Vue hebdomadaire avec glisser-déposer</div>
+        <p class="feat-desc">Créez, déplacez et éditez vos blocs directement depuis le planning hebdomadaire.</p>
+        <div class="planning-mock">
+          <div class="planning-header">
+            <div class="planning-nav"><span class="planning-nav-btn">‹</span><span class="planning-week-label">Semaine 24 · 10 au 16 juin</span><span class="planning-nav-btn">›</span></div>
+            <div class="planning-prog-tabs"><span class="planning-prog-tab planning-prog-tab--active">WOD CrossFit</span><span class="planning-prog-tab">Strength</span><span class="planning-prog-tab">Endurance</span></div>
+          </div>
+          <div class="planning-grid">
+            <div class="planning-days"><div class="planning-day-head">LUN</div><div class="planning-day-head">MAR</div><div class="planning-day-head">MER</div><div class="planning-day-head">JEU</div><div class="planning-day-head">VEN</div><div class="planning-day-head">SAM</div><div class="planning-day-head">DIM</div></div>
+            <div class="planning-row">
+              <div class="planning-bloc planning-bloc--wod"><div class="pb-type">WOD</div><div class="pb-title">Fran</div><div class="pb-meta">21-15-9 · For Time</div><div class="pb-actions"><span class="pb-action">✎</span><span class="pb-action">⧉</span></div></div>
+              <div class="planning-bloc planning-bloc--strength"><div class="pb-type">STRENGTH</div><div class="pb-title">Back Squat</div><div class="pb-meta">5×3 @ 85%</div><div class="pb-actions"><span class="pb-action">✎</span><span class="pb-action">⧉</span></div></div>
+              <div class="planning-bloc planning-bloc--rest"><div class="pb-type">REST</div><div class="pb-title">Récup.</div></div>
+              <div class="planning-bloc planning-bloc--wod"><div class="pb-type">WOD</div><div class="pb-title">Cindy</div><div class="pb-meta">20 min AMRAP</div><div class="pb-actions"><span class="pb-action">✎</span><span class="pb-action">⧉</span></div></div>
+              <div class="planning-bloc planning-bloc--strength"><div class="pb-type">SKILL</div><div class="pb-title">Muscle-up</div><div class="pb-meta">Progressions</div><div class="pb-actions"><span class="pb-action">✎</span><span class="pb-action">⧉</span></div></div>
+              <div class="planning-bloc planning-bloc--wod planning-bloc--dragging"><div class="pb-type">WOD</div><div class="pb-title">Grace</div><div class="pb-meta">30 C&J · For Time</div></div>
+              <div class="planning-bloc planning-bloc--empty"><div class="pb-add">＋</div></div>
+            </div>
+          </div>
+          <div class="planning-footer-actions"><button class="planning-action-btn">⧉ Dupliquer la semaine</button><button class="planning-action-btn planning-action-btn--ghost">+ Nouvelle séance</button></div>
+        </div>
+      </div>
+
+      <!-- CYCLE -->
+      <div class="feat-card feat-card--wide" style="--feat-color:var(--purple)">
+        <div class="feat-icon">🔄</div>
+        <div class="feat-tag">Cycles</div>
+        <div class="feat-title">Grille semaine × catégories, export en séance</div>
+        <p class="feat-desc">Construisez vos cycles comme un tableur. Exportez une colonne directement en séance en 1 clic.</p>
+        <div class="cycle-grid-mock">
+          <div class="cgm-header"><span class="cgm-week-label">▾ SEMAINE 3 &nbsp;20/7 → 26/7</span><button class="ct-export-btn" style="margin-left:auto;font-size:10px;padding:4px 10px">⧉ Dupliquer</button></div>
+          <div class="cgm-table">
+            <div class="cgm-row cgm-row--head"><div class="cgm-cat"></div><div class="cgm-day-head">LUNDI</div><div class="cgm-day-head">MARDI</div><div class="cgm-day-head">MERCREDI</div><div class="cgm-day-head">JEUDI</div><div class="cgm-day-head">VENDREDI</div></div>
+            <div class="cgm-row cgm-row--export"><div class="cgm-cat"></div><div class="cgm-cell"><button class="cgm-export-btn">→ Séance</button></div><div class="cgm-cell"><button class="cgm-export-btn">→ Séance</button></div><div class="cgm-cell"><button class="cgm-export-btn">→ Séance</button></div><div class="cgm-cell"><button class="cgm-export-btn">→ Séance</button></div><div class="cgm-cell"><button class="cgm-export-btn">→ Séance</button></div></div>
+            <div class="cgm-row"><div class="cgm-cat">Priorité</div><div class="cgm-cell"><div class="cgm-bloc" style="background:#e8c84733;color:#e8c847;border-color:#e8c84755">TIME</div></div><div class="cgm-cell"><div class="cgm-bloc" style="background:#e8c84733;color:#e8c847;border-color:#e8c84755">TIME</div></div><div class="cgm-cell"><div class="cgm-bloc" style="background:#ff8c4733;color:#ff8c47;border-color:#ff8c4755">TASK</div></div><div class="cgm-cell"><div class="cgm-bloc" style="background:#47c8ff33;color:#47c8ff;border-color:#47c8ff55">INTERVALLES</div></div><div class="cgm-cell"><div class="cgm-bloc" style="background:#ff8c4733;color:#ff8c47;border-color:#ff8c4755">TASK</div></div></div>
+            <div class="cgm-row"><div class="cgm-cat">Charge</div><div class="cgm-cell"><div class="cgm-bloc" style="background:#47c8ff22;color:#47c8ff;border-color:#47c8ff44">LIGHT</div></div><div class="cgm-cell"><div class="cgm-bloc" style="background:#f0f0f022;color:#f0f0f0;border-color:#f0f0f044">BW</div></div><div class="cgm-cell"><div class="cgm-bloc" style="background:#ff444422;color:#ff4444;border-color:#ff444444">HEAVY</div></div><div class="cgm-cell"><div class="cgm-bloc" style="background:#f0f0f022;color:#f0f0f0;border-color:#f0f0f044">BW</div></div><div class="cgm-cell"><div class="cgm-bloc" style="background:#47c8ff22;color:#47c8ff;border-color:#47c8ff44">LIGHT</div></div></div>
+            <div class="cgm-row cgm-row--wod"><div class="cgm-cat">WOD</div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--wod">3 SETS REST 2:00<br><span style="opacity:.6">8x 30" ON/15" OFF</span></div></div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--wod">FRONT SQUAT<br><span style="opacity:.6">Hypertrophy 4×3</span></div></div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--wod">FORCE<br><span style="opacity:.6">5 SETS EVERY 3'</span></div></div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--wod" style="background:#ff444418;border-color:#ff444444">5 SETS 2:00<br><span style="opacity:.6;color:#ff4444">Push Press 67.5%</span></div></div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--wod">GYM VOLUME<br><span style="opacity:.6">Suspension…</span></div></div></div>
+            <div class="cgm-row"><div class="cgm-cat">RPE</div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--rpe" style="background:#ff8c4733;color:#ff8c47;border-color:#ff8c4755">7</div></div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--rpe" style="background:#ff444433;color:#ff4444;border-color:#ff444455">9</div></div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--rpe" style="background:#ff444433;color:#ff4444;border-color:#ff444455">8</div></div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--rpe" style="background:#ff8c4733;color:#ff8c47;border-color:#ff8c4755">7</div></div><div class="cgm-cell"><div class="cgm-bloc cgm-bloc--rpe" style="background:#ff444433;color:#ff4444;border-color:#ff444455">8</div></div></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- DASHBOARD -->
+      <div class="feat-card feat-card--wide" style="--feat-color:var(--accent)">
+        <div class="feat-icon">📊</div>
+        <div class="feat-tag">Dashboard</div>
+        <div class="feat-title">Vue d'ensemble de tous vos athlètes</div>
+        <p class="feat-desc">PR récents, badges, état de forme et répartition des scores, tout d'un coup d'œil.</p>
+        <div class="dash-mock">
+          <div class="dash-stats-row">
+            <div class="dash-stat"><div class="dash-stat-n">24</div><div class="dash-stat-l">Athlètes actifs</div></div>
+            <div class="dash-stat"><div class="dash-stat-n" style="color:var(--green)">7</div><div class="dash-stat-l">PR battus ce mois</div></div>
+            <div class="dash-stat"><div class="dash-stat-n" style="color:var(--orange)">3</div><div class="dash-stat-l">Fatigués aujourd'hui</div></div>
+            <div class="dash-stat"><div class="dash-stat-n" style="color:var(--accent)">12</div><div class="dash-stat-l">Badges distribués</div></div>
+          </div>
+          <div class="dash-main">
+            <div class="dash-athletes">
+              <div class="dash-section-label">Athlètes · état du jour</div>
+              <div class="dash-athlete-row"><div class="dash-avatar" style="background:#00968f22;color:var(--accent)">SL</div><div class="dash-ath-info"><div class="dash-ath-name">Sophie L.</div><div class="dash-ath-sub">PR Back Squat · 92 kg 🔥</div></div><div class="dash-wellness">😄</div><div class="dash-badge-chip">🏅 ×3</div></div>
+              <div class="dash-athlete-row"><div class="dash-avatar" style="background:#ff8c4722;color:var(--orange)">GM</div><div class="dash-ath-info"><div class="dash-ath-name">Gilles M.</div><div class="dash-ath-sub">Fran · 4:32 RX</div></div><div class="dash-wellness">😐</div><div class="dash-badge-chip">🏅 ×1</div></div>
+              <div class="dash-athlete-row"><div class="dash-avatar" style="background:#ff444422;color:var(--red)">MV</div><div class="dash-ath-info"><div class="dash-ath-name">Manon V.</div><div class="dash-ath-sub">Repos</div></div><div class="dash-wellness">😔</div><div class="dash-badge-chip dash-badge-chip--none">·</div></div>
+              <div class="dash-athlete-row"><div class="dash-avatar" style="background:#c847ff22;color:var(--purple)">JG</div><div class="dash-ath-info"><div class="dash-ath-name">Jérôme G.</div><div class="dash-ath-sub">Clean & Jerk · 95 kg 🔥</div></div><div class="dash-wellness">😄</div><div class="dash-badge-chip">🏅 ×5</div></div>
+            </div>
+            <div class="dash-chart-col">
+              <div class="dash-section-label">Scores</div>
+              <div class="dash-donut-wrap">
+                <svg viewBox="0 0 120 120" class="dash-donut-svg">
+                  <circle cx="60" cy="60" r="46" fill="none" stroke="#1a1a1a" stroke-width="18"/>
+                  <circle cx="60" cy="60" r="46" fill="none" stroke="var(--red)" stroke-width="18" stroke-dasharray="109.9 179.1" stroke-dashoffset="0" transform="rotate(-90 60 60)"/>
+                  <circle cx="60" cy="60" r="46" fill="none" stroke="var(--orange)" stroke-width="18" stroke-dasharray="78.1 210.9" stroke-dashoffset="-109.9" transform="rotate(-90 60 60)"/>
+                  <circle cx="60" cy="60" r="46" fill="none" stroke="var(--blue)" stroke-width="18" stroke-dasharray="69.4 219.6" stroke-dashoffset="-188" transform="rotate(-90 60 60)"/>
+                  <circle cx="60" cy="60" r="46" fill="none" stroke="var(--purple)" stroke-width="18" stroke-dasharray="31.8 257.2" stroke-dashoffset="-257.4" transform="rotate(-90 60 60)"/>
+                  <text x="60" y="56" text-anchor="middle" font-family="Bebas Neue,sans-serif" font-size="18" fill="#f0f0f0">289</text>
+                  <text x="60" y="67" text-anchor="middle" font-family="DM Sans,sans-serif" font-size="8" fill="#666">WODs</text>
+                </svg>
+                <div class="dash-legend">
+                  <div class="dash-leg-item"><span class="dash-leg-dot" style="background:var(--red)"></span><span>RX</span><strong>38%</strong></div>
+                  <div class="dash-leg-item"><span class="dash-leg-dot" style="background:var(--orange)"></span><span>Inter</span><strong>27%</strong></div>
+                  <div class="dash-leg-item"><span class="dash-leg-dot" style="background:var(--blue)"></span><span>Scaled</span><strong>24%</strong></div>
+                  <div class="dash-leg-item"><span class="dash-leg-dot" style="background:var(--purple)"></span><span>Fond.</span><strong>11%</strong></div>
+                </div>
+              </div>
+              <div class="dash-pr-list" style="margin-top:12px">
+                <div class="dash-section-label">PR du mois</div>
+                <div class="dash-pr-row"><span class="dash-pr-move">Back Squat</span><span class="dash-pr-ath">Sophie</span><span class="dash-pr-val">92kg↑</span></div>
+                <div class="dash-pr-row"><span class="dash-pr-move">C&amp;J</span><span class="dash-pr-ath">Tom</span><span class="dash-pr-val">95kg↑</span></div>
+                <div class="dash-pr-row"><span class="dash-pr-move">Fran</span><span class="dash-pr-ath">Marc</span><span class="dash-pr-val">4:32↑</span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Autres cartes -->
+      <div class="feat-card" style="--feat-color:var(--green)">
+        <div class="feat-icon">🏋️</div>
+        <div class="feat-tag">Mouvements & PR</div>
+        <div class="feat-title">Bibliothèque et benchmarks</div>
+        <p class="feat-desc">Mouvements personnalisables, PR par athlète, benchmarks standards (Fran, Grace…). Le système s'en sert partout pour les calculs.</p>
+      </div>
+      <div class="feat-card" style="--feat-color:var(--red)">
+        <div class="feat-icon">🎬</div>
+        <div class="feat-tag">Vidéos</div>
+        <div class="feat-title">Bibliothèque vidéo</div>
+        <p class="feat-desc">Alimentez une bibliothèque technique accessible à vos athlètes, liée directement aux mouvements de chaque séance.</p>
+      </div>
+      <div class="feat-card" style="--feat-color:var(--blue)">
+        <div class="feat-icon">🔒</div>
+        <div class="feat-tag">Espace personnel</div>
+        <div class="feat-title">Prog individuelle confidentielle</div>
+        <p class="feat-desc">Programmes sur-mesure visibles uniquement par l'athlète ciblé et vous. Compétition, prépa spécifique, rééducation.</p>
+      </div>
+      <div class="feat-card" style="--feat-color:var(--orange)">
+        <div class="feat-icon">🏅</div>
+        <div class="feat-tag">Badges</div>
+        <div class="feat-title">Récompenses auto et manuelles</div>
+        <p class="feat-desc">Badges automatiques (PR battu, première RX…) ou distribués à la main, pour entretenir l'émulation dans votre box.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- Pricing -->
+  <section id="coach-pricing">
+    <span class="section-eyebrow">Tarifs</span>
+    <h2>Activez votre studio,<br>invitez vos athlètes.</h2>
+    <p class="section-lead">Un abonnement, votre studio est activé et vos athlètes peuvent s'inscrire.</p>
+    <div class="pricing-grid">
+      <div class="price-card">
+        <div class="price-plan">Starter</div>
+        <div class="price-amount"><span class="price-cur">€</span><span class="price-n">10</span></div>
+        <p class="price-period">par mois · sans engagement</p>
+        <div class="price-athletes-badge">0 → 10 athlètes</div>
+        <p style="font-size:12.5px;color:var(--text2);line-height:1.5;margin:-12px 0 20px">Pour découvrir l'outil : un stagiaire en formation, ou un coach qui débute en programmation.</p>
+        <ul class="price-features">
+          <li><span class="check">✓</span> Studio activé</li>
+          <li><span class="check">✓</span> Toutes les sections coach</li>
+          <li><span class="check">✓</span> Calcul de charges par PR</li>
+          <li><span class="check">✓</span> Stripe Connect</li>
+          <li><span class="cross">–</span> Support prioritaire</li>
+        </ul>
+        <a href="https://api.whatsapp.com/send/?phone=33756822269&text=Bonjour+%21+Je+souhaiterais+d%C3%A9marrer+avec+la+formule+Starter&type=phone_number&app_absent=0" class="btn-plan btn-plan-ghost" target="_blank">Commencer</a>
+      </div>
+      <div class="price-card featured">
+        <div class="price-badge">Le plus populaire</div>
+        <div class="price-plan">Scale</div>
+        <div class="price-amount"><span class="price-cur">€</span><span class="price-n">30</span></div>
+        <p class="price-period">par mois · sans engagement</p>
+        <div class="price-athletes-badge price-athletes-badge--accent">11 → 30 athlètes</div>
+        <p style="font-size:12.5px;color:var(--text2);line-height:1.5;margin:-12px 0 20px">Pour lancer du coaching à distance ou du suivi 1:1, sur un groupe encore restreint.</p>
+        <ul class="price-features">
+          <li><span class="check">✓</span> Studio activé</li>
+          <li><span class="check">✓</span> Toutes les sections coach</li>
+          <li><span class="check">✓</span> Calcul de charges par PR</li>
+          <li><span class="check">✓</span> Stripe Connect</li>
+          <li><span class="check">✓</span> Support prioritaire</li>
+        </ul>
+        <a href="https://api.whatsapp.com/send/?phone=33756822269&text=Bonjour+%21+Je+souhaiterai+ouvrir+mon+studio+de+coaching&type=phone_number&app_absent=0" class="btn-plan btn-plan-primary" target="_blank">Ouvrir mon studio →</a>
+      </div>
+      <div class="price-card">
+        <div class="price-plan">Pro</div>
+        <div class="price-amount"><span class="price-cur">€</span><span class="price-n">50</span></div>
+        <p class="price-period">par mois · sans engagement</p>
+        <div class="price-athletes-badge">31+ athlètes</div>
+        <p style="font-size:12.5px;color:var(--text2);line-height:1.5;margin:-12px 0 20px">Pour une communauté large : le suivi reste simple, même avec beaucoup d'athlètes.</p>
+        <ul class="price-features">
+          <li><span class="check">✓</span> Studio activé</li>
+          <li><span class="check">✓</span> Toutes les sections coach</li>
+          <li><span class="check">✓</span> Calcul de charges par PR</li>
+          <li><span class="check">✓</span> Stripe Connect</li>
+          <li><span class="check">✓</span> Support prioritaire</li>
+        </ul>
+        <a href="https://api.whatsapp.com/send/?phone=33756822269&text=Bonjour+%21+Je+souhaiterais+d%C3%A9marrer+avec+la+formule+Pro&type=phone_number&app_absent=0" class="btn-plan btn-plan-ghost" target="_blank">Commencer</a>
+      </div>
+    </div>
+    <p class="pricing-note">Votre studio monte automatiquement en palier quand votre communauté grandit.</p>
+  </section>
+
+  <footer>
+    <img src="/logo.png" alt="Upside Down Training" style="height:26px;opacity:.4">
+    <div class="footer-right">
+      <p>© 2025 Upside Down Training</p>
+      <div class="footer-legal">
+        <a href="/mentions-legales#mentions-legales" onclick="return goLegal('mentions-legales')">Mentions légales</a>
+        <a href="/mentions-legales#cgu" onclick="return goLegal('cgu')">CGU/CGV</a>
+        <a href="/mentions-legales#confidentialite" onclick="return goLegal('confidentialite')">Confidentialité</a>
+        <a href="/mentions-legales#cookies" onclick="return goLegal('cookies')">Cookies</a>
+      </div>
+      <a href="https://www.instagram.com/upside_downtraining/" class="footer-ig" target="_blank" rel="noopener" aria-label="Instagram Upside Down Training"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════ ATHLETE ═══════════════ -->
+<div id="page-athlete" class="page">
+
+  <!-- OFFRES DE COACHING -->
+  <section id="coaching-offers" style="scroll-margin-top:80px">
+    <span class="section-eyebrow">Programmes</span>
+    <h1>Une programmation,<br>selon votre objectif.</h1>
+    <p class="section-lead">Des cycles construits bloc par bloc, avec un objectif clair pour chaque séance. Choisissez votre cible.</p>
+
+    <iframe id="athlete-vitrine" class="udt-vitrine" src="https://app.upsidedown-training.fr/programmes?embed=1" title="Programmations Upside Down Training" loading="lazy" scrolling="no"></iframe>
+    <div class="udt-progs-foot">
+      <a href="https://app.upsidedown-training.fr/" class="btn-primary">Se connecter à l'app →</a>
+    </div>
+
+    <!-- Affiliate : tarifs avec engagement -->
+    <div id="prog-affiliate" style="max-width:760px;margin:40px auto 0;scroll-margin-top:80px">
+      <span class="section-eyebrow">Affiliate · Owners de box</span>
+      <p class="section-lead" style="margin-bottom:16px">Tarifs avec engagement pour la programmation Affiliate (30 jours d'essai offerts).</p>
+      <div class="affiliate-pricing">
+            <div class="ap-title">Grille tarifaire</div>
+            <div class="ap-grid">
+              <div class="ap-row">
+                <span class="ap-label">Sans engagement</span>
+                <span class="ap-price">120€<span class="ap-mo">/mois</span></span>
+                <span class="ap-save"></span>
+              </div>
+              <div class="ap-row">
+                <span class="ap-label">Engagement 3 mois</span>
+                <span class="ap-price">112€<span class="ap-mo">/mois</span></span>
+                <span class="ap-save">−24€</span>
+              </div>
+              <div class="ap-row">
+                <span class="ap-label">Engagement 6 mois</span>
+                <span class="ap-price">108€<span class="ap-mo">/mois</span></span>
+                <span class="ap-save">−72€</span>
+              </div>
+              <div class="ap-row">
+                <span class="ap-label">Engagement 9 mois</span>
+                <span class="ap-price">104€<span class="ap-mo">/mois</span></span>
+                <span class="ap-save">−144€</span>
+              </div>
+              <div class="ap-row ap-row--best">
+                <span class="ap-label">Engagement 12 mois <span class="ap-best-badge">MEILLEUR TARIF</span></span>
+                <span class="ap-price">99€<span class="ap-mo">/mois</span></span>
+                <span class="ap-save">−252€</span>
+              </div>
+            </div>
+          </div>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:14px">
+        <a href="https://wa.me/33756822269?text=Bonjour%20!%20Je%20suis%20owner%20d%27une%20box%20et%20je%20veux%20en%20savoir%20plus%20sur%20la%20programmation%20Affiliate." class="offer-cta" style="background:transparent;border:1px solid #25d366;color:#25d366" target="_blank">💬 Échanger sur WhatsApp</a>
+      </div>
+    </div>
+
+  </section>
+
+  <hr class="divider">
+
+  <!-- Phone + app features -->
+  <div class="phone-section">
+    <div class="phone-text">
+      <span class="section-eyebrow">L'app mobile</span>
+      <h2>Tout dans<br>votre poche.</h2>
+      <p>Pas besoin de l'App Store. Ajoutez la page à votre écran d'accueil et c'est parti.</p>
+      <p>Vos charges sont calculées automatiquement depuis vos PR. Vous voyez directement le poids à mettre sur la barre.</p>
+    </div>
+    <div class="phone-frame">
+      <div class="phone-shell">
+        <div class="phone-notch"></div>
+        <div class="phone-screen">
+          <div class="phone-topbar">
+            <span class="phone-topbar-title">Upside Down Training</span>
+            <span style="font-size:11px;color:var(--muted)">Mer 16 Sep</span>
+          </div>
+          <div class="phone-content">
+            <div class="phone-program-tabs">
+              <div class="phone-program-tab">Affiliate</div>
+              <div class="phone-program-tab">Hyrox</div>
+              <div class="phone-program-tab">Kids-Teens</div>
+              <div class="phone-program-tab active">Training</div>
+            </div>
+            <div class="phone-week-label">SEM. 34 — AOÛ</div>
+            <div class="phone-day-strip">
+              <div class="phone-day"><div class="phone-day-n">LUN</div><div class="phone-day-d">17</div><div class="phone-day-dot"></div></div>
+              <div class="phone-day"><div class="phone-day-n">MAR</div><div class="phone-day-d">18</div><div class="phone-day-dot"></div></div>
+              <div class="phone-day"><div class="phone-day-n">MER</div><div class="phone-day-d">19</div><div class="phone-day-dot"></div></div>
+              <div class="phone-day"><div class="phone-day-n">JEU</div><div class="phone-day-d">20</div><div class="phone-day-dot"></div></div>
+              <div class="phone-day active"><div class="phone-day-n">VEN</div><div class="phone-day-d">21</div><div class="phone-day-dot"></div></div>
+            </div>
+            <div class="phone-session">
+              <span class="phone-wod-tag">WOD</span>
+              <div class="phone-wod-title">WOD Leaderboard</div>
+              <div class="phone-wod-cap">FOR TIME CAP 10:00</div>
+              <div class="phone-bloc">
+                <strong>5 ROUNDS</strong> (cap 4:00)<br>
+                3 Snatch <strong>84/55</strong><br>
+                3 Burpees over bar
+              </div>
+              <div class="phone-bloc" style="font-style:italic;color:var(--muted)">Rest 2:00</div>
+              <div class="phone-bloc">
+                <strong>5 ROUNDS</strong> (cap 4:00)<br>
+                3 Clean &amp; Jerk <strong>100/70</strong><br>
+                3 Burpees over bar
+              </div>
+              <div class="phone-scaling" style="border-color:var(--red);color:var(--red)">
+                <span class="phone-scaling-label">Intermédiaire</span>
+                <span style="color:var(--text2)">Snatch 70/45 · Clean &amp; Jerk 84/55</span>
+              </div>
+              <div class="phone-scaling" style="border-color:var(--blue);color:var(--blue)">
+                <span class="phone-scaling-label">Scaled</span>
+                <span style="color:var(--text2)">Snatch 50/35 · Clean &amp; Jerk 70/45</span>
+              </div>
+              <div class="phone-intensity-row"><span>Intensité</span><span class="phone-intensity-value">10/10</span></div>
+              <div class="phone-intensity-bar"><div class="phone-intensity-fill" style="width:100%"></div></div>
+              <div class="phone-bloc" style="font-size:9px;color:var(--muted);margin-top:10px">
+                💡 Aujourd'hui heavy day, vous devez être capable de mettre ~80% de votre charge et de garder de l'intensité tout au long du workout.
+              </div>
+              <div class="phone-mon-score-label">📊 Mon score</div>
+              <div class="phone-score-row">
+                <div class="phone-score-chip active">RX</div>
+                <div class="phone-score-chip">Inter</div>
+                <div class="phone-score-chip">Scaled</div>
+                <div class="phone-score-chip">Fond.</div>
+              </div>
+              <div class="phone-time-row">
+                <div class="phone-time-box" style="color:var(--muted)">Min</div>
+                <div class="phone-time-box" style="color:var(--muted)">Sec</div>
+              </div>
+              <div class="phone-validate-btn">✓ Valider</div>
+              <div class="phone-leaderboard-btn">🏆 Voir le classement · 14</div>
+            </div>
+          </div>
+          <div class="phone-navbar">
+            <div class="phone-nav-item active"><span class="phone-nav-icon">🏋️</span>Prog</div>
+            <div class="phone-nav-item"><span class="phone-nav-icon">📈</span>PR</div>
+            <div class="phone-nav-item"><span class="phone-nav-icon">💚</span>Suivi</div>
+            <div class="phone-nav-item"><span class="phone-nav-icon">🎬</span>Vidéos</div>
+            <div class="phone-nav-item"><span class="phone-nav-icon">👤</span>Profil</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="cta-section" style="border-top:1px solid var(--border)">
+    <div class="cta-glow"></div>
+    <span class="section-eyebrow">Prêt à démarrer ?</span>
+    <h2>On se lance<br>dès maintenant.</h2>
+    <a href="https://app.upsidedown-training.fr/" class="btn-primary" style="font-size:16px;padding:17px 44px">Ouvrir l'app →</a>
+  </section>
+
+  <footer>
+    <img src="/logo.png" alt="Upside Down Training" style="height:26px;opacity:.4">
+    <div class="footer-right">
+      <p>© 2025 Upside Down Training</p>
+      <div class="footer-legal">
+        <a href="/mentions-legales#mentions-legales" onclick="return goLegal('mentions-legales')">Mentions légales</a>
+        <a href="/mentions-legales#cgu" onclick="return goLegal('cgu')">CGU/CGV</a>
+        <a href="/mentions-legales#confidentialite" onclick="return goLegal('confidentialite')">Confidentialité</a>
+        <a href="/mentions-legales#cookies" onclick="return goLegal('cookies')">Cookies</a>
+      </div>
+      <a href="https://www.instagram.com/upside_downtraining/" class="footer-ig" target="_blank" rel="noopener" aria-label="Instagram Upside Down Training"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="4.2"/><circle cx="17.3" cy="6.7" r="1.1" fill="currentColor" stroke="none"/></svg></a>
+    </div>
+  </footer>
+</div>
+
+<!-- ═══════════════ LEGAL ═══════════════ -->
+<div id="page-legal" class="page" style="padding-top:64px">
+  <section style="max-width:760px;margin:0 auto;padding:60px 5vw 100px">
+    <span class="section-eyebrow">Informations</span>
+    <h1 style="margin-bottom:32px">Mentions légales<br>&amp; politiques.</h1>
+
+    <div style="background:rgba(255,140,71,0.08);border:1px solid rgba(255,140,71,0.25);border-radius:10px;padding:16px 20px;margin-bottom:40px;font-size:13px;color:var(--text2);line-height:1.7">
+      ⚠️ Ces pages sont un point de départ rédigé automatiquement et doivent être relues par un professionnel du droit avant publication. Les emplacements à compléter sont signalés par <strong>[À COMPLÉTER]</strong>.
+    </div>
+
+    <h2 id="mentions-legales" style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin:36px 0 14px;scroll-margin-top:80px">Mentions légales</h2>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Éditeur du site</strong><br>UPSIDE DOWN, SARL au capital de 1 330 €, dont le siège social est situé 55 rue de Dole, 25000 Besançon. SIREN 983 640 517, immatriculée au RCS de Besançon. N° TVA intracommunautaire FR76983640517. Contact : upsidedowntraining0@gmail.com · WhatsApp +33 7 56 82 22 69.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Directeur de la publication</strong><br>Maëlle Liu, gérante.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Hébergement du site</strong><br>Netlify, Inc., 44 Montgomery Street, Suite 300, San Francisco, CA 94104, États-Unis.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Application</strong><br>La création de compte, la connexion et le paiement des abonnements se font sur app.upsidedown-training.fr, un service distinct de ce site vitrine.</p>
+
+    <h2 id="cgu" style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin:36px 0 14px;scroll-margin-top:80px">Conditions générales d'utilisation</h2>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Objet</strong><br>Ce site présente les programmations et services Upside Down Training (coaching CrossFit, Hyrox, Kids &amp; Teens, programmation Affiliate pour box). L'inscription, l'accès aux séances et le paiement s'effectuent sur l'application dédiée, app.upsidedown-training.fr.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Accès et inscription</strong><br>L'accès aux programmes nécessite la création d'un compte sur l'application. Vous vous engagez à fournir des informations exactes et à garder vos identifiants de connexion confidentiels.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Règles d'usage</strong><br>Vous vous engagez à utiliser l'application dans le respect des autres athlètes et des coachs, à ne pas partager votre compte, et à ne pas reproduire ou diffuser le contenu des programmations à des fins commerciales sans autorisation.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Résiliation et devenir de vos données</strong><br>Vous pouvez résilier votre abonnement à tout moment depuis l'application ou en contactant l'équipe. Vos données sont ensuite conservées puis supprimées selon les délais indiqués dans la politique de confidentialité ci-dessous.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Propriété intellectuelle</strong><br>Les programmations, contenus et la marque Upside Down Training restent la propriété exclusive d'Upside Down. Toute reproduction ou diffusion sans autorisation est interdite. Les contenus que vous partagez sur l'application (résultats, commentaires) restent les vôtres ; vous nous autorisez à les utiliser dans le cadre du service (classements, suivi de progression).</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Responsabilité</strong><br>Upside Down met tout en œuvre pour assurer la qualité de ses programmations, mais ne peut être tenue responsable des blessures liées à une mauvaise exécution des mouvements, à un dépassement de vos capacités, ou à l'absence de suivi médical préalable. Consultez un professionnel de santé avant de débuter un programme intensif.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Disponibilité du service</strong><br>L'application peut faire l'objet de maintenances ponctuelles. Upside Down s'efforce d'assurer une disponibilité continue mais ne garantit pas un accès ininterrompu.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Modification des CGU</strong><br>Ces conditions peuvent être modifiées à tout moment ; la version applicable est celle publiée sur ce site à la date de votre consultation.</p>
+
+    <h2 id="cgv" style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin:36px 0 14px;scroll-margin-top:80px">Conditions générales de vente</h2>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Abonnements et prix</strong><br>Les tarifs affichés sont en euros, toutes taxes comprises, mensuels et sans engagement sauf mention contraire (voir les paliers dégressifs de l'offre Affiliate). Ils sont susceptibles d'évoluer ; les abonnements en cours restent au tarif souscrit jusqu'à la prochaine échéance.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Moyens de paiement</strong><br>Le paiement s'effectue par carte bancaire via Stripe, notre prestataire de paiement. Aucune donnée bancaire n'est stockée par Upside Down.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Garantie légale de conformité</strong><br>Les services fournis bénéficient de la garantie légale de conformité applicable aux contenus et services numériques (articles L217-3 et suivants du Code de la consommation). En cas de non-conformité du service à ce qui a été annoncé, contactez-nous pour trouver une solution.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Clause professionnels</strong><br>Pour les abonnements souscrits par des professionnels (offre Affiliate), tout retard de paiement entraîne l'exigibilité d'une indemnité forfaitaire de 40 € pour frais de recouvrement, sans préjudice d'une indemnisation complémentaire si les frais réels sont supérieurs. Tout litige entre professionnels relève des tribunaux compétents de Besançon.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Droit applicable</strong><br>Les présentes conditions sont soumises au droit français. En cas de litige, une solution amiable sera recherchée avant toute action judiciaire.</p>
+
+    <h2 id="confidentialite" style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin:36px 0 14px;scroll-margin-top:80px">Politique de confidentialité</h2>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Données collectées et traitées</strong><br>Ce site vitrine ne contient aucun formulaire de collecte de données personnelles ; les seules interactions possibles sont des liens sortants vers WhatsApp, vers notre questionnaire de suivi et vers l'application. L'application app.upsidedown-training.fr n'a pas de politique de confidentialité distincte : la présente politique couvre donc aussi les données traitées lors de la création de compte et de l'utilisation de l'application, à savoir votre identité (nom, e-mail), vos données de séance et de performance (programmation, PR, scores, charges) et vos données de paiement. Si vous remplissez notre questionnaire de suivi individualisé, les informations transmises (objectifs, niveau, disponibilités) sont utilisées pour vous orienter vers le programme adapté.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Sous-traitants</strong><br>Nous faisons appel à Stripe (paiement, États-Unis, encadré par des clauses contractuelles types) et à Supabase (hébergement de la base de données de l'application, [À COMPLÉTER : région d'hébergement]) pour faire fonctionner nos services. Le questionnaire de suivi individualisé est hébergé par Google Forms (Google Ireland Limited), susceptible de transférer des données vers les États-Unis dans le cadre du Data Privacy Framework.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Base légale et finalité</strong><br>Ce site vitrine ne collecte ni ne conserve aucune donnée en dehors de ce qui est strictement nécessaire à son fonctionnement technique (voir Cookies ci-dessous). Sur l'application, le traitement de vos données repose sur l'exécution du contrat qui vous lie à Upside Down (fourniture du service de coaching et de programmation) et, pour la facturation, sur nos obligations légales et contractuelles. Aucune donnée n'est vendue ni cédée à des fins publicitaires.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Conservation</strong><br>Vos données de compte et d'entraînement sont conservées pendant la durée de votre abonnement, puis supprimées dans un délai de 12 mois après la résiliation. Les données de facturation sont conservées 10 ans conformément à nos obligations légales.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Vos droits</strong><br>Conformément au RGPD, vous disposez d'un droit d'accès, de rectification, d'effacement, d'opposition, de limitation et de portabilité sur vos données. Pour l'exercer, contactez upsidedowntraining0@gmail.com. Vous pouvez aussi introduire une réclamation auprès de la CNIL (cnil.fr).</p>
+
+    <h2 id="cookies" style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin:36px 0 14px;scroll-margin-top:80px">Politique de cookies</h2>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px">Ce site n'utilise aucun cookie de mesure d'audience, de publicité ou de traçage. Il charge les polices Bebas Neue et DM Sans depuis les serveurs de Google Fonts, ce qui entraîne un appel technique vers Google et la transmission de votre adresse IP, sans dépôt de cookie ni profilage. Aucun consentement préalable n'est donc requis, conformément aux recommandations de la CNIL sur les ressources tierces non traçantes. Un espace de stockage local (localStorage), non partagé et non transmis, est utilisé uniquement par l'équipe Upside Down pour l'outil interne de mise à jour du site.</p>
+
+    <h2 id="remboursement" style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin:36px 0 14px;scroll-margin-top:80px">Politique de remboursement et de rétractation</h2>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Droit de rétractation</strong><br>Pour tout premier abonnement souscrit en ligne, vous disposez d'un délai de 14 jours pour vous rétracter sans justification (article L221-18 du Code de la consommation). Si vous demandez expressément à commencer le programme avant la fin de ce délai, votre droit de rétractation s'exerce au prorata du service déjà fourni.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Formulaire type de rétractation</strong><br>Pour exercer ce droit, vous pouvez utiliser cette déclaration ou toute autre formulation dénuée d'ambiguïté, à adresser à upsidedowntraining0@gmail.com : « Je notifie par la présente ma rétractation du contrat portant sur l'abonnement [nom du programme] souscrit le [date]. Nom, adresse : [...]. »</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Résiliation</strong><br>Les abonnements mensuels peuvent être résiliés à tout moment depuis l'application ou en contactant l'équipe ; la résiliation prend effet à la fin de la période déjà payée, sans remboursement du mois en cours sauf disposition légale contraire.</p>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px"><strong style="color:var(--text)">Contact</strong><br>Pour toute demande de remboursement, contactez l'équipe via WhatsApp ou upsidedowntraining0@gmail.com.</p>
+
+    <h2 id="mediateur" style="font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:1px;margin:36px 0 14px;scroll-margin-top:80px">Médiateur de la consommation</h2>
+    <p style="font-size:14px;color:var(--text2);line-height:1.8;margin-bottom:10px">Conformément à l'article L616-1 du Code de la consommation, en cas de litige non résolu directement avec notre équipe, vous pouvez recourir gratuitement à un médiateur de la consommation. [MÉDIATEUR À CHOISIR : nom, adresse postale et site internet du médiateur, à choisir dans la liste officielle des médiateurs agréés et après adhésion].</p>
+
+    <p style="font-size:12px;color:var(--muted);margin-top:40px">Dernière mise à jour : 15 septembre 2026</p>
+    <a href="/" onclick="return showPage('home',document.querySelectorAll('.nav-link')[0])" class="btn-ghost" style="margin-top:20px">← Retour à l'accueil</a>
+  </section>
+</div>
+
+<script>
+
+function showPage(id, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-link').forEach(l => l.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (el) el.classList.add('active');
+  window.scrollTo(0, 0);
+  var p = window.__UDT_PATHS[id] || '/';
+  var keepHash = window.__udtRouting && location.hash && location.hash.slice(1) !== id;
+  var target = p + window.location.search + (keepHash ? location.hash : '');
+  if (window.location.pathname + window.location.search + window.location.hash !== target) {
+    if (window.__udtRouting) history.replaceState({page: id}, '', target);
+    else history.pushState({page: id}, '', target);
+  }
+  window.__udtApplyMeta(id);
+  return false;
+}
+function openVitrine(link) {
+  var f = document.getElementById('athlete-vitrine');
+  if (f && link) f.src = 'https://app.upsidedown-training.fr/p/' + link + '?embed=1';
+}
+function switchTab(tab, btn) {
+  if (!btn) return;
+  document.querySelectorAll('.offer-tab-content').forEach(t => t.style.display = 'none');
+  document.querySelectorAll('.offer-tab').forEach(b => b.classList.remove('offer-tab--active'));
+  document.getElementById('tab-' + tab).style.display = 'block';
+  btn.classList.add('offer-tab--active');
+  window.location.hash = 'programmations-' + tab;
+}
+function goLegal(anchor) {
+  showPage('legal', null);
+  setTimeout(function () {
+    var el = document.getElementById(anchor);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 60);
+  return false;
+}
+function routeFromHash() {
+  window.__udtRouting = true;
+  try { routeInner(); } finally { window.__udtRouting = false; }
+}
+function routeInner() {
+  var hash = window.location.hash.replace('#', '');
+  var navLinks = document.querySelectorAll('.nav-link');
+  var byPath = {'/coach': 'coach', '/athlete': 'athlete', '/mentions-legales': 'legal'};
+  var pathId = byPath[window.location.pathname.replace(/\/+$/, '')];
+  if (pathId === 'legal') { showPage('legal', null); if (hash) { var lg = document.getElementById(hash); if (lg) setTimeout(function(){ lg.scrollIntoView({block:'start'}); }, 60); } return; }
+  if (pathId && hash !== 'coach' && hash !== 'athlete' && hash.indexOf('programmation') !== 0) { showPage(pathId, navLinks[pathId === 'coach' ? 1 : 2]); return; }
+  if (!pathId && !hash) { showPage('home', navLinks[0]); return; }
+  var offerTabs = document.querySelectorAll('.offer-tab');
+  var progCardMap = {
+    'programmation-athlete': 'prog-athlete',
+    'programmation-hyrox': 'prog-hyrox',
+    'programmation-kids-teens': 'prog-kids-teens',
+    'programmation-affiliate': 'prog-affiliate'
+  };
+  if (hash === 'coach') {
+    showPage('coach', navLinks[1]);
+  } else if (hash === 'athlete') {
+    showPage('athlete', navLinks[2]);
+  } else if (hash === 'programmations-athletes' || hash === 'programmations-affiliate') {
+    showPage('athlete', navLinks[2]);
+    if (hash === 'programmations-affiliate') openVitrine('affiliate');
+    setTimeout(function () {
+      var el = document.getElementById('coaching-offers');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  } else if (progCardMap[hash]) {
+    showPage('athlete', navLinks[2]);
+    var vlink = {'programmation-athlete': 'training', 'programmation-hyrox': 'hyrox', 'programmation-affiliate': 'affiliate'}[hash];
+    if (vlink) openVitrine(vlink);
+    setTimeout(function () {
+      var el = document.getElementById(vlink ? 'coaching-offers' : progCardMap[hash]) || document.getElementById('coaching-offers');
+      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 60);
+  }
+}
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', routeFromHash);
+} else {
+  routeFromHash();
+}
+window.addEventListener('load', routeFromHash);
+window.addEventListener('hashchange', routeFromHash);
+window.addEventListener('popstate', routeFromHash);
+/* Hauteur des vitrines : envoyée par l'app, l'iframe s'ajuste sans défilement interne */
+window.addEventListener('message', function (e) {
+  if (e.origin !== 'https://app.upsidedown-training.fr' || !e.data || e.data.type !== 'udt-vitrine-height') return;
+  document.querySelectorAll('iframe.udt-vitrine').forEach(function (f) {
+    if (f.contentWindow === e.source) f.style.height = e.data.height + 'px';
+  });
+});
+</script>
+
+<!-- ============ MODE ÉDITION (ADMIN) ============ -->
+<style id="admin-style">
+#admin-toggle{position:fixed;bottom:22px;right:22px;z-index:999;width:54px;height:54px;border-radius:50%;background:var(--accent);color:#fff;border:none;font-size:21px;cursor:pointer;box-shadow:0 8px 24px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;transition:transform .2s,background .2s;}
+#admin-toggle:hover{transform:scale(1.08);}
+body.admin-edit #admin-toggle{background:var(--red);}
+#admin-panel{position:fixed;top:0;right:-320px;width:300px;height:100%;background:var(--dark);border-left:1px solid var(--border2);z-index:998;padding:26px 22px;transition:right .28s ease;box-shadow:-10px 0 30px rgba(0,0,0,.5);display:flex;flex-direction:column;gap:14px;overflow-y:auto;}
+body.admin-edit #admin-panel{right:0;}
+#admin-panel h3{font-family:'Bebas Neue',sans-serif;font-size:23px;letter-spacing:1px;color:var(--text);margin-top:6px;}
+#admin-panel .admin-sub{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--accent);}
+#admin-panel p{font-size:12px;color:var(--text2);line-height:1.7;}
+#admin-panel .admin-legend{background:var(--card2);border:1px solid var(--border2);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;}
+#admin-panel .admin-legend-row{font-size:11.5px;color:var(--text2);display:flex;gap:8px;align-items:flex-start;}
+#admin-panel .admin-legend-row b{color:var(--text);}
+#admin-panel button{font-size:13px;font-weight:600;padding:12px 14px;border-radius:9px;border:1px solid var(--border2);background:var(--card2);color:var(--text);cursor:pointer;text-align:left;}
+#admin-panel button:hover{border-color:var(--accent);color:var(--accent);}
+#admin-panel .admin-danger:hover{border-color:var(--red);color:var(--red);}
+#admin-status{font-size:11px;color:var(--accent);min-height:16px;font-weight:600;}
+body.admin-edit [data-admin-leaf]{cursor:text;border-radius:3px;}
+body.admin-edit [data-admin-leaf]:hover{outline:1.5px dashed var(--accent);outline-offset:2px;background:rgba(0,150,143,0.07);}
+body.admin-edit [data-admin-leaf]:focus{outline:2px solid var(--accent);background:rgba(0,150,143,0.12);}
+.admin-hide-btn{display:none;position:absolute;top:10px;right:10px;z-index:60;background:var(--black);border:1px solid var(--border2);color:var(--text2);font-size:11px;font-weight:600;padding:6px 12px;border-radius:20px;cursor:pointer;align-items:center;gap:5px;box-shadow:0 4px 14px rgba(0,0,0,.4);}
+body.admin-edit .admin-hide-wrap:hover > .admin-hide-btn{display:flex;}
+.admin-hide-btn:hover{border-color:var(--accent);color:var(--accent);}
+.admin-hidden-section{display:none!important;}
+body.admin-edit a[href]:hover{box-shadow:inset 0 -2px 0 var(--blue);}
+#admin-linkmodal{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:1000;display:none;align-items:center;justify-content:center;padding:20px;}
+#admin-linkmodal.open{display:flex;}
+#admin-linkmodal .alm-box{background:var(--dark);border:1px solid var(--border2);border-radius:14px;padding:24px;width:100%;max-width:440px;display:flex;flex-direction:column;gap:13px;}
+#admin-linkmodal h4{font-size:16px;color:var(--text);font-family:'Bebas Neue',sans-serif;letter-spacing:.5px;}
+#admin-linkmodal label{font-size:11px;color:var(--text2);font-weight:600;}
+#admin-linkmodal input{background:var(--card2);border:1px solid var(--border2);border-radius:8px;padding:11px 13px;color:var(--text);font-size:13px;font-weight:600;}
+#admin-linkmodal .alm-actions{display:flex;gap:9px;justify-content:flex-end;margin-top:4px;}
+#admin-linkmodal .alm-actions button{padding:10px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;}
+#admin-linkmodal .alm-save{background:var(--accent);color:#fff;}
+#admin-linkmodal .alm-cancel{background:var(--card2);color:var(--text2);border:1px solid var(--border2)!important;}
+@media(max-width:480px){#admin-panel{width:88vw;right:-88vw;}}
+</style>
+
+<button id="admin-toggle" title="Mode édition">✎</button>
+<div id="admin-panel">
+  <span class="admin-sub">Upside Down Training</span>
+  <h3>Mode édition</h3>
+  <div class="admin-legend">
+    <div class="admin-legend-row">✏️ <span><b>Clique</b> sur un texte pour le modifier directement.</span></div>
+    <div class="admin-legend-row">🔗 <span><b>Double-clique</b> sur un lien pour changer son adresse.</span></div>
+    <div class="admin-legend-row">🚫 <span><b>Survole</b> une section pour la masquer ou la réafficher.</span></div>
+  </div>
+  <button id="admin-export">⬇ Exporter le site (.html)</button>
+  <button id="admin-reset" class="admin-danger">↺ Réinitialiser toutes les modifs</button>
+  <div id="admin-status"></div>
+  <p style="margin-top:auto;font-size:10.5px;">Les modifications sont sauvegardées dans ce navigateur. Pense à exporter le fichier pour les publier sur le site en ligne.</p>
+</div>
+<div id="admin-linkmodal">
+  <div class="alm-box">
+    <h4>Modifier le lien</h4>
+    <label>Adresse (URL)</label>
+    <input id="alm-input" type="text" placeholder="https://…">
+    <div class="alm-actions">
+      <button class="alm-cancel" id="alm-cancel" type="button">Annuler</button>
+      <button class="alm-save" id="alm-save" type="button">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<script id="admin-main-script">
+(function(){
+  var STORE_KEY = 'udt_admin_edits_v1';
+  var data;
+  try{ data = JSON.parse(localStorage.getItem(STORE_KEY) || '{}'); }catch(e){ data = {}; }
+  data.texts = data.texts || {};
+  data.links = data.links || {};
+  data.hidden = data.hidden || {};
+
+  function save(){
+    try{ localStorage.setItem(STORE_KEY, JSON.stringify(data)); flashStatus('Modifications enregistrées ✓'); }
+    catch(e){ flashStatus('Erreur de sauvegarde'); }
+  }
+  function flashStatus(msg){
+    var el=document.getElementById('admin-status');
+    if(!el) return;
+    el.textContent = msg;
+    setTimeout(function(){ if(el.textContent===msg) el.textContent=''; }, 2200);
+  }
+
+  function isAdminEl(el){ return el && el.closest && el.closest('#admin-toggle,#admin-panel,#admin-linkmodal'); }
+
+  function getPath(el){
+    var path=[], node=el;
+    while(node && node.nodeType===1 && node!==document.body){
+      var i=1, sib=node;
+      while((sib=sib.previousElementSibling)){ if(sib.tagName===node.tagName) i++; }
+      path.unshift(node.tagName+':'+i);
+      node=node.parentElement;
+    }
+    return path.join('>');
+  }
+
+  function resolvePath(path){
+    var parts = path.split('>'), node = document.body;
+    for(var p=0;p<parts.length;p++){
+      var seg=parts[p].split(':'), tag=seg[0], idx=parseInt(seg[1],10);
+      var count=0, found=null;
+      for(var i=0;i<node.children.length;i++){
+        var c=node.children[i];
+        if(c.tagName===tag){ count++; if(count===idx){ found=c; break; } }
+      }
+      if(!found) return null;
+      node=found;
+    }
+    return node;
+  }
+
+  // Réapplique les modifications sauvegardées (visiteurs et admin)
+  function applySaved(){
+    Object.keys(data.texts).forEach(function(path){
+      var el = resolvePath(path);
+      if(el) el.textContent = data.texts[path];
+    });
+    Object.keys(data.links).forEach(function(path){
+      var el = resolvePath(path);
+      if(el) el.setAttribute('href', data.links[path]);
+    });
+    Object.keys(data.hidden).forEach(function(path){
+      if(!data.hidden[path]) return;
+      var el = resolvePath(path);
+      if(el) el.classList.add('admin-hidden-section');
+    });
+  }
+  applySaved();
+
+  var editMode = false;
+  var leafEls = [];
+
+  function collectLeaves(){
+    var leaves=[];
+    document.querySelectorAll('body *').forEach(function(el){
+      if(isAdminEl(el)) return;
+      if(el.tagName==='SCRIPT'||el.tagName==='STYLE') return;
+      if(el.children.length===0 && el.textContent.trim().length>0){
+        leaves.push(el);
+        el.setAttribute('data-admin-leaf','1');
+      }
+    });
+    return leaves;
+  }
+
+  function setupHideButtons(){
+    document.querySelectorAll('.page > *').forEach(function(el){
+      if(el.tagName==='HR') return;
+      if(el.querySelector(':scope > .admin-hide-btn')) return;
+      if(getComputedStyle(el).position==='static'){ el.style.position='relative'; }
+      el.classList.add('admin-hide-wrap');
+      var path=getPath(el);
+      var btn=document.createElement('button');
+      btn.className='admin-hide-btn';
+      btn.type='button';
+      var isHidden = el.classList.contains('admin-hidden-section');
+      btn.innerHTML = isHidden ? '👁 Afficher' : '🚫 Masquer';
+      btn.addEventListener('click', function(ev){
+        ev.preventDefault(); ev.stopPropagation();
+        var nowHidden = !el.classList.contains('admin-hidden-section');
+        el.classList.toggle('admin-hidden-section', nowHidden);
+        data.hidden[path]=nowHidden;
+        btn.innerHTML = nowHidden ? '👁 Afficher' : '🚫 Masquer';
+        save();
+      });
+      el.insertBefore(btn, el.firstChild);
+    });
+  }
+
+  document.getElementById('admin-toggle').addEventListener('click', function(){
+    editMode = !editMode;
+    document.body.classList.toggle('admin-edit', editMode);
+    if(editMode){
+      leafEls = collectLeaves();
+      leafEls.forEach(function(el){ el.contentEditable='true'; });
+      setupHideButtons();
+    } else {
+      leafEls.forEach(function(el){ el.contentEditable='false'; });
+    }
+  });
+
+  document.addEventListener('blur', function(e){
+    if(!editMode) return;
+    var el=e.target;
+    if(!el || !el.getAttribute || el.getAttribute('data-admin-leaf')!=='1') return;
+    var path=getPath(el);
+    data.texts[path]=el.textContent;
+    save();
+  }, true);
+
+  // Empêche la navigation pendant l'édition
+  document.addEventListener('click', function(e){
+    if(!editMode) return;
+    if(isAdminEl(e.target)) return;
+    var a = e.target.closest('a[href]');
+    if(a){ e.preventDefault(); e.stopPropagation(); }
+  }, true);
+
+  var currentLinkEl=null;
+  document.addEventListener('dblclick', function(e){
+    if(!editMode) return;
+    if(isAdminEl(e.target)) return;
+    var a = e.target.closest('a[href]');
+    if(!a) return;
+    e.preventDefault(); e.stopPropagation();
+    currentLinkEl=a;
+    document.getElementById('alm-input').value = a.getAttribute('href') || '';
+    document.getElementById('admin-linkmodal').classList.add('open');
+    document.getElementById('alm-input').focus();
+  }, true);
+
+  document.getElementById('alm-save').addEventListener('click', function(){
+    if(currentLinkEl){
+      var val = document.getElementById('alm-input').value.trim();
+      currentLinkEl.setAttribute('href', val);
+      data.links[getPath(currentLinkEl)]=val;
+      save();
+    }
+    document.getElementById('admin-linkmodal').classList.remove('open');
+  });
+  document.getElementById('alm-cancel').addEventListener('click', function(){
+    document.getElementById('admin-linkmodal').classList.remove('open');
+  });
+
+  document.getElementById('admin-export').addEventListener('click', function(){
+    var clone = document.documentElement.cloneNode(true);
+    ['admin-toggle','admin-panel','admin-linkmodal'].forEach(function(id){
+      var n = clone.querySelector('#'+id); if(n) n.remove();
+    });
+    var style = clone.querySelector('#admin-style'); if(style) style.remove();
+    var adminScript = clone.querySelector('#admin-main-script'); if(adminScript) adminScript.remove();
+    clone.querySelectorAll('[data-admin-leaf]').forEach(function(el){
+      el.removeAttribute('data-admin-leaf');
+      el.removeAttribute('contenteditable');
+    });
+    clone.querySelectorAll('.admin-hide-btn').forEach(function(el){ el.remove(); });
+    clone.querySelectorAll('.admin-hide-wrap').forEach(function(el){ el.classList.remove('admin-hide-wrap'); });
+    if(clone.classList) clone.classList.remove('admin-edit');
+    if(clone.classList) clone.classList.remove('can-edit');
+    if(window.__udtApplyMeta) window.__udtApplyMeta('home', clone);
+    var html = '<!DOCTYPE html>\n' + clone.outerHTML;
+    var blob = new Blob([html], {type:'text/html'});
+    var url = URL.createObjectURL(blob);
+    var a=document.createElement('a');
+    a.href=url; a.download='upside-down-training.html';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    flashStatus('Export généré ⬇');
+  });
+
+  document.getElementById('admin-reset').addEventListener('click', function(){
+    if(confirm('Réinitialiser toutes les modifications ? Cette action est irréversible.')){
+      localStorage.removeItem(STORE_KEY);
+      location.reload();
+    }
+  });
+})();
+</script>
+</body>
+</html>
