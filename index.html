@@ -130,7 +130,7 @@
 })();
 </script>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="styles.css?v=20261121w">
+<link rel="stylesheet" href="styles.css?v=20261123a">
 <style>
 /* PATCH: blocs séances en mode clair */
 :root[data-theme="light"] .cal-rich{background:#ffffff !important;border-color:#dcdcd2 !important}
@@ -1070,6 +1070,23 @@
 </div>
 
 <!-- MODAL CELLULE CYCLE -->
+<div class="modal-overlay" id="edit-account-modal" onclick="if(event.target===this)closeEditAccountModal()">
+  <div class="modal">
+    <div class="modal-title">✏️ Modifier le compte</div>
+    <div id="edit-account-hint" style="font-size:12px;color:var(--muted);margin-bottom:14px"></div>
+    <input type="hidden" id="edit-account-id">
+    <div class="form-group">
+      <label class="form-label">Nom complet</label>
+      <input class="form-input" id="edit-account-name" type="text" autocomplete="off">
+    </div>
+    <div class="form-group" id="edit-account-email-group">
+      <label class="form-label">Adresse mail</label>
+      <input class="form-input" id="edit-account-email" type="email" autocomplete="off" autocapitalize="off" spellcheck="false">
+    </div>
+    <button class="btn-modal-save" onclick="saveEditAccount()">Enregistrer</button>
+    <button class="btn-modal-cancel" onclick="closeEditAccountModal()">Annuler</button>
+  </div>
+</div>
 <div class="modal-overlay" id="cycle-cell-modal">
   <div class="cycle-cell-modal">
     <div style="font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;margin-bottom:4px" id="cycle-cell-title">Ajouter</div>
@@ -1282,8 +1299,8 @@
 <script src="iv-recap.js?v=20261122a"></script>
 <script src="zones-seance.js?v=20261119f"></script>
 <script src="planning.js?v=20261122a"></script>
-<script src="admin.js?v=20261123a"></script>
-<script src="vitrine-admin.js?v=20261123a"></script>
+<script src="admin.js?v=20261123b"></script>
+<script src="vitrine-admin.js?v=20261123b"></script>
 <script src="open-read-session.js"></script>
 <script src="abos.js"></script>
 <script src="wellness.js?v=20261121v"></script>

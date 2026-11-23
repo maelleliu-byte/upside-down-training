@@ -1290,6 +1290,7 @@ async function loadAdminAthletes(){
   if(studioId){q=q.eq('studio_id',studioId);}
   else{q=q.is('studio_id',null);}
   const {data}=await q.order('full_name');
+  window._adminAthletesById=Object.fromEntries((data||[]).map(p=>[p.id,p]));
   const list=document.getElementById('admin-athletes-list');
   if(!data||data.length===0){list.innerHTML='<div class="empty"><p>Aucun athlète.</p></div>';return;}
   list.innerHTML=data.map(p=>{
@@ -1302,9 +1303,65 @@ async function loadAdminAthletes(){
         <div class="athlete-email">${escapeHtml(p.email||'')}</div>
       </div>
       <span class="athlete-role ${p.role==='admin'?'role-admin':'role-athlete'}">${p.role==='admin'?'Admin':'Athlète'}</span>
+      <button class="btn-edit-account" title="Modifier le nom / l'email" onclick="openEditAccountModal('${p.id}')">✏️</button>
       ${isMe?'':`<button class="btn-delete" onclick="deleteAthlete('${p.id}','${escapeHtml((p.full_name||p.email||'?').replace(/\\/g,'\\\\').replace(/'/g,"\\'"))}')">✕</button>`}
     </div>`;
   }).join('');
+}
+// ===== CORRIGER NOM / EMAIL D'UN COMPTE (admin, son studio uniquement) =====
+// L'email de connexion vit dans Supabase Auth : la modif passe par la fonction
+// serveur update-athlete (clé service), qui vérifie que le compte est bien
+// dans le studio de l'admin.
+function openEditAccountModal(id){
+  const p=window._adminAthletesById?.[id];
+  if(!p){showToast('⚠️ Compte introuvable');return;}
+  const isKid=!!p.parent_id||/@kids\.upsidedown-training\.fr$/i.test(p.email||'');
+  document.getElementById('edit-account-id').value=id;
+  document.getElementById('edit-account-name').value=p.full_name||'';
+  const em=document.getElementById('edit-account-email');
+  em.value=p.email||'';
+  document.getElementById('edit-account-email-group').style.display=isKid?'none':'';
+  document.getElementById('edit-account-hint').textContent=isKid
+    ?'Profil enfant : seul le nom est modifiable.'
+    :'Le nouvel email devient l\'identifiant de connexion (mot de passe inchangé).';
+  document.getElementById('edit-account-modal').classList.add('open');
+  setTimeout(()=>document.getElementById('edit-account-name').focus(),50);
+}
+function closeEditAccountModal(){
+  document.getElementById('edit-account-modal')?.classList.remove('open');
+}
+async function saveEditAccount(){
+  const id=document.getElementById('edit-account-id').value;
+  const p=window._adminAthletesById?.[id]||{};
+  const full_name=document.getElementById('edit-account-name').value.trim();
+  const emailGroupVisible=document.getElementById('edit-account-email-group').style.display!=='none';
+  const email=emailGroupVisible?document.getElementById('edit-account-email').value.trim().toLowerCase():'';
+  if(!full_name){showToast('⚠️ Nom requis');return;}
+  if(emailGroupVisible&&!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)){showToast('⚠️ Adresse mail invalide');return;}
+  if(full_name===(p.full_name||'')&&(!emailGroupVisible||email===(p.email||'').toLowerCase())){closeEditAccountModal();return;}
+  if(emailGroupVisible&&email!==(p.email||'').toLowerCase()
+    &&!confirm(`Changer l'email de connexion ?\n\n${p.email||'—'}\n→ ${email}\n\nLa personne devra se connecter avec la nouvelle adresse.`))return;
+  const btn=document.querySelector('#edit-account-modal .btn-modal-save');
+  btn.disabled=true;btn.textContent='Enregistrement…';
+  try{
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session?.access_token)throw new Error('Session expirée — recharge la page');
+    const resp=await fetch('/.netlify/functions/update-athlete',{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':`Bearer ${session.access_token}`},
+      body:JSON.stringify({id,full_name,email:emailGroupVisible?email:undefined})
+    });
+    const data=await resp.json().catch(()=>({}));
+    if(!resp.ok)throw new Error(data.error||'Erreur inconnue');
+    if(id===currentUser.id&&currentProfile){currentProfile.full_name=data.athlete.full_name;currentProfile.email=data.athlete.email;}
+    showToast('✅ Compte mis à jour');
+    closeEditAccountModal();
+    loadAdminAthletes();
+  }catch(e){
+    showToast('❌ '+e.message);
+  }finally{
+    btn.disabled=false;btn.textContent='Enregistrer';
+  }
 }
 async function deleteAthlete(id,name){
   if(!confirm(`⚠️ Supprimer définitivement "${name}" ?\n\nToutes ses données (scores, PR, séances perso) seront effacées.\n\nCette action est irréversible.`))return;
