@@ -1,0 +1,41 @@
+<!--
+  Upside Down Training — bloc à coller sur upsidedown-training.fr
+  (Wix : « Intégrer du code / HTML » · WordPress : bloc « HTML personnalisé » ·
+   GoHighLevel : élément « Custom code » · Squarespace : bloc « Code »)
+
+  Deux morceaux indépendants, à coller où tu veux :
+    1. le bouton « Espace membre » (menu / en-tête)
+    2. la section « Nos programmations » (cartes et prix lus en direct depuis l'app)
+-->
+
+<!-- ========== 1. BOUTON CONNEXION ========== -->
+<a class="udt-login" href="https://app.upsidedown-training.fr/" target="_top">Espace membre · Se connecter</a>
+<style>
+  .udt-login{display:inline-block;font-family:"DM Sans",Inter,sans-serif;font-weight:700;font-size:14px;
+    color:#fff;background:#0B9488;border-radius:10px;padding:10px 16px;text-decoration:none;white-space:nowrap}
+  .udt-login:hover{background:#2dd4bf;color:#0b0b0c}
+</style>
+
+
+<!-- ========== 2. SECTION PROGRAMMATIONS ========== -->
+<section class="udt-progs">
+  <h2>Nos programmations</h2>
+  <p>7 jours d'essai gratuits sur les abonnements · sans engagement</p>
+  <iframe id="udt-vitrine" src="https://app.upsidedown-training.fr/programmes?embed=1"
+          title="Programmations Upside Down Training" loading="lazy" scrolling="no"></iframe>
+  <a class="udt-login" href="https://app.upsidedown-training.fr/" target="_top">Déjà membre ? Se connecter</a>
+</section>
+<style>
+  .udt-progs{background:#050506;color:#ededed;padding:32px 0 28px;text-align:center;font-family:"DM Sans",Inter,sans-serif}
+  .udt-progs h2{font-family:"Bebas Neue","Space Grotesk",sans-serif;font-weight:400;letter-spacing:2px;font-size:34px;margin:0 16px}
+  .udt-progs p{color:#8a8f96;font-size:14px;margin:6px 16px 14px}
+  .udt-progs iframe{display:block;width:100%;max-width:1180px;margin:0 auto 18px;border:0;height:900px;background:transparent}
+</style>
+<script>
+  /* La vitrine envoie sa hauteur : l'iframe s'ajuste, sans barre de défilement */
+  window.addEventListener('message', function (e) {
+    if (e.origin !== 'https://app.upsidedown-training.fr' || !e.data || e.data.type !== 'udt-vitrine-height') return;
+    var f = document.getElementById('udt-vitrine');
+    if (f) f.style.height = e.data.height + 'px';
+  });
+</script>
