@@ -23,6 +23,11 @@
   .more{display:block;text-align:center;color:#8a8f96;font-size:13px;margin:18px 0 0}
   .more a{color:#2dd4bf}
   .foot{color:#5f6368;font-size:11px;text-align:center;margin-top:26px}
+  /* Grille ordinateur : cartes de même hauteur, prix alignés en bas */
+  .v-wide{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:20px;align-items:stretch;padding:6px 16px 30px}
+  .v-wide .v-card{max-width:none;width:100%;margin:0;display:flex;flex-direction:column}
+  .v-wide .v-hw{height:300px}
+  .v-wide .v-sec{flex:1}
   /* Mode intégration (iframe sur upsidedown-training.fr) : sans barre ni pied */
   html.embed,html.embed body{background:transparent}
   html.embed .brand,html.embed .foot,html.embed .v-head{display:none}
@@ -86,18 +91,34 @@
     location.href = url;
   };
   var root = document.getElementById('vitrine-root');
-  var base = location.pathname;
-  var br = V.mountBrowser(root, rows, {
-    noGrid: true, base: '/',
-    cardOpts: function (p) { return { base: '/', ctaAction: "udtStart('" + p.slug + "')" }; },
-    onChange: function (slug) {
-      var c = slug && V.cfgOf(slug);
-      var path = c ? '/p/' + c.link : '/programmes';
-      if (location.pathname !== path) history.replaceState(null, '', path + location.search);
-      document.title = c ? c.titleText + ' · Programmation Upside Down Training' : 'Programmations · Upside Down Training';
+  /* Ordinateur : toutes les cartes côte à côte. Téléphone (ou lien /p/...) : onglets, une carte à la fois. */
+  var WIDE = window.matchMedia('(min-width: 900px)');
+  var mode = null;
+  function cardOpts(p) { return { base: '/', ctaAction: "udtStart('" + p.slug + "')" }; }
+  function layout() {
+    var want = (WIDE.matches && !one) ? 'grid' : 'tabs';
+    if (want === mode) return;
+    mode = want;
+    /* conteneur neuf : retire les écouteurs de la vue précédente */
+    var fresh = root.cloneNode(false); root.parentNode.replaceChild(fresh, root); root = fresh;
+    if (mode === 'grid') {
+      root.innerHTML = '<div class="v-wide">' + rows.map(function (p) { return V.cardHTML(p, cardOpts(p)); }).join('') + '</div>';
+      return;
     }
-  });
-  br.showSlug(one);
+    var br = V.mountBrowser(root, rows, {
+      noGrid: true, base: '/',
+      cardOpts: cardOpts,
+      onChange: function (slug) {
+        var c = slug && V.cfgOf(slug);
+        var path = c ? '/p/' + c.link : '/programmes';
+        if (location.pathname !== path) history.replaceState(null, '', path + location.search);
+        document.title = c ? c.titleText + ' · Programmation Upside Down Training' : 'Programmations · Upside Down Training';
+      }
+    });
+    br.showSlug(one);
+  }
+  layout();
+  if (WIDE.addEventListener) WIDE.addEventListener('change', layout); else if (WIDE.addListener) WIDE.addListener(layout);
 
   /* En intégration : envoie la hauteur au site parent pour ajuster l'iframe */
   if (window.UDT_EMBED && window.parent !== window) {
