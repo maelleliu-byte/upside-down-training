@@ -1512,6 +1512,7 @@ function _renderDashList(athletes){
         <div class="athlete-name">${escapeHtml(p.full_name||'—')}</div>
         <div class="athlete-email">${escapeHtml(p.email||'')}${since?' · depuis '+since:''}</div>
       </div>
+      <button class="btn-edit-account" title="Modifier le nom / l'email" onclick="event.stopPropagation();openEditAccountModal('${p.id}')">✏️</button>
       ${isMe?'':`<button class="btn-delete" onclick="event.stopPropagation();_dashDeleteAthlete('${p.id}','${nameEsc}')">✕</button>`}
       <span style="color:var(--muted);font-size:18px">›</span>
     </div>`;
@@ -1965,7 +1966,7 @@ loadAdminAthletes=async function(){
     if(row._wired)return;row._wired=1;
     const delBtn=row.querySelector('.btn-delete');
     row.addEventListener('click',(e)=>{
-      if(e.target.closest('.btn-delete'))return;
+      if(e.target.closest('.btn-delete,.btn-edit-account'))return;
       // récupère l'id depuis le bouton delete (qui contient l'id) ou via data-attr — fallback : skip
       const btn=row.querySelector('.btn-delete');
       const m=btn&&btn.getAttribute('onclick')&&btn.getAttribute('onclick').match(/deleteAthlete\('([^']+)'/);

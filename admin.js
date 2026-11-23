@@ -1312,9 +1312,13 @@ async function loadAdminAthletes(){
 // L'email de connexion vit dans Supabase Auth : la modif passe par la fonction
 // serveur update-athlete (clé service), qui vérifie que le compte est bien
 // dans le studio de l'admin.
-function openEditAccountModal(id){
-  const p=window._adminAthletesById?.[id];
+async function openEditAccountModal(id){
+  if(!id)return;
+  // Toujours relire le profil (ouvert depuis le Dashboard, la fiche ou la liste)
+  const {data:p}=await sb.from('profiles').select('id,full_name,email,parent_id').eq('id',id).maybeSingle();
   if(!p){showToast('⚠️ Compte introuvable');return;}
+  window._adminAthletesById=window._adminAthletesById||{};
+  window._adminAthletesById[id]=p;
   const isKid=!!p.parent_id||/@kids\.upsidedown-training\.fr$/i.test(p.email||'');
   document.getElementById('edit-account-id').value=id;
   document.getElementById('edit-account-name').value=p.full_name||'';
@@ -1362,7 +1366,20 @@ async function saveEditAccount(){
       showToast(st.updated?'✅ Compte mis à jour (Stripe aussi)':'✅ Compte mis à jour');
     }
     closeEditAccountModal();
+    const old=window._adminAthletesById?.[id]||{};
+    window._adminAthletesById[id]={...old,...data.athlete};
     loadAdminAthletes();
+    // Rafraîchir le Dashboard (liste + fiche ouverte)
+    if(typeof _dashAllAthletes!=='undefined'){
+      const a=_dashAllAthletes.find(x=>x.id===id);
+      if(a){a.full_name=data.athlete.full_name;a.email=data.athlete.email;}
+      if(typeof dashFilterAthletes==='function')dashFilterAthletes();
+    }
+    if(typeof _dashCurrentAthleteId!=='undefined'&&_dashCurrentAthleteId===id){
+      const n=document.getElementById('df-name');if(n)n.textContent=data.athlete.full_name.toUpperCase();
+      const sub=document.getElementById('df-sub');
+      if(sub&&old.email)sub.textContent=sub.textContent.replace(old.email,data.athlete.email);
+    }
   }catch(e){
     showToast('❌ '+e.message);
   }finally{
