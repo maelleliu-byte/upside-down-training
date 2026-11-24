@@ -540,11 +540,18 @@ function renderContentWithCharges(content,opts){
   // 3. Regex de charges
   // Syntaxe 1a : NN%|FORMAT|NOM|
   out=out.replace(/(\d+(?:\.\d+)?)%\|([^|\n]+)\|([^|\n]+)\|/g,(match,pct,fmt,mvtName)=>{
+    // Ordre inversé « %|SKI|PUISSANCE CRITIQUE| » : on lit la PC / VC de la modalité (dernier test),
+    // pas l'ancien PR saisi à la main sous « Puissance Critique » / format « Ski »
+    const _lbl0=fmt.trim().toUpperCase();const _sw=_critSwap(fmt,mvtName);
+    if(_sw){
+      const pr2=findPRByName(_sw.mv,_sw.fmt),mvt2=findMovementByName(_sw.mv);
+      if(pr2&&mvt2){fmt=_sw.fmt;mvtName=_sw.mv;}
+    }
     const pr=findPRByName(mvtName.trim(),fmt.trim());
     const mvt=findMovementByName(mvtName.trim());
     if(pr&&mvt){
       const charge=_formatChargeForMovement(mvt,pr,pct);
-      const fmtLabel=fmt.trim().toUpperCase();
+      const fmtLabel=_sw?_lbl0:fmt.trim().toUpperCase();
       return `<span style="color:var(--muted)">${pct}% <span style="font-size:10px">${fmtLabel}</span></span> <span style="background:rgba(232,255,71,.15);color:var(--accent);padding:1px 7px;border-radius:5px;font-weight:700;font-size:13px">${charge}</span>`;
     }
     if(mvt){
@@ -592,6 +599,13 @@ function renderContentWithCharges(content,opts){
   return safeHtml(out);
 }
 
+const _CRIT_MOD={ski:'Ski Erg',skierg:'Ski Erg',row:'Row',rameur:'Row',bike:'Bike Erg',bikeerg:'Bike Erg',assault:'Assault Bike',assaultbike:'Assault Bike',echo:'Echo Bike',echobike:'Echo Bike',run:'Run',course:'Run'};
+function _critSwap(fmt,mvtName){
+  const m=String(mvtName||'').toLowerCase().replace(/\s+/g,''),f=String(fmt||'').toLowerCase().replace(/\s+/g,'');
+  if(m!=='puissancecritique'&&m!=='vitessecritique')return null;
+  const mv=_CRIT_MOD[f];if(!mv)return null;
+  return {mv,fmt:m==='vitessecritique'?'Vitesse Critique':'Puissance Critique'};
+}
 function findMovementByName(name){
   if(!movements||movements.length===0)return null;
   const norm=name.toLowerCase().replace(/\s+/g,'');
