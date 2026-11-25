@@ -1,7 +1,8 @@
 /* ============================================================
  * Zones dans les séances : « allure EF », « puissance seuil », « allure tempo »…
  *
- * Dès qu'une ligne d'une séance contient « allure <zone> » (majuscules, accents
+ * Dès qu'une ligne d'une séance contient « allure <zone> », « Z1…Z5 <modalité> »
+ * (ex. Z2 RUN, Z3 ROW) ou « endurance fondamentale » (majuscules, accents
  * et tirets indifférents), l'app affiche la plage personnelle de l'athlète :
  * watts (et /500m) sur les ergos, vitesse et allure en course, RPE visé et FC
  * quand un profilage la fournit.
@@ -49,8 +50,19 @@
   function zoneOf(txt) {
     var t = strip(txt);
     var m = t.match(/(?:allure|puissance|intensite)[\s:\-–]*([a-z0-9₂ .]{1,30})/);
-    if (!m) return null;
-    var w = m[1].replace(/\./g, '');
+    var w = m ? m[1].replace(/\./g, '') : '';
+    var z0 = zoneWord(w);
+    if (z0) return z0;
+    /* écriture courte : « Z2 RUN », « Z3 ROW », « Z2 BIKE »… */
+    var zc = t.match(/(?:^|[^a-z0-9|%])z ?([1-5])(?![0-9a-z])/);
+    if (zc) return 'Z' + zc[1];
+    /* nom de zone écrit seul (sans « allure ») : sans ambiguïté uniquement */
+    if (/endurance fondamentale/.test(t)) return 'Z2';
+    if (/recuperation active/.test(t)) return 'Z1';
+    return null;
+  }
+  function zoneWord(w) {
+    if (!w) return null;
     if (/^(z ?1\b|recup|recuperation)/.test(w)) return 'Z1';
     if (/^(z ?2\b|ef\b|endurance|fondamentale|fonda\b|e\.f)/.test(w)) return 'Z2';
     if (/^(z ?3\b|tempo)/.test(w)) return 'Z3';
@@ -136,7 +148,10 @@
     if (b.unit === 'km/h') {
       v = b.hi == null ? '&lt; ' + mmss(3600 / b.lo) + ' /km' : mmss(3600 / b.lo) + ' – ' + mmss(3600 / b.hi) + ' /km';
     } else if (mod === 'row' || mod === 'ski') {
-      v = b.lo == null ? '&gt; ' + mmss(pace500(b.hi)) + ' /500m' : b.hi == null ? '&lt; ' + mmss(pace500(b.lo)) + ' /500m' : mmss(pace500(b.lo)) + ' – ' + mmss(pace500(b.hi)) + ' /500m';
+      /* watts en premier, allure /500m à côté */
+      v = b.lo == null ? '&lt; ' + Math.round(b.hi) + ' W · &gt; ' + mmss(pace500(b.hi)) + ' /500m'
+        : b.hi == null ? '&gt; ' + Math.round(b.lo) + ' W · &lt; ' + mmss(pace500(b.lo)) + ' /500m'
+        : Math.round(b.lo) + ' – ' + Math.round(b.hi) + ' W · ' + mmss(pace500(b.lo)) + ' – ' + mmss(pace500(b.hi)) + ' /500m';
     } else {
       v = b.lo == null ? '&lt; ' + Math.round(b.hi) + ' W' : b.hi == null ? '&gt; ' + Math.round(b.lo) + ' W' : Math.round(b.lo) + ' – ' + Math.round(b.hi) + ' W';
     }
@@ -149,7 +164,7 @@
 
   /* ---------- application au contenu rendu (lignes séparées par <br>) ---------- */
   function apply(html) {
-    if (!html || !/allure|puissance|intensite/i.test(strip(html.replace(/<[^>]+>/g, ' ')))) return html;
+    if (!html || !/allure|puissance|intensite|endurance fondamentale|recuperation active|(?:^|[^a-z0-9|%])z ?[1-5](?![0-9a-z])/i.test(strip(html.replace(/<[^>]+>/g, ' ')))) return html;
     var plain = strip(html.replace(/<[^>]+>/g, ' '));
     var defMod = modOf(plain) || ctxMod || 'run';
     return html.split(/(<br>)/).map(function (seg) {
