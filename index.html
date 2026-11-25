@@ -1291,7 +1291,7 @@
  * ============================================================ */
 </script>
 <script src="/vendor/purify-3.1.6.min.js"></script>
-<script src="core.js?v=20261121v"></script>
+<script src="core.js?v=20261125a"></script>
 <script src="timer.js?v=20261112a"></script>
 <script src="timer-saisie.js?v=20261125b"></script>
 <script src="erg-conv.js?v=20261122c"></script>
@@ -2646,9 +2646,24 @@ async function confirmAwardBadge() {
 
   if (error) { showToast('❌ ' + error.message); return; }
 
+  // Récupérer le badge AVANT de vider le cache
+  const badge = (_badgesCache || []).find(b => b.id === _awardingBadgeId);
+
   document.getElementById('award-badge-modal')?.remove();
   _myBadgesCache = null;
   showToast('✅ Badge attribué !');
+
+  // Envoyer la notification push à l'athlète
+  if (badge) {
+    sb.functions.invoke('send-push-notification', {
+      body: {
+        athlete_id:  athleteId,
+        badge_emoji: badge.emoji,
+        badge_name:  badge.name,
+        coach_note:  note,
+      }
+    }).catch(e => console.log('[Push] send error:', e));
+  }
 }
 
 // ── Edit badge ─────────────────────────────────────────────
@@ -2907,10 +2922,48 @@ function _injectProfilExtras() {
   _injectColorThemeButton();
   _injectAthleteCardButton();
   _injectBadgesSectionInProfil();
+  _injectPushNotifButton();
+  // Toujours tenter d'enregistrer/rafraîchir la subscription push si permission déjà accordée
+  if ('Notification' in window && Notification.permission === 'granted') _initPushNotifications();
   // Masquer le point rouge quand on ouvre le profil
   _hideBadgeNavDot();
   // Vérifier les badges non vus → célébration si nécessaire
   _showUnseenBadges();
+}
+
+function _injectPushNotifButton() {
+  if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return;
+  if (document.getElementById('push-notif-menu-item')) return;
+  if (Notification.permission === 'granted') return;
+
+  // Insérer après le bouton couleur de l'app
+  const colorBtn = document.getElementById('color-theme-trigger');
+  if (!colorBtn) return;
+
+  const item = document.createElement('div');
+  item.className = 'menu-item';
+  item.id = 'push-notif-menu-item';
+  item.style.cursor = 'pointer';
+  item.onclick = _requestPushPermission;
+  item.innerHTML = `<span class="menu-item-label">🔔 Notifications</span><span>›</span>`;
+  colorBtn.insertAdjacentElement('afterend', item);
+}
+
+async function _requestPushPermission() {
+  const item = document.getElementById('push-notif-menu-item');
+  if (item) item.style.opacity = '0.5';
+
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    await _initPushNotifications();
+    document.getElementById('push-notif-menu-item')?.remove();
+    showToast('🔔 Notifications activées !');
+  } else {
+    if (item) item.style.opacity = '1';
+    showToast(perm === 'denied'
+      ? '❌ Notifications bloquées — à réactiver dans les réglages du téléphone'
+      : '❌ Permission refusée');
+  }
 }
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
