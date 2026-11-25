@@ -1141,6 +1141,31 @@ async function openScoresModal(sessionId, scoreType, sets){
   loadSessionNotes(sessionId);
 }
 
+// Ouverture depuis une notification (like / commentaire) : on ouvre le classement
+// de la séance du score, on défile jusqu'à lui et on le met en évidence.
+async function openScoreFromNotif(scoreId, kind){
+  if(!scoreId||!currentUser)return;
+  try{
+    const {data:sc}=await sb.from('wod_scores').select('id,session_id').eq('id',scoreId).maybeSingle();
+    if(!sc||!sc.session_id){showToast('Ce score n’existe plus');return;}
+    let {data:sess}=await sb.from('sessions').select('*').eq('id',sc.session_id).maybeSingle();
+    if(!sess)({data:sess}=await sb.from('personal_sessions').select('*').eq('id',sc.session_id).maybeSingle());
+    await openScoresModal(sc.session_id,(sess&&sess.score_type)||'reps',(sess&&sess.sets)||0);
+    let row=null;
+    for(let i=0;i<20&&!row;i++){row=document.getElementById(`sr-${scoreId}`);if(!row)await new Promise(r=>setTimeout(r,150));}
+    if(!row)return;
+    const card=row.closest('.sc-card')||row;
+    if(kind==='comment'){
+      const area=document.getElementById(`comments-${scoreId}`);
+      if(area&&!area.classList.contains('open')){area.classList.add('open');loadComments(scoreId);}
+    }
+    card.scrollIntoView({behavior:'smooth',block:'center'});
+    card.style.transition='box-shadow .4s';
+    card.style.boxShadow='0 0 0 2px var(--accent,#e8ff47)';
+    setTimeout(()=>{card.style.boxShadow='';},2500);
+  }catch(e){console.error('openScoreFromNotif',e);}
+}
+
 function closeScoresModal(){
   document.getElementById('scores-modal').classList.remove('open');
   currentScoresSession=null;

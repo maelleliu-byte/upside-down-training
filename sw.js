@@ -44,12 +44,19 @@ self.addEventListener('push', function(event) {
 self.addEventListener('notificationclick', function(event) {
   event.notification.close();
   const url = event.notification.data?.url || '/';
+  const target = new URL(url, self.location.origin).href;
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then(function(clientList) {
-      for (const client of clientList) {
-        if (client.url === url && 'focus' in client) return client.focus();
+      const same = clientList.filter(c => c.url && c.url.startsWith(self.location.origin));
+      // App déjà ouverte (même en arrière-plan) : on la ramène au premier plan
+      // et on lui demande d'ouvrir le contenu de la notif (ex. le score liké).
+      const client = same.find(c => c.focused) || same.find(c => c.visibilityState === 'visible') || same[0];
+      if (client) {
+        if (url !== '/') client.postMessage({ type: 'udt-open', url: target });
+        if ('focus' in client) return client.focus().catch(() => {});
+        return;
       }
-      if (clients.openWindow) return clients.openWindow(url);
+      if (clients.openWindow) return clients.openWindow(target);
     })
   );
 });

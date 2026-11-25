@@ -41,7 +41,7 @@ exports.handler = async (event) => {
 
   // Test fetch direct pour bypasser le client JS
   const res = await fetch(
-    `${process.env.SUPABASE_URL}/rest/v1/wod_scores?id=eq.${scoreId}&select=athlete_id`,
+    `${process.env.SUPABASE_URL}/rest/v1/wod_scores?id=eq.${scoreId}&select=athlete_id,session_id`,
     {
       headers: {
         'apikey': process.env.SUPABASE_SERVICE_KEY,
@@ -55,7 +55,7 @@ exports.handler = async (event) => {
   // 1. Récupérer le propriétaire du score
   const { data: score, error: scoreErr } = await sb
     .from('wod_scores')
-    .select('athlete_id')
+    .select('athlete_id,session_id')
     .eq('id', scoreId)
     .maybeSingle();
 
@@ -65,18 +65,32 @@ exports.handler = async (event) => {
     // Utiliser le résultat du fetch direct si le client JS échoue
     if (rows && rows.length > 0) {
       console.log('[notif] using fetch direct result');
-      rows[0].athlete_id && await sendNotification(rows[0].athlete_id, scoreId, type, fromName, fromUserId, sb);
+      rows[0].athlete_id && await sendNotification(rows[0].athlete_id, scoreId, type, fromName, fromUserId, sb, rows[0].session_id);
     } else {
       console.log('[notif] score introuvable partout');
     }
     return { statusCode: 200, body: 'OK' };
   }
 
-  await sendNotification(score.athlete_id, scoreId, type, fromName, fromUserId, sb);
+  await sendNotification(score.athlete_id, scoreId, type, fromName, fromUserId, sb, score.session_id);
   return { statusCode: 200, body: 'OK' };
 };
 
-async function sendNotification(athleteId, scoreId, type, fromName, fromUserId, sb) {
+// « du mercredi 25 novembre 2026 » à partir de la date de la séance du score
+async function scoreDateLabel(sb, sessionId) {
+  if (!sessionId) return '';
+  try {
+    let { data } = await sb.from('sessions').select('date').eq('id', sessionId).maybeSingle();
+    if (!data) ({ data } = await sb.from('personal_sessions').select('date').eq('id', sessionId).maybeSingle());
+    if (!data || !data.date) return '';
+    const d = new Date(String(data.date).slice(0, 10) + 'T12:00:00Z');
+    return ' du ' + d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+  } catch (e) {
+    return '';
+  }
+}
+
+async function sendNotification(athleteId, scoreId, type, fromName, fromUserId, sb, sessionId) {
   if (athleteId === fromUserId) {
     console.log('[notif] self-interaction, skipped');
     return;
@@ -94,14 +108,17 @@ async function sendNotification(athleteId, scoreId, type, fromName, fromUserId, 
   if (!subs || subs.length === 0) return;
 
   const webpush = require('web-push');
+  const dateLabel = await scoreDateLabel(sb, sessionId);
   const payload = JSON.stringify({
     title: type === 'like' ? "❤️ Quelqu'un a liké ton score !" : '💬 Nouveau commentaire !',
     body: type === 'like'
-      ? `${fromName} a aimé ton score`
-      : `${fromName} a commenté ton score`,
+      ? `${fromName} a aimé ton score${dateLabel}`
+      : `${fromName} a commenté ton score${dateLabel}`,
     icon: '/icon-192.png',
     badge: '/icon-192.png',
     tag: `score-${type}-${scoreId}`,
+    // Clic sur la notif → ouvre directement ce score (classement + commentaires)
+    url: `/?score=${encodeURIComponent(scoreId)}&n=${type === 'like' ? 'like' : 'comment'}`,
   });
 
   const results = await Promise.allSettled(
