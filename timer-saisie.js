@@ -98,7 +98,7 @@
     while ((el = document.getElementById('score-' + i + '-' + sid))) {
       var part = el.dataset && el.dataset.part, rpeEl = document.getElementById('rpe-' + i + '-' + sid);
       var repsEl = document.getElementById('sreps-' + i + '-' + sid);   // bloc FORCE : reps + charge + RPE par série
-      var fs = [{ el: el, kind: repsEl ? 'kg' : 'm', label: (part != null || repsEl) ? 'Charge (kg)' : rpeEl ? (el.placeholder || 'Valeur') : lbl(el) }];
+      var fs = [{ el: el, kind: repsEl ? 'kg' : 'm', label: (part != null || repsEl) ? ((part != null && /·/.test(el.dataset.plbl || '')) ? el.dataset.plbl.split('·').pop().trim() + ' (kg)' : 'Charge (kg)') : rpeEl ? (el.placeholder || 'Valeur') : lbl(el) }];
       if (repsEl) fs.unshift({ el: repsEl, kind: 'm', label: 'Reps' });
       if (rpeEl) fs.push({ el: rpeEl, kind: 'm', label: 'RPE' });   // intervalles ENGINE / RUN : valeur + RPE sur la même ligne
       out.push({ part: part, fields: fs }); i++;

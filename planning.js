@@ -210,7 +210,7 @@ async function buildSessionCard(s){
     let idx=0;
     scoreInputHtml=`<div class="multi-score-inputs" data-autoparts="1">${autoParts.map((p,pi)=>{
       const ins=Array.from({length:p.n},(_,j)=>{const i=idx++;
-        return `<div class="multi-score-row" style="flex:1;min-width:52px;flex-direction:column;align-items:stretch;gap:3px">${p.n>1?`<div class="multi-score-lbl" style="min-width:0;font-size:10px;text-align:center">S${j+1}</div>`:''}<input class="multi-score-input" id="score-${i}-${s.id}" data-stype="weight" data-part="${pi}" data-set="${j}" data-plbl="${escapeHtml(p.label)}" type="text" inputmode="decimal" placeholder="kg" style="padding:9px 4px"></div>`;}).join('');
+        return `<div class="multi-score-row" style="flex:1;min-width:52px;flex-direction:column;align-items:stretch;gap:3px">${p.n>1?`<div class="multi-score-lbl" style="min-width:0;font-size:10px;text-align:center">S${j+1}</div>`:''}<input class="multi-score-input" id="score-${i}-${s.id}" data-stype="weight" data-part="${p.pi}" data-set="${p.off+j}" data-plbl="${escapeHtml(p.label)}" type="text" inputmode="decimal" placeholder="kg" style="padding:9px 4px"></div>`;}).join('');
       return `<div><div class="multi-score-lbl" style="margin-bottom:4px">${escapeHtml(p.label)}${p.n>1?' · '+p.n+' séries':''}</div><div style="display:flex;gap:6px;flex-wrap:wrap">${ins}</div></div>`;
     }).join('')}</div>`;
   } else if(false&&ivl){
@@ -889,9 +889,21 @@ function weightPartSlots(content){
     const ramp=pcts.size>=2||/\bfrom\b[\s\S]*\bto\b/i.test(txt);
     let label=String(p.name||'').split(' · ').pop().replace(/^\d+\s*[.)]\s*/,'').trim();
     if(!label)label='PARTIE '+(pi+1);
-    return {label,n:ramp?Math.max(1,nSets):1,ramp};
-  });
+    // Plusieurs mouvements avec chacun sa charge dans la partie (ex. superset 3 PUSH PRESS 55% + 3 CLEAN PULL 100%) :
+    // un score par mouvement (une charge par série si ce mouvement monte en charge)
+    const mvs=[];
+    String(p.raw||'').split(/\n|<br\s*\/?>/i).map(l=>l.replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim()).forEach(l=>{
+      const m=l.match(/^(\d+(?:\/\d+)?)\s+([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ&' .\-]*?)\s+(?:(?:START\s+AT|FROM|@)\s*)?\d+(?:[.,]\d+)?\s*%/i);
+      if(!m)return;
+      const lp=new Set((l.match(/\d+(?:[.,]\d+)?\s*%/g)||[]).map(x=>parseFloat(x.replace(',','.'))));
+      mvs.push({name:m[2].trim().toUpperCase().slice(0,32),ramp:lp.size>=2||/\bfrom\b[\s\S]*\bto\b/i.test(l)});
+    });
+    if(mvs.length>=2&&new Set(mvs.map(x=>x.name)).size>=2)
+      return mvs.map(mv=>({label:label+' · '+mv.name,n:mv.ramp?Math.max(1,nSets):1,ramp:mv.ramp,pi}));
+    return {label,n:ramp?Math.max(1,nSets):1,ramp,pi};
+  }).flat();
   if(out.length<2&&out[0].n<2)return null;
+  {const off={};out.forEach(o=>{o.off=off[o.pi]||0;off[o.pi]=o.off+o.n;});}
   return out;
 }
 async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,scoreCount){
@@ -965,10 +977,10 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
     apBox.querySelectorAll('input[data-part]').forEach(el=>{
       const raw=String(el.value||'').trim().replace(/\s*kg$/i,'');if(!raw)return;
       const n=parseFloat(raw.replace(',','.'));if(isNaN(n))return;
-      const p=el.dataset.part;
-      if(!groups[p]){groups[p]={lbl:el.dataset.plbl||('Partie '+(+p+1)),vals:[]};order.push(p);}
-      groups[p].vals.push(n);best=Math.max(best,n);
-      sd.push({part:+p+1,label:groups[p].lbl,set:+el.dataset.set+1,value:n});
+      const p=el.dataset.part,gk=p+'|'+(el.dataset.plbl||'');
+      if(!groups[gk]){groups[gk]={lbl:el.dataset.plbl||('Partie '+(+p+1)),vals:[]};order.push(gk);}
+      groups[gk].vals.push(n);best=Math.max(best,n);
+      sd.push({part:+p+1,label:groups[gk].lbl,set:+el.dataset.set+1,value:n});
     });
     if(!order.length){showToast('⚠️ Entre au moins une charge');return;}
     scoreText=order.map(p=>`${groups[p].lbl} ${groups[p].vals.join('/')} kg`).join(' | ');
