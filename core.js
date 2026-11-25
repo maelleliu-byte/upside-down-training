@@ -521,6 +521,113 @@ async function _initPushNotifications() {
   }
 }
 
+// ── Bandeau de notification dans l'app (app ouverte) ────────
+// Quand une notif push arrive alors que l'app est à l'écran, sw.js envoie un
+// message à la page : on affiche un bandeau qui descend du haut + un petit son.
+let _udtAudioCtx = null;
+
+function _udtUnlockAudio() {
+  try {
+    // iPhone : catégorie « ambient » → le son respecte le bouton silencieux
+    if (navigator.audioSession) navigator.audioSession.type = 'ambient';
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return;
+    if (!_udtAudioCtx) _udtAudioCtx = new AC();
+    if (_udtAudioCtx.state === 'suspended') _udtAudioCtx.resume();
+  } catch (e) {}
+}
+// Les navigateurs n'autorisent le son qu'après un premier geste de l'utilisateur
+['pointerdown', 'touchend', 'keydown'].forEach(ev =>
+  document.addEventListener(ev, _udtUnlockAudio, { passive: true }));
+
+function _udtPlayNotifSound() {
+  try {
+    const ctx = _udtAudioCtx;
+    if (!ctx || ctx.state !== 'running') return;
+    const t0 = ctx.currentTime;
+    // Petit carillon deux notes (mi → la)
+    [[659.25, 0], [880, 0.13]].forEach(([freq, delay]) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, t0 + delay);
+      gain.gain.exponentialRampToValueAtTime(0.25, t0 + delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + delay + 0.45);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(t0 + delay);
+      osc.stop(t0 + delay + 0.5);
+    });
+  } catch (e) {}
+}
+
+function _udtShowInAppNotif({ title, body, url }) {
+  if (!document.getElementById('udt-notif-style')) {
+    const st = document.createElement('style');
+    st.id = 'udt-notif-style';
+    st.textContent = `
+      .udt-notif{position:fixed;left:50%;top:0;z-index:99999;width:min(92vw,420px);
+        transform:translate(-50%,-130%);transition:transform .35s cubic-bezier(.2,.9,.3,1.2);
+        margin-top:calc(env(safe-area-inset-top,0px) + 10px);display:flex;gap:12px;align-items:center;
+        padding:12px 14px;background:var(--card,#0E4A42);color:var(--text,#F6F4E8);
+        border:1px solid var(--border,rgba(246,244,232,.15));border-left:4px solid var(--accent,#0B9488);
+        border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);cursor:pointer;
+        font-family:'DM Sans',Inter,sans-serif;touch-action:pan-x}
+      .udt-notif.show{transform:translate(-50%,0)}
+      .udt-notif img{width:36px;height:36px;border-radius:9px;flex:none}
+      .udt-notif .udt-n-txt{flex:1;min-width:0}
+      .udt-notif .udt-n-t{font-size:14px;font-weight:700;line-height:1.25}
+      .udt-notif .udt-n-b{font-size:13px;color:var(--muted,#B9C9C4);line-height:1.3;margin-top:2px;
+        overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}`;
+    document.head.appendChild(st);
+  }
+
+  document.querySelector('.udt-notif')?.remove();
+  const el = document.createElement('div');
+  el.className = 'udt-notif';
+  el.setAttribute('role', 'status');
+  el.innerHTML = `<img src="/icon-192.png" alt=""><div class="udt-n-txt">
+      <div class="udt-n-t"></div><div class="udt-n-b"></div></div>`;
+  el.querySelector('.udt-n-t').textContent = title || '';
+  el.querySelector('.udt-n-b').textContent = body || '';
+  document.body.appendChild(el);
+  requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('show')));
+
+  const close = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 400); };
+  const timer = setTimeout(close, 5000);
+  el.addEventListener('click', () => {
+    clearTimeout(timer); close();
+    if (url && url !== '/' && url !== location.pathname) location.href = url;
+  });
+  // Glisser vers le haut pour fermer
+  let y0 = null;
+  el.addEventListener('touchstart', e => { y0 = e.touches[0].clientY; }, { passive: true });
+  el.addEventListener('touchmove', e => {
+    if (y0 !== null && e.touches[0].clientY - y0 < -20) { clearTimeout(timer); close(); y0 = null; }
+  }, { passive: true });
+
+  _udtPlayNotifSound();
+  if (navigator.vibrate) { try { navigator.vibrate([150, 80, 150]); } catch (e) {} }
+}
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    const d = event.data;
+    if (!d || d.type !== 'udt-push') return;
+    // Les badges ont déjà leur propre animation de célébration quand l'app est ouverte
+    if (/badge d[ée]bloqu/i.test(d.title || '') && typeof _startBadgeRealtime === 'function') {
+      _udtPlayNotifSound();
+      return;
+    }
+    _udtShowInAppNotif(d);
+  });
+  // Si les notifs sont déjà autorisées, (ré)enregistrer sw.js dès le chargement
+  // pour que les téléphones récupèrent sa dernière version.
+  if ('Notification' in window && Notification.permission === 'granted') {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+}
+
 // NAVIGATION
 async function goPage(page){
   document.querySelectorAll('.page').forEach(p=>{p.classList.remove('active');p.style.display='none';p.style.overflowY='';});
