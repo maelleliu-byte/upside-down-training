@@ -94,6 +94,7 @@
     var nSer = 0; sd.forEach(function (x) { if (x && x.serie > nSer) nSer = x.serie; });
     if (nSer >= 2) { var hs = seriesHtml(sd, nSer, opts); if (hs) return hs; }
     var unit = (sd[0] && sd[0].unit) || 'W', sum = /^(m|cal)$/.test(unit);
+    var str = sd[0] && sd[0].kind === 'str';   // bloc FORCE : charge + RPE par série
     // Allure (course) : valeurs en secondes/km ; barres en vitesse (plus haut = plus rapide), étiquettes en min/km
     var pace = unit === '/km';
     var mmss = function (s) { s = Math.round(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); };
@@ -122,7 +123,7 @@
         g += '<rect x="' + (cx(i) - bw / 2).toFixed(1) + '" y="' + yy.toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (B - yy).toFixed(1) + '" rx="4" fill="var(--accent)" fill-opacity=".85"><title>' + lab(v) + '</title></rect>';
         if (B - yy > 16 && bw >= 20) g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B - 6) + '" fill="#000" font-size="' + (n > 6 ? 9 : 11) + '" font-weight="700" text-anchor="middle">' + lab(v) + '</text>';
       }
-      g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B + 16) + '" fill="var(--text2)" font-size="' + (n > 6 ? 9 : 11) + '" text-anchor="middle">' + (n > 6 ? '' : 'INT ') + (i + 1) + '</text>';
+      g += '<text x="' + cx(i).toFixed(1) + '" y="' + (B + 16) + '" fill="var(--text2)" font-size="' + (n > 6 ? 9 : 11) + '" text-anchor="middle">' + (n > 6 ? '' : str ? 'S' : 'INT ') + (i + 1) + '</text>';
     });
     var pts = [];
     rpes.forEach(function (r, i) { if (r != null) pts.push(cx(i).toFixed(1) + ',' + yr(r).toFixed(1)); });
@@ -137,6 +138,27 @@
     var tot = vv.reduce(function (a, b) { return a + b; }, 0);
     var fv = vals[0], lv = vals[n - 1], fR = rpes[0], lR = rpes[n - 1];
     var dW = fv != null && lv != null ? lv - fv : null, dR = fR != null && lR != null ? lR - fR : null;
+    if (str) {
+      var mx = vv.length ? Math.max.apply(null, vv) : null, ton = 0;
+      sd.forEach(function (x) { if (x.value != null) ton += (+x.reps || 0) * +x.value; });
+      var kS = '<div class="k">' +
+        '<div><small>Charge max</small><b style="color:var(--accent)">' + (mx == null ? '–' : fr(mx) + ' kg') + '</b></div>' +
+        '<div><small>Tonnage</small><b>' + (ton ? Math.round(ton) + ' kg' : '–') + '</b></div>' +
+        '<div><small>RPE S1 → S' + n + '</small><b style="color:#ff8c47">' + (fR == null || lR == null ? '–' : fr(fR) + ' → ' + fr(lR)) + '</b></div></div>';
+      var rdS = '';
+      if (dW != null && dR != null) {
+        if (dW > 0 && dR <= 0.5) rdS = 'Charge qui monte sans faire grimper le RPE : il reste de la marge.';
+        else if (dW > 0) rdS = 'Montée en charge avec un RPE qui suit : progression maîtrisée.';
+        else if (dW === 0 && dR >= 1) rdS = 'Charge stable, RPE qui monte de ' + fr(dR) + ' : la fatigue s\'accumule au fil des séries.';
+        else if (dW === 0) rdS = 'Charge et RPE stables : séance bien calibrée.';
+        else rdS = 'Charge redescendue en fin de séance.';
+      }
+      if (lR != null && lR >= 9.5) rdS += (rdS ? ' ' : '') + 'Dernière série à RPE ' + fr(lR) + ' : proche du max.';
+      return '<div class="ivr">' + (opts.noTitle ? '' : '<div class="t">Récap de séance</div>') + kS +
+        '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="display:block" role="img" aria-label="Charge et RPE par série">' + g + '</svg>' +
+        '<div class="lg"><span><i style="background:var(--accent)"></i>Charge (kg)</span><span><i style="background:#d8872a;border-radius:50%"></i>RPE (couleur = zone)</span></div>' +
+        (rdS ? '<div class="rd">' + rdS + '</div>' : '') + '</div>';
+    }
     var k = '<div class="k">' +
       '<div><small>' + (pace ? 'Allure moy.' : sum ? 'Total' : 'Moyenne') + '</small><b style="color:var(--accent)">' + (vv.length ? (pace ? mmss(3600 / avg) + ' /km' : fr(sum ? tot : avg) + ' ' + unit) : '–') + '</b></div>' +
       '<div><small>Écart INT 1 → ' + n + '</small><b>' + (dW == null ? '–' : pace ? sgn(Math.round(3600 / lv - 3600 / fv), 's/km') : sgn(dW, unit)) + '</b></div>' +

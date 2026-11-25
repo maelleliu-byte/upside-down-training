@@ -166,19 +166,31 @@ async function buildSessionCard(s){
 
   // renderContentWithCharges normalise tout en <br> — pas besoin de test isHtml
   let contentHtml=(window.udtAllure&&window.udtAllure.renderAs)?window.udtAllure.renderAs(s.athlete_id||null,s.title||'',()=>renderContentWithCharges(s.content||'')):renderContentWithCharges(s.content||'');
-  const isStrength=s.type==='strength'&&s.sets>0;
   const isMulti=s.multi_score&&s.score_count>0;
   const isText=s.score_type==='text';
+  // Bloc FORCE en séries : une ligne par série, reps + charge + RPE
+  const strl=(!isMulti&&!isText)?strengthSetSlots(s):null;
+  const isStrength=!strl&&s.type==='strength'&&s.sets>0;
   const scoreLabels=s.score_labels?JSON.parse(s.score_labels):(s.score_label1?[s.score_label1,s.score_label2].filter(Boolean):[]);
 
   // Bloc en charge découpé en parties (ex. WEIGHTLIFTING) : un score par partie
-  const autoParts=(!isText&&!isStrength&&!isMulti&&s.score_type==='weight')?weightPartSlots(s.content):null;
+  const autoParts=(!strl&&!isText&&!isStrength&&!isMulti&&s.score_type==='weight')?weightPartSlots(s.content):null;
   // Bloc ENGINE / RUN en intervalles (ex. 3x 8:00) : une ligne par intervalle, valeur + RPE
-  const ivl=(!isStrength&&!isMulti&&!autoParts)?intervalScoring(s):null;
+  const ivl=(!strl&&!isStrength&&!isMulti&&!autoParts)?intervalScoring(s):null;
 
   // Score input
   let scoreInputHtml='';
-  if(ivl){
+  if(strl){
+    const rpeOpts=Array.from({length:19},(_,k)=>1+k/2).map(n=>`<option value="${n}">RPE ${String(n).replace('.',',')}</option>`).join('');
+    let idx=0;
+    scoreInputHtml=`<div class="multi-score-inputs" data-strsets="1">${strl.map((p,pi)=>`${strl.length>1||p.label?`<div class="iv-group-h">${escapeHtml(p.label||('PARTIE '+(pi+1)))}${p.n>1?' · '+p.n+' séries':''}</div>`:''}${Array.from({length:p.n},(_,j)=>{const i=idx++;
+      return `<div class="multi-score-row">
+        <div class="multi-score-lbl" style="min-width:30px">S${j+1}</div>
+        <input class="multi-score-input" id="sreps-${i}-${s.id}" data-stype="reps" type="text" inputmode="numeric" aria-label="Reps" placeholder="reps" value="${p.reps||''}" style="flex:0 0 58px;width:58px;min-width:0;padding:9px 4px;text-align:center">
+        <input class="multi-score-input" id="score-${i}-${s.id}" data-stype="weight" data-spart="${pi}" data-sset="${j}" data-plbl="${escapeHtml(p.label||'')}" type="text" inputmode="decimal" placeholder="kg" style="flex:1 1 0;min-width:0">
+        <select class="multi-score-input" id="rpe-${i}-${s.id}" data-stype="rpe" aria-label="RPE" style="flex:0 0 80px;width:80px;min-width:0;padding:9px 4px"><option value="">RPE</option>${rpeOpts}</select>
+      </div>`;}).join('')}`).join('')}</div>`;
+  } else if(ivl){
     const pace=ivl.unit==='/km';
     const _gStart={},_gOf=[],_gIdx=[];
     if(ivl.groups&&ivl.groups.length>1){let k=0;ivl.groups.forEach((g,gi)=>{_gStart[k]=`Série ${gi+1} · ${escapeHtml(g.label)}`;for(let j=0;j<g.n;j++){_gOf[k+j]=gi+1;_gIdx[k+j]=j+1;}k+=g.n;});}
@@ -355,6 +367,18 @@ function prefillMyScore(sessionId,sc){
 
   const ivBox=card.querySelector('[data-intervals]');
   const apBox=card.querySelector('[data-autoparts]');
+  const stBox=card.querySelector('[data-strsets]');
+  if(stBox){
+    if(sd)sd.forEach(r=>{
+      const el=stBox.querySelector(`input[data-spart="${(+r.part||1)-1}"][data-sset="${(+r.set||1)-1}"]`);if(!el)return;
+      const i=el.id.split('-')[1];
+      set(el,r.value==null?'':num(r.value));
+      if(r.reps)set(document.getElementById(`sreps-${i}-${sessionId}`),r.reps);
+      const rs=document.getElementById(`rpe-${i}-${sessionId}`);
+      if(rs&&r.rpe!=null){const v=String(r.rpe);if([...rs.options].some(o=>o.value===v))rs.value=v;}
+    });
+    return;
+  }
   if(ivBox){
     if(sd)sd.forEach(r=>{
       const i=(+r.set||0)-1;if(i<0)return;
@@ -823,6 +847,35 @@ function intervalScoring(s){
   for(const g of groups){if(tot+g.n>30)break;keep.push({n:g.n,label:g.label,serie:!!g.serie});tot+=g.n;}
   return {n:tot,unit,stype,word,groups:keep};
 }
+/* Bloc FORCE (hors VBT) : une ligne de saisie par série avec reps + charge + RPE.
+   Parties repérées par leur format (« 4 SETS EVERY 4:00 », « 5 SETS REST 2:00 », « 3 SETS TO FIND »),
+   reps lues sur la 1re ligne mouvement (« 2 BACK SQUAT », « 3RM BACK SQUAT »). */
+function strengthSetSlots(s){
+  if(!s||String(s.type||'').toLowerCase()!=='strength'||s.vbt||s.ef)return null;
+  if(/^(time|rounds|text)$/.test(s.score_type||''))return null;
+  const txt=String(s.content||'').replace(/<br\s*\/?>/gi,'\n').replace(/<\/(div|p|li)>/gi,'\n').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ');
+  const lines=txt.split('\n').map(l=>l.replace(/\s+/g,' ').trim());
+  const parts=[];let cur=null;
+  for(const l of lines){
+    if(!l)continue;
+    if(/^_{5,}$/.test(l)){cur=null;continue;}
+    // « 4x3 BACK SQUAT REPOS 2:30 » : séries, reps et mouvement sur la même ligne
+    const hx=l.match(/^(\d+)\s*[x×]\s*(\d+)\s+([A-Za-zÀ-ÿ][^%@]*)/i);
+    if(hx&&+hx[1]>=1&&+hx[1]<=12){cur={n:+hx[1],reps:hx[2],label:hx[3].replace(/\b(REPOS|REST|EVERY|START|AT|RPE)\b.*$/i,'').trim().toUpperCase().slice(0,32)};parts.push(cur);continue;}
+    const h=l.replace(/^[^0-9A-Za-z]+/,'').match(/^(\d+)\s*(?:SETS?|S[EÉ]RIES?)\b/i);
+    if(h){const n=+h[1];cur=(n>=1&&n<=12)?{n,reps:'',label:''}:null;if(cur)parts.push(cur);continue;}
+    if(cur&&!cur.label){
+      const m=l.match(/^(\d+(?:\/\d+)?)\s*(RM\b)?\s*([A-Za-zÀ-ÿ][^%@]*)/i);
+      if(m){cur.reps=m[1].includes('/')?'':m[1];
+        cur.label=m[3].replace(/\b(START|AT|FROM|TO|OR|RPE|\d+%).*$/i,'').replace(/\d+(?:[.,]\d+)?\s*$/,'').trim().toUpperCase().slice(0,32);}
+    }
+  }
+  const keep=parts.filter(p=>p.label);
+  if(!keep.length)return null;
+  let tot=0;const out=[];for(const p of keep){if(tot+p.n>24)break;out.push(p);tot+=p.n;}
+  if(tot<2)return null;
+  return out;
+}
 /* Bloc en charge à plusieurs parties (lu comme le timer) :
    un seul % dans la partie → une charge ; montée en charge (plusieurs %, From…to, à) → une charge par série */
 function weightPartSlots(content){
@@ -859,7 +912,27 @@ async function submitScore(sessionId,scoreType,isStrength,sets,isMulti,isText,sc
 
   const ivBox=document.querySelector(`#sc-${sessionId} [data-intervals]`);
   const apBox=document.querySelector(`#sc-${sessionId} [data-autoparts]`);
-  if(ivBox){
+  const stBox=document.querySelector(`#sc-${sessionId} [data-strsets]`);
+  if(stBox){
+    // Une ligne par série : reps + charge + RPE
+    const sd=[],groups={},order=[];let best=0;
+    stBox.querySelectorAll('input[data-spart]').forEach(el=>{
+      const i=+el.id.split('-')[1];
+      const raw=String(el.value||'').trim().replace(/\s*kg$/i,'');
+      const kg=raw?parseFloat(raw.replace(',','.')):null;
+      const rpe=parseFloat(document.getElementById(`rpe-${i}-${sessionId}`)?.value)||null;
+      const reps=parseInt(document.getElementById(`sreps-${i}-${sessionId}`)?.value,10)||null;
+      if((kg==null||isNaN(kg))&&!rpe)return;
+      const p=el.dataset.spart,lbl=el.dataset.plbl||('Partie '+(+p+1));
+      if(!groups[p]){groups[p]={lbl,items:[]};order.push(p);}
+      const e={kind:'str',set:+el.dataset.sset+1,part:+p+1,label:lbl,reps,value:(kg==null||isNaN(kg))?null:kg,rpe,unit:'kg'};
+      sd.push(e);groups[p].items.push(e);if(e.value!=null)best=Math.max(best,e.value);
+    });
+    if(!sd.length){showToast('⚠️ Entre au moins une série (charge ou RPE)');return;}
+    const f=x=>String(x).replace('.',',');
+    scoreText=order.map(p=>`${groups[p].lbl} ${groups[p].items.map(e=>`${e.reps?e.reps+'×':''}${e.value!=null?f(e.value)+' kg':'–'}${e.rpe?' RPE '+f(e.rpe):''}`).join(' / ')}`).join(' | ');
+    scoreValue=best;scoreType='weight';setsData=sd;
+  } else if(ivBox){
     // Une ligne par intervalle : valeur (W, m, cal, km/h) + RPE
     const n=+ivBox.dataset.intervals||0,unit=ivBox.dataset.unit||'',sd=[],txt=[];
     const _gs=String(ivBox.dataset.groups||'').split(',').map(Number).filter(x=>x>0),_ser=[],_int=[];
