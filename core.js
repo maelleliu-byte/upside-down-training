@@ -455,6 +455,7 @@ async function initApp(){
   if(typeof checkAutoBadges==='function')setTimeout(checkAutoBadges,2000);
   if(typeof _showUnseenBadges==='function')setTimeout(_showUnseenBadges,2200);
   if(typeof _startBadgeRealtime==='function')setTimeout(_startBadgeRealtime,1000);
+  _udtHandleInitialDeepLink();
 }
 
 // ── Push Notifications ─────────────────────────────────────
@@ -597,7 +598,7 @@ function _udtShowInAppNotif({ title, body, url }) {
   const timer = setTimeout(close, 5000);
   el.addEventListener('click', () => {
     clearTimeout(timer); close();
-    if (url && url !== '/' && url !== location.pathname) location.href = url;
+    if (url && url !== '/' && url !== location.pathname) { if (!_udtOpenDeepLink(url)) location.href = url; }
   });
   // Glisser vers le haut pour fermer
   let y0 = null;
@@ -610,9 +611,33 @@ function _udtShowInAppNotif({ title, body, url }) {
   if (navigator.vibrate) { try { navigator.vibrate([150, 80, 150]); } catch (e) {} }
 }
 
+// Lien profond d'une notification (ex. /?score=<id>&n=like) → ouvre le contenu
+// dans l'app sans recharger. Renvoie false si l'URL n'est pas gérée ici.
+function _udtOpenDeepLink(url) {
+  let u;
+  try { u = new URL(url, location.origin); } catch (e) { return false; }
+  const scoreId = u.searchParams.get('score');
+  if (scoreId && typeof openScoreFromNotif === 'function') {
+    openScoreFromNotif(scoreId, u.searchParams.get('n'));
+    return true;
+  }
+  return false;
+}
+// Au démarrage (app ouverte par le clic sur la notif) : traiter ?score= puis nettoyer l'URL
+function _udtHandleInitialDeepLink() {
+  const p = new URLSearchParams(location.search);
+  if (!p.get('score')) return;
+  const url = location.href;
+  p.delete('score'); p.delete('n');
+  const q = p.toString();
+  try { history.replaceState(null, '', location.pathname + (q ? '?' + q : '') + location.hash); } catch (e) {}
+  _udtOpenDeepLink(url);
+}
+
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.addEventListener('message', (event) => {
     const d = event.data;
+    if (d && d.type === 'udt-open') { if (!_udtOpenDeepLink(d.url)) location.href = d.url; return; }
     if (!d || d.type !== 'udt-push') return;
     // Les badges ont déjà leur propre animation de célébration quand l'app est ouverte
     if (/badge d[ée]bloqu/i.test(d.title || '') && typeof _startBadgeRealtime === 'function') {
