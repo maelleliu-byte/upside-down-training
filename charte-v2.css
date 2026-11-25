@@ -2,12 +2,12 @@
    CHARTE UPSIDE v2 « gris » — outils de l'app (lactate/RPE, PC/VC,
    charge-vitesse, VBT, EF). Voir CHARTE-VISUELLE.md.
    Chargée en dernier dans le <head> : remplace couleurs, fond et titres
-   sans toucher à la structure. Le thème clair (data-theme="light") reste inchangé.
+   sans toucher à la structure. S'applique aussi en thème clair : la charte v2 est le seul rendu.
    Retour à l'ancienne charte : retirer la ligne <link ... charte-v2.css>.
    ===================================================================== */
 @font-face{font-family:"Anton";src:url(/fonts/anton-latin-400-normal.woff2) format("woff2");font-weight:400;font-display:swap}
 
-:root:not([data-theme="light"]){
+:root{
   --bg:#161616 !important;--panel:rgba(0,0,0,.34) !important;--line:rgba(246,244,232,.10) !important;
   --text:#F6F4E8 !important;--muted:rgba(246,244,232,.64) !important;
   --accent:#14A595 !important;--accent-ink:#FFFFFF !important;
@@ -19,19 +19,22 @@
 }
 
 /* Fond gris flouté, fixe (pseudo-élément : fonctionne aussi sur iPhone) */
-:root:not([data-theme="light"]) body{background-color:#161616;background-image:none}
-:root:not([data-theme="light"]) body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+:root body{background-color:#161616;background-image:none}
+:root body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
   background:#161616 url(/img/fond-gris.jpg) center/cover no-repeat}
 
 /* Titres : Anton italique majuscules */
-:root:not([data-theme="light"]) h1{font-family:var(--anton) !important;font-weight:400 !important;text-transform:uppercase;
+:root h1{font-family:var(--anton) !important;font-weight:400 !important;text-transform:uppercase;
   letter-spacing:.005em !important;line-height:1.04 !important;transform:skewX(-9deg);transform-origin:left bottom}
-:root:not([data-theme="light"]) h2{font-family:var(--anton) !important;font-weight:400 !important;text-transform:uppercase;
+:root h2{font-family:var(--anton) !important;font-weight:400 !important;text-transform:uppercase;
   letter-spacing:.01em !important;font-size:22px !important;line-height:1.1 !important;transform:skewX(-9deg);transform-origin:left bottom}
-:root:not([data-theme="light"]) .ac{color:var(--accent) !important}
+:root .ac{color:var(--accent) !important}
 
 /* Barres d'en-tête et de navigation : verre sombre */
-:root:not([data-theme="light"]) header,
-:root:not([data-theme="light"]) nav,
-:root:not([data-theme="light"]) .tabbar,
-:root:not([data-theme="light"]) .tabs{background-color:rgba(17,17,17,.88)}
+:root header,
+:root nav,
+:root .tabbar,
+:root .tabs{background-color:rgba(17,17,17,.88)}
+
+/* Charte unique : le bouton clair/sombre des outils n'a plus d'effet, on le masque */
+[data-act="theme"]{display:none !important}

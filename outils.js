@@ -17,15 +17,15 @@
   // ---------- catalogue des outils ----------
 
   // À changer à chaque mise à jour de vbt.html : force le rechargement (cache navigateur)
-  var VBT_VERSION = '2026-11-25g';
+  var VBT_VERSION = '2026-11-25h';
   // Idem pour ef.html (profil endurance fondamentale)
-  var EF_VERSION = '2026-11-25g';
+  var EF_VERSION = '2026-11-25h';
   // Idem pour pc.html (profil puissance / vitesse critique)
-  var PC_VERSION = '2026-11-25g';
+  var PC_VERSION = '2026-11-25h';
   // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
-  var LV_VERSION = '2026-11-25g';
+  var LV_VERSION = '2026-11-25h';
   // Idem pour lactate.html (profilage lactate · profilage RPE, protocole 41)
-  var ENDU_VERSION = '2026-11-25g';
+  var ENDU_VERSION = '2026-11-25h';
 
   // Onglets de la boîte à outils (ordre d'affichage)
   var CATS = [

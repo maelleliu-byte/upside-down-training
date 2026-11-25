@@ -317,7 +317,7 @@ nav.tabs button{font-size:11px;letter-spacing:-.01em}
 .toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-top:8px}
 .toggle input{width:20px;height:20px;min-height:0}
 </style>
-<link rel="stylesheet" href="/charte-v2.css?v=1">
+<link rel="stylesheet" href="/charte-v2.css?v=2">
 </head>
 <body>
 <script>try{var t=localStorage.getItem("udt-vbt-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
@@ -582,7 +582,7 @@ function viewProfil(){
   const ref=reference(),d=draft();
   const src=ref||(d.f?Object.assign({},d,{preview:true}):null);
   const sp=sessionPoints(store.mv);
-  let h=`${title("Résultat","Profil <span class=\"ac\">L-V</span> · "+esc(mv().name))}`;
+  let h=`${title("Résultat","Profil <span class=\"ac\">charge-vitesse</span> · "+esc(mv().name))}`;
   if(!src){
     h+=`<div class="empty" style="margin-top:12px">Aucun test standardisé pour ce mouvement. Fais le test pour obtenir le profil de référence.</div>
     <button class="btn primary full" style="margin-top:14px" data-act="tab" data-tab="proto">Voir le protocole</button>`;

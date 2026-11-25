@@ -212,13 +212,13 @@ label.f u{text-decoration:none;text-transform:none;letter-spacing:.02em}
 #app.ro [data-act=new-session],#app.ro [data-act=add-block],#app.ro [data-act=del-block],#app.ro [data-act=add-set],#app.ro [data-act=dup-set],#app.ro [data-act=del-set],#app.ro [data-act=apply-sug],#app.ro [data-act=dup-session],#app.ro [data-act=del-session],#app.ro [data-act=move-up],#app.ro [data-act=move-down],#app.ro [data-act^=folder-new],#app.ro [data-act=folder-rename],#app.ro [data-act=folder-del],#app.ro [data-act=profile-test],#app.ro [data-act=add-move],#app.ro [data-act=del-move]{display:none!important}
 #app.ro [data-act=status],#app.ro [data-act=calib],#app.ro [data-act=zone]{pointer-events:none}
 </style>
-<link rel="stylesheet" href="/charte-v2.css?v=1">
+<link rel="stylesheet" href="/charte-v2.css?v=2">
 </head>
 <body>
 <script>try{var t=localStorage.getItem("udt-vbt-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch(e){}</script>
 <div id="app"></div>
 <nav class="tabs" aria-label="Navigation"><div class="in">
-  <button data-act="tab" data-tab="profile">Profil L-V</button>
+  <button data-act="tab" data-tab="profile">Profil charge-vitesse</button>
   <button data-act="tab" data-tab="settings">Mouvements</button>
 </div></nav>
 <script>
@@ -742,7 +742,7 @@ function viewProfile(){
   </div>
   <div class="card" style="margin-top:12px">
     ${pts.length?chartLVP(pts,okC?c:null,halt?null:m.mvt,e1):'<div class="hint" style="padding:30px 4px;text-align:center">Pas encore de données pour ce mouvement sur la période.</div>'}
-    ${pts.length?`<div class="legend"><span><i style="background:var(--accent)"></i>Vitesse (14 derniers jours)</span><span><i style="background:var(--muted)"></i>Vitesse (plus ancien)</span><span><i style="background:transparent;border:2px solid #e8573f"></i>Puissance ${pw}</span>${okC?`<span><i style="background:var(--text);border-radius:0;height:2px;vertical-align:3px"></i>Droite L-V</span><span><i style="background:#e8573f;border-radius:0;height:2px;vertical-align:3px"></i>Parabole de puissance</span>`:""}${!halt&&m.mvt?`<span><i style="background:var(--bad)"></i>MVT ${fmt(m.mvt)} m/s</span>`:""}</div>`:""}
+    ${pts.length?`<div class="legend"><span><i style="background:var(--accent)"></i>Vitesse (14 derniers jours)</span><span><i style="background:var(--muted)"></i>Vitesse (plus ancien)</span><span><i style="background:transparent;border:2px solid #e8573f"></i>Puissance ${pw}</span>${okC?`<span><i style="background:var(--text);border-radius:0;height:2px;vertical-align:3px"></i>Droite charge-vitesse</span><span><i style="background:#e8573f;border-radius:0;height:2px;vertical-align:3px"></i>Parabole de puissance</span>`:""}${!halt&&m.mvt?`<span><i style="background:var(--bad)"></i>MVT ${fmt(m.mvt)} m/s</span>`:""}</div>`:""}
     ${okC?`<p class="hint" style="margin-top:8px">${c.rm?`Droite : v = ${fmt(c.b*c.rm/100,4)} × %1RM + ${fmt(c.a,3)}<br>Parabole : P = ${fmt(G*c.b*c.rm*c.rm/10000,3)} × %1RM² + ${fmt(G*c.a*c.rm/100,2)} × %1RM`:`Droite : v = ${fmt(c.b,4)} × kg + ${fmt(c.a,3)}`} · R² ${fmt(f.r2)}</p>`:""}
   </div>
   ${okC?`<div class="kpis" style="margin-top:12px">
@@ -961,7 +961,7 @@ document.addEventListener("click",async e=>{
     case "profile-test":{const m=move(state.profileMove);const id=uid();const pcts=[40,55,70,80,90],reps=[3,3,2,2,1];
       const blk0={id:uid(),mv:m.id,note:"Test de profil : échauffement, puis charges croissantes. 2 à 3 min de repos, intention maximale sur chaque rep. Ne pas aller à l’échec.",vmin:null,vmax:null,vlMax:null,
         sets:pcts.map((p,i)=>({id:uid(),load:m.rm?Math.round(m.rm*p/100/2.5)*2.5:null,reps:reps[i],v:[],rpe:"",note:m.rm?"":`≈ ${p} % 1RM`}))};
-      state.sessions[id]={id,folder:folderOf(state.folder)?state.folder:"",order:nextOrder(),createdAt:Date.now(),date:today(),title:"Test profil L-V : "+m.name,status:"planned",sensor:state.settings.sensor||"",notes:"",blocks:[blk0],updatedAt:Date.now()};persist(id);open(id);break}
+      state.sessions[id]={id,folder:folderOf(state.folder)?state.folder:"",order:nextOrder(),createdAt:Date.now(),date:today(),title:"Test profil charge-vitesse : "+m.name,status:"planned",sensor:state.settings.sensor||"",notes:"",blocks:[blk0],updatedAt:Date.now()};persist(id);open(id);break}
     case "period":state.period=Number(t.dataset.d);render();break;
     case "add-move":state.settings.moves.push({id:"m"+uid(),name:"Nouveau mouvement",type:"force",mvt:0.3,rm:null});persist("__settings");render();break;
     case "del-move":state.settings.moves=state.settings.moves.filter(m=>m.id!==t.dataset.m);if(!state.settings.moves.length)state.settings.moves=clone(DEFAULT_MOVES);persist("__settings");render();break;

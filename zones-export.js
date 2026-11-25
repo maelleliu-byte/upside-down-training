@@ -1,4 +1,4 @@
-/* Export des zones d'entraînement (Profil L-V et PC / VC).
+/* Export des zones d'entraînement (profil charge-vitesse et PC / VC).
    udtZonesExport.png(data) : fiche image 1080 px de large, partagée sur mobile ou téléchargée.
    udtZonesExport.csv(data) : tableau ouvrable dans Excel / Google Sheets.
    data = {
