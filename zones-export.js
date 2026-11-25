@@ -42,8 +42,8 @@
   // Applique la charte : thème teal imposé, logo par défaut, couleurs ramenées à la palette
   function harmonize(d) {
     var issues = [], out = Object.assign({}, d);
-    if (d.theme && d.theme !== "teal") issues.push("thème « " + d.theme + " »");
-    out.theme = "teal";
+    if (d.theme && d.theme !== "teal" && d.theme !== "gris") issues.push("thème « " + d.theme + " »");
+    out.theme = "gris"; // charte v2 : toutes les fiches sur fond gris (voir CHARTE-VISUELLE.md)
     if (!d.logo) { out.logo = LOGO_DEFAULT; if (d.logo !== undefined) issues.push("logo manquant"); }
     var bad = 0;
     out.rows = (d.rows || []).map(function (r) {
@@ -58,6 +58,8 @@
   var LIGHT = { bg: "#FBFAF7", ink: "#0D3B33", teal: "#0B9488", muted: "#5C6F6A", line: "#E3E6E1", card: "#FFFFFF", hero: "#0D3B33", heroLab: "#9FE3D8", heroTxt: "#FFFFFF" };
   // Fiche plein teal (charte Upside Down Training) : data.theme = "teal"
   var TEAL = { bg: "#0B9488", ink: "#FFFFFF", teal: "#FFFFFF", muted: "rgba(255,255,255,.78)", line: "rgba(255,255,255,.22)", card: "rgba(3,52,46,.30)", hero: "#05453E", heroLab: "#9FE3D8", heroTxt: "#FFFFFF" };
+  // Fiche charte v2 « gris » : fond gris flouté, cartes sombres, titre Anton italique, teal en accent
+  var GRIS = { bg: "#161616", ink: "#F6F4E8", teal: "#14A595", logo: "#F6F4E8", muted: "rgba(246,244,232,.66)", line: "rgba(246,244,232,.10)", card: "rgba(0,0,0,.34)", hero: "#14A595", heroLab: "rgba(255,255,255,.85)", heroTxt: "#FFFFFF", gris: true };
   var C = LIGHT;
 
   function slug(s) {
@@ -97,11 +99,20 @@
     if (d.logo && typeof Path2D !== "undefined") {
       if (!measureOnly) {
         ctx.save(); ctx.translate(P - 8, y - 50); ctx.scale(1.6, 1.6);
-        ctx.fillStyle = C.teal; ctx.fill(new Path2D(d.logo), "evenodd"); ctx.restore();
+        ctx.fillStyle = C.logo || C.teal; ctx.fill(new Path2D(d.logo), "evenodd"); ctx.restore();
       }
-      txt("UPSIDE DOWN TRAINING", P + 72, y, "700 24px " + SG, C.teal); y += 60;
+      txt("UPSIDE DOWN TRAINING", P + 72, y, "700 24px " + SG, C.logo || C.teal); y += 60;
     } else { txt("UPSIDE DOWN TRAINING", P, y, "700 22px " + SG, C.teal); y += 56; }
-    txt(d.kind || "Zones d'entraînement", P, y, "700 46px " + SG, C.ink); y += 46;
+    if (C.gris) {
+      y += 8;
+      if (!measureOnly) {
+        ctx.save(); ctx.translate(P, y); ctx.transform(1, 0, -0.16, 1, 0, 0);
+        ctx.font = "400 58px Anton, " + SG; ctx.fillStyle = C.ink; ctx.textAlign = "left";
+        ctx.fillText(String(d.kind || "Zones d'entraînement").toUpperCase(), 0, 0); ctx.restore();
+        ctx.fillStyle = C.teal; ctx.fillRect(P, y + 16, 160, 6);
+      }
+      y += 60;
+    } else { txt(d.kind || "Zones d'entraînement", P, y, "700 46px " + SG, C.ink); y += 46; }
     txt(d.title || "", P, y, "700 34px " + SG, C.teal); y += 40;
     var meta = [d.athlete, d.date ? "Test du " + d.date : "Test en cours (non enregistré)"].filter(Boolean).join("  ·  ");
     if (meta) { txt(meta, P, y, "500 24px " + IN, C.muted); y += 20; }
@@ -163,15 +174,28 @@
     d = harmonize(d);
     var W = 1080, c = document.createElement("canvas"), ctx = c.getContext("2d");
     var go = function () {
-      C = d.theme === "teal" ? TEAL : LIGHT;
+      C = d.theme === "gris" ? GRIS : d.theme === "teal" ? TEAL : LIGHT;
       c.width = W; c.height = 10; var H = draw(d, ctx, W, true);
       c.width = W; c.height = Math.ceil(H);
       ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, c.height);
+      if (C.gris) { // halo gris clair au centre = rendu « fond flouté » de la charte
+        var g = ctx.createRadialGradient(W * 0.45, c.height * 0.32, 40, W * 0.5, c.height * 0.45, Math.max(W, c.height) * 0.75);
+        g.addColorStop(0, "rgba(120,120,120,.38)"); g.addColorStop(1, "rgba(120,120,120,0)");
+        ctx.fillStyle = g; ctx.fillRect(0, 0, W, c.height);
+      }
       draw(d, ctx, W, false);
       C = LIGHT;
       c.toBlob(function (b) { if (b) deliver(b, slug(d.file || d.title) + ".png"); }, "image/png");
     };
-    (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(go, go);
+    var ready = document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve();
+    if (d.theme === "gris" && typeof FontFace !== "undefined" && document.fonts) {
+      ready = ready.then(function () {
+        if (document.fonts.check("40px Anton")) return;
+        var f = new FontFace("Anton", "url(/fonts/anton-latin-400-normal.woff2)");
+        return f.load().then(function (ff) { document.fonts.add(ff); }).catch(function () {});
+      });
+    }
+    ready.then(go, go);
   }
 
   function csv(d) {
