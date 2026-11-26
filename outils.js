@@ -21,11 +21,11 @@
   // Idem pour ef.html (profil endurance fondamentale)
   var EF_VERSION = '2026-11-25h';
   // Idem pour pc.html (profil puissance / vitesse critique)
-  var PC_VERSION = '2026-11-25h';
+  var PC_VERSION = '2026-11-26c';
   // Idem pour lv-test.html (profil charge-vitesse · test standardisé)
   var LV_VERSION = '2026-11-25h';
   // Idem pour lactate.html (profilage lactate · profilage RPE, protocole 41)
-  var ENDU_VERSION = '2026-11-26a';
+  var ENDU_VERSION = '2026-11-26c';
 
   // Onglets de la boîte à outils (ordre d'affichage)
   var CATS = [

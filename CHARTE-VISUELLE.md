@@ -73,6 +73,7 @@ Règle d'Alexis : **tout contenu créé dans l'app doit être harmonisé.** Peu 
   `--accent`…), le fond gris (`/img/fond-gris.jpg`) et les titres Anton (`/fonts/anton-latin-400-normal.woff2`).
   Nouveau module : utiliser ces variables et ajouter la même ligne `<link rel="stylesheet" href="/charte-v2.css?v=1">`.
 - **Fiches exportées** : toujours via `zones-export.js` (`udtZonesExport.png(data)`), jamais de rendu maison.
+- **Dossier post-profilage** (12 pages : couverture, courbe, 7 zones, profil, 7 séances clés, la suite) : via `dossier-export.js` (`udtDossier.open(data)`), même charte (fond gris, Anton, palette des zones, S1/S2 teal, 4 domaines). Bouton « Dossier complet » dans `pc.html`.
   Le modèle impose le thème `gris` (fond gris + halo, cartes sombres, titre Anton, seuil 1 en teal, logo crème).
   Un module qui envoie un thème inconnu, pas de logo ou une couleur hors palette est corrigé automatiquement
   et une alerte « non harmonisé » s'affiche : il faut alors corriger le module à la source.
