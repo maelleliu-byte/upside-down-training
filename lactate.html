@@ -838,23 +838,28 @@ function orientHTML(R){
   if(!R.thrOk)return null;
   const r=R.s1/R.s2*100,s1=W0(R.s1),s2=W0(R.s2),f1=isFinite(R.fc1)?" · FC < "+Math.round(R.fc1):"";
   const z2=`${W0(R.b[0])}–${s1} W${f1}`;
-  const base=LAC&&R.plat==="non"?" Pas de plateau de lactate : la lactatémie monte dès les premiers paliers, signe d'une base aérobie à construire.":"";
+  const noPlat=LAC&&R.plat==="non";
+  /* Profil sur le ratio S1/S2 (mêmes bornes hommes / femmes) :
+     Puissant ++ < 70 · Puissant + 70–75 · Intermédiaire 75–80 · Endurant + 80–85 · Endurant ++ > 85 */
+  const ei=r<70?0:r<75?1:r<80?2:r<85?3:4;
+  const label=["Puissant ++","Puissant +","Intermédiaire","Endurant +","Endurant ++"][ei];
+  const platTxt=noPlat?" Pas de plateau de lactate : la lactatémie monte dès les premiers paliers, base aérobie à surveiller.":"";
   let title,verdict,why,prio,sess;
-  if(r>=80&&!base){
-    title="Base aérobie solide, marge réduite";
-    verdict=`Courbe plate longtemps puis montée rapide : S1 à ${fr(r,0)} % de S2.`;
+  if(ei>=3){
+    title=label+" · base aérobie solide";
+    verdict=`S1 à ${fr(r,0)} % de S2 : courbe plate longtemps puis montée rapide.${platTxt}`;
     why="L'athlète tient beaucoup d'intensité sans accumuler (grosse endurance fondamentale), mais le domaine élevé entre S1 et S2 est étroit : au-delà de S2 la fatigue arrive vite.";
     prio=["Relever S2 et la tolérance au-dessus : 1 séance seuil + 1 séance VO₂max par semaine",`Garder la Z2 (${z2}) autour de 70 % du volume pour conserver la base`,"Le tempo (Z3) n'est pas la priorité : il est déjà « facile » pour ce profil"];
     sess=[`Seuil : 3–4 × 8–12′ à ${W0(R.s2*.95)}–${s2} W, RPE 6–7, récup 3′`,`VO₂max : 5 × 3′ à ${W0(R.s2*1.08)}–${W0(R.s2*1.12)} W, RPE 8–9, récup 3′`,`Endurance : 45–75′ allure EF`];
-  }else if(r>=70&&!base){
-    title="Profil équilibré";
-    verdict=`S1 à ${fr(r,0)} % de S2 : base et tolérance en bon rapport.`;
+  }else if(ei===2){
+    title=label+" · profil équilibré";
+    verdict=`S1 à ${fr(r,0)} % de S2 : base et tolérance en bon rapport.${platTxt}`;
     why="Ni la base aérobie ni la capacité au-dessus du seuil ne limitent nettement. On progresse en déplaçant toute la courbe vers la droite.";
     prio=[`Répartition polarisée ~80 / 20 : la majorité du volume en Z2 (${z2})`,"1 séance seuil et 1 séance VO₂max par semaine, en alternant les blocs","Allonger progressivement la durée des blocs au seuil"];
     sess=[`Endurance : 60–90′ allure EF`,`Tempo / seuil : 2 × 15–20′ à ${W0(R.s1)}–${W0(R.s2*.95)} W, RPE 4–6`,`VO₂max : 6 × 2′ à ${W0(R.s2*1.1)} W, RPE 8–9`];
   }else{
-    title="Base aérobie à développer";
-    verdict=`Courbe qui monte tôt mais longtemps : S1 à ${fr(r,0)} % de S2.${base}`;
+    title=label+" · base aérobie à développer";
+    verdict=`S1 à ${fr(r,0)} % de S2 : courbe qui monte tôt mais longtemps.${platTxt}`;
     why="L'athlète tient haut grâce à sa puissance et à sa tolérance, mais il sort tôt du domaine modéré : le moteur aérobie limite la récupération et la tenue sur les efforts longs.";
     prio=[`Plus de temps en basse intensité : 75–80 % du volume en Z2 (${z2}), RPE 2–3`,"Sorties longues continues de 45 à 90′ strictement sous S1","Limiter le tempo et garder une seule séance intense courte par semaine pour entretenir"];
     sess=[`Endurance : 2–3 × 45–90′ allure EF par semaine`,`Endurance + : 3 × 15′ en haut de Z2 (${W0(R.s1*.95)}–${s1} W)`,`Entretien : 6–8 × 1′ à ${W0(R.s2*1.05)} W, récup 2′`];
