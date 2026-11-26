@@ -45,6 +45,13 @@
   function rgba(h, a) { h = h.replace("#", ""); return "rgba(" + parseInt(h.slice(0, 2), 16) + "," + parseInt(h.slice(2, 4), 16) + "," + parseInt(h.slice(4, 6), 16) + "," + a + ")"; }
   function slug(s) { return String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase(); }
   function strip(s) { return String(s == null ? "" : s).replace(/<[^>]*>/g, "").replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'"); }
+  function tuLimiter(t) {
+    if (/musculaire/i.test(t)) return "En fin de test, ce sont tes jambes qui coincent : souvent un manque d'endurance fondamentale (travail sous S1).";
+    if (/respir/i.test(t)) return "En fin de test, c'est ta respiration qui domine : l'entraînement respiratoire est une piste prioritaire.";
+    if (/cardio/i.test(t)) return "En fin de test, c'est ton cardio qui domine : à croiser avec ta FC et le travail en Z3–Z5.";
+    if (/proches/i.test(t)) return "Tes perceptions sont proches en fin de test : pas de facteur limitant net.";
+    return t;
+  }
   function isBike(d) { return /bike|velo|vélo|assault|echo/i.test((d.k || "") + " " + (d.mv || "")); }
 
   /* ---------- briques communes ---------- */
@@ -297,10 +304,23 @@
     var rngSub = function (lo, hi) { return run ? fr(at(lo)) + "–" + fr(at(hi)) + " km/h" : d.p500 ? p500(at(lo)) + "–" + p500(at(hi)) + " /500m" : ""; };
     var sh = function (s) { return s.replace(" /km", "").replace(" W", ""); };
     var LAB = run ? "allure /km" : "puissance (W)", word = run ? "allure" : "puissance";
+    var val = function (pc) { return run ? fr(at(pc)) + " km/h" : Math.round(at(pc)) + " W"; };
+    var res = run ? Math.round(wp) + " m" : fr(wp / 1000) + " kJ", big = run ? wp > 250 : wp > 20000, small = run ? wp < 120 : wp < 10000;
+    var ori = ei <= 1 ? { title: "Profil puissant : priorité à ta " + R,
+        why: "Tu produis beaucoup sur 3′ grâce à ta réserve, mais ta " + R + " est basse par rapport à ce potentiel : tu t'uses vite dès que l'effort dure.",
+        prio: ["Monter ta " + R + " : volume en Z2 et blocs longs proches de ta " + R, "Tempo / seuil : 2 × 20′ à " + val(88) + "–" + val(95) + ", puis 4 × 10′ à " + val(95) + "–" + val(100), "Ta réserve s'entretient avec une séance courte par semaine, pas plus"] }
+      : ei >= 3 ? { title: "Profil endurant : développer ta réserve",
+        why: "Ta " + R + " est haute par rapport à ton 3′ : tu tiens longtemps, mais tu manques de « carburant » au-dessus de ta " + R + " pour les attaques, les relances et les fins de course.",
+        prio: ["Travail au-dessus de ta " + R + " (domaine sévère) : 1 à 2 séances par semaine", "Intervalles courts et VO2max, sprints, et force-vitesse en salle", "Garder la Z2 pour ne pas perdre ta base"] }
+      : { title: "Profil intermédiaire : alterner les blocs",
+        why: "Ta " + R + " et ta réserve sont en bon rapport : on alterne les blocs pour faire monter toute ta courbe.",
+        prio: ["Bloc de 4–6 semaines orienté seuil, puis bloc orienté VO2max", "Z2 majoritaire (environ 75 % de ton volume)", "Re-tester à la fin de chaque bloc"] };
+    if (big) ori.prio.push("Grosse réserve (" + res + ") : soigne ton pacing, les départs trop rapides te coûtent cher, et travaille ta " + R + ".");
+    if (small) ori.prio.push("Petite réserve (" + res + ") : peu de marge au-dessus de ta " + R + ", à développer par des efforts de 30″ à 2′.");
     var M = {
       kind: run ? "VITESSE<br>CRITIQUE" : "PUISSANCE<br>CRITIQUE", name: d.athlete, date: d.date, unitWord: run ? "allures" : "puissances",
       sub: (run ? "Course à pied" : (d.mv || "Ergo")) + (d.date ? " · test du " + dateFR(d.date) : ""),
-      orient: d.orient || { title: "", why: "", prio: [] },
+      orient: ori,
       retest: "Nouveau test 3′ / 12′ pour mesurer la progression",
       cards: run ? [[[main(cp), "vitesse critique ≈ S2 · " + fr(cp) + " km/h", S2C], [fr(ratio, 0) + " %", "ratio 12′ / 3′ · " + labs[ei].toLowerCase(), ACC]],
         [["3′ · " + main(a3), "test 3′ · " + fr(a3, 2) + " km/h", CREAM], ["12′ · " + main(a12), "test 12′ · " + fr(a12, 2) + " km/h", CREAM]]]
@@ -393,10 +413,21 @@
     var ei = ratio < 70 ? 0 : ratio < 75 ? 1 : ratio < 80 ? 2 : ratio < 85 ? 3 : 4;
     var W = function (a, c) { return r5(a) + " – " + r5(c) + " W"; }, Wsh = function (a, c) { return r5(a) + "–" + r5(c); };
     var bike = isBike(d);
+    var z2 = b[0] + "–" + Math.round(s1) + " W" + (fc(s1) != null ? " · FC < " + fc(s1) : ""), rr = fr(ratio, 0);
+    var noPlat = lac && d.plat === "non" ? " Pas de plateau de lactate : ta base aérobie est à surveiller." : "";
+    var ori = ei >= 3 ? { title: "Base aérobie solide",
+        why: "Ton S1 est à " + rr + " % de ton S2 : tu tiens beaucoup d'intensité sans accumuler, mais ton domaine élevé, entre S1 et S2, est étroit : au-delà de S2, la fatigue arrive vite." + noPlat,
+        prio: ["Relever ton S2 : 1 séance seuil + 1 séance VO2max par semaine", "Garder la Z2 (" + z2 + ") autour de 70 % de ton volume", "Le tempo n'est pas ta priorité : il est déjà « facile » pour toi"] }
+      : ei === 2 ? { title: "Profil équilibré",
+        why: "Ton S1 est à " + rr + " % de ton S2 : ta base et ta tolérance au-dessus du seuil sont en bon rapport. On fait monter toute ta courbe." + noPlat,
+        prio: ["Environ 80 % de ton volume en Z2 (" + z2 + ")", "1 séance seuil et 1 séance VO2max par semaine, en alternant les blocs", "Allonger progressivement tes blocs au seuil"] }
+      : { title: "Base aérobie à développer",
+        why: "Ton S1 est à " + rr + " % de ton S2 : tu tiens haut grâce à ta puissance, mais tu sors tôt du domaine modéré. Ton moteur aérobie limite ta récupération et tes efforts longs." + noPlat,
+        prio: ["75–80 % de ton volume en Z2 (" + z2 + "), RPE 2–3", "Sorties longues continues de 45 à 90′, strictement sous ton S1", "Limiter le tempo et garder une seule séance intense courte par semaine"] };
     var M = {
       kind: lac ? "PROFILAGE<br>LACTATE" : "PROFILAGE<br>RPE", name: d.athlete, date: d.date, unitWord: "puissances",
       sub: (d.mv || "Ergo") + (d.date ? " · test du " + dateFR(d.date) : ""),
-      orient: d.orient || { title: "", why: "", prio: [] },
+      orient: ori,
       retest: "Nouveau profilage pour mesurer la montée de S1 et de S2",
       cards: [[[Math.round(s1) + " W", "seuil 1" + (fc(s1) != null ? " · FC " + fc(s1) + " bpm" : ""), S1C], [Math.round(s2) + " W", "seuil 2" + (fc(s2) != null ? " · FC " + fc(s2) + " bpm" : ""), S2C],
         [fr(ratio, 0) + " %", "ratio S1 / S2 · " + labs[ei].toLowerCase(), ACC]],
@@ -413,7 +444,7 @@
       courbeEy: "TON TEST · PALIERS 4′ / 1′ · " + (lac ? "LACTATE" : "RPE") + " + FC",
       courbeCards: [["S1 · " + Math.round(s1) + " W", (fcs(s1) ? fcs(s1) + " · " : "") + "facile → soutenu", S1C], ["S2 · " + Math.round(s2) + " W", (fcs(s2) ? fcs(s2) + " · " : "") + "au-delà, effort limité", S2C]],
       courbeTxt: 'Sous <b style="color:' + S1C + '">S1</b> : on peut parler, RPE ≤ 3. Entre S1 et <b style="color:' + S2C + '">S2</b> : soutenu mais stable.<br><span class="uacc">Au-dessus de S2 : la fatigue s\'accumule vite.</span>',
-      courbeFoot: lac ? (d.plat === "non" ? "Pas de plateau de lactate : base aérobie à surveiller." : "Plateau de lactate sur les premiers paliers : bonne base de départ.") : strip(d.limiter || ""),
+      courbeFoot: lac ? (d.plat === "non" ? "Pas de plateau de lactate : base aérobie à surveiller." : "Plateau de lactate sur les premiers paliers : bonne base de départ.") : tuLimiter(strip(d.limiter || "")),
       courbe: function () {
         var Wd = 960, Hh = 540, x0 = 86, x1 = Wd - 86, y0 = 50, y1 = Hh - 92;
         if (!pts.length) return "";
@@ -641,5 +672,5 @@
     return ov;
   }
 
-  window.udtDossier = { open: open, pages: function (d) { injectCSS(); return pages(d).list; }, version: "2026-11-26b" };
+  window.udtDossier = { open: open, pages: function (d) { injectCSS(); return pages(d).list; }, version: "2026-11-26c" };
 })();
